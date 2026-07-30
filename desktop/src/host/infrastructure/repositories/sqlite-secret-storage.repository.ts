@@ -16,9 +16,7 @@ const normalizeLabel = (label: string): string => {
   return normalized;
 };
 
-export class SqliteSecretStorageRepository
-  implements SecretStorageRepository
-{
+export class SqliteSecretStorageRepository implements SecretStorageRepository {
   constructor(private readonly dataSource: SecretStorageDataSource) {}
 
   getSnapshot(): SecretStorageSnapshot {
@@ -38,11 +36,24 @@ export class SqliteSecretStorageRepository
   upsertSecret(input: UpsertSecretInput): SecretEntity {
     if (!this.dataSource.categoryExists(input.categoryId))
       throw new Error("Выбранная категория не существует");
-    if (!input.content.trim()) throw new Error("Содержимое секрета обязательно");
+    if (!input.content.trim())
+      throw new Error("Содержимое секрета обязательно");
 
     return this.dataSource.upsertSecret({
       ...input,
       label: normalizeLabel(input.label),
     });
+  }
+
+  deleteCategory(id: number): void {
+    if (!this.dataSource.categoryExists(id))
+      throw new Error("Категория не существует");
+    this.dataSource.deleteCategory(id);
+  }
+
+  deleteSecret(id: number): void {
+    const secret = this.dataSource.findSecret(id);
+    if (!secret) throw new Error("Секрет не существует");
+    this.dataSource.deleteSecret(id);
   }
 }

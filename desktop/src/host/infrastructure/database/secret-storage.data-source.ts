@@ -121,4 +121,20 @@ export class SecretStorageDataSource {
     if (result.changes === 0) throw new Error("Секрет не найден");
     return this.findSecret(input.id)!;
   }
+
+  deleteCategory(id: number): void {
+    const result = this.database
+      .prepare("DELETE FROM secret_categories WHERE id = ? AND builtin = 0")
+      .run(id);
+    if (result.changes === 0)
+      throw new Error("Категория не найдена или не подлежит удалению");
+  }
+
+  deleteSecret(id: number): void {
+    const result = this.database
+      .prepare("DELETE FROM secret_entities WHERE id = ? AND builtin = 0")
+      .run(id);
+    if (result.changes === 0)
+      throw new Error("Секрет не найден или не подлежит удалению");
+  }
 }

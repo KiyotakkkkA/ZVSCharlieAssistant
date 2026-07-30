@@ -10,4 +10,6 @@ export interface SecretStorageRepository {
   getSnapshot(): SecretStorageSnapshot;
   upsertCategory(input: UpsertSecretCategoryInput): SecretCategory;
   upsertSecret(input: UpsertSecretInput): SecretEntity;
+  deleteCategory(id: number): void;
+  deleteSecret(id: number): void;
 }

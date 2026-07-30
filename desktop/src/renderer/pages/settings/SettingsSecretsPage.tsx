@@ -17,6 +17,7 @@ import {
   KeyIcon,
   PlusIcon,
   RefreshIcon,
+  TrashIcon,
 } from "../../components/atoms";
 import {
   SettingsSecretCategoryManageForm,
@@ -26,8 +27,8 @@ import { secretStorageStore } from "../../stores";
 
 type ActiveSection = "secrets" | "categories";
 type ManageDialog =
-  | { kind: "secret"; model?: SecretEntity }
-  | { kind: "category"; model?: SecretCategory }
+  | { kind: "secret"; model?: SecretEntity; action?: "upsert" | "delete" }
+  | { kind: "category"; model?: SecretCategory; action?: "upsert" | "delete" }
   | null;
 
 interface SecretTableRow extends SecretEntity {
@@ -40,6 +41,27 @@ interface CategoryTableRow extends SecretCategory {
 
 const badgeClassName =
   "inline-flex rounded-full bg-main-700/60 px-2 py-1 text-xs text-main-300";
+
+const modalNameResolver = (dialog: ManageDialog) => {
+  if (!dialog) return "";
+  if (dialog.kind === "secret") {
+    if (dialog.action === "upsert") {
+      return dialog.model ? "Изменить секрет" : "Новый секрет";
+    }
+    if (dialog.action === "delete") {
+      return "Удалить секрет";
+    }
+  }
+  if (dialog.kind === "category") {
+    if (dialog.action === "upsert") {
+      return dialog.model ? "Изменить категорию" : "Новая категория";
+    }
+    if (dialog.action === "delete") {
+      return "Удалить категорию";
+    }
+  }
+  return "";
+};
 
 export const SettingsSecretsPage = observer(function SettingsSecretsPage() {
   const store = secretStorageStore;
@@ -56,7 +78,11 @@ export const SettingsSecretsPage = observer(function SettingsSecretsPage() {
       });
       return;
     }
-    setDialog({ kind: activeSection === "secrets" ? "secret" : "category" });
+    setDialog({
+      kind: activeSection === "secrets" ? "secret" : "category",
+      action: "upsert",
+      model: undefined,
+    });
   };
 
   const copySecret = async (secret: SecretEntity) => {
@@ -134,9 +160,23 @@ export const SettingsSecretsPage = observer(function SettingsSecretsPage() {
             label={`Изменить ${secret.label}`}
             title="Изменить"
             className="size-9 p-0 text-main-400 hover:text-main-50"
-            onClick={() => setDialog({ kind: "secret", model: secret })}
+            onClick={() =>
+              setDialog({ kind: "secret", model: secret, action: "upsert" })
+            }
           >
             <EditIcon className="size-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            label={`Удалить ${secret.label}`}
+            title="Удалить"
+            className="size-9 p-0 text-main-400 hover:text-red-400"
+            rounded="rounded-lg"
+            onClick={() =>
+              setDialog({ kind: "secret", model: secret, action: "delete" })
+            }
+          >
+            <TrashIcon className="size-4" />
           </Button>
         </div>
       ),
@@ -184,15 +224,41 @@ export const SettingsSecretsPage = observer(function SettingsSecretsPage() {
       cellClassName: "text-right",
       render: (category) => (
         <div className="flex justify-end">
-          <Button
-            variant="ghost"
-            label={`Изменить ${category.label}`}
-            title="Изменить"
-            className="size-9 p-0 text-main-400 hover:text-main-50"
-            onClick={() => setDialog({ kind: "category", model: category })}
-          >
-            <EditIcon className="size-4" />
-          </Button>
+          {category.builtin ? null : (
+            <>
+              <Button
+                variant="ghost"
+                label={`Изменить ${category.label}`}
+                title="Изменить"
+                className="size-9 p-0 text-main-400 hover:text-main-50"
+                onClick={() =>
+                  setDialog({
+                    kind: "category",
+                    model: category,
+                    action: "upsert",
+                  })
+                }
+              >
+                <EditIcon className="size-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                label={`Удалить ${category.label}`}
+                title="Удалить"
+                className="size-9 p-0 text-main-400 hover:text-red-400"
+                rounded="rounded-lg"
+                onClick={() =>
+                  setDialog({
+                    kind: "category",
+                    model: category,
+                    action: "delete",
+                  })
+                }
+              >
+                <TrashIcon className="size-4" />
+              </Button>
+            </>
+          )}
         </div>
       ),
     },
@@ -320,18 +386,10 @@ export const SettingsSecretsPage = observer(function SettingsSecretsPage() {
         className="max-w-xl"
       >
         <Modal.Header>
-          <h2 className="text-lg font-semibold">
-            {dialog?.kind === "secret"
-              ? dialog.model
-                ? "Изменить секрет"
-                : "Новый секрет"
-              : dialog?.model
-                ? "Изменить категорию"
-                : "Новая категория"}
-          </h2>
+          <h2 className="text-lg font-semibold">{modalNameResolver(dialog)}</h2>
         </Modal.Header>
         <Modal.Content>
-          {dialog?.kind === "secret" ? (
+          {dialog?.kind === "secret" && dialog.action === "upsert" ? (
             <SettingsSecretManageForm
               categories={store.categories}
               model={dialog.model}
@@ -339,13 +397,51 @@ export const SettingsSecretsPage = observer(function SettingsSecretsPage() {
               onSaved={() => setDialog(null)}
               onSubmit={store.upsertSecret}
             />
-          ) : dialog?.kind === "category" ? (
+          ) : dialog?.kind === "category" && dialog.action === "upsert" ? (
             <SettingsSecretCategoryManageForm
               model={dialog.model}
               onCancel={() => setDialog(null)}
               onSaved={() => setDialog(null)}
               onSubmit={store.upsertCategory}
             />
+          ) : null}
+          {dialog?.action === "delete" ? (
+            <div className="flex flex-col gap-4">
+              <p className="text-sm text-main-400">
+                Вы уверены, что хотите удалить{" "}
+                <span className="font-medium text-main-50">
+                  {dialog.model?.label}
+                </span>
+                ? Это действие нельзя будет отменить.
+              </p>
+              <div className="flex justify-end gap-2">
+                <Button variant="ghost" onClick={() => setDialog(null)}>
+                  Отмена
+                </Button>
+                <Button
+                  variant="danger"
+                  className="px-2"
+                  onClick={async () => {
+                    if (dialog.kind === "secret") {
+                      await store.deleteSecret(dialog.model!.id);
+                      toasts.success({
+                        title: "Секрет удалён",
+                      });
+                    } else if (dialog.kind === "category") {
+                      await store.deleteCategory(dialog.model!.id);
+                      toasts.success({
+                        title: "Категория удалена",
+                        description:
+                          "Все секреты в этой категории также были удалены.",
+                      });
+                    }
+                    setDialog(null);
+                  }}
+                >
+                  Удалить
+                </Button>
+              </div>
+            </div>
           ) : null}
         </Modal.Content>
       </Modal>

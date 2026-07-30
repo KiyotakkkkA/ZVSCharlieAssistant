@@ -21,6 +21,12 @@ export function registerSecretStorageHandlers(
     SECRET_IPC_CHANNELS.upsertSecret,
     (_event, input: UpsertSecretInput) => repository.upsertSecret(input),
   );
+  ipcMain.handle(SECRET_IPC_CHANNELS.deleteCategory, (_event, id: number) =>
+    repository.deleteCategory(id),
+  );
+  ipcMain.handle(SECRET_IPC_CHANNELS.deleteSecret, (_event, id: number) =>
+    repository.deleteSecret(id),
+  );
 }
 
 export function removeSecretStorageHandlers(): void {

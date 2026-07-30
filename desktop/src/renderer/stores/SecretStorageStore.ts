@@ -61,7 +61,9 @@ export class SecretStorageStore {
   ): Promise<SecretCategory> {
     const category = await window.desktop.secrets.upsertCategory(input);
     runInAction(() => {
-      const index = this.categories.findIndex((item) => item.id === category.id);
+      const index = this.categories.findIndex(
+        (item) => item.id === category.id,
+      );
       if (index >= 0) this.categories[index] = category;
       else this.categories.push(category);
       this.categories = [...this.categories].sort((a, b) =>
@@ -84,6 +86,27 @@ export class SecretStorageStore {
       this.error = null;
     });
     return secret;
+  }
+
+  async deleteCategory(categoryId: number): Promise<void> {
+    await window.desktop.secrets.deleteCategory(categoryId);
+    runInAction(() => {
+      this.categories = this.categories.filter(
+        (item) => item.id !== categoryId,
+      );
+      this.secrets = this.secrets.filter(
+        (item) => item.categoryId !== categoryId,
+      );
+      this.error = null;
+    });
+  }
+
+  async deleteSecret(secretId: number): Promise<void> {
+    await window.desktop.secrets.deleteSecret(secretId);
+    runInAction(() => {
+      this.secrets = this.secrets.filter((item) => item.id !== secretId);
+      this.error = null;
+    });
   }
 }
 

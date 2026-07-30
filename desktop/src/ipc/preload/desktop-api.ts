@@ -1,4 +1,4 @@
-import { ipcRenderer } from 'electron'
+import { ipcRenderer } from "electron";
 import {
   IPC_CHANNELS,
   SECRET_IPC_CHANNELS,
@@ -8,8 +8,8 @@ import {
   type SecretEntity,
   type SecretStorageSnapshot,
   type UpsertSecretCategoryInput,
-  type UpsertSecretInput
-} from '../contracts'
+  type UpsertSecretInput,
+} from "../contracts";
 
 export const desktopApi: DesktopApi = {
   getAppInfo: (): Promise<AppInfo> =>
@@ -17,19 +17,26 @@ export const desktopApi: DesktopApi = {
   secrets: {
     getSnapshot: (): Promise<SecretStorageSnapshot> =>
       ipcRenderer.invoke(
-        SECRET_IPC_CHANNELS.getSnapshot
+        SECRET_IPC_CHANNELS.getSnapshot,
       ) as Promise<SecretStorageSnapshot>,
     upsertCategory: (
-      input: UpsertSecretCategoryInput
+      input: UpsertSecretCategoryInput,
     ): Promise<SecretCategory> =>
       ipcRenderer.invoke(
         SECRET_IPC_CHANNELS.upsertCategory,
-        input
+        input,
       ) as Promise<SecretCategory>,
     upsertSecret: (input: UpsertSecretInput): Promise<SecretEntity> =>
       ipcRenderer.invoke(
         SECRET_IPC_CHANNELS.upsertSecret,
-        input
-      ) as Promise<SecretEntity>
-  }
-}
+        input,
+      ) as Promise<SecretEntity>,
+    deleteCategory: (id: number): Promise<void> =>
+      ipcRenderer.invoke(
+        SECRET_IPC_CHANNELS.deleteCategory,
+        id,
+      ) as Promise<void>,
+    deleteSecret: (id: number): Promise<void> =>
+      ipcRenderer.invoke(SECRET_IPC_CHANNELS.deleteSecret, id) as Promise<void>,
+  },
+};
