@@ -4,6 +4,7 @@ import { HashRouter, Navigate, Route, Routes } from "react-router-dom";
 import { App } from "./app/App";
 import { APP_PATHS } from "./app/routes";
 import { RoutePage } from "./pages/RoutePage";
+import { SettingsSecretsPage } from "./pages/settings";
 import "@fontsource-variable/onest";
 import "./styles/global.css";
 
@@ -18,9 +19,22 @@ createRoot(root).render(
         <Route element={<App />}>
           <Route index element={<RoutePage title="Главная" />} />
           <Route path={APP_PATHS.chat} element={<RoutePage title="Чат" />} />
-          <Route path={APP_PATHS.tasks} element={<RoutePage title="Задачи" />} />
-          <Route path={APP_PATHS.storage} element={<RoutePage title="Хранилище" />} />
-          <Route path={APP_PATHS.settings} element={<RoutePage title="Настройки" />} />
+          <Route
+            path={APP_PATHS.tasks}
+            element={<RoutePage title="Задачи" />}
+          />
+          <Route
+            path={APP_PATHS.storage}
+            element={<RoutePage title="Хранилище" />}
+          />
+          <Route
+            path={APP_PATHS.settings.index}
+            element={<RoutePage title="Настройки" />}
+          />
+          <Route
+            path={APP_PATHS.settings.secrets}
+            element={<SettingsSecretsPage />}
+          />
           <Route path="*" element={<Navigate to={APP_PATHS.home} replace />} />
         </Route>
       </Routes>
