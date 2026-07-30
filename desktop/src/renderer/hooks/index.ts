@@ -1,0 +1,1 @@
+export { useHashRouter } from "./useHashRouter";
