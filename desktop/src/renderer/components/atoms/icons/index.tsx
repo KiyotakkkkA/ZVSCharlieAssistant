@@ -113,6 +113,18 @@ export const EditIcon: SvgIcon = (props) => (
     <path d="m13 3 4 4" />
   </Icon>
 );
+export const CopyIcon: SvgIcon = (props) => (
+  <Icon {...props}>
+    <rect x="8" y="8" width="12" height="12" rx="2" />
+    <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
+  </Icon>
+);
+export const KeyIcon: SvgIcon = (props) => (
+  <Icon {...props}>
+    <circle cx="8" cy="15" r="4" />
+    <path d="m11 12 9-9M15 8l3 3M17 6l2 2" />
+  </Icon>
+);
 export const SaveIcon: SvgIcon = (props) => (
   <Icon {...props}>
     <path d="M4 3h14l2 2v16H4Z" />
