@@ -100,18 +100,15 @@ export const ScenariosListPage = observer(function ScenariosListPage() {
       <PageHeader
         title="Сценарии"
         description="Объединяйте агентов в управляемые последовательности выполнения."
-        breadcrumbs={[
-          { label: "Автоматизация", to: APP_PATHS.automation.index },
-          { label: "Сценарии" },
-        ]}
+        breadcrumbs={[{ label: "Автоматизация" }, { label: "Сценарии" }]}
       >
-          <Button
-            variant="primary"
-            onClick={() => goTo(APP_PATHS.automation.scenarios.create)}
-          >
-            <PlusIcon className="size-4" />
-            Создать сценарий
-          </Button>
+        <Button
+          variant="primary"
+          onClick={() => goTo(APP_PATHS.automation.scenarios.create)}
+        >
+          <PlusIcon className="size-4" />
+          Создать сценарий
+        </Button>
       </PageHeader>
 
       {automationStore.scenarios.length ? (

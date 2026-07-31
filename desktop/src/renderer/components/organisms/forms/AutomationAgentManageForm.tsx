@@ -120,8 +120,9 @@ export function AutomationAgentManageForm({
             required
           />
         </Field>
-        <Field label="Статус">
+        <Field label="Статус" className="w-fit">
           <Select
+            className="w-fit"
             value={status}
             onChange={(value) => setStatus(value as AutomationStatus)}
             options={[
@@ -189,7 +190,7 @@ export function AutomationAgentManageForm({
 
       <FormSection
         title="Секреты"
-        description="Значение секрета получает только executor разрешённого инструмента; оно не добавляется в контекст модели."
+        description="Модель получает возможность использовать выбранные секреты по своему усмотрению, при этом фактические значения секретов раскрываться не будут"
       >
         {secretStorageStore.secrets.length ? (
           <InputCheckBoxGroup
@@ -225,13 +226,13 @@ export function AutomationAgentManageForm({
 
       <FormSection
         title="Безопасность"
-        description="Опасные действия должны быть подтверждены пользователем."
+        description="Управляет политикой применение инструмента. Инструменты с пометкой `требует подтверждения` будут автоматически подтверждены при включённой опции"
       >
         <InputCheckBox
           checked={requireConfirmation}
           onChange={setRequireConfirmation}
         >
-          Запрашивать подтверждение потенциально опасных действий
+          Автоматическое подтверждение вызовов инструментов
         </InputCheckBox>
       </FormSection>
 
@@ -283,12 +284,14 @@ function FormSection({
 function Field({
   label,
   children,
+  className = "",
 }: {
   label: string;
   children: React.ReactNode;
+  className?: string;
 }) {
   return (
-    <label className="block">
+    <label className={`block ${className}`}>
       <span className="mb-2 block text-xs font-medium text-main-400">
         {label}
       </span>

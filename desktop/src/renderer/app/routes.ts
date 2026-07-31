@@ -1,6 +1,7 @@
 import type { SvgIcon } from "../components/atoms";
 import {
   ChatIcon,
+  FactoryIcon,
   HomeIcon,
   LockIcon,
   RobotIcon,
@@ -57,7 +58,7 @@ export const NAVIGATION_ROUTES: readonly NavigationRoute[] = [
   {
     id: "automation",
     label: "Автоматизация",
-    icon: RobotIcon,
+    icon: FactoryIcon,
     children: [
       {
         id: "automation-agents",

@@ -26,7 +26,7 @@ export const AgentManagerPage = observer(function AgentManagerPage() {
         title={model ? `Настройка: ${model.name}` : "Новый агент"}
         description="Агент является переиспользуемым профилем исполнения для сценариев."
         breadcrumbs={[
-          { label: "Автоматизация", to: APP_PATHS.automation.index },
+          { label: "Автоматизация" },
           { label: "Агенты", to: APP_PATHS.automation.agents.index },
           { label: creating ? "Новый агент" : model?.name },
         ]}

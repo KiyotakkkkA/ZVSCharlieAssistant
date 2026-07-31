@@ -89,10 +89,7 @@ export const ToolsListPage = observer(function ToolsListPage() {
       <PageHeader
         title="Инструменты"
         description="Встроенные возможности приложения, которые можно разрешать агентам."
-        breadcrumbs={[
-          { label: "Автоматизация" },
-          { label: "Инструменты" },
-        ]}
+        breadcrumbs={[{ label: "Автоматизация" }, { label: "Инструменты" }]}
       />
 
       {automationStore.tools.length ? (
@@ -160,7 +157,11 @@ export const ToolsListPage = observer(function ToolsListPage() {
           ) : null}
         </Modal.Content>
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setSelectedTool(null)}>
+          <Button
+            variant="secondary"
+            className="px-2"
+            onClick={() => setSelectedTool(null)}
+          >
             Закрыть
           </Button>
         </Modal.Footer>

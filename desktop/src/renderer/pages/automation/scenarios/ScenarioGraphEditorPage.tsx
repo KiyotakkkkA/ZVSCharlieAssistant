@@ -303,22 +303,19 @@ export function ScenarioGraphEditorPage() {
         </div>
 
         <div className="flex flex-col items-end gap-2">
-          <AppBreadcrumbs
-            items={[
-              {
-                label: "Сценарии",
-                to: APP_PATHS.automation.scenarios.index,
-              },
-              { label: scenario?.name ?? "Новый сценарий" },
-            ]}
-          />
           <div className="flex items-center gap-2">
-            <Button variant="ghost" onClick={() => void saveScenario()}>
+            <Button
+              className="px-2"
+              variant="ghost"
+              onClick={() => void saveScenario()}
+            >
               <SaveIcon className="size-4" />
               Сохранить
             </Button>
-            <Button variant="secondary">Проверить</Button>
-            <Button variant="primary">
+            <Button variant="secondary" className="px-2">
+              Проверить
+            </Button>
+            <Button variant="primary" className="px-2">
               <SendIcon className="size-4" />
               Запустить
             </Button>
@@ -328,13 +325,13 @@ export function ScenarioGraphEditorPage() {
 
       <div className="flex min-h-0 flex-1">
         <aside className="flex w-60 shrink-0 flex-col border-r border-main-800 bg-main-900/80 p-3">
-          <h2 className="px-1 text-xs font-semibold uppercase tracking-wider text-main-500">
+          <h2 className="px-1 text-xs font-semibold uppercase tracking-wider text-main-500 mb-3">
             Узлы
           </h2>
           <InputSmall
             preset="search"
             placeholder="Поиск узлов"
-            className="mt-3 w-full"
+            className="w-full"
           />
 
           <div className="mt-4 space-y-1.5 overflow-auto">
@@ -527,15 +524,9 @@ export function ScenarioGraphEditorPage() {
                 >
                   <Select.Trigger className="w-full" />
                   <Select.Menu>
-                    <Select.Option
-                      value="stop"
-                      label="Остановить выполнение"
-                    />
+                    <Select.Option value="stop" label="Остановить выполнение" />
                     <Select.Option value="retry" label="Повторить узел" />
-                    <Select.Option
-                      value="continue"
-                      label="Продолжить ветку"
-                    />
+                    <Select.Option value="continue" label="Продолжить ветку" />
                   </Select.Menu>
                 </Select>
               </InspectorField>

@@ -27,10 +27,7 @@ export const AgentsListPage = observer(function AgentsListPage() {
       <PageHeader
         title="Агенты"
         description="Настраивайте инструкции, инструменты и разрешения исполнителей."
-        breadcrumbs={[
-          { label: "Автоматизация", to: APP_PATHS.automation.index },
-          { label: "Агенты" },
-        ]}
+        breadcrumbs={[{ label: "Автоматизация" }, { label: "Агенты" }]}
       >
         <div className="flex flex-wrap items-center justify-end gap-2">
           <InputSmall
@@ -52,7 +49,7 @@ export const AgentsListPage = observer(function AgentsListPage() {
       </PageHeader>
 
       {agents.length ? (
-        <div className="grid gap-3 xl:grid-cols-2">
+        <div className="grid gap-3 xl:grid-cols-3">
           {agents.map((agent) => (
             <AutomationAgentCard key={agent.id} agent={agent} />
           ))}
