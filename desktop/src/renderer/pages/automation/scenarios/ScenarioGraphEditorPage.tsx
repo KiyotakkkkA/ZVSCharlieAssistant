@@ -5,8 +5,13 @@ import {
   useRef,
   useState,
 } from "react";
-import { Button } from "@kiyotakkkka/zvs-uikit-lib";
-import { useNavigate } from "react-router-dom";
+import {
+  Button,
+  InputBig,
+  InputSmall,
+  Select,
+} from "@kiyotakkkka/zvs-uikit-lib";
+import { useParams } from "react-router-dom";
 import {
   ChatIcon,
   ChevronLeftIcon,
@@ -15,13 +20,13 @@ import {
   PlusIcon,
   RobotIcon,
   SaveIcon,
-  SearchIcon,
   SendIcon,
   SettingsIcon,
   TasksIcon,
 } from "../../../components/atoms";
-import { useParams } from "react-router-dom";
+import { AppBreadcrumbs } from "../../../components/molecules";
 import { APP_PATHS } from "../../../app/routes";
+import { useHashRouter } from "../../../hooks";
 import { automationStore } from "../../../stores";
 
 type NodeKind = "trigger" | "agent" | "condition" | "approval" | "output";
@@ -150,12 +155,13 @@ const palette: Array<{ kind: NodeKind; title: string; description: string }> = [
 ];
 
 export function ScenarioGraphEditorPage() {
-  const navigate = useNavigate();
+  const { goTo } = useHashRouter();
   const { scenarioId } = useParams();
   const scenario = automationStore.getScenario(scenarioId);
   const [nodes, setNodes] = useState(initialNodes);
   const [selectedNodeId, setSelectedNodeId] = useState("orchestrator");
   const [zoom, setZoom] = useState(0.86);
+  const [errorBehavior, setErrorBehavior] = useState("stop");
   const dragRef = useRef<{
     id: string;
     startX: number;
@@ -259,25 +265,22 @@ export function ScenarioGraphEditorPage() {
       nodesCount: nodes.length,
     });
     if (!scenarioId) {
-      navigate(
-        APP_PATHS.automation.scenarios.edit.replace(
-          ":scenarioId",
-          saved.id,
-        ),
+      goTo(
+        APP_PATHS.automation.scenarios.edit.replace(":scenarioId", saved.id),
         { replace: true },
       );
     }
   };
 
   return (
-    <section className="-m-2 flex h-[calc(100%+1rem)] min-h-[620px] flex-col overflow-hidden bg-main-900">
-      <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-main-800 px-4">
+    <section className="-m-2 flex h-[calc(100%+1rem)] min-h-155 flex-col overflow-hidden bg-main-900">
+      <header className="flex h-20 shrink-0 items-center justify-between gap-4 border-b border-main-800 px-4">
         <div className="flex min-w-0 items-center gap-3">
           <Button
             variant="ghost"
             label="Назад к агентам"
             className="size-9 shrink-0 p-0 text-main-400"
-            onClick={() => navigate(APP_PATHS.automation.scenarios.index)}
+            onClick={() => goTo(APP_PATHS.automation.scenarios.index)}
           >
             <ChevronLeftIcon className="size-4" />
           </Button>
@@ -299,16 +302,27 @@ export function ScenarioGraphEditorPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" onClick={() => void saveScenario()}>
-            <SaveIcon className="size-4" />
-            Сохранить
-          </Button>
-          <Button variant="secondary">Проверить</Button>
-          <Button variant="primary">
-            <SendIcon className="size-4" />
-            Запустить
-          </Button>
+        <div className="flex flex-col items-end gap-2">
+          <AppBreadcrumbs
+            items={[
+              {
+                label: "Сценарии",
+                to: APP_PATHS.automation.scenarios.index,
+              },
+              { label: scenario?.name ?? "Новый сценарий" },
+            ]}
+          />
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" onClick={() => void saveScenario()}>
+              <SaveIcon className="size-4" />
+              Сохранить
+            </Button>
+            <Button variant="secondary">Проверить</Button>
+            <Button variant="primary">
+              <SendIcon className="size-4" />
+              Запустить
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -317,13 +331,11 @@ export function ScenarioGraphEditorPage() {
           <h2 className="px-1 text-xs font-semibold uppercase tracking-wider text-main-500">
             Узлы
           </h2>
-          <label className="mt-3 flex h-9 items-center gap-2 rounded-lg bg-main-800/65 px-3 text-main-500 ring-1 ring-main-700/50 focus-within:ring-main-500">
-            <SearchIcon className="size-4" />
-            <input
-              placeholder="Поиск узлов"
-              className="min-w-0 flex-1 bg-transparent text-sm text-main-200 outline-none placeholder:text-main-500"
-            />
-          </label>
+          <InputSmall
+            preset="search"
+            placeholder="Поиск узлов"
+            className="mt-3 w-full"
+          />
 
           <div className="mt-4 space-y-1.5 overflow-auto">
             {palette.map((item) => {
@@ -363,7 +375,7 @@ export function ScenarioGraphEditorPage() {
           <div className="absolute inset-0 bg-main-900" />
 
           <div
-            className="absolute left-0 top-0 h-[720px] w-[1160px] origin-top-left"
+            className="absolute left-0 top-0 h-180 w-290 origin-top-left"
             style={{ transform: `scale(${zoom})` }}
           >
             <svg
@@ -394,7 +406,7 @@ export function ScenarioGraphEditorPage() {
               return (
                 <div
                   key={node.id}
-                  className={`absolute w-[210px] cursor-grab select-none rounded-xl bg-main-800/95 ring-1 transition-colors active:cursor-grabbing ${
+                  className={`absolute w-52.5 cursor-grab select-none rounded-xl bg-main-800/95 ring-1 transition-colors active:cursor-grabbing ${
                     selected
                       ? "ring-accent-medium/70"
                       : "ring-main-700 hover:ring-main-500"
@@ -407,10 +419,10 @@ export function ScenarioGraphEditorPage() {
                   }}
                 >
                   <span
-                    className={`absolute -left-1.5 top-[43px] size-3 rounded-full border-2 border-main-800 ${meta.dot}`}
+                    className={`absolute -left-1.5 top-10.75 size-3 rounded-full border-2 border-main-800 ${meta.dot}`}
                   />
                   <span
-                    className={`absolute -right-1.5 top-[43px] size-3 rounded-full border-2 border-main-800 ${meta.dot}`}
+                    className={`absolute -right-1.5 top-10.75 size-3 rounded-full border-2 border-main-800 ${meta.dot}`}
                   />
                   <div className="flex items-center gap-3 border-b border-main-700/60 p-3">
                     <span
@@ -485,30 +497,47 @@ export function ScenarioGraphEditorPage() {
               </div>
 
               <InspectorField label="Название">
-                <input
+                <InputSmall
                   value={selectedNode.title}
                   onChange={(event) =>
                     updateSelectedNode({ title: event.target.value })
                   }
-                  className="h-9 w-full rounded-lg bg-main-800 px-3 text-sm text-main-100 outline-none ring-1 ring-main-700 focus:ring-main-500"
                 />
               </InspectorField>
               <InspectorField label="Описание">
-                <textarea
+                <InputBig
                   value={selectedNode.description}
                   onChange={(event) =>
                     updateSelectedNode({ description: event.target.value })
                   }
-                  rows={3}
-                  className="w-full resize-none rounded-lg bg-main-800 px-3 py-2 text-sm leading-5 text-main-100 outline-none ring-1 ring-main-700 focus:ring-main-500"
+                  minRows={3}
+                  maxRows={6}
+                  autoResize
                 />
               </InspectorField>
               <InspectorField label="Поведение при ошибке">
-                <select className="h-9 w-full rounded-lg bg-main-800 px-3 text-sm text-main-200 outline-none ring-1 ring-main-700">
-                  <option>Остановить выполнение</option>
-                  <option>Повторить узел</option>
-                  <option>Продолжить ветку</option>
-                </select>
+                <Select
+                  value={errorBehavior}
+                  onChange={setErrorBehavior}
+                  options={[
+                    { value: "stop", label: "Остановить выполнение" },
+                    { value: "retry", label: "Повторить узел" },
+                    { value: "continue", label: "Продолжить ветку" },
+                  ]}
+                >
+                  <Select.Trigger className="w-full" />
+                  <Select.Menu>
+                    <Select.Option
+                      value="stop"
+                      label="Остановить выполнение"
+                    />
+                    <Select.Option value="retry" label="Повторить узел" />
+                    <Select.Option
+                      value="continue"
+                      label="Продолжить ветку"
+                    />
+                  </Select.Menu>
+                </Select>
               </InspectorField>
 
               <div className="rounded-lg bg-main-800/40 p-3">

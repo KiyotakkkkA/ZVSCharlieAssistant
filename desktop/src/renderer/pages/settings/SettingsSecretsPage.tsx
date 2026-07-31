@@ -23,6 +23,7 @@ import {
   SettingsSecretCategoryManageForm,
   SettingsSecretManageForm,
 } from "../../components/organisms/forms";
+import { PageHeader } from "../../components/organisms";
 import { secretStorageStore } from "../../stores";
 
 type ActiveSection = "secrets" | "categories";
@@ -316,43 +317,41 @@ export const SettingsSecretsPage = observer(function SettingsSecretsPage() {
 
   return (
     <section className="flex min-h-full flex-col p-4">
-      <header className="mb-5 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="mb-1 text-sm text-main-400">Настройки</p>
-          <h1 className="text-2xl font-semibold tracking-tight text-main-50">
-            Менеджер секретов
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-main-400">
-            Управляйте ключами, токенами и учётными данными, которые используют
-            ваши агенты.
-          </p>
-        </div>
-        <Button variant="primary" onClick={openCreateDialog}>
-          <PlusIcon className="size-4" />
-          {activeSection === "secrets"
-            ? "Добавить секрет"
-            : "Добавить категорию"}
-        </Button>
-      </header>
+      <PageHeader
+        title="Менеджер секретов"
+        description="Управляйте ключами, токенами и учётными данными, которые используют ваши агенты."
+        breadcrumbs={[{ label: "Настройки" }, { label: "Секреты" }]}
+        footer={
+          <div className="flex w-full items-center justify-between">
+            <Tabs
+              value={activeSection}
+              onChange={(value) => setActiveSection(value as ActiveSection)}
+              options={[
+                {
+                  label: `Секреты · ${store.secrets.length}`,
+                  value: "secrets",
+                },
+                {
+                  label: `Категории · ${store.categories.length}`,
+                  value: "categories",
+                },
+              ]}
+            />
+            {store.loading ? (
+              <span className="text-sm text-main-500">Обновление…</span>
+            ) : null}
+          </div>
+        }
+      >
+          <Button variant="primary" onClick={openCreateDialog}>
+            <PlusIcon className="size-4" />
+            {activeSection === "secrets"
+              ? "Добавить секрет"
+              : "Добавить категорию"}
+          </Button>
+      </PageHeader>
 
-      <div className="mb-4 flex items-center justify-between border-b border-main-800 pb-3">
-        <Tabs
-          value={activeSection}
-          onChange={(value) => setActiveSection(value as ActiveSection)}
-          options={[
-            { label: `Секреты · ${store.secrets.length}`, value: "secrets" },
-            {
-              label: `Категории · ${store.categories.length}`,
-              value: "categories",
-            },
-          ]}
-        />
-        {store.loading ? (
-          <span className="text-sm text-main-500">Обновление…</span>
-        ) : null}
-      </div>
-
-      <div className="min-h-64 flex-1 rounded-xl bg-main-900/35 p-1">
+      <div className="min-h-64 flex-1 p-1">
         {dataIsEmpty || store.error ? (
           <div className="grid min-h-80 place-items-center">
             {renderEmptyState()}

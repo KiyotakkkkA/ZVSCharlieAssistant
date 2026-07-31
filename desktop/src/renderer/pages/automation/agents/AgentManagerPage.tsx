@@ -1,14 +1,16 @@
 import { useState } from "react";
 import { observer } from "mobx-react-lite";
-import { Navigate, useNavigate, useParams } from "react-router-dom";
+import { Navigate, useParams } from "react-router-dom";
 import { useToasts } from "@kiyotakkkka/zvs-uikit-lib";
 import { APP_PATHS } from "../../../app/routes";
-import { AgentManageForm } from "../../../components/organisms/forms";
+import { AutomationAgentManageForm } from "../../../components/organisms/forms";
+import { PageHeader } from "../../../components/organisms";
 import { automationStore } from "../../../stores";
+import { useHashRouter } from "@renderer/hooks";
 
 export const AgentManagerPage = observer(function AgentManagerPage() {
   const { agentId } = useParams();
-  const navigate = useNavigate();
+  const { goTo } = useHashRouter();
   const toasts = useToasts();
   const [submitting, setSubmitting] = useState(false);
   const model = automationStore.getAgent(agentId);
@@ -20,20 +22,20 @@ export const AgentManagerPage = observer(function AgentManagerPage() {
 
   return (
     <section className="mx-auto w-full max-w-6xl p-4">
-      <header className="mb-6">
-        <p className="mb-1 text-sm text-main-400">Автоматизация · Агенты</p>
-        <h1 className="text-2xl font-semibold tracking-tight">
-          {model ? `Настройка: ${model.name}` : "Новый агент"}
-        </h1>
-        <p className="mt-2 text-sm text-main-400">
-          Агент является переиспользуемым профилем исполнения для сценариев.
-        </p>
-      </header>
+      <PageHeader
+        title={model ? `Настройка: ${model.name}` : "Новый агент"}
+        description="Агент является переиспользуемым профилем исполнения для сценариев."
+        breadcrumbs={[
+          { label: "Автоматизация", to: APP_PATHS.automation.index },
+          { label: "Агенты", to: APP_PATHS.automation.agents.index },
+          { label: creating ? "Новый агент" : model?.name },
+        ]}
+      />
 
-      <AgentManageForm
+      <AutomationAgentManageForm
         model={model}
         submitting={submitting}
-        onCancel={() => navigate(APP_PATHS.automation.agents.index)}
+        onCancel={() => goTo(APP_PATHS.automation.agents.index)}
         onSubmit={async (input) => {
           setSubmitting(true);
           try {
@@ -41,7 +43,7 @@ export const AgentManagerPage = observer(function AgentManagerPage() {
             toasts.success({
               title: model ? "Агент обновлён" : "Агент создан",
             });
-            navigate(APP_PATHS.automation.agents.index);
+            goTo(APP_PATHS.automation.agents.index);
           } catch (error) {
             toasts.danger({
               title: "Не удалось сохранить агента",

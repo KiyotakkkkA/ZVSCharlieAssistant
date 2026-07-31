@@ -1,5 +1,10 @@
 import { useCallback } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import {
+  useLocation,
+  useNavigate,
+  type NavigateOptions,
+  type To,
+} from "react-router-dom";
 import {
   APP_PATHS,
   NAVIGATION_ROUTES,
@@ -11,8 +16,8 @@ export function useHashRouter() {
   const location = useLocation();
 
   const goTo = useCallback(
-    (path: AppPath) => {
-      void navigate(path);
+    (path: To, options?: NavigateOptions) => {
+      void navigate(path, options);
     },
     [navigate],
   );

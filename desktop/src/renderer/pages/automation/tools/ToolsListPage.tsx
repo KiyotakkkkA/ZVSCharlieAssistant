@@ -2,12 +2,14 @@ import { useState } from "react";
 import { observer } from "mobx-react-lite";
 import {
   Button,
+  CodeView,
   EmptyState,
   Modal,
   Table,
   type TableColumn,
 } from "@kiyotakkkka/zvs-uikit-lib";
 import { EyeIcon, SettingsIcon } from "../../../components/atoms";
+import { PageHeader } from "../../../components/organisms";
 import type { AutomationTool } from "../../../domains/automation/models";
 import { automationStore } from "../../../stores";
 
@@ -32,9 +34,7 @@ export const ToolsListPage = observer(function ToolsListPage() {
     {
       key: "category",
       title: "Категория",
-      render: (tool) => (
-        <span className="text-main-300">{tool.category}</span>
-      ),
+      render: (tool) => <span className="text-main-300">{tool.category}</span>,
     },
     {
       key: "source",
@@ -86,16 +86,17 @@ export const ToolsListPage = observer(function ToolsListPage() {
 
   return (
     <section className="flex min-h-full flex-col p-4">
-      <header className="mb-5">
-        <p className="mb-1 text-sm text-main-400">Автоматизация</p>
-        <h1 className="text-2xl font-semibold tracking-tight">Инструменты</h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-main-400">
-          Встроенные возможности приложения, которые можно разрешать агентам.
-        </p>
-      </header>
+      <PageHeader
+        title="Инструменты"
+        description="Встроенные возможности приложения, которые можно разрешать агентам."
+        breadcrumbs={[
+          { label: "Автоматизация" },
+          { label: "Инструменты" },
+        ]}
+      />
 
       {automationStore.tools.length ? (
-        <div className="overflow-hidden rounded-xl bg-main-800/20 p-1 ring-1 ring-main-700/35">
+        <div className="overflow-hidden p-1">
           <Table<ToolRow>
             data={automationStore.tools.map((tool) => ({ ...tool }))}
             columns={columns}
@@ -187,9 +188,18 @@ function SchemaPreview({
   return (
     <section>
       <h3 className="mb-2 text-sm font-semibold text-main-200">{title}</h3>
-      <pre className="max-h-56 overflow-auto rounded-lg bg-main-900 p-4 text-xs leading-5 text-main-300 ring-1 ring-main-700/50">
-        {JSON.stringify(schema, null, 2)}
-      </pre>
+      <CodeView
+        code={JSON.stringify(schema, null, 2)}
+        language="json"
+        fileName={
+          title === "Входные данные"
+            ? "input.schema.json"
+            : "output.schema.json"
+        }
+        copyable
+        defaultActions
+        maxContentHeight={224}
+      />
     </section>
   );
 }

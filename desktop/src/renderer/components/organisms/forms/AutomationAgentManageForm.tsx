@@ -5,6 +5,7 @@ import {
   InputCheckBox,
   InputCheckBoxGroup,
   InputSmall,
+  Select,
 } from "@kiyotakkkka/zvs-uikit-lib";
 import type {
   AutomationAgent,
@@ -13,19 +14,19 @@ import type {
 } from "../../../domains/automation/models";
 import { automationStore, secretStorageStore } from "../../../stores";
 
-interface AgentManageFormProps {
+interface AutomationAgentManageFormProps {
   model?: AutomationAgent;
   onSubmit: (input: UpsertAutomationAgentInput) => void | Promise<void>;
   onCancel: () => void;
   submitting?: boolean;
 }
 
-export function AgentManageForm({
+export function AutomationAgentManageForm({
   model,
   onSubmit,
   onCancel,
   submitting = false,
-}: AgentManageFormProps) {
+}: AutomationAgentManageFormProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [instructions, setInstructions] = useState("");
@@ -39,9 +40,7 @@ export function AgentManageForm({
     setDescription(model?.description ?? "");
     setInstructions(model?.instructions ?? "");
     setStatus(model?.status ?? "draft");
-    setRequireConfirmation(
-      model?.requireDangerousActionConfirmation ?? true,
-    );
+    setRequireConfirmation(model?.requireDangerousActionConfirmation ?? true);
     setToolModel(
       Object.fromEntries(
         automationStore.tools.map((tool) => [
@@ -122,17 +121,22 @@ export function AgentManageForm({
           />
         </Field>
         <Field label="Статус">
-          <select
+          <Select
             value={status}
-            onChange={(event) =>
-              setStatus(event.target.value as AutomationStatus)
-            }
-            className="h-10 w-full rounded-lg bg-main-800 px-3 text-sm text-main-100 outline-none ring-1 ring-main-700 focus:ring-main-500"
+            onChange={(value) => setStatus(value as AutomationStatus)}
+            options={[
+              { value: "draft", label: "Черновик" },
+              { value: "active", label: "Активен" },
+              { value: "disabled", label: "Отключён" },
+            ]}
           >
-            <option value="draft">Черновик</option>
-            <option value="active">Активен</option>
-            <option value="disabled">Отключён</option>
-          </select>
+            <Select.Trigger className="w-full" />
+            <Select.Menu>
+              <Select.Option value="draft" label="Черновик" />
+              <Select.Option value="active" label="Активен" />
+              <Select.Option value="disabled" label="Отключён" />
+            </Select.Menu>
+          </Select>
         </Field>
       </FormSection>
 

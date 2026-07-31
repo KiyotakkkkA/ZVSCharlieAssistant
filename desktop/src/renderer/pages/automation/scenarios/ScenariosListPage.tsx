@@ -5,14 +5,11 @@ import {
   Table,
   type TableColumn,
 } from "@kiyotakkkka/zvs-uikit-lib";
-import { useNavigate } from "react-router-dom";
 import { APP_PATHS } from "../../../app/routes";
-import {
-  EditIcon,
-  PlusIcon,
-  TasksIcon,
-} from "../../../components/atoms";
+import { EditIcon, PlusIcon, TasksIcon } from "../../../components/atoms";
+import { PageHeader } from "../../../components/organisms";
 import type { AutomationScenario } from "../../../domains/automation/models";
+import { useHashRouter } from "../../../hooks";
 import { automationStore } from "../../../stores";
 
 interface ScenarioRow extends AutomationScenario {
@@ -20,7 +17,7 @@ interface ScenarioRow extends AutomationScenario {
 }
 
 export const ScenariosListPage = observer(function ScenariosListPage() {
-  const navigate = useNavigate();
+  const { goTo } = useHashRouter();
   const columns: Array<TableColumn<ScenarioRow>> = [
     {
       key: "name",
@@ -83,7 +80,7 @@ export const ScenariosListPage = observer(function ScenariosListPage() {
             title="Открыть редактор"
             className="size-9 p-0 text-main-400 hover:text-main-50"
             onClick={() =>
-              navigate(
+              goTo(
                 APP_PATHS.automation.scenarios.edit.replace(
                   ":scenarioId",
                   scenario.id,
@@ -100,25 +97,25 @@ export const ScenariosListPage = observer(function ScenariosListPage() {
 
   return (
     <section className="flex min-h-full flex-col p-4">
-      <header className="mb-5 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="mb-1 text-sm text-main-400">Автоматизация</p>
-          <h1 className="text-2xl font-semibold tracking-tight">Сценарии</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-main-400">
-            Объединяйте агентов в управляемые последовательности выполнения.
-          </p>
-        </div>
-        <Button
-          variant="primary"
-          onClick={() => navigate(APP_PATHS.automation.scenarios.create)}
-        >
-          <PlusIcon className="size-4" />
-          Создать сценарий
-        </Button>
-      </header>
+      <PageHeader
+        title="Сценарии"
+        description="Объединяйте агентов в управляемые последовательности выполнения."
+        breadcrumbs={[
+          { label: "Автоматизация", to: APP_PATHS.automation.index },
+          { label: "Сценарии" },
+        ]}
+      >
+          <Button
+            variant="primary"
+            onClick={() => goTo(APP_PATHS.automation.scenarios.create)}
+          >
+            <PlusIcon className="size-4" />
+            Создать сценарий
+          </Button>
+      </PageHeader>
 
       {automationStore.scenarios.length ? (
-        <div className="overflow-hidden rounded-xl bg-main-800/20 p-1 ring-1 ring-main-700/35">
+        <div className="overflow-hidden p-1">
           <Table<ScenarioRow>
             data={automationStore.scenarios.map((scenario) => ({
               ...scenario,
@@ -140,9 +137,7 @@ export const ScenariosListPage = observer(function ScenariosListPage() {
             action={
               <Button
                 variant="primary"
-                onClick={() =>
-                  navigate(APP_PATHS.automation.scenarios.create)
-                }
+                onClick={() => goTo(APP_PATHS.automation.scenarios.create)}
               >
                 <PlusIcon className="size-4" />
                 Создать сценарий
