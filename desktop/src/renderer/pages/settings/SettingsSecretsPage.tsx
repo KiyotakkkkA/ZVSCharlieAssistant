@@ -320,7 +320,7 @@ export const SettingsSecretsPage = observer(function SettingsSecretsPage() {
         <div>
           <p className="mb-1 text-sm text-main-400">Настройки</p>
           <h1 className="text-2xl font-semibold tracking-tight text-main-50">
-            Хранилище секретов
+            Менеджер секретов
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-main-400">
             Управляйте ключами, токенами и учётными данными, которые используют

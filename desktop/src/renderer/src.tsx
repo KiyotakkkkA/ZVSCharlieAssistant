@@ -24,6 +24,10 @@ createRoot(root).render(
             element={<RoutePage title="Задачи" />}
           />
           <Route
+            path={APP_PATHS.agents}
+            element={<RoutePage title="Агенты" />}
+          />
+          <Route
             path={APP_PATHS.storage}
             element={<RoutePage title="Хранилище" />}
           />

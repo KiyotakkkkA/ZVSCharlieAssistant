@@ -3,6 +3,7 @@ import {
   ChatIcon,
   HomeIcon,
   LockIcon,
+  RobotIcon,
   SettingsIcon,
   StorageIcon,
   TasksIcon,
@@ -12,6 +13,7 @@ export const APP_PATHS = {
   home: "/",
   chat: "/chat",
   tasks: "/tasks",
+  agents: "/agents",
   storage: "/storage",
   settings: {
     index: "/settings",
@@ -39,6 +41,7 @@ export const NAVIGATION_ROUTES: readonly NavigationRoute[] = [
   { id: "home", label: "Главная", path: APP_PATHS.home, icon: HomeIcon },
   { id: "chat", label: "Чат", path: APP_PATHS.chat, icon: ChatIcon },
   { id: "tasks", label: "Задачи", path: APP_PATHS.tasks, icon: TasksIcon },
+  { id: "agents", label: "Агенты", path: APP_PATHS.agents, icon: RobotIcon },
   {
     id: "storage",
     label: "Хранилище",
