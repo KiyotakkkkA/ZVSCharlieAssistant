@@ -86,6 +86,92 @@ const migrations: readonly Migration[] = [
     `);
     },
   },
+  {
+    version: 4,
+    up(database) {
+      database.exec(`
+        CREATE TABLE automation_agents (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          description TEXT NOT NULL DEFAULT '',
+          instructions TEXT NOT NULL,
+          model TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'draft'
+            CHECK (status IN ('draft', 'active', 'disabled')),
+          require_dangerous_action_confirmation INTEGER NOT NULL DEFAULT 1
+            CHECK (require_dangerous_action_confirmation IN (0, 1)),
+          max_tool_calls INTEGER NOT NULL DEFAULT 20 CHECK (max_tool_calls > 0),
+          timeout_seconds INTEGER NOT NULL DEFAULT 120 CHECK (timeout_seconds > 0),
+          runs INTEGER NOT NULL DEFAULT 0 CHECK (runs >= 0),
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE automation_agent_tools (
+          agent_id TEXT NOT NULL,
+          tool_id TEXT NOT NULL,
+          PRIMARY KEY (agent_id, tool_id),
+          FOREIGN KEY (agent_id)
+            REFERENCES automation_agents(id)
+            ON UPDATE CASCADE
+            ON DELETE CASCADE
+        );
+
+        CREATE TABLE automation_agent_secrets (
+          agent_id TEXT NOT NULL,
+          secret_id INTEGER NOT NULL,
+          PRIMARY KEY (agent_id, secret_id),
+          FOREIGN KEY (agent_id)
+            REFERENCES automation_agents(id)
+            ON UPDATE CASCADE
+            ON DELETE CASCADE,
+          FOREIGN KEY (secret_id)
+            REFERENCES secret_entities(id)
+            ON UPDATE CASCADE
+            ON DELETE CASCADE
+        );
+
+        CREATE TABLE automation_agent_secret_tools (
+          agent_id TEXT NOT NULL,
+          secret_id INTEGER NOT NULL,
+          tool_id TEXT NOT NULL,
+          PRIMARY KEY (agent_id, secret_id, tool_id),
+          FOREIGN KEY (agent_id, secret_id)
+            REFERENCES automation_agent_secrets(agent_id, secret_id)
+            ON UPDATE CASCADE
+            ON DELETE CASCADE
+        );
+
+        CREATE TABLE automation_scenarios (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          description TEXT NOT NULL DEFAULT '',
+          status TEXT NOT NULL DEFAULT 'draft'
+            CHECK (status IN ('draft', 'active', 'disabled')),
+          graph_json TEXT NOT NULL,
+          last_run_at TEXT,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE automation_scenario_tool_settings (
+          scenario_id TEXT NOT NULL,
+          tool_id TEXT NOT NULL,
+          settings_json TEXT NOT NULL DEFAULT '{}',
+          PRIMARY KEY (scenario_id, tool_id),
+          FOREIGN KEY (scenario_id)
+            REFERENCES automation_scenarios(id)
+            ON UPDATE CASCADE
+            ON DELETE CASCADE
+        );
+
+        CREATE INDEX idx_automation_agents_status
+          ON automation_agents(status);
+        CREATE INDEX idx_automation_scenarios_status
+          ON automation_scenarios(status);
+      `);
+    },
+  },
 ];
 
 export function runMigrations(database: Database.Database): void {

@@ -11,4 +11,5 @@ export interface AppInfo {
 export interface DesktopApi {
   getAppInfo(): Promise<AppInfo>;
   secrets: import("./secrets.contract").SecretStorageApi;
+  automation: import("./automation.contract").AutomationApi;
 }

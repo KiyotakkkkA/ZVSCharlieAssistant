@@ -12,6 +12,13 @@ import {
 import { createSqliteDatabase } from './infrastructure/database/sqlite.database'
 import { SecretStorageDataSource } from './infrastructure/database/secret-storage.data-source'
 import { SqliteSecretStorageRepository } from './infrastructure/repositories/sqlite-secret-storage.repository'
+import {
+  registerAutomationHandlers,
+  removeAutomationHandlers
+} from '../ipc/main/register-automation-handlers'
+import { AutomationDataSource } from './infrastructure/database/automation.data-source'
+import { SqliteAutomationRepository } from './infrastructure/repositories/sqlite-automation.repository'
+import { BUILTIN_AUTOMATION_TOOLS } from './infrastructure/automation/builtin-tools.registry'
 
 let database: ReturnType<typeof createSqliteDatabase> | undefined
 
@@ -20,9 +27,14 @@ app.whenReady().then(() => {
   const secretRepository = new SqliteSecretStorageRepository(
     new SecretStorageDataSource(database)
   )
+  const automationRepository = new SqliteAutomationRepository(
+    new AutomationDataSource(database),
+    BUILTIN_AUTOMATION_TOOLS
+  )
 
   registerAppHandlers()
   registerSecretStorageHandlers(secretRepository)
+  registerAutomationHandlers(automationRepository)
   createMainWindow()
 
   app.on('activate', () => {
@@ -33,6 +45,7 @@ app.whenReady().then(() => {
 app.on('before-quit', () => {
   removeAppHandlers()
   removeSecretStorageHandlers()
+  removeAutomationHandlers()
   database?.close()
   database = undefined
 })

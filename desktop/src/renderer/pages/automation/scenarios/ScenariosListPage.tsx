@@ -3,14 +3,20 @@ import {
   Button,
   EmptyState,
   Table,
+  useToasts,
   type TableColumn,
 } from "@kiyotakkkka/zvs-uikit-lib";
 import { APP_PATHS } from "../../../app/routes";
-import { EditIcon, PlusIcon, TasksIcon } from "../../../components/atoms";
-import { PageHeader } from "../../../components/organisms";
-import type { AutomationScenario } from "../../../domains/automation/models";
+import { TasksIcon } from "../../../components/atoms";
+import { DangerModal, PageHeader } from "../../../components/organisms";
+import type { AutomationScenario } from "../../../../ipc/contracts";
 import { useHashRouter } from "../../../hooks";
 import { automationStore } from "../../../stores";
+import {
+  ControlButton,
+  CreateButton,
+} from "@renderer/components/atoms/buttons";
+import { useState } from "react";
 
 interface ScenarioRow extends AutomationScenario {
   [key: string]: unknown;
@@ -18,6 +24,9 @@ interface ScenarioRow extends AutomationScenario {
 
 export const ScenariosListPage = observer(function ScenariosListPage() {
   const { goTo } = useHashRouter();
+  const toasts = useToasts();
+  const [scenarioToDelete, setScenarioToDelete] =
+    useState<AutomationScenario | null>(null);
   const columns: Array<TableColumn<ScenarioRow>> = [
     {
       key: "name",
@@ -73,12 +82,9 @@ export const ScenariosListPage = observer(function ScenariosListPage() {
       headerClassName: "text-right",
       cellClassName: "text-right",
       render: (scenario) => (
-        <div className="flex justify-end">
-          <Button
-            variant="ghost"
-            label={`Открыть сценарий ${scenario.name}`}
+        <div className="flex justify-end gap-1">
+          <ControlButton
             title="Открыть редактор"
-            className="size-9 p-0 text-main-400 hover:text-main-50"
             onClick={() =>
               goTo(
                 APP_PATHS.automation.scenarios.edit.replace(
@@ -87,9 +93,13 @@ export const ScenariosListPage = observer(function ScenariosListPage() {
                 ),
               )
             }
-          >
-            <EditIcon className="size-4" />
-          </Button>
+          />
+          <ControlButton
+            title="Удалить сценарий"
+            icon="trash"
+            variant="delete"
+            onClick={() => setScenarioToDelete(scenario)}
+          />
         </div>
       ),
     },
@@ -102,13 +112,10 @@ export const ScenariosListPage = observer(function ScenariosListPage() {
         description="Объединяйте агентов в управляемые последовательности выполнения."
         breadcrumbs={[{ label: "Автоматизация" }, { label: "Сценарии" }]}
       >
-        <Button
-          variant="primary"
+        <CreateButton
+          label="Добавить сценарий"
           onClick={() => goTo(APP_PATHS.automation.scenarios.create)}
-        >
-          <PlusIcon className="size-4" />
-          Создать сценарий
-        </Button>
+        />
       </PageHeader>
 
       {automationStore.scenarios.length ? (
@@ -132,17 +139,35 @@ export const ScenariosListPage = observer(function ScenariosListPage() {
             title="Сценариев пока нет"
             description="Создайте первый сценарий автоматизации."
             action={
-              <Button
-                variant="primary"
+              <CreateButton
+                label="Добавить сценарий"
                 onClick={() => goTo(APP_PATHS.automation.scenarios.create)}
-              >
-                <PlusIcon className="size-4" />
-                Создать сценарий
-              </Button>
+              />
             }
           />
         </div>
       )}
+
+      {scenarioToDelete ? (
+        <DangerModal
+          model={scenarioToDelete}
+          title="Удалить сценарий"
+          description={(scenario) => (
+            <p>
+              Сценарий{" "}
+              <span className="font-medium text-main-50">{scenario.name}</span>{" "}
+              и сохранённая схема графа будут удалены без возможности
+              восстановления.
+            </p>
+          )}
+          onCancel={() => setScenarioToDelete(null)}
+          onConfirm={async (scenario) => {
+            await automationStore.deleteScenario(scenario.id);
+            setScenarioToDelete(null);
+            toasts.success({ title: "Сценарий удалён" });
+          }}
+        />
+      ) : null}
     </section>
   );
 });

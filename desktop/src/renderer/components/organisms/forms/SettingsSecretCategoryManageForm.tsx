@@ -1,25 +1,22 @@
-import { useEffect, useState, type FormEvent } from "react";
-import {
-  Button,
-  InputSmall,
-  useToasts,
-} from "@kiyotakkkka/zvs-uikit-lib";
+import { useEffect, useState, type SubmitEvent } from "react";
+import { Button, InputSmall, useToasts } from "@kiyotakkkka/zvs-uikit-lib";
 import type {
   SecretCategory,
   UpsertSecretCategoryInput,
 } from "../../../../ipc/contracts";
+import { CreateButton } from "@renderer/components/atoms/buttons";
 
 interface SettingsSecretCategoryManageFormProps {
   model?: SecretCategory;
   onCancel: () => void;
-  onSaved: () => void;
+  onConfirm: () => void;
   onSubmit: (input: UpsertSecretCategoryInput) => Promise<SecretCategory>;
 }
 
 export function SettingsSecretCategoryManageForm({
   model,
   onCancel,
-  onSaved,
+  onConfirm,
   onSubmit,
 }: SettingsSecretCategoryManageFormProps) {
   const toasts = useToasts();
@@ -28,7 +25,7 @@ export function SettingsSecretCategoryManageForm({
 
   useEffect(() => setLabel(model?.label ?? ""), [model]);
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSaving(true);
     try {
@@ -36,7 +33,7 @@ export function SettingsSecretCategoryManageForm({
       toasts.success({
         title: model ? "Категория обновлена" : "Категория создана",
       });
-      onSaved();
+      onConfirm();
     } catch (error) {
       toasts.danger({
         title: "Не удалось сохранить категорию",
@@ -64,9 +61,11 @@ export function SettingsSecretCategoryManageForm({
         <Button type="button" variant="ghost" onClick={onCancel}>
           Отмена
         </Button>
-        <Button type="submit" variant="primary" loading={saving}>
-          {model ? "Сохранить" : "Создать"}
-        </Button>
+        <CreateButton
+          loading={saving}
+          label={model ? "Сохранить" : "Добавить"}
+          type="submit"
+        />
       </div>
     </form>
   );

@@ -11,8 +11,9 @@ import type {
   AutomationAgent,
   AutomationStatus,
   UpsertAutomationAgentInput,
-} from "../../../domains/automation/models";
+} from "../../../../ipc/contracts";
 import { automationStore, secretStorageStore } from "../../../stores";
+import { CreateButton } from "@renderer/components/atoms/buttons";
 
 interface AutomationAgentManageFormProps {
   model?: AutomationAgent;
@@ -240,22 +241,17 @@ export function AutomationAgentManageForm({
         <Button type="button" variant="ghost" onClick={onCancel}>
           Отмена
         </Button>
-        <Button
+        <CreateButton
           type="submit"
-          variant="primary"
+          loading={submitting}
           disabled={
             submitting ||
             !name.trim() ||
             !description.trim() ||
             !instructions.trim()
           }
-        >
-          {submitting
-            ? "Сохранение…"
-            : model
-              ? "Сохранить изменения"
-              : "Создать агента"}
-        </Button>
+          label={model ? "Сохранить" : "Добавить"}
+        ></CreateButton>
       </div>
     </form>
   );

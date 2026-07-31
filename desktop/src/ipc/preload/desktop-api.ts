@@ -1,12 +1,18 @@
 import { ipcRenderer } from "electron";
 import {
+  AUTOMATION_IPC_CHANNELS,
   IPC_CHANNELS,
   SECRET_IPC_CHANNELS,
   type AppInfo,
+  type AutomationAgent,
+  type AutomationScenario,
+  type AutomationSnapshot,
   type DesktopApi,
   type SecretCategory,
   type SecretEntity,
   type SecretStorageSnapshot,
+  type UpsertAutomationAgentInput,
+  type UpsertAutomationScenarioInput,
   type UpsertSecretCategoryInput,
   type UpsertSecretInput,
 } from "../contracts";
@@ -38,5 +44,32 @@ export const desktopApi: DesktopApi = {
       ) as Promise<void>,
     deleteSecret: (id: number): Promise<void> =>
       ipcRenderer.invoke(SECRET_IPC_CHANNELS.deleteSecret, id) as Promise<void>,
+  },
+  automation: {
+    getSnapshot: (): Promise<AutomationSnapshot> =>
+      ipcRenderer.invoke(
+        AUTOMATION_IPC_CHANNELS.getSnapshot,
+      ) as Promise<AutomationSnapshot>,
+    upsertAgent: (
+      input: UpsertAutomationAgentInput,
+    ): Promise<AutomationAgent> =>
+      ipcRenderer.invoke(
+        AUTOMATION_IPC_CHANNELS.upsertAgent,
+        input,
+      ) as Promise<AutomationAgent>,
+    deleteAgent: (id: string): Promise<void> =>
+      ipcRenderer.invoke(AUTOMATION_IPC_CHANNELS.deleteAgent, id) as Promise<void>,
+    upsertScenario: (
+      input: UpsertAutomationScenarioInput,
+    ): Promise<AutomationScenario> =>
+      ipcRenderer.invoke(
+        AUTOMATION_IPC_CHANNELS.upsertScenario,
+        input,
+      ) as Promise<AutomationScenario>,
+    deleteScenario: (id: string): Promise<void> =>
+      ipcRenderer.invoke(
+        AUTOMATION_IPC_CHANNELS.deleteScenario,
+        id,
+      ) as Promise<void>,
   },
 };

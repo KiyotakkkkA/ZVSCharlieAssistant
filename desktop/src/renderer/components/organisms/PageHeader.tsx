@@ -68,11 +68,11 @@ export function PageHeader({
       <header
         data-stuck={isStuck || undefined}
         className={[
-          "sticky top-0 z-30 isolate mb-5 border px-1",
+          "sticky top-0 z-30 isolate mb-5 border-x border-b px-1",
           "transition-[top,padding,background-color,border-color,border-radius,box-shadow,backdrop-filter] duration-300 ease-out",
           isStuck
             ? [
-                "rounded-b-xl border-main-700/70 bg-main-900/95 px-4 py-3",
+                "rounded-b-xl border-main-700/70 bg-main-900 px-4 py-3",
                 "supports-[backdrop-filter:blur(1px)]:bg-main-900/85",
                 "backdrop-blur-2xl",
                 "shadow-[0_10px_24px_rgb(0_0_0/0.24)]",

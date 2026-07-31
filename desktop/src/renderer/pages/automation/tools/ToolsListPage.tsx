@@ -10,8 +10,9 @@ import {
 } from "@kiyotakkkka/zvs-uikit-lib";
 import { EyeIcon, SettingsIcon } from "../../../components/atoms";
 import { PageHeader } from "../../../components/organisms";
-import type { AutomationTool } from "../../../domains/automation/models";
+import type { AutomationTool } from "../../../../ipc/contracts";
 import { automationStore } from "../../../stores";
+import { ControlButton } from "@renderer/components/atoms/buttons";
 
 interface ToolRow extends AutomationTool {
   [key: string]: unknown;
@@ -70,15 +71,11 @@ export const ToolsListPage = observer(function ToolsListPage() {
       cellClassName: "text-right",
       render: (tool) => (
         <div className="flex justify-end">
-          <Button
-            variant="ghost"
-            label={`Посмотреть инструмент ${tool.name}`}
+          <ControlButton
+            icon="eye"
             title="Подробнее"
-            className="size-9 p-0 text-main-400 hover:text-main-50"
             onClick={() => setSelectedTool(tool)}
-          >
-            <EyeIcon className="size-4" />
-          </Button>
+          />
         </div>
       ),
     },

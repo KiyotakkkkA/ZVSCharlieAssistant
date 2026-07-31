@@ -1,16 +1,26 @@
 import { observer } from "mobx-react-lite";
-import { Button, EmptyState, InputSmall } from "@kiyotakkkka/zvs-uikit-lib";
+import {
+  EmptyState,
+  InputSmall,
+  useToasts,
+} from "@kiyotakkkka/zvs-uikit-lib";
 import { APP_PATHS } from "../../../app/routes";
-import { PlusIcon, RobotIcon } from "../../../components/atoms";
+import { RobotIcon } from "../../../components/atoms";
 import { AutomationAgentCard } from "../../../components/molecules";
-import { PageHeader } from "../../../components/organisms";
+import { DangerModal, PageHeader } from "../../../components/organisms";
 import { useHashRouter } from "../../../hooks";
 import { automationStore } from "../../../stores";
 import { useMemo, useState } from "react";
+import { CreateButton } from "@renderer/components/atoms/buttons";
+import type { AutomationAgent } from "../../../../ipc/contracts";
 
 export const AgentsListPage = observer(function AgentsListPage() {
   const { goTo } = useHashRouter();
+  const toasts = useToasts();
   const [query, setQuery] = useState("");
+  const [agentToDelete, setAgentToDelete] = useState<AutomationAgent | null>(
+    null,
+  );
   const agents = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase();
     return normalized
@@ -38,20 +48,21 @@ export const AgentsListPage = observer(function AgentsListPage() {
             placeholder="Найти агента"
             className="w-64"
           />
-          <Button
-            variant="primary"
+          <CreateButton
+            label="Добавить агента"
             onClick={() => goTo(APP_PATHS.automation.agents.create)}
-          >
-            <PlusIcon className="size-4" />
-            Создать агента
-          </Button>
+          />
         </div>
       </PageHeader>
 
       {agents.length ? (
         <div className="grid gap-3 xl:grid-cols-3">
           {agents.map((agent) => (
-            <AutomationAgentCard key={agent.id} agent={agent} />
+            <AutomationAgentCard
+              key={agent.id}
+              agent={agent}
+              onDelete={setAgentToDelete}
+            />
           ))}
         </div>
       ) : (
@@ -63,6 +74,26 @@ export const AgentsListPage = observer(function AgentsListPage() {
           />
         </div>
       )}
+
+      {agentToDelete ? (
+        <DangerModal
+          model={agentToDelete}
+          title="Удалить агента"
+          description={(agent) => (
+            <p>
+              Агент <span className="font-medium text-main-50">{agent.name}</span>{" "}
+              будет удалён без возможности восстановления. Сценарии, где он
+              используется, потребуется проверить вручную.
+            </p>
+          )}
+          onCancel={() => setAgentToDelete(null)}
+          onConfirm={async (agent) => {
+            await automationStore.deleteAgent(agent.id);
+            setAgentToDelete(null);
+            toasts.success({ title: "Агент удалён" });
+          }}
+        />
+      ) : null}
     </section>
   );
 });

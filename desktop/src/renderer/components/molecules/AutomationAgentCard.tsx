@@ -1,14 +1,19 @@
 import { Button } from "@kiyotakkkka/zvs-uikit-lib";
 import { ClockIcon, RobotIcon } from "../atoms";
 import { APP_PATHS } from "../../app/routes";
-import type { AutomationAgent } from "../../domains/automation/models";
+import type { AutomationAgent } from "../../../ipc/contracts";
 import { useHashRouter } from "../../hooks";
+import { ControlButton } from "../atoms/buttons";
 
 interface AutomationAgentCardProps {
   agent: AutomationAgent;
+  onDelete: (agent: AutomationAgent) => void;
 }
 
-export const AutomationAgentCard = ({ agent }: AutomationAgentCardProps) => {
+export const AutomationAgentCard = ({
+  agent,
+  onDelete,
+}: AutomationAgentCardProps) => {
   const { goTo } = useHashRouter();
 
   return (
@@ -26,6 +31,23 @@ export const AutomationAgentCard = ({ agent }: AutomationAgentCardProps) => {
             {agent.description}
           </p>
         </div>
+        <div>
+          <ControlButton
+            icon="edit"
+            title="Изменить"
+            onClick={() =>
+              goTo(
+                APP_PATHS.automation.agents.edit.replace(":agentId", agent.id),
+              )
+            }
+          />
+          <ControlButton
+            icon="trash"
+            title="Удалить"
+            variant="delete"
+            onClick={() => onDelete(agent)}
+          />
+        </div>
       </div>
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-main-700/40 pt-4">
         <div className="flex items-center gap-4 text-xs text-main-500">
@@ -36,15 +58,6 @@ export const AutomationAgentCard = ({ agent }: AutomationAgentCardProps) => {
             {agent.updatedAt}
           </span>
         </div>
-        <Button
-          variant="secondary"
-          className="px-2"
-          onClick={() =>
-            goTo(APP_PATHS.automation.agents.edit.replace(":agentId", agent.id))
-          }
-        >
-          Настроить
-        </Button>
       </div>
     </article>
   );

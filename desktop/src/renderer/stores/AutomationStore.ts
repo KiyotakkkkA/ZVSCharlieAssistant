@@ -1,16 +1,11 @@
 import { makeAutoObservable, runInAction } from "mobx";
-import { AUTOMATION_MOCK_SNAPSHOT } from "../domains/automation/mock-data";
 import type {
   AutomationAgent,
   AutomationScenario,
   AutomationTool,
   UpsertAutomationAgentInput,
   UpsertAutomationScenarioInput,
-} from "../domains/automation/models";
-
-const clone = <T>(value: T): T => structuredClone(value);
-const createId = (prefix: string): string =>
-  `${prefix}-${Date.now().toString(36)}`;
+} from "../../ipc/contracts";
 
 export class AutomationStore {
   tools: AutomationTool[] = [];
@@ -30,8 +25,7 @@ export class AutomationStore {
     this.error = null;
 
     try {
-      await Promise.resolve();
-      const snapshot = clone(AUTOMATION_MOCK_SNAPSHOT);
+      const snapshot = await window.desktop.automation.getSnapshot();
       runInAction(() => {
         this.tools = snapshot.tools;
         this.agents = snapshot.agents;
@@ -68,13 +62,7 @@ export class AutomationStore {
   async upsertAgent(
     input: UpsertAutomationAgentInput,
   ): Promise<AutomationAgent> {
-    const previous = this.getAgent(input.id);
-    const agent: AutomationAgent = {
-      ...input,
-      id: input.id ?? createId("agent"),
-      runs: previous?.runs ?? 0,
-      updatedAt: "только что",
-    };
+    const agent = await window.desktop.automation.upsertAgent(input);
 
     runInAction(() => {
       const index = this.agents.findIndex((item) => item.id === agent.id);
@@ -85,6 +73,7 @@ export class AutomationStore {
   }
 
   async deleteAgent(agentId: string): Promise<void> {
+    await window.desktop.automation.deleteAgent(agentId);
     runInAction(() => {
       this.agents = this.agents.filter((agent) => agent.id !== agentId);
     });
@@ -93,13 +82,7 @@ export class AutomationStore {
   async upsertScenario(
     input: UpsertAutomationScenarioInput,
   ): Promise<AutomationScenario> {
-    const previous = this.getScenario(input.id);
-    const scenario: AutomationScenario = {
-      ...input,
-      id: input.id ?? createId("scenario"),
-      lastRunAt: previous?.lastRunAt ?? null,
-      updatedAt: "только что",
-    };
+    const scenario = await window.desktop.automation.upsertScenario(input);
 
     runInAction(() => {
       const index = this.scenarios.findIndex(
@@ -112,6 +95,7 @@ export class AutomationStore {
   }
 
   async deleteScenario(scenarioId: string): Promise<void> {
+    await window.desktop.automation.deleteScenario(scenarioId);
     runInAction(() => {
       this.scenarios = this.scenarios.filter(
         (scenario) => scenario.id !== scenarioId,

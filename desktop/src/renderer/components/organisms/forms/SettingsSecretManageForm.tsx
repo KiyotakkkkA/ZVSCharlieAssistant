@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type SubmitEvent } from "react";
 import {
   Button,
   InputSmall,
@@ -10,12 +10,13 @@ import type {
   SecretEntity,
   UpsertSecretInput,
 } from "../../../../ipc/contracts";
+import { CreateButton } from "@renderer/components/atoms/buttons";
 
 interface SettingsSecretManageFormProps {
   categories: SecretCategory[];
   model?: SecretEntity;
   onCancel: () => void;
-  onSaved: () => void;
+  onConfirm: () => void;
   onSubmit: (input: UpsertSecretInput) => Promise<SecretEntity>;
 }
 
@@ -23,7 +24,7 @@ export function SettingsSecretManageForm({
   categories,
   model,
   onCancel,
-  onSaved,
+  onConfirm,
   onSubmit,
 }: SettingsSecretManageFormProps) {
   const toasts = useToasts();
@@ -48,7 +49,7 @@ export function SettingsSecretManageForm({
     setCategoryId(String(model?.categoryId ?? categories[0]?.id ?? ""));
   }, [categories, model]);
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSaving(true);
     try {
@@ -59,7 +60,7 @@ export function SettingsSecretManageForm({
         content,
       });
       toasts.success({ title: model ? "Секрет обновлён" : "Секрет создан" });
-      onSaved();
+      onConfirm();
     } catch (error) {
       toasts.danger({
         title: "Не удалось сохранить секрет",
@@ -118,14 +119,12 @@ export function SettingsSecretManageForm({
         <Button type="button" variant="ghost" onClick={onCancel}>
           Отмена
         </Button>
-        <Button
+        <CreateButton
           type="submit"
-          variant="primary"
           loading={saving}
           disabled={!categoryId}
-        >
-          {model ? "Сохранить" : "Создать"}
-        </Button>
+          label={model ? "Сохранить" : "Добавить"}
+        />
       </div>
     </form>
   );

@@ -47,11 +47,47 @@ export interface UpsertAutomationAgentInput {
   timeoutSeconds: number;
 }
 
+export type AutomationScenarioNodeKind =
+  | "trigger"
+  | "agent"
+  | "condition"
+  | "approval"
+  | "output";
+
+export interface AutomationScenarioNode {
+  id: string;
+  kind: AutomationScenarioNodeKind;
+  title: string;
+  description: string;
+  x: number;
+  y: number;
+  config?: Record<string, unknown>;
+}
+
+export interface AutomationScenarioEdge {
+  id: string;
+  source: string;
+  target: string;
+}
+
+export interface AutomationScenarioGraph {
+  nodes: AutomationScenarioNode[];
+  edges: AutomationScenarioEdge[];
+  viewport?: { x: number; y: number; zoom: number };
+}
+
+export interface AutomationScenarioToolSetting {
+  toolId: string;
+  settings: Record<string, unknown>;
+}
+
 export interface AutomationScenario {
   id: string;
   name: string;
   description: string;
   status: AutomationStatus;
+  graph: AutomationScenarioGraph;
+  toolSettings: AutomationScenarioToolSetting[];
   nodesCount: number;
   lastRunAt: string | null;
   updatedAt: string;
@@ -62,7 +98,8 @@ export interface UpsertAutomationScenarioInput {
   name: string;
   description: string;
   status: AutomationStatus;
-  nodesCount: number;
+  graph: AutomationScenarioGraph;
+  toolSettings: AutomationScenarioToolSetting[];
 }
 
 export interface AutomationSnapshot {
@@ -70,3 +107,21 @@ export interface AutomationSnapshot {
   agents: AutomationAgent[];
   scenarios: AutomationScenario[];
 }
+
+export interface AutomationApi {
+  getSnapshot(): Promise<AutomationSnapshot>;
+  upsertAgent(input: UpsertAutomationAgentInput): Promise<AutomationAgent>;
+  deleteAgent(id: string): Promise<void>;
+  upsertScenario(
+    input: UpsertAutomationScenarioInput,
+  ): Promise<AutomationScenario>;
+  deleteScenario(id: string): Promise<void>;
+}
+
+export const AUTOMATION_IPC_CHANNELS = {
+  getSnapshot: "automation:get-snapshot",
+  upsertAgent: "automation:upsert-agent",
+  deleteAgent: "automation:delete-agent",
+  upsertScenario: "automation:upsert-scenario",
+  deleteScenario: "automation:delete-scenario",
+} as const;
