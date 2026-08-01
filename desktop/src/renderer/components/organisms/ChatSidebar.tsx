@@ -80,7 +80,7 @@ export function ChatSidebar({
                   {dialog.preview}
                 </span>
               </span>
-              <span className="text-[10px] text-main-600">{dialog.date}</span>
+              <span className="text-[10px] text-main-400">{dialog.date}</span>
             </button>
           ))}
           {dialogs.length === 0 ? (
