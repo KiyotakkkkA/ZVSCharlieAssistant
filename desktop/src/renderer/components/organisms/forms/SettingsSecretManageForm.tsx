@@ -109,7 +109,11 @@ export function SettingsSecretManageForm({
           preset="password"
           value={content}
           onChange={(event) => setContent(event.target.value)}
-          placeholder={model ? "Оставьте пустым, чтобы сохранить текущее значение" : "Введите секретное значение"}
+          placeholder={
+            model
+              ? "Оставьте пустым, чтобы сохранить текущее значение"
+              : "Введите секретное значение"
+          }
           autoComplete="off"
           required={!model}
         />

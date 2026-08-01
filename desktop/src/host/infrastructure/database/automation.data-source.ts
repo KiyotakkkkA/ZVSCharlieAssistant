@@ -14,8 +14,7 @@ interface AgentRow {
   name: string;
   description: string;
   instructions: string;
-  model: string;
-  text_model_id: string | null;
+  text_model_id: number | null;
   status: AutomationAgent["status"];
   require_dangerous_action_confirmation: number;
   max_tool_calls: number;
@@ -48,7 +47,7 @@ export class AutomationDataSource {
   listAgents(): AutomationAgent[] {
     const rows = this.database
       .prepare(
-        `SELECT id, name, description, instructions, model, text_model_id, status,
+        `SELECT id, name, description, instructions, text_model_id, status,
                 require_dangerous_action_confirmation, max_tool_calls,
                 timeout_seconds, runs, updated_at
          FROM automation_agents
@@ -61,7 +60,7 @@ export class AutomationDataSource {
   findAgent(id: string): AutomationAgent | undefined {
     const row = this.database
       .prepare(
-        `SELECT id, name, description, instructions, model, text_model_id, status,
+        `SELECT id, name, description, instructions, text_model_id, status,
                 require_dangerous_action_confirmation, max_tool_calls,
                 timeout_seconds, runs, updated_at
          FROM automation_agents WHERE id = ?`,
@@ -72,33 +71,35 @@ export class AutomationDataSource {
 
   secretExists(id: number): boolean {
     return Boolean(
-      this.database.prepare("SELECT 1 FROM secret_entities WHERE id = ?").get(id),
+      this.database
+        .prepare("SELECT 1 FROM secret_entities WHERE id = ?")
+        .get(id),
     );
   }
 
-  textModelExists(id: string): boolean {
-    const separator = id.indexOf(":");
-    if (separator < 1) return false;
-    return Boolean(this.database.prepare("SELECT 1 FROM text_provider_models m JOIN text_provider_configs p ON p.id=m.provider_id WHERE m.provider_id=? AND m.remote_id=? AND m.enabled=1 AND p.enabled=1").get(id.slice(0, separator), id.slice(separator + 1)));
+  textModelExists(id: number): boolean {
+    return Boolean(
+      this.database
+        .prepare(
+          "SELECT 1 FROM text_provider_models m JOIN text_provider_configs p ON p.id=m.provider_id WHERE m.id=? AND m.enabled=1 AND p.enabled=1",
+        )
+        .get(id),
+    );
   }
 
-  upsertAgent(
-    id: string,
-    input: UpsertAutomationAgentInput,
-  ): AutomationAgent {
+  upsertAgent(id: string, input: UpsertAutomationAgentInput): AutomationAgent {
     this.database.transaction(() => {
       this.database
         .prepare(
           `INSERT INTO automation_agents (
-             id, name, description, instructions, model, text_model_id, status,
+             id, name, description, instructions, text_model_id, status,
              require_dangerous_action_confirmation, max_tool_calls,
              timeout_seconds
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(id) DO UPDATE SET
              name = excluded.name,
              description = excluded.description,
              instructions = excluded.instructions,
-             model = excluded.model,
              text_model_id = excluded.text_model_id,
              status = excluded.status,
              require_dangerous_action_confirmation = excluded.require_dangerous_action_confirmation,
@@ -111,7 +112,6 @@ export class AutomationDataSource {
           input.name,
           input.description,
           input.instructions,
-          input.textModelId,
           input.textModelId,
           input.status,
           Number(input.requireDangerousActionConfirmation),
@@ -244,12 +244,14 @@ export class AutomationDataSource {
       `SELECT tool_id FROM automation_agent_secret_tools
        WHERE agent_id = ? AND secret_id = ? ORDER BY tool_id`,
     );
-    const secretBindings: AgentSecretBinding[] = secrets.map(({ secret_id }) => ({
-      secretId: secret_id,
-      allowedToolIds: (
-        selectSecretTools.all(row.id, secret_id) as Array<{ tool_id: string }>
-      ).map(({ tool_id }) => tool_id),
-    }));
+    const secretBindings: AgentSecretBinding[] = secrets.map(
+      ({ secret_id }) => ({
+        secretId: secret_id,
+        allowedToolIds: (
+          selectSecretTools.all(row.id, secret_id) as Array<{ tool_id: string }>
+        ).map(({ tool_id }) => tool_id),
+      }),
+    );
 
     return {
       id: row.id,

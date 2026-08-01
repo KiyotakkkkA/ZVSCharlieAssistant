@@ -12,10 +12,7 @@ interface AppBreadcrumbsProps {
   className?: string;
 }
 
-export function AppBreadcrumbs({
-  items,
-  className = "",
-}: AppBreadcrumbsProps) {
+export function AppBreadcrumbs({ items, className = "" }: AppBreadcrumbsProps) {
   const { goTo } = useHashRouter();
 
   return (

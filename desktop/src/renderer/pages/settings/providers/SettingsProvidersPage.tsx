@@ -93,9 +93,9 @@ export const SettingsProvidersPage = observer(function SettingsProvidersPage() {
         ...provider,
         apiKeySecretId: provider.apiKeySecretId?.toString() ?? "",
         status: "connected",
-        models: textProviderStore.models.filter(
-          (model) => model.providerId === provider.id,
-        ),
+        models: textProviderStore.models
+          .filter((model) => model.providerId === provider.id)
+          .map((model) => ({ ...model, id: model.remoteId })),
       }),
     );
     setProviders(persisted);
@@ -144,7 +144,7 @@ export const SettingsProvidersPage = observer(function SettingsProvidersPage() {
         kind: "ollama",
         baseUrl: "http://127.0.0.1:11434",
         apiKeySecretId: "",
-        enabled: false,
+        enabled: true,
         status: "unchecked",
         models: [],
       },

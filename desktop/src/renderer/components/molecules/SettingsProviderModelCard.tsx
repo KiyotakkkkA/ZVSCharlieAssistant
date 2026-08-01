@@ -52,7 +52,9 @@ export function SettingsProviderModelCard({
         </p>
         <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-main-500">
           <span>{formatSize(model.size)}</span>
-          {model.digest ? <span>digest: {model.digest.slice(0, 12)}</span> : null}
+          {model.digest ? (
+            <span>digest: {model.digest.slice(0, 12)}</span>
+          ) : null}
           {model.modifiedAt ? (
             <span>
               {new Date(model.modifiedAt).toLocaleDateString("ru-RU")}

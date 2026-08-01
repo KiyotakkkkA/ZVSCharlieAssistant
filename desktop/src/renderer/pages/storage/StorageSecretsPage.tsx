@@ -296,7 +296,13 @@ export const StorageSecretsPage = observer(function StorageSecretsPage() {
     if (query) {
       return (
         <EmptyState
-          icon={isSecrets ? <KeyIcon className="size-6" /> : <FolderIcon className="size-6" />}
+          icon={
+            isSecrets ? (
+              <KeyIcon className="size-6" />
+            ) : (
+              <FolderIcon className="size-6" />
+            )
+          }
           title={isSecrets ? "Секреты не найдены" : "Категории не найдены"}
           description="Измените поисковый запрос."
         />
@@ -374,11 +380,17 @@ export const StorageSecretsPage = observer(function StorageSecretsPage() {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             onClear={() => setQuery("")}
-            placeholder={activeSection === "secrets" ? "Найти секрет" : "Найти категорию"}
+            placeholder={
+              activeSection === "secrets" ? "Найти секрет" : "Найти категорию"
+            }
             className="w-64"
           />
           <CreateButton
-            label={activeSection === "secrets" ? "Добавить секрет" : "Добавить категорию"}
+            label={
+              activeSection === "secrets"
+                ? "Добавить секрет"
+                : "Добавить категорию"
+            }
             onClick={openCreateDialog}
           />
         </div>
@@ -397,8 +409,12 @@ export const StorageSecretsPage = observer(function StorageSecretsPage() {
                 secret={secret}
                 categoryLabel={store.categoryLabel(secret.categoryId)}
                 onCopy={(item) => void copySecret(item)}
-                onEdit={(item) => setDialog({ kind: "secret", model: item, action: "upsert" })}
-                onDelete={(item) => setDialog({ kind: "secret", model: item, action: "delete" })}
+                onEdit={(item) =>
+                  setDialog({ kind: "secret", model: item, action: "upsert" })
+                }
+                onDelete={(item) =>
+                  setDialog({ kind: "secret", model: item, action: "delete" })
+                }
               />
             ))}
           </div>
@@ -408,9 +424,17 @@ export const StorageSecretsPage = observer(function StorageSecretsPage() {
               <StorageSecretCategoryCard
                 key={category.id}
                 category={category}
-                secretsCount={store.secrets.filter((secret) => secret.categoryId === category.id).length}
-                onEdit={(item) => setDialog({ kind: "category", model: item, action: "upsert" })}
-                onDelete={(item) => setDialog({ kind: "category", model: item, action: "delete" })}
+                secretsCount={
+                  store.secrets.filter(
+                    (secret) => secret.categoryId === category.id,
+                  ).length
+                }
+                onEdit={(item) =>
+                  setDialog({ kind: "category", model: item, action: "upsert" })
+                }
+                onDelete={(item) =>
+                  setDialog({ kind: "category", model: item, action: "delete" })
+                }
               />
             ))}
           </div>

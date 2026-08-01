@@ -5,11 +5,7 @@ import {
   type NavigateOptions,
   type To,
 } from "react-router-dom";
-import {
-  APP_PATHS,
-  NAVIGATION_ROUTES,
-  type AppPath,
-} from "../app/routes";
+import { APP_PATHS, NAVIGATION_ROUTES, type AppPath } from "../app/routes";
 
 export function useHashRouter() {
   const navigate = useNavigate();

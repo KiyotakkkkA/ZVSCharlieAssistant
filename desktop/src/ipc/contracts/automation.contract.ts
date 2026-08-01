@@ -22,7 +22,7 @@ export interface AutomationAgent {
   name: string;
   description: string;
   instructions: string;
-  textModelId: string | null;
+  textModelId: number | null;
   status: AutomationStatus;
   allowedToolIds: string[];
   secretBindings: AgentSecretBinding[];
@@ -38,7 +38,7 @@ export interface UpsertAutomationAgentInput {
   name: string;
   description: string;
   instructions: string;
-  textModelId: string;
+  textModelId: number;
   status: AutomationStatus;
   allowedToolIds: string[];
   secretBindings: AgentSecretBinding[];
@@ -48,11 +48,7 @@ export interface UpsertAutomationAgentInput {
 }
 
 export type AutomationScenarioNodeKind =
-  | "trigger"
-  | "agent"
-  | "condition"
-  | "approval"
-  | "output";
+  "trigger" | "agent" | "condition" | "approval" | "output";
 
 export interface AutomationScenarioNode {
   id: string;

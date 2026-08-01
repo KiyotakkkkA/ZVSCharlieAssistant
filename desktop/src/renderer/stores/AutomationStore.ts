@@ -35,7 +35,9 @@ export class AutomationStore {
     } catch (error) {
       runInAction(() => {
         this.error =
-          error instanceof Error ? error.message : "Не удалось загрузить данные";
+          error instanceof Error
+            ? error.message
+            : "Не удалось загрузить данные";
       });
       throw error;
     } finally {
@@ -49,9 +51,7 @@ export class AutomationStore {
     return this.agents.find((agent) => agent.id === agentId);
   }
 
-  getScenario(
-    scenarioId: string | undefined,
-  ): AutomationScenario | undefined {
+  getScenario(scenarioId: string | undefined): AutomationScenario | undefined {
     return this.scenarios.find((scenario) => scenario.id === scenarioId);
   }
 
@@ -85,9 +85,7 @@ export class AutomationStore {
     const scenario = await window.desktop.automation.upsertScenario(input);
 
     runInAction(() => {
-      const index = this.scenarios.findIndex(
-        (item) => item.id === scenario.id,
-      );
+      const index = this.scenarios.findIndex((item) => item.id === scenario.id);
       if (index >= 0) this.scenarios[index] = scenario;
       else this.scenarios.unshift(scenario);
     });

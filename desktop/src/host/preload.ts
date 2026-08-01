@@ -1,4 +1,4 @@
-import { contextBridge } from 'electron'
-import { desktopApi } from '../ipc/preload/desktop-api'
+import { contextBridge } from "electron";
+import { desktopApi } from "../ipc/preload/desktop-api";
 
-contextBridge.exposeInMainWorld('desktop', desktopApi)
+contextBridge.exposeInMainWorld("desktop", desktopApi);

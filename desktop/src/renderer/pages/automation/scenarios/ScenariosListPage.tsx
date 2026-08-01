@@ -148,46 +148,52 @@ export const ScenariosListPage = observer(function ScenariosListPage() {
       </PageHeader>
 
       <ScrollArea className="min-h-0 flex-1 p-1">
-      {scenarios.length && viewMode === "cards" ? (
-        <div className="grid gap-3 xl:grid-cols-3">
-          {scenarios.map((scenario) => (
-            <AutomationScenarioCard
-              key={scenario.id}
-              scenario={scenario}
-              onEdit={editScenario}
-              onDelete={setScenarioToDelete}
-            />
-          ))}
-        </div>
-      ) : scenarios.length ? (
-        <div className="overflow-hidden">
-          <Table<ScenarioRow>
-            data={scenarios.map((scenario) => ({
-              ...scenario,
-            }))}
-            columns={columns}
-            rowKey="id"
-            classNames={{
-              root: "w-full",
-              row: "transition-colors hover:bg-main-800/45",
-            }}
-          />
-        </div>
-      ) : (
-        <div className="grid min-h-80 place-items-center">
-          <EmptyState
-            icon={<TasksIcon className="size-6" />}
-            title={query ? "Сценарии не найдены" : "Сценариев пока нет"}
-            description={query ? "Измените поисковый запрос." : "Создайте первый сценарий автоматизации."}
-            action={
-              query ? undefined : <CreateButton
-                label="Добавить сценарий"
-                onClick={() => goTo(APP_PATHS.automation.scenarios.create)}
+        {scenarios.length && viewMode === "cards" ? (
+          <div className="grid gap-3 xl:grid-cols-3">
+            {scenarios.map((scenario) => (
+              <AutomationScenarioCard
+                key={scenario.id}
+                scenario={scenario}
+                onEdit={editScenario}
+                onDelete={setScenarioToDelete}
               />
-            }
-          />
-        </div>
-      )}
+            ))}
+          </div>
+        ) : scenarios.length ? (
+          <div className="overflow-hidden">
+            <Table<ScenarioRow>
+              data={scenarios.map((scenario) => ({
+                ...scenario,
+              }))}
+              columns={columns}
+              rowKey="id"
+              classNames={{
+                root: "w-full",
+                row: "transition-colors hover:bg-main-800/45",
+              }}
+            />
+          </div>
+        ) : (
+          <div className="grid min-h-80 place-items-center">
+            <EmptyState
+              icon={<TasksIcon className="size-6" />}
+              title={query ? "Сценарии не найдены" : "Сценариев пока нет"}
+              description={
+                query
+                  ? "Измените поисковый запрос."
+                  : "Создайте первый сценарий автоматизации."
+              }
+              action={
+                query ? undefined : (
+                  <CreateButton
+                    label="Добавить сценарий"
+                    onClick={() => goTo(APP_PATHS.automation.scenarios.create)}
+                  />
+                )
+              }
+            />
+          </div>
+        )}
       </ScrollArea>
 
       {scenarioToDelete ? (

@@ -16,20 +16,40 @@ export function AutomationToolCard({ tool, onOpen }: AutomationToolCardProps) {
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <h2 className="truncate font-semibold text-main-100">{tool.name}</h2>
-            <span className={tool.enabled ? "text-xs text-success-light" : "text-xs text-main-500"}>
+            <h2 className="truncate font-semibold text-main-100">
+              {tool.name}
+            </h2>
+            <span
+              className={
+                tool.enabled
+                  ? "text-xs text-success-light"
+                  : "text-xs text-main-500"
+              }
+            >
               {tool.enabled ? "Доступен" : "Отключён"}
             </span>
           </div>
-          <p className="mt-1 truncate font-mono text-xs text-main-500">{tool.id}</p>
-          <p className="mt-2 line-clamp-2 text-sm leading-6 text-main-400">{tool.description}</p>
+          <p className="mt-1 truncate font-mono text-xs text-main-500">
+            {tool.id}
+          </p>
+          <p className="mt-2 line-clamp-2 text-sm leading-6 text-main-400">
+            {tool.description}
+          </p>
         </div>
-        <ControlButton icon="eye" title="Подробнее" onClick={() => onOpen(tool)} />
+        <ControlButton
+          icon="eye"
+          title="Подробнее"
+          onClick={() => onOpen(tool)}
+        />
       </div>
       <div className="mt-5 flex flex-wrap gap-2 border-t border-main-700/40 pt-4 text-xs text-main-500">
         <span>{tool.category}</span>
         <span>·</span>
-        <span>{tool.requiresConfirmation ? "Требует подтверждения" : "Без подтверждения"}</span>
+        <span>
+          {tool.requiresConfirmation
+            ? "Требует подтверждения"
+            : "Без подтверждения"}
+        </span>
       </div>
     </article>
   );

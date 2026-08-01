@@ -39,7 +39,10 @@ interface OllamaTagsResponse {
 }
 
 class OllamaConnectionChecker implements ProviderConnectionChecker {
-  async test({ baseUrl, apiKey }: ProviderConnectionRequest): Promise<TextProviderModelInfo[]> {
+  async test({
+    baseUrl,
+    apiKey,
+  }: ProviderConnectionRequest): Promise<TextProviderModelInfo[]> {
     const endpoint = `${normalizeBaseUrl(baseUrl)}/api/tags`;
     const response = await fetch(endpoint, {
       method: "GET",
@@ -58,7 +61,8 @@ class OllamaConnectionChecker implements ProviderConnectionChecker {
 
     return payload.models.map((model, index) => {
       const id = model.model?.trim() || model.name?.trim();
-      if (!id) throw new Error(`Модель Ollama под индексом ${index} не имеет имени`);
+      if (!id)
+        throw new Error(`Модель Ollama под индексом ${index} не имеет имени`);
       return {
         id,
         name: model.name?.trim() || id,
@@ -89,7 +93,10 @@ function normalizeBaseUrl(value: string): string {
 }
 
 export class ProviderConnectionService {
-  private readonly checkers: Record<TextProviderKind, ProviderConnectionChecker> = {
+  private readonly checkers: Record<
+    TextProviderKind,
+    ProviderConnectionChecker
+  > = {
     ollama: new OllamaConnectionChecker(),
   };
 
@@ -122,14 +129,23 @@ export class ProviderConnectionService {
     return { models, checkedAt: new Date().toISOString() };
   }
 
-  async upsertProvider(input: UpsertTextProviderInput): Promise<TextProviderSnapshot> {
+  async upsertProvider(
+    input: UpsertTextProviderInput,
+  ): Promise<TextProviderSnapshot> {
     const name = input.name.trim();
     if (!name) throw new Error("Название провайдера обязательно");
     const result = await this.testConnection(input);
     const availableIds = new Set(result.models.map((model) => model.id));
-    const enabledModelIds = input.enabledModelIds.filter((id) => availableIds.has(id));
+    const enabledModelIds = input.enabledModelIds.filter((id) =>
+      availableIds.has(id),
+    );
     return this.providers.upsert(
-      { ...input, name, baseUrl: normalizeBaseUrl(input.baseUrl), enabledModelIds },
+      {
+        ...input,
+        name,
+        baseUrl: normalizeBaseUrl(input.baseUrl),
+        enabledModelIds,
+      },
       input.id,
       result.checkedAt,
       result.models,

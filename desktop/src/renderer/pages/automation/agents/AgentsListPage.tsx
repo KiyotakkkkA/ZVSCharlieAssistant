@@ -79,8 +79,11 @@ export const AgentsListPage = observer(function AgentsListPage() {
       title: "Модель",
       render: (agent) => {
         const value = agent.textModelId;
-        const separator = value?.indexOf(":") ?? -1;
-        return <span className="text-main-300">{value && separator > 0 ? textProviderStore.modelLabel(Number(value.slice(0, separator)), value.slice(separator + 1)) : "Не настроена"}</span>;
+        return (
+          <span className="text-main-300">
+            {value ? textProviderStore.modelLabel(value) : "Не настроена"}
+          </span>
+        );
       },
     },
     {

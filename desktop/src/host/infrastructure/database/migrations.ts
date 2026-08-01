@@ -95,7 +95,7 @@ const migrations: readonly Migration[] = [
           name TEXT NOT NULL,
           description TEXT NOT NULL DEFAULT '',
           instructions TEXT NOT NULL,
-          model TEXT NOT NULL,
+          text_model_id INTEGER,
           status TEXT NOT NULL DEFAULT 'draft'
             CHECK (status IN ('draft', 'active', 'disabled')),
           require_dangerous_action_confirmation INTEGER NOT NULL DEFAULT 1
@@ -105,6 +105,7 @@ const migrations: readonly Migration[] = [
           runs INTEGER NOT NULL DEFAULT 0 CHECK (runs >= 0),
           created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
           updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+          ,FOREIGN KEY (text_model_id) REFERENCES text_provider_models(id) ON UPDATE CASCADE ON DELETE SET NULL
         );
 
         CREATE TABLE automation_agent_tools (
@@ -191,6 +192,7 @@ const migrations: readonly Migration[] = [
         );
 
         CREATE TABLE text_provider_models (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
           provider_id INTEGER NOT NULL,
           remote_id TEXT NOT NULL,
           name TEXT NOT NULL,
@@ -199,14 +201,102 @@ const migrations: readonly Migration[] = [
           digest TEXT NOT NULL DEFAULT '',
           details_json TEXT NOT NULL DEFAULT '{}',
           enabled INTEGER NOT NULL DEFAULT 0 CHECK (enabled IN (0, 1)),
-          PRIMARY KEY (provider_id, remote_id),
+          UNIQUE (provider_id, remote_id),
           FOREIGN KEY (provider_id) REFERENCES text_provider_configs(id)
             ON UPDATE CASCADE ON DELETE CASCADE
         );
 
-        ALTER TABLE automation_agents ADD COLUMN text_model_id TEXT;
         CREATE INDEX idx_text_provider_models_enabled
           ON text_provider_models(provider_id, enabled);
+      `);
+    },
+  },
+  {
+    version: 6,
+    up(database) {
+      database.exec(`
+        CREATE TABLE chat_conversations (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          title TEXT NOT NULL DEFAULT 'Новый диалог',
+          mode TEXT NOT NULL DEFAULT 'chat' CHECK (mode IN ('chat', 'planner', 'agent')),
+          agent_id TEXT,
+          model_id INTEGER,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (agent_id) REFERENCES automation_agents(id) ON DELETE SET NULL,
+          FOREIGN KEY (model_id) REFERENCES text_provider_models(id) ON DELETE SET NULL
+        );
+        CREATE TABLE generation_runs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          conversation_id INTEGER NOT NULL,
+          agent_id TEXT,
+          model_id INTEGER NOT NULL,
+          status TEXT NOT NULL CHECK (status IN ('queued','running','waiting_for_approval','completed','failed','cancelled')),
+          current_step INTEGER NOT NULL DEFAULT 0,
+          max_steps INTEGER NOT NULL,
+          input_tokens INTEGER NOT NULL DEFAULT 0,
+          output_tokens INTEGER NOT NULL DEFAULT 0,
+          error_code TEXT,
+          error_message TEXT,
+          started_at TEXT,
+          completed_at TEXT,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (conversation_id) REFERENCES chat_conversations(id) ON DELETE CASCADE,
+          FOREIGN KEY (agent_id) REFERENCES automation_agents(id) ON DELETE SET NULL,
+          FOREIGN KEY (model_id) REFERENCES text_provider_models(id) ON DELETE RESTRICT
+        );
+        CREATE TABLE chat_messages (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          conversation_id INTEGER NOT NULL,
+          run_id INTEGER,
+          role TEXT NOT NULL CHECK (role IN ('system','user','assistant','tool')),
+          status TEXT NOT NULL DEFAULT 'completed' CHECK (status IN ('streaming','completed','failed','cancelled')),
+          content_json TEXT NOT NULL DEFAULT '[]',
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (conversation_id) REFERENCES chat_conversations(id) ON DELETE CASCADE,
+          FOREIGN KEY (run_id) REFERENCES generation_runs(id) ON DELETE SET NULL
+        );
+        CREATE TABLE chat_attachments (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          conversation_id INTEGER NOT NULL,
+          message_id INTEGER,
+          name TEXT NOT NULL,
+          mime_type TEXT NOT NULL,
+          local_path TEXT NOT NULL,
+          size INTEGER NOT NULL DEFAULT 0,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (conversation_id) REFERENCES chat_conversations(id) ON DELETE CASCADE,
+          FOREIGN KEY (message_id) REFERENCES chat_messages(id) ON DELETE CASCADE
+        );
+        CREATE TABLE generation_run_steps (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          run_id INTEGER NOT NULL,
+          step_index INTEGER NOT NULL,
+          finish_reason TEXT,
+          input_tokens INTEGER NOT NULL DEFAULT 0,
+          output_tokens INTEGER NOT NULL DEFAULT 0,
+          payload_json TEXT NOT NULL DEFAULT '{}',
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(run_id, step_index),
+          FOREIGN KEY (run_id) REFERENCES generation_runs(id) ON DELETE CASCADE
+        );
+        CREATE TABLE generation_tool_calls (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          run_id INTEGER NOT NULL,
+          provider_call_id TEXT NOT NULL,
+          tool_id TEXT NOT NULL,
+          risk TEXT NOT NULL CHECK (risk IN ('read','write','destructive')),
+          status TEXT NOT NULL CHECK (status IN ('requested','waiting_for_approval','running','completed','failed','denied')),
+          input_json TEXT NOT NULL,
+          output_json TEXT,
+          error_message TEXT,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          completed_at TEXT,
+          UNIQUE(run_id, provider_call_id),
+          FOREIGN KEY (run_id) REFERENCES generation_runs(id) ON DELETE CASCADE
+        );
+        CREATE INDEX idx_chat_messages_conversation ON chat_messages(conversation_id, id);
+        CREATE INDEX idx_generation_runs_conversation ON generation_runs(conversation_id, id);
       `);
     },
   },

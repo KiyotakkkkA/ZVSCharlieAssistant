@@ -2,40 +2,40 @@ import { observer } from "mobx-react-lite";
 import { Select, type SelectProps } from "@kiyotakkkka/zvs-uikit-lib";
 import { secretStorageStore } from "../../stores";
 
-export interface SecretOrientedSelectProps
-  extends Omit<SelectProps, "children" | "options"> {
+export interface SecretOrientedSelectProps extends Omit<
+  SelectProps,
+  "children" | "options"
+> {
   categoryId: number;
   triggerClassName?: string;
   menuClassName?: string;
   optionClassName?: string;
 }
 
-export const SecretOrientedSelect = observer(
-  function SecretOrientedSelect({
-    categoryId,
-    triggerClassName,
-    menuClassName,
-    optionClassName,
-    emptyMessage = "В категории нет доступных секретов",
-    ...selectProps
-  }: SecretOrientedSelectProps) {
-    const options = secretStorageStore.secrets
-      .filter((secret) => secret.categoryId === categoryId)
-      .map((secret) => ({ value: String(secret.id), label: secret.label }));
+export const SecretOrientedSelect = observer(function SecretOrientedSelect({
+  categoryId,
+  triggerClassName,
+  menuClassName,
+  optionClassName,
+  emptyMessage = "В категории нет доступных секретов",
+  ...selectProps
+}: SecretOrientedSelectProps) {
+  const options = secretStorageStore.secrets
+    .filter((secret) => secret.categoryId === categoryId)
+    .map((secret) => ({ value: String(secret.id), label: secret.label }));
 
-    return (
-      <Select {...selectProps} options={options} emptyMessage={emptyMessage}>
-        <Select.Trigger className={triggerClassName} />
-        <Select.Menu className={menuClassName}>
-          {options.map((option) => (
-            <Select.Option
-              key={option.value}
-              {...option}
-              className={optionClassName}
-            />
-          ))}
-        </Select.Menu>
-      </Select>
-    );
-  },
-);
+  return (
+    <Select {...selectProps} options={options} emptyMessage={emptyMessage}>
+      <Select.Trigger className={triggerClassName} />
+      <Select.Menu className={menuClassName}>
+        {options.map((option) => (
+          <Select.Option
+            key={option.value}
+            {...option}
+            className={optionClassName}
+          />
+        ))}
+      </Select.Menu>
+    </Select>
+  );
+});

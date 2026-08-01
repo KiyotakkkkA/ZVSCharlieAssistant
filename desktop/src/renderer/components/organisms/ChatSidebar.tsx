@@ -20,6 +20,8 @@ interface ChatSidebarProps {
   onQueryChange: (value: string) => void;
   onSelect: (dialog: ChatDialog) => void;
   onCreate: () => void;
+  onEdit: (dialog: ChatDialog) => void;
+  onDelete: (dialog: ChatDialog) => void;
 }
 
 export function ChatSidebar({
@@ -29,6 +31,8 @@ export function ChatSidebar({
   onQueryChange,
   onSelect,
   onCreate,
+  onEdit,
+  onDelete,
 }: ChatSidebarProps) {
   return (
     <aside className="flex w-64 shrink-0 flex-col border-r border-main-700/35">
@@ -61,10 +65,11 @@ export function ChatSidebar({
       <ScrollArea className="min-h-0 flex-1 px-2 pb-3">
         <div className="space-y-1">
           {dialogs.map((dialog) => (
-            <button
+            <div
               key={dialog.id}
-              type="button"
-              className={`flex w-full min-h-10 gap-3 items-center rounded-xl px-3 text-left transition-colors ${activeDialogId === dialog.id ? "bg-main-700/65" : "hover:bg-main-700/40"} group`}
+              role="button"
+              tabIndex={0}
+              className={`flex w-full min-h-10 gap-3 cursor-pointer items-center rounded-xl px-3 text-left transition-colors ${activeDialogId === dialog.id ? "bg-main-700/65" : "hover:bg-main-700/40"} group`}
               onClick={() => onSelect(dialog)}
             >
               <span className="min-w-0 flex-1">
@@ -76,19 +81,25 @@ export function ChatSidebar({
                 {dialog.date}
               </span>
               <div className="ml-auto gap-1 hidden transition-opacity group-hover:flex space-x-1">
-                <ControlButton
-                  className="size-6"
-                  icon="edit"
-                  title="Изменить"
-                />
-                <ControlButton
-                  className="size-6"
-                  icon="trash"
-                  variant="delete"
-                  title="Удалить"
-                />
+                <span onClick={(event) => event.stopPropagation()}>
+                  <ControlButton
+                    className="size-6"
+                    icon="edit"
+                    title="Изменить"
+                    onClick={() => onEdit(dialog)}
+                  />
+                </span>
+                <span onClick={(event) => event.stopPropagation()}>
+                  <ControlButton
+                    className="size-6"
+                    icon="trash"
+                    variant="delete"
+                    title="Удалить"
+                    onClick={() => onDelete(dialog)}
+                  />
+                </span>
               </div>
-            </button>
+            </div>
           ))}
           {dialogs.length === 0 ? (
             <p className="px-3 py-8 text-center text-xs text-main-500">

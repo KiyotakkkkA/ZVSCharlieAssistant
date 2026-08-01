@@ -13,4 +13,5 @@ export interface DesktopApi {
   secrets: import("./secrets.contract").SecretStorageApi;
   automation: import("./automation.contract").AutomationApi;
   textProviders: import("./text-provider.contract").TextProviderApi;
+  chat: import("./chat.contract").ChatApi;
 }

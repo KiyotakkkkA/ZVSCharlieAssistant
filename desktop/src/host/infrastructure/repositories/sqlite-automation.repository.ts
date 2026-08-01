@@ -14,7 +14,11 @@ import { AutomationDataSource } from "../database/automation.data-source";
 
 const statuses = new Set<AutomationStatus>(["draft", "active", "disabled"]);
 
-const normalizeText = (value: string, label: string, maxLength: number): string => {
+const normalizeText = (
+  value: string,
+  label: string,
+  maxLength: number,
+): string => {
   const normalized = value.trim();
   if (!normalized) throw new Error(`${label} не может быть пустым`);
   if (normalized.length > maxLength)
@@ -50,11 +54,15 @@ export class SqliteAutomationRepository implements AutomationRepository {
   }
 
   upsertAgent(input: UpsertAutomationAgentInput): AutomationAgent {
-    if (!statuses.has(input.status)) throw new Error("Недопустимый статус агента");
+    if (!statuses.has(input.status))
+      throw new Error("Недопустимый статус агента");
     assertPositiveInteger(input.maxToolCalls, "Лимит инструментов", 10_000);
     assertPositiveInteger(input.timeoutSeconds, "Таймаут", 86_400);
-    const textModelId = normalizeText(input.textModelId, "Модель", 300);
-    if (!this.dataSource.textModelExists(textModelId)) throw new Error("Выбранная модель недоступна");
+    const textModelId = input.textModelId;
+    if (!Number.isInteger(textModelId) || textModelId <= 0)
+      throw new Error("Некорректная модель");
+    if (!this.dataSource.textModelExists(textModelId))
+      throw new Error("Выбранная модель недоступна");
 
     const allowedToolIds = normalizeIds(input.allowedToolIds);
     this.assertToolsExist(allowedToolIds);
@@ -149,7 +157,8 @@ export class SqliteAutomationRepository implements AutomationRepository {
       normalizeText(node.title, "Название узла", 120);
       if (!Number.isFinite(node.x) || !Number.isFinite(node.y))
         throw new Error("Координаты узла имеют некорректный формат");
-      if (node.config) this.assertJsonSerializable(node.config, "Конфигурация узла");
+      if (node.config)
+        this.assertJsonSerializable(node.config, "Конфигурация узла");
     }
 
     const edgeIds = new Set<string>();

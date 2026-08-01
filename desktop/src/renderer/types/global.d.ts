@@ -1,9 +1,9 @@
-import type { DesktopApi } from '../../ipc/contracts'
+import type { DesktopApi } from "../../ipc/contracts";
 
 declare global {
   interface Window {
-    desktop: DesktopApi
+    desktop: DesktopApi;
   }
 }
 
-export {}
+export {};

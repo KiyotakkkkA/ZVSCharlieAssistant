@@ -4,10 +4,7 @@ import { HashRouter, Navigate, Route, Routes } from "react-router-dom";
 import { App } from "./app/App";
 import { APP_PATHS } from "./app/routes";
 import { RoutePage } from "./pages/RoutePage";
-import {
-  AgentManagerPage,
-  AgentsListPage,
-} from "./pages/automation/agents";
+import { AgentManagerPage, AgentsListPage } from "./pages/automation/agents";
 import {
   ScenarioGraphEditorPage,
   ScenariosListPage,

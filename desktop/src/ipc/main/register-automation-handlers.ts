@@ -25,9 +25,8 @@ export function registerAutomationHandlers(
     (_event, input: UpsertAutomationScenarioInput) =>
       repository.upsertScenario(input),
   );
-  ipcMain.handle(
-    AUTOMATION_IPC_CHANNELS.deleteScenario,
-    (_event, id: string) => repository.deleteScenario(id),
+  ipcMain.handle(AUTOMATION_IPC_CHANNELS.deleteScenario, (_event, id: string) =>
+    repository.deleteScenario(id),
   );
 }
 

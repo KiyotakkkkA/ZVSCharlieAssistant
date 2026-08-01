@@ -10,7 +10,9 @@ export interface SecretEntity {
   label: string;
   builtin: boolean;
 }
-export interface SecretRecord extends SecretEntity { content: string }
+export interface SecretRecord extends SecretEntity {
+  content: string;
+}
 
 export interface UpsertSecretCategoryInput {
   id?: number;

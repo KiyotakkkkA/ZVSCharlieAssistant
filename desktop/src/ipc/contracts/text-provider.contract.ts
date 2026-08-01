@@ -36,7 +36,9 @@ export interface TextProviderConfig {
   updatedAt: string;
 }
 
-export interface TextProviderModel extends TextProviderModelInfo {
+export interface TextProviderModel extends Omit<TextProviderModelInfo, "id"> {
+  id: number;
+  remoteId: string;
   providerId: number;
   enabled: boolean;
 }

@@ -2,6 +2,36 @@ import type { AutomationTool } from "../../../ipc/contracts";
 
 export const BUILTIN_AUTOMATION_TOOLS: readonly AutomationTool[] = [
   {
+    id: "current_time",
+    name: "Текущее время",
+    description: "Возвращает текущее локальное время.",
+    category: "Система",
+    builtin: true,
+    enabled: true,
+    requiresConfirmation: false,
+    inputSchema: { type: "object", properties: {} },
+    outputSchema: { type: "object", properties: { iso: { type: "string" } } },
+  },
+  {
+    id: "save_note",
+    name: "Сохранить заметку",
+    description:
+      "Тестовый инструмент записи заметки с обязательным подтверждением.",
+    category: "Память",
+    builtin: true,
+    enabled: true,
+    requiresConfirmation: true,
+    inputSchema: {
+      type: "object",
+      required: ["text"],
+      properties: { text: { type: "string" } },
+    },
+    outputSchema: {
+      type: "object",
+      properties: { saved: { type: "boolean" } },
+    },
+  },
+  {
     id: "filesystem.read",
     name: "Чтение файлов",
     description: "Читает содержимое файла в разрешённой директории.",

@@ -123,33 +123,41 @@ export const ToolsListPage = observer(function ToolsListPage() {
       </PageHeader>
 
       <ScrollArea className="min-h-0 flex-1 p-1">
-      {tools.length && viewMode === "cards" ? (
-        <div className="grid gap-3 xl:grid-cols-3">
-          {tools.map((tool) => (
-            <AutomationToolCard key={tool.id} tool={tool} onOpen={setSelectedTool} />
-          ))}
-        </div>
-      ) : tools.length ? (
-        <div className="overflow-hidden">
-          <Table<ToolRow>
-            data={tools.map((tool) => ({ ...tool }))}
-            columns={columns}
-            rowKey="id"
-            classNames={{
-              root: "w-full",
-              row: "transition-colors hover:bg-main-800/45",
-            }}
-          />
-        </div>
-      ) : (
-        <div className="grid min-h-80 place-items-center">
-          <EmptyState
-            icon={<SettingsIcon className="size-6" />}
-            title="Инструменты не найдены"
-            description={query ? "Измените поисковый запрос." : "В приложении пока не зарегистрировано встроенных инструментов."}
-          />
-        </div>
-      )}
+        {tools.length && viewMode === "cards" ? (
+          <div className="grid gap-3 xl:grid-cols-3">
+            {tools.map((tool) => (
+              <AutomationToolCard
+                key={tool.id}
+                tool={tool}
+                onOpen={setSelectedTool}
+              />
+            ))}
+          </div>
+        ) : tools.length ? (
+          <div className="overflow-hidden">
+            <Table<ToolRow>
+              data={tools.map((tool) => ({ ...tool }))}
+              columns={columns}
+              rowKey="id"
+              classNames={{
+                root: "w-full",
+                row: "transition-colors hover:bg-main-800/45",
+              }}
+            />
+          </div>
+        ) : (
+          <div className="grid min-h-80 place-items-center">
+            <EmptyState
+              icon={<SettingsIcon className="size-6" />}
+              title="Инструменты не найдены"
+              description={
+                query
+                  ? "Измените поисковый запрос."
+                  : "В приложении пока не зарегистрировано встроенных инструментов."
+              }
+            />
+          </div>
+        )}
       </ScrollArea>
 
       <Modal

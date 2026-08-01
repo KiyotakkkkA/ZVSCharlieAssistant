@@ -58,6 +58,8 @@ interface ChatComposerProps {
   onModelChange: (value: ChatModel) => void;
   onAgentChange: (value: string) => void;
   onSend: () => void;
+  running?: boolean;
+  onCancel?: () => void;
 }
 
 export function ChatComposer(props: ChatComposerProps) {
@@ -186,11 +188,12 @@ export function ChatComposer(props: ChatComposerProps) {
               </Dropdown>
               {props.mode === "agent" ? (
                 <Select
+                  disabled={props.agentOptions.length === 0}
                   className="max-w-48 w-fit shrink-0"
                   value={props.agentId}
                   onChange={props.onAgentChange}
                   options={props.agentOptions}
-                  placeholder="Выберите агента"
+                  placeholder={`${props.agentOptions.length === 0 ? "Нет агентов" : "Выберите агента"}`}
                   searchable
                   searchPlaceholder="Найти агента"
                   emptyMessage="Агенты не найдены"
@@ -253,21 +256,29 @@ export function ChatComposer(props: ChatComposerProps) {
               </Dropdown>
               <Tooltip
                 label={
-                  props.text.trim()
-                    ? "Отправить сообщение"
-                    : "Введите сообщение"
+                  props.running
+                    ? "Остановить генерацию"
+                    : props.text.trim()
+                      ? "Отправить сообщение"
+                      : "Введите сообщение"
                 }
                 placement="top-right"
               >
                 <Button
                   variant="primary"
                   rounded="rounded-full"
-                  label="Отправить"
+                  label={props.running ? "Остановить" : "Отправить"}
                   className="inline-flex size-9 items-center justify-center border-0! p-0 shadow-none ring-0!"
-                  disabled={!props.text.trim() || !selectedModel}
-                  onClick={props.onSend}
+                  disabled={
+                    !props.running && (!props.text.trim() || !selectedModel)
+                  }
+                  onClick={props.running ? props.onCancel : props.onSend}
                 >
-                  <SendIcon className="size-4" />
+                  {props.running ? (
+                    <span className="size-3 rounded-sm bg-current" />
+                  ) : (
+                    <SendIcon className="size-4" />
+                  )}
                 </Button>
               </Tooltip>
             </div>

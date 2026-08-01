@@ -23,7 +23,9 @@ export class SqliteSecretStorageRepository implements SecretStorageRepository {
   getSnapshot(): SecretStorageSnapshot {
     return {
       categories: this.dataSource.listCategories(),
-      secrets: this.dataSource.listSecrets().map(({ content: _content, ...secret }) => secret),
+      secrets: this.dataSource
+        .listSecrets()
+        .map(({ content: _content, ...secret }) => secret),
     };
   }
 

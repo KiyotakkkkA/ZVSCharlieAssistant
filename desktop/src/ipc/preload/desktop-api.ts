@@ -4,6 +4,7 @@ import {
   IPC_CHANNELS,
   SECRET_IPC_CHANNELS,
   TEXT_PROVIDER_IPC_CHANNELS,
+  CHAT_IPC_CHANNELS,
   type AppInfo,
   type AutomationAgent,
   type AutomationScenario,
@@ -18,6 +19,10 @@ import {
   type UpsertSecretInput,
   type TestTextProviderConnectionInput,
   type TestTextProviderConnectionResult,
+  type ChatSnapshot,
+  type ChatMessagePage,
+  type RunEvent,
+  type StartRunInput,
   type TextProviderSnapshot,
   type UpsertTextProviderInput,
 } from "../contracts";
@@ -49,7 +54,8 @@ export const desktopApi: DesktopApi = {
       ) as Promise<void>,
     deleteSecret: (id: number): Promise<void> =>
       ipcRenderer.invoke(SECRET_IPC_CHANNELS.deleteSecret, id) as Promise<void>,
-    copySecret: (id: number): Promise<void> => ipcRenderer.invoke(SECRET_IPC_CHANNELS.copySecret, id) as Promise<void>,
+    copySecret: (id: number): Promise<void> =>
+      ipcRenderer.invoke(SECRET_IPC_CHANNELS.copySecret, id) as Promise<void>,
   },
   automation: {
     getSnapshot: (): Promise<AutomationSnapshot> =>
@@ -64,7 +70,10 @@ export const desktopApi: DesktopApi = {
         input,
       ) as Promise<AutomationAgent>,
     deleteAgent: (id: string): Promise<void> =>
-      ipcRenderer.invoke(AUTOMATION_IPC_CHANNELS.deleteAgent, id) as Promise<void>,
+      ipcRenderer.invoke(
+        AUTOMATION_IPC_CHANNELS.deleteAgent,
+        id,
+      ) as Promise<void>,
     upsertScenario: (
       input: UpsertAutomationScenarioInput,
     ): Promise<AutomationScenario> =>
@@ -79,7 +88,10 @@ export const desktopApi: DesktopApi = {
       ) as Promise<void>,
   },
   textProviders: {
-    getSnapshot: (): Promise<TextProviderSnapshot> => ipcRenderer.invoke(TEXT_PROVIDER_IPC_CHANNELS.getSnapshot) as Promise<TextProviderSnapshot>,
+    getSnapshot: (): Promise<TextProviderSnapshot> =>
+      ipcRenderer.invoke(
+        TEXT_PROVIDER_IPC_CHANNELS.getSnapshot,
+      ) as Promise<TextProviderSnapshot>,
     testConnection: (
       input: TestTextProviderConnectionInput,
     ): Promise<TestTextProviderConnectionResult> =>
@@ -87,7 +99,57 @@ export const desktopApi: DesktopApi = {
         TEXT_PROVIDER_IPC_CHANNELS.testConnection,
         input,
       ) as Promise<TestTextProviderConnectionResult>,
-    upsertProvider: (input: UpsertTextProviderInput): Promise<TextProviderSnapshot> => ipcRenderer.invoke(TEXT_PROVIDER_IPC_CHANNELS.upsertProvider, input) as Promise<TextProviderSnapshot>,
-    deleteProvider: (id: number): Promise<TextProviderSnapshot> => ipcRenderer.invoke(TEXT_PROVIDER_IPC_CHANNELS.deleteProvider, id) as Promise<TextProviderSnapshot>,
+    upsertProvider: (
+      input: UpsertTextProviderInput,
+    ): Promise<TextProviderSnapshot> =>
+      ipcRenderer.invoke(
+        TEXT_PROVIDER_IPC_CHANNELS.upsertProvider,
+        input,
+      ) as Promise<TextProviderSnapshot>,
+    deleteProvider: (id: number): Promise<TextProviderSnapshot> =>
+      ipcRenderer.invoke(
+        TEXT_PROVIDER_IPC_CHANNELS.deleteProvider,
+        id,
+      ) as Promise<TextProviderSnapshot>,
+  },
+  chat: {
+    getSnapshot: (id?: number): Promise<ChatSnapshot> =>
+      ipcRenderer.invoke(
+        CHAT_IPC_CHANNELS.getSnapshot,
+        id,
+      ) as Promise<ChatSnapshot>,
+    getMessagesPage: (id:number,beforeId?:number):Promise<ChatMessagePage> => ipcRenderer.invoke(CHAT_IPC_CHANNELS.getMessagesPage,id,beforeId) as Promise<ChatMessagePage>,
+    startRun: (
+      input: StartRunInput,
+    ): Promise<{ runId: number; conversationId: number }> =>
+      ipcRenderer.invoke(CHAT_IPC_CHANNELS.startRun, input) as Promise<{
+        runId: number;
+        conversationId: number;
+      }>,
+    cancelRun: (id: number): Promise<void> =>
+      ipcRenderer.invoke(CHAT_IPC_CHANNELS.cancelRun, id) as Promise<void>,
+    approveToolCall: (id: number, approved: boolean): Promise<void> =>
+      ipcRenderer.invoke(
+        CHAT_IPC_CHANNELS.approveToolCall,
+        id,
+        approved,
+      ) as Promise<void>,
+    deleteConversation: (id: number): Promise<void> =>
+      ipcRenderer.invoke(
+        CHAT_IPC_CHANNELS.deleteConversation,
+        id,
+      ) as Promise<void>,
+    renameConversation: (id: number, title: string): Promise<void> =>
+      ipcRenderer.invoke(
+        CHAT_IPC_CHANNELS.renameConversation,
+        id,
+        title,
+      ) as Promise<void>,
+    subscribe: (listener: (event: RunEvent) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, payload: RunEvent) =>
+        listener(payload);
+      ipcRenderer.on(CHAT_IPC_CHANNELS.event, handler);
+      return () => ipcRenderer.removeListener(CHAT_IPC_CHANNELS.event, handler);
+    },
   },
 };

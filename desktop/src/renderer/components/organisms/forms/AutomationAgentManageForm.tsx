@@ -47,10 +47,11 @@ export function AutomationAgentManageForm({
     setInstructions(model?.instructions ?? "");
     setStatus(model?.status ?? "draft");
     setTextModelId(
-      model?.textModelId ??
-        (textProviderStore.enabledModels[0]
-          ? `${textProviderStore.enabledModels[0].providerId}:${textProviderStore.enabledModels[0].id}`
-          : ""),
+      model?.textModelId
+        ? String(model.textModelId)
+        : textProviderStore.enabledModels[0]
+          ? String(textProviderStore.enabledModels[0].id)
+          : "",
     );
     setRequireConfirmation(model?.requireDangerousActionConfirmation ?? true);
     setToolModel(
@@ -91,7 +92,7 @@ export function AutomationAgentManageForm({
       name: name.trim(),
       description: description.trim(),
       instructions: instructions.trim(),
-      textModelId,
+      textModelId: Number(textModelId),
       status,
       allowedToolIds: selectedToolIds,
       secretBindings: selectedSecretIds.map((secretId) => ({
@@ -177,8 +178,8 @@ export function AutomationAgentManageForm({
           value={textModelId}
           onChange={setTextModelId}
           options={textProviderStore.enabledModels.map((item) => ({
-            value: `${item.providerId}:${item.id}`,
-            label: textProviderStore.modelLabel(item.providerId, item.id),
+            value: String(item.id),
+            label: textProviderStore.modelLabel(item.id),
           }))}
           placeholder="Выберите модель"
           searchable
@@ -187,9 +188,9 @@ export function AutomationAgentManageForm({
           <Select.Menu>
             {textProviderStore.enabledModels.map((item) => (
               <Select.Option
-                key={`${item.providerId}:${item.id}`}
-                value={`${item.providerId}:${item.id}`}
-                label={textProviderStore.modelLabel(item.providerId, item.id)}
+                key={item.id}
+                value={String(item.id)}
+                label={textProviderStore.modelLabel(item.id)}
               />
             ))}
           </Select.Menu>
