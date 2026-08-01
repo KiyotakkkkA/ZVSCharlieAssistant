@@ -19,25 +19,12 @@ import {
 } from "../atoms";
 
 export type ChatMode = "chat" | "planner" | "agent";
-export type ChatModel = "gpt-5" | "sonnet" | "gemini";
-
-const models = [
-  {
-    value: "gpt-5" as const,
-    label: "GPT-5",
-    description: "Универсальная модель",
-  },
-  {
-    value: "sonnet" as const,
-    label: "Sonnet 4.5",
-    description: "Быстрые сложные задачи",
-  },
-  {
-    value: "gemini" as const,
-    label: "Gemini 2.5 Pro",
-    description: "Большой контекст",
-  },
-];
+export type ChatModel = string;
+export interface ChatModelOption {
+  value: string;
+  label: string;
+  description?: string;
+}
 const modes = [
   {
     value: "chat" as const,
@@ -65,6 +52,7 @@ interface ChatComposerProps {
   model: ChatModel;
   agentId: string;
   agentOptions: SelectOption[];
+  modelOptions: ChatModelOption[];
   onTextChange: (value: string) => void;
   onModeChange: (value: ChatMode) => void;
   onModelChange: (value: ChatModel) => void;
@@ -75,7 +63,9 @@ interface ChatComposerProps {
 export function ChatComposer(props: ChatComposerProps) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const selectedMode = modes.find((item) => item.value === props.mode)!;
-  const selectedModel = models.find((item) => item.value === props.model)!;
+  const selectedModel = props.modelOptions.find(
+    (item) => item.value === props.model,
+  );
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
@@ -230,18 +220,19 @@ export function ChatComposer(props: ChatComposerProps) {
                 menuPlacement="top-right"
               >
                 <Dropdown.Trigger
+                  disabled={props.modelOptions.length === 0}
                   rounded="rounded-full"
-                  className="inline-flex h-9 items-center gap-2 border-0! px-3 text-xs text-main-300 shadow-none ring-0! hover:bg-main-600/70 hover:text-main-50"
+                  className={`inline-flex h-9 items-center gap-2 border-0! px-3 text-xs text-main-300 shadow-none ring-0! hover:bg-main-600/70 hover:text-main-50`}
                 >
                   <span className="flex items-center">
-                    {selectedModel.label}
+                    {selectedModel?.label ?? "Нет моделей"}
                   </span>
                 </Dropdown.Trigger>
                 <Dropdown.Menu
                   rounded="rounded-4xl"
                   className="p-1.5 space-y-2"
                 >
-                  {models.map((item) => (
+                  {props.modelOptions.map((item) => (
                     <Dropdown.Item
                       key={item.value}
                       active={props.model === item.value}
@@ -273,7 +264,7 @@ export function ChatComposer(props: ChatComposerProps) {
                   rounded="rounded-full"
                   label="Отправить"
                   className="inline-flex size-9 items-center justify-center border-0! p-0 shadow-none ring-0!"
-                  disabled={!props.text.trim()}
+                  disabled={!props.text.trim() || !selectedModel}
                   onClick={props.onSend}
                 >
                   <SendIcon className="size-4" />

@@ -20,6 +20,7 @@ import { AutomationDataSource } from './infrastructure/database/automation.data-
 import { SqliteAutomationRepository } from './infrastructure/repositories/sqlite-automation.repository'
 import { BUILTIN_AUTOMATION_TOOLS } from './infrastructure/automation/builtin-tools.registry'
 import { ProviderConnectionService } from './infrastructure/text-generation/provider-connection.service'
+import { TextProviderDataSource } from './infrastructure/database/text-provider.data-source'
 import {
   registerTextProviderHandlers,
   removeTextProviderHandlers
@@ -40,7 +41,8 @@ app.whenReady().then(() => {
   registerAppHandlers()
   registerSecretStorageHandlers(secretRepository)
   registerAutomationHandlers(automationRepository)
-  registerTextProviderHandlers(new ProviderConnectionService(secretRepository))
+  const providerDataSource = new TextProviderDataSource(database)
+  registerTextProviderHandlers(new ProviderConnectionService(secretRepository, providerDataSource))
   createMainWindow()
 
   app.on('activate', () => {

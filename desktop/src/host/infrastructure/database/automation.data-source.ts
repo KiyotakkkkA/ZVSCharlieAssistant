@@ -15,6 +15,7 @@ interface AgentRow {
   description: string;
   instructions: string;
   model: string;
+  text_model_id: string | null;
   status: AutomationAgent["status"];
   require_dangerous_action_confirmation: number;
   max_tool_calls: number;
@@ -47,7 +48,7 @@ export class AutomationDataSource {
   listAgents(): AutomationAgent[] {
     const rows = this.database
       .prepare(
-        `SELECT id, name, description, instructions, model, status,
+        `SELECT id, name, description, instructions, model, text_model_id, status,
                 require_dangerous_action_confirmation, max_tool_calls,
                 timeout_seconds, runs, updated_at
          FROM automation_agents
@@ -60,7 +61,7 @@ export class AutomationDataSource {
   findAgent(id: string): AutomationAgent | undefined {
     const row = this.database
       .prepare(
-        `SELECT id, name, description, instructions, model, status,
+        `SELECT id, name, description, instructions, model, text_model_id, status,
                 require_dangerous_action_confirmation, max_tool_calls,
                 timeout_seconds, runs, updated_at
          FROM automation_agents WHERE id = ?`,
@@ -75,6 +76,12 @@ export class AutomationDataSource {
     );
   }
 
+  textModelExists(id: string): boolean {
+    const separator = id.indexOf(":");
+    if (separator < 1) return false;
+    return Boolean(this.database.prepare("SELECT 1 FROM text_provider_models m JOIN text_provider_configs p ON p.id=m.provider_id WHERE m.provider_id=? AND m.remote_id=? AND m.enabled=1 AND p.enabled=1").get(id.slice(0, separator), id.slice(separator + 1)));
+  }
+
   upsertAgent(
     id: string,
     input: UpsertAutomationAgentInput,
@@ -83,15 +90,16 @@ export class AutomationDataSource {
       this.database
         .prepare(
           `INSERT INTO automation_agents (
-             id, name, description, instructions, model, status,
+             id, name, description, instructions, model, text_model_id, status,
              require_dangerous_action_confirmation, max_tool_calls,
              timeout_seconds
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(id) DO UPDATE SET
              name = excluded.name,
              description = excluded.description,
              instructions = excluded.instructions,
              model = excluded.model,
+             text_model_id = excluded.text_model_id,
              status = excluded.status,
              require_dangerous_action_confirmation = excluded.require_dangerous_action_confirmation,
              max_tool_calls = excluded.max_tool_calls,
@@ -103,7 +111,8 @@ export class AutomationDataSource {
           input.name,
           input.description,
           input.instructions,
-          input.model,
+          input.textModelId,
+          input.textModelId,
           input.status,
           Number(input.requireDangerousActionConfirmation),
           input.maxToolCalls,
@@ -247,7 +256,7 @@ export class AutomationDataSource {
       name: row.name,
       description: row.description,
       instructions: row.instructions,
-      model: row.model,
+      textModelId: row.text_model_id,
       status: row.status,
       allowedToolIds,
       secretBindings,

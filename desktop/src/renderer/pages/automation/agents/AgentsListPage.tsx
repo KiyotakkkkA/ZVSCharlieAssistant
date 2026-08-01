@@ -13,7 +13,7 @@ import { RobotIcon } from "../../../components/atoms";
 import { AutomationAgentCard } from "../../../components/molecules";
 import { DangerModal, PageHeader } from "../../../components/organisms";
 import { useHashRouter } from "../../../hooks";
-import { automationStore } from "../../../stores";
+import { automationStore, textProviderStore } from "../../../stores";
 import { useMemo, useState } from "react";
 import {
   ControlButton,
@@ -77,7 +77,11 @@ export const AgentsListPage = observer(function AgentsListPage() {
     {
       key: "model",
       title: "Модель",
-      render: (agent) => <span className="text-main-300">{agent.model}</span>,
+      render: (agent) => {
+        const value = agent.textModelId;
+        const separator = value?.indexOf(":") ?? -1;
+        return <span className="text-main-300">{value && separator > 0 ? textProviderStore.modelLabel(Number(value.slice(0, separator)), value.slice(separator + 1)) : "Не настроена"}</span>;
+      },
     },
     {
       key: "tools",

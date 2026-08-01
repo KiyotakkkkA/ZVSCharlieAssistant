@@ -1,6 +1,7 @@
 import type {
   SecretCategory,
   SecretEntity,
+  SecretRecord,
   SecretStorageSnapshot,
   UpsertSecretCategoryInput,
   UpsertSecretInput,
@@ -12,5 +13,5 @@ export interface SecretStorageRepository {
   upsertSecret(input: UpsertSecretInput): SecretEntity;
   deleteCategory(id: number): void;
   deleteSecret(id: number): void;
-  getSecret(id: number): SecretEntity | undefined;
+  getSecret(id: number): SecretRecord | undefined;
 }

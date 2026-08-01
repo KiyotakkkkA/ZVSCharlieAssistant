@@ -116,7 +116,7 @@ export const StorageSecretsPage = observer(function StorageSecretsPage() {
 
   const copySecret = async (secret: SecretEntity) => {
     try {
-      await navigator.clipboard.writeText(secret.content);
+      await window.desktop.secrets.copySecret(secret.id);
       toasts.success({
         title: "Секрет скопирован",
       });

@@ -172,6 +172,44 @@ const migrations: readonly Migration[] = [
       `);
     },
   },
+  {
+    version: 5,
+    up(database) {
+      database.exec(`
+        CREATE TABLE text_provider_configs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          kind TEXT NOT NULL,
+          name TEXT NOT NULL,
+          base_url TEXT NOT NULL,
+          api_key_secret_id INTEGER,
+          enabled INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1)),
+          checked_at TEXT NOT NULL,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (api_key_secret_id) REFERENCES secret_entities(id)
+            ON UPDATE CASCADE ON DELETE SET NULL
+        );
+
+        CREATE TABLE text_provider_models (
+          provider_id INTEGER NOT NULL,
+          remote_id TEXT NOT NULL,
+          name TEXT NOT NULL,
+          modified_at TEXT NOT NULL DEFAULT '',
+          size INTEGER NOT NULL DEFAULT 0,
+          digest TEXT NOT NULL DEFAULT '',
+          details_json TEXT NOT NULL DEFAULT '{}',
+          enabled INTEGER NOT NULL DEFAULT 0 CHECK (enabled IN (0, 1)),
+          PRIMARY KEY (provider_id, remote_id),
+          FOREIGN KEY (provider_id) REFERENCES text_provider_configs(id)
+            ON UPDATE CASCADE ON DELETE CASCADE
+        );
+
+        ALTER TABLE automation_agents ADD COLUMN text_model_id TEXT;
+        CREATE INDEX idx_text_provider_models_enabled
+          ON text_provider_models(provider_id, enabled);
+      `);
+    },
+  },
 ];
 
 export function runMigrations(database: Database.Database): void {

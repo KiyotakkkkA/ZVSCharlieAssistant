@@ -29,7 +29,7 @@ export function SettingsSecretManageForm({
 }: SettingsSecretManageFormProps) {
   const toasts = useToasts();
   const [label, setLabel] = useState(model?.label ?? "");
-  const [content, setContent] = useState(model?.content ?? "");
+  const [content, setContent] = useState("");
   const [categoryId, setCategoryId] = useState(
     String(model?.categoryId ?? categories[0]?.id ?? ""),
   );
@@ -45,7 +45,7 @@ export function SettingsSecretManageForm({
 
   useEffect(() => {
     setLabel(model?.label ?? "");
-    setContent(model?.content ?? "");
+    setContent("");
     setCategoryId(String(model?.categoryId ?? categories[0]?.id ?? ""));
   }, [categories, model]);
 
@@ -57,7 +57,7 @@ export function SettingsSecretManageForm({
         id: model?.id,
         categoryId: Number(categoryId),
         label,
-        content,
+        content: content.trim() || undefined,
       });
       toasts.success({ title: model ? "Секрет обновлён" : "Секрет создан" });
       onConfirm();
@@ -109,9 +109,9 @@ export function SettingsSecretManageForm({
           preset="password"
           value={content}
           onChange={(event) => setContent(event.target.value)}
-          placeholder="Введите секретное значение"
+          placeholder={model ? "Оставьте пустым, чтобы сохранить текущее значение" : "Введите секретное значение"}
           autoComplete="off"
-          required
+          required={!model}
         />
       </label>
 

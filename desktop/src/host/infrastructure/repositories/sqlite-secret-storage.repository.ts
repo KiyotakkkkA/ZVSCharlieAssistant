@@ -1,6 +1,7 @@
 import type {
   SecretCategory,
   SecretEntity,
+  SecretRecord,
   SecretStorageSnapshot,
   UpsertSecretCategoryInput,
   UpsertSecretInput,
@@ -22,11 +23,11 @@ export class SqliteSecretStorageRepository implements SecretStorageRepository {
   getSnapshot(): SecretStorageSnapshot {
     return {
       categories: this.dataSource.listCategories(),
-      secrets: this.dataSource.listSecrets(),
+      secrets: this.dataSource.listSecrets().map(({ content: _content, ...secret }) => secret),
     };
   }
 
-  getSecret(id: number): SecretEntity | undefined {
+  getSecret(id: number): SecretRecord | undefined {
     return this.dataSource.findSecret(id);
   }
 
@@ -40,13 +41,14 @@ export class SqliteSecretStorageRepository implements SecretStorageRepository {
   upsertSecret(input: UpsertSecretInput): SecretEntity {
     if (!this.dataSource.categoryExists(input.categoryId))
       throw new Error("Выбранная категория не существует");
-    if (!input.content.trim())
+    if (input.id === undefined && !input.content?.trim())
       throw new Error("Содержимое секрета обязательно");
 
-    return this.dataSource.upsertSecret({
+    const { content: _content, ...secret } = this.dataSource.upsertSecret({
       ...input,
       label: normalizeLabel(input.label),
     });
+    return secret;
   }
 
   deleteCategory(id: number): void {

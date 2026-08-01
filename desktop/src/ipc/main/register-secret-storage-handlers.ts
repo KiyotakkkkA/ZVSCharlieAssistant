@@ -1,4 +1,4 @@
-import { ipcMain } from "electron";
+import { clipboard, ipcMain } from "electron";
 import type { SecretStorageRepository } from "../../host/domain/repositories/secret-storage.repository";
 import {
   SECRET_IPC_CHANNELS,
@@ -17,6 +17,11 @@ export function registerSecretStorageHandlers(
     (_event, input: UpsertSecretCategoryInput) =>
       repository.upsertCategory(input),
   );
+  ipcMain.handle(SECRET_IPC_CHANNELS.copySecret, (_event, id: number) => {
+    const secret = repository.getSecret(id);
+    if (!secret) throw new Error("Секрет не найден");
+    clipboard.writeText(secret.content);
+  });
   ipcMain.handle(
     SECRET_IPC_CHANNELS.upsertSecret,
     (_event, input: UpsertSecretInput) => repository.upsertSecret(input),

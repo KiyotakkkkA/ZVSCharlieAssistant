@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { observer } from "mobx-react-lite";
 import {
   Badge,
   Button,
+  EmptyState,
   InputCheckSlided,
   InputSmall,
   ScrollArea,
@@ -14,13 +16,19 @@ import {
   RobotIcon,
   SaveIcon,
   SecretOrientedSelect,
+  TrashIcon,
 } from "../../../components/atoms";
 import { SettingsProviderModelCard } from "../../../components/molecules";
-import { PageHeader } from "../../../components/organisms";
+import { DangerModal, PageHeader } from "../../../components/organisms";
 import type {
   TextProviderKind,
   TextProviderModelInfo,
 } from "../../../../ipc/contracts";
+import { textProviderStore } from "../../../stores";
+import {
+  ControlButton,
+  CreateButton,
+} from "@renderer/components/atoms/buttons";
 
 const API_KEYS_CATEGORY_ID = 1;
 type ProviderStatus = "connected" | "unchecked" | "error";
@@ -28,7 +36,7 @@ interface ProviderModel extends TextProviderModelInfo {
   enabled: boolean;
 }
 interface ProviderDraft {
-  id: string;
+  id: number | null;
   name: string;
   kind: TextProviderKind;
   baseUrl: string;
@@ -38,19 +46,6 @@ interface ProviderDraft {
   models: ProviderModel[];
   checkedAt?: string;
 }
-
-const initialProviders: ProviderDraft[] = [
-  {
-    id: "ollama-local",
-    name: "Локальный Ollama",
-    kind: "ollama",
-    baseUrl: "http://127.0.0.1:11434",
-    apiKeySecretId: "",
-    enabled: true,
-    status: "unchecked",
-    models: [],
-  },
-];
 
 const statusMeta: Record<ProviderStatus, { label: string; className: string }> =
   {
@@ -68,23 +63,59 @@ const statusMeta: Record<ProviderStatus, { label: string; className: string }> =
     },
   };
 
-export function SettingsProvidersPage() {
+export const SettingsProvidersPage = observer(function SettingsProvidersPage() {
   const toasts = useToasts();
-  const [providers, setProviders] = useState(initialProviders);
-  const [selectedId, setSelectedId] = useState(initialProviders[0]!.id);
-  const [checkingId, setCheckingId] = useState<string | null>(null);
-  const selected = providers.find((item) => item.id === selectedId)!;
-  const checking = checkingId === selectedId;
+  const [providers, setProviders] = useState<ProviderDraft[]>([]);
+  const [selectedId, setSelectedId] = useState<number | "draft" | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [providerToDelete, setProviderToDelete] =
+    useState<ProviderDraft | null>(null);
+  const selected = providers.find(
+    (item) => item.id === (selectedId === "draft" ? null : selectedId),
+  );
   const canSave =
-    selected.status === "connected" &&
+    selected?.status === "connected" &&
     !checking &&
     Boolean(selected.name.trim()) &&
     Boolean(selected.baseUrl.trim());
 
+  useEffect(() => {
+    if (!textProviderStore.initialized) return;
+    if (!textProviderStore.providers.length) {
+      setProviders((current) =>
+        current.some((item) => item.id === null) ? current : [],
+      );
+      setSelectedId((current) => (current === "draft" ? current : null));
+      return;
+    }
+    const persisted = textProviderStore.providers.map(
+      (provider): ProviderDraft => ({
+        ...provider,
+        apiKeySecretId: provider.apiKeySecretId?.toString() ?? "",
+        status: "connected",
+        models: textProviderStore.models.filter(
+          (model) => model.providerId === provider.id,
+        ),
+      }),
+    );
+    setProviders(persisted);
+    setSelectedId((current) =>
+      persisted.some((item) => item.id === current)
+        ? current
+        : persisted[0]!.id,
+    );
+  }, [
+    textProviderStore.initialized,
+    textProviderStore.providers,
+    textProviderStore.models,
+  ]);
+
   const updateSelected = (patch: Partial<ProviderDraft>) => {
     setProviders((current) =>
       current.map((item) =>
-        item.id === selectedId ? { ...item, ...patch } : item,
+        item.id === (selectedId === "draft" ? null : selectedId)
+          ? { ...item, ...patch }
+          : item,
       ),
     );
   };
@@ -97,6 +128,7 @@ export function SettingsProvidersPage() {
     });
   };
   const updateModel = (modelId: string, enabled: boolean) => {
+    if (!selected) return;
     updateSelected({
       models: selected.models.map((model) =>
         model.id === modelId ? { ...model, enabled } : model,
@@ -104,11 +136,10 @@ export function SettingsProvidersPage() {
     });
   };
   const createProvider = () => {
-    const id = `ollama-${Date.now()}`;
     setProviders((current) => [
-      ...current,
+      ...current.filter((item) => item.id !== null),
       {
-        id,
+        id: null,
         name: "Новое подключение Ollama",
         kind: "ollama",
         baseUrl: "http://127.0.0.1:11434",
@@ -118,12 +149,12 @@ export function SettingsProvidersPage() {
         models: [],
       },
     ]);
-    setSelectedId(id);
+    setSelectedId("draft");
   };
 
   const testConnection = async () => {
-    if (checking) return;
-    setCheckingId(selected.id);
+    if (checking || !selected) return;
+    setChecking(true);
     try {
       const result = await window.desktop.textProviders.testConnection({
         kind: selected.kind,
@@ -143,7 +174,7 @@ export function SettingsProvidersPage() {
                   ...model,
                   enabled:
                     provider.models.find((item) => item.id === model.id)
-                      ?.enabled ?? true,
+                      ?.enabled ?? false,
                 })),
               }
             : provider,
@@ -161,9 +192,36 @@ export function SettingsProvidersPage() {
           error instanceof Error ? error.message : "Неизвестная ошибка",
       });
     } finally {
-      setCheckingId(null);
+      setChecking(false);
     }
   };
+
+  if (!selected) {
+    return (
+      <section className="flex h-full min-h-0 flex-col overflow-hidden p-4">
+        <PageHeader
+          title="Провайдеры моделей"
+          description="Подключайте модели для чата и агентов."
+          breadcrumbs={[{ label: "Настройки" }, { label: "Провайдеры" }]}
+        >
+          <CreateButton label="Добавить провайдера" onClick={createProvider} />
+        </PageHeader>
+        <div className="grid min-h-0 flex-1 place-items-center rounded-xl bg-main-800/40">
+          <EmptyState
+            icon={<RobotIcon className="size-6" />}
+            title="Провайдеров пока нет"
+            description="Добавьте провайдера генерации текста, проверьте подключение и выберите доступные модели."
+            action={
+              <CreateButton
+                label="Добавить провайдера"
+                onClick={createProvider}
+              />
+            }
+          />
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="flex h-full min-h-0 flex-col overflow-hidden p-4">
@@ -172,15 +230,7 @@ export function SettingsProvidersPage() {
         description="Подключайте модели для чата и агентов."
         breadcrumbs={[{ label: "Настройки" }, { label: "Провайдеры" }]}
       >
-        <Button
-          variant="primary"
-          rounded="rounded-full"
-          className="px-4"
-          onClick={createProvider}
-        >
-          <PlusIcon className="size-4" />
-          Добавить провайдера
-        </Button>
+        <CreateButton label="Добавить провайдера" onClick={createProvider} />
       </PageHeader>
 
       <div className="flex min-h-0 flex-1 gap-3">
@@ -195,11 +245,12 @@ export function SettingsProvidersPage() {
               {providers.map((provider) => {
                 const status = statusMeta[provider.status];
                 return (
-                  <button
-                    key={provider.id}
-                    type="button"
-                    onClick={() => setSelectedId(provider.id)}
-                    className={`flex w-full items-start gap-3 rounded-xl p-3 text-left transition-colors ${provider.id === selectedId ? "bg-main-700/65" : "hover:bg-main-700/35"}`}
+                  <div
+                    key={provider.id ?? "draft"}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setSelectedId(provider.id ?? "draft")}
+                    className={`flex w-full items-start gap-3 rounded-xl p-3 text-left transition-colors ${provider.id === (selectedId === "draft" ? null : selectedId) ? "bg-main-700/65" : "hover:bg-main-700/35"}`}
                   >
                     <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent-medium/10 text-accent-light">
                       <RobotIcon className="size-5" />
@@ -217,14 +268,24 @@ export function SettingsProvidersPage() {
                         {status.label}
                       </span>
                     </span>
-                  </button>
+                    {provider.id !== null ? (
+                      <ControlButton
+                        icon="trash"
+                        variant="delete"
+                        title="Удалить провайдера"
+                        onClick={() => {
+                          setProviderToDelete(provider);
+                        }}
+                      />
+                    ) : null}
+                  </div>
                 );
               })}
             </div>
           </ScrollArea>
         </aside>
 
-        <ScrollArea className="min-h-0 min-w-0 flex-1 rounded-xl bg-main-800/15">
+        <ScrollArea className="min-h-0 min-w-0 flex-1 rounded-xl bg-main-800/40">
           <div className="p-5">
             <div className="flex flex-wrap items-start justify-between gap-4 border-b border-main-700/35 pb-5">
               <div className="flex items-center gap-3">
@@ -244,10 +305,9 @@ export function SettingsProvidersPage() {
                     </Badge>
                   </div>
                   <p className="mt-1 text-xs text-main-500">
-                    ID: {selected.id}
                     {selected.checkedAt
-                      ? ` · Проверен ${new Date(selected.checkedAt).toLocaleTimeString("ru-RU")}`
-                      : ""}
+                      ? `Проверен ${new Date(selected.checkedAt).toLocaleTimeString("ru-RU")}`
+                      : "Подключение ещё не проверено"}
                   </p>
                 </div>
               </div>
@@ -270,10 +330,35 @@ export function SettingsProvidersPage() {
                   disabled={!canSave}
                   title={canSave ? undefined : "Сначала проверьте подключение"}
                   onClick={() =>
-                    toasts.success({
-                      title: "Настройки сохранены",
-                      description: "Пока только в состоянии страницы.",
-                    })
+                    void textProviderStore
+                      .upsert({
+                        id: selected.id ?? undefined,
+                        kind: selected.kind,
+                        name: selected.name,
+                        baseUrl: selected.baseUrl,
+                        apiKeySecretId: selected.apiKeySecretId
+                          ? Number(selected.apiKeySecretId)
+                          : undefined,
+                        enabled: selected.enabled,
+                        enabledModelIds: selected.models
+                          .filter((item) => item.enabled)
+                          .map((item) => item.id),
+                      })
+                      .then(() =>
+                        toasts.success({
+                          title: "Настройки сохранены",
+                          description: "Провайдер доступен чату и агентам.",
+                        }),
+                      )
+                      .catch((error) =>
+                        toasts.danger({
+                          title: "Не удалось сохранить",
+                          description:
+                            error instanceof Error
+                              ? error.message
+                              : "Неизвестная ошибка",
+                        }),
+                      )
                   }
                 >
                   <SaveIcon className="size-4" />
@@ -398,9 +483,28 @@ export function SettingsProvidersPage() {
           </div>
         </ScrollArea>
       </div>
+      {providerToDelete?.id !== null && providerToDelete ? (
+        <DangerModal
+          model={providerToDelete}
+          title="Удалить провайдера?"
+          description={(provider) => (
+            <>
+              Подключение «{provider.name}» и сохранённый список его моделей
+              будут удалены.
+            </>
+          )}
+          onCancel={() => setProviderToDelete(null)}
+          onConfirm={async (provider) => {
+            if (provider.id === null) return;
+            await textProviderStore.delete(provider.id);
+            setProviderToDelete(null);
+            toasts.success({ title: "Провайдер удалён" });
+          }}
+        />
+      ) : null}
     </section>
   );
-}
+});
 
 function SectionLead({
   title,

@@ -8,9 +8,9 @@ export interface SecretEntity {
   id: number;
   categoryId: number;
   label: string;
-  content: string;
   builtin: boolean;
 }
+export interface SecretRecord extends SecretEntity { content: string }
 
 export interface UpsertSecretCategoryInput {
   id?: number;
@@ -21,7 +21,7 @@ export interface UpsertSecretInput {
   id?: number;
   categoryId: number;
   label: string;
-  content: string;
+  content?: string;
 }
 
 export interface SecretStorageSnapshot {
@@ -35,6 +35,7 @@ export interface SecretStorageApi {
   upsertSecret(input: UpsertSecretInput): Promise<SecretEntity>;
   deleteCategory(id: number): Promise<void>;
   deleteSecret(id: number): Promise<void>;
+  copySecret(id: number): Promise<void>;
 }
 
 export const SECRET_IPC_CHANNELS = {
@@ -43,4 +44,5 @@ export const SECRET_IPC_CHANNELS = {
   upsertSecret: "secrets:upsert-secret",
   deleteCategory: "secrets:delete-category",
   deleteSecret: "secrets:delete-secret",
+  copySecret: "secrets:copy-secret",
 } as const;

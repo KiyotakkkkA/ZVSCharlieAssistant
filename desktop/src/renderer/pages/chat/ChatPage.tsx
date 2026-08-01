@@ -9,7 +9,7 @@ import {
   type ChatMode,
   type ChatModel,
 } from "../../components/organisms";
-import { automationStore } from "../../stores";
+import { automationStore, textProviderStore } from "../../stores";
 
 const initialDialogs: ChatDialog[] = [
   {
@@ -37,7 +37,7 @@ const initialDialogs: ChatDialog[] = [
 export const ChatPage = observer(function ChatPage() {
   const [text, setText] = useState("");
   const [mode, setMode] = useState<ChatMode>("chat");
-  const [model, setModel] = useState<ChatModel>("gpt-5");
+  const [model, setModel] = useState<ChatModel>("");
   const [agentId, setAgentId] = useState(automationStore.agents[0]?.id ?? "");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [dialogs, setDialogs] = useState(initialDialogs);
@@ -62,11 +62,19 @@ export const ChatPage = observer(function ChatPage() {
       })),
     [automationStore.agents],
   );
+  const modelOptions = textProviderStore.enabledModels.map((item) => ({
+    value: `${item.providerId}:${item.id}`,
+    label: item.name,
+    description: textProviderStore.providers.find((provider) => provider.id === item.providerId)?.name,
+  }));
 
   useEffect(() => {
     if (!agentId && automationStore.agents[0])
       setAgentId(automationStore.agents[0].id);
   }, [agentId, automationStore.agents]);
+  useEffect(() => {
+    if (!modelOptions.some((item) => item.value === model)) setModel(modelOptions[0]?.value ?? "");
+  }, [model, modelOptions]);
 
   const createDialog = () => {
     const id = `dialog-${Date.now()}`;
@@ -143,6 +151,7 @@ export const ChatPage = observer(function ChatPage() {
           model={model}
           agentId={agentId}
           agentOptions={agentOptions}
+          modelOptions={modelOptions}
           onTextChange={setText}
           onModeChange={setMode}
           onModelChange={setModel}

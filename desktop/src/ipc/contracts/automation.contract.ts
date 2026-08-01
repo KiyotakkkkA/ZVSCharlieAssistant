@@ -22,7 +22,7 @@ export interface AutomationAgent {
   name: string;
   description: string;
   instructions: string;
-  model: string;
+  textModelId: string | null;
   status: AutomationStatus;
   allowedToolIds: string[];
   secretBindings: AgentSecretBinding[];
@@ -38,7 +38,7 @@ export interface UpsertAutomationAgentInput {
   name: string;
   description: string;
   instructions: string;
-  model: string;
+  textModelId: string;
   status: AutomationStatus;
   allowedToolIds: string[];
   secretBindings: AgentSecretBinding[];

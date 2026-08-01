@@ -12,7 +12,11 @@ import type {
   AutomationStatus,
   UpsertAutomationAgentInput,
 } from "../../../../ipc/contracts";
-import { automationStore, secretStorageStore } from "../../../stores";
+import {
+  automationStore,
+  secretStorageStore,
+  textProviderStore,
+} from "../../../stores";
 import { CreateButton } from "@renderer/components/atoms/buttons";
 
 interface AutomationAgentManageFormProps {
@@ -32,6 +36,7 @@ export function AutomationAgentManageForm({
   const [description, setDescription] = useState("");
   const [instructions, setInstructions] = useState("");
   const [status, setStatus] = useState<AutomationStatus>("draft");
+  const [textModelId, setTextModelId] = useState("");
   const [toolModel, setToolModel] = useState<Record<string, boolean>>({});
   const [secretModel, setSecretModel] = useState<Record<string, boolean>>({});
   const [requireConfirmation, setRequireConfirmation] = useState(true);
@@ -41,6 +46,12 @@ export function AutomationAgentManageForm({
     setDescription(model?.description ?? "");
     setInstructions(model?.instructions ?? "");
     setStatus(model?.status ?? "draft");
+    setTextModelId(
+      model?.textModelId ??
+        (textProviderStore.enabledModels[0]
+          ? `${textProviderStore.enabledModels[0].providerId}:${textProviderStore.enabledModels[0].id}`
+          : ""),
+    );
     setRequireConfirmation(model?.requireDangerousActionConfirmation ?? true);
     setToolModel(
       Object.fromEntries(
@@ -80,7 +91,7 @@ export function AutomationAgentManageForm({
       name: name.trim(),
       description: description.trim(),
       instructions: instructions.trim(),
-      model: model?.model ?? "local-default",
+      textModelId,
       status,
       allowedToolIds: selectedToolIds,
       secretBindings: selectedSecretIds.map((secretId) => ({
@@ -156,6 +167,33 @@ export function AutomationAgentManageForm({
           placeholder="Опишите роль агента, порядок работы и критерии готового результата..."
           required
         />
+      </FormSection>
+
+      <FormSection
+        title="Модель"
+        description="Проверенная модель активного провайдера, которая будет выполнять инструкции агента."
+      >
+        <Select
+          value={textModelId}
+          onChange={setTextModelId}
+          options={textProviderStore.enabledModels.map((item) => ({
+            value: `${item.providerId}:${item.id}`,
+            label: textProviderStore.modelLabel(item.providerId, item.id),
+          }))}
+          placeholder="Выберите модель"
+          searchable
+        >
+          <Select.Trigger className="w-full" />
+          <Select.Menu>
+            {textProviderStore.enabledModels.map((item) => (
+              <Select.Option
+                key={`${item.providerId}:${item.id}`}
+                value={`${item.providerId}:${item.id}`}
+                label={textProviderStore.modelLabel(item.providerId, item.id)}
+              />
+            ))}
+          </Select.Menu>
+        </Select>
       </FormSection>
 
       <FormSection
@@ -248,7 +286,8 @@ export function AutomationAgentManageForm({
             submitting ||
             !name.trim() ||
             !description.trim() ||
-            !instructions.trim()
+            !instructions.trim() ||
+            !textModelId
           }
           label={model ? "Сохранить" : "Добавить"}
         ></CreateButton>

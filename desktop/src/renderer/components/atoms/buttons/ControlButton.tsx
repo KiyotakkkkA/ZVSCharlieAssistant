@@ -38,7 +38,10 @@ export const ControlButton = ({
     variant="ghost"
     rounded="rounded-lg"
     className={`size-9 p-0 ${VARIANTS[variant]} ${className || ""}`}
-    onClick={onClick}
+    onClick={(event) => {
+      event.stopPropagation();
+      onClick?.();
+    }}
     disabled={disabled}
     title={title}
   >

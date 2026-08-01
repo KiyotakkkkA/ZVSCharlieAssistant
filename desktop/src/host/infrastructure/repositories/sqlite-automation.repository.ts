@@ -53,6 +53,8 @@ export class SqliteAutomationRepository implements AutomationRepository {
     if (!statuses.has(input.status)) throw new Error("Недопустимый статус агента");
     assertPositiveInteger(input.maxToolCalls, "Лимит инструментов", 10_000);
     assertPositiveInteger(input.timeoutSeconds, "Таймаут", 86_400);
+    const textModelId = normalizeText(input.textModelId, "Модель", 300);
+    if (!this.dataSource.textModelExists(textModelId)) throw new Error("Выбранная модель недоступна");
 
     const allowedToolIds = normalizeIds(input.allowedToolIds);
     this.assertToolsExist(allowedToolIds);
@@ -83,7 +85,7 @@ export class SqliteAutomationRepository implements AutomationRepository {
       name: normalizeText(input.name, "Название", 120),
       description: normalizeText(input.description, "Описание", 500),
       instructions: normalizeText(input.instructions, "Инструкции", 50_000),
-      model: normalizeText(input.model, "Модель", 120),
+      textModelId,
       allowedToolIds,
       secretBindings,
     });

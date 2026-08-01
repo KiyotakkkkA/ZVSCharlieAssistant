@@ -20,6 +20,7 @@ export { AUTOMATION_IPC_CHANNELS } from './automation.contract'
 export type {
   SecretCategory,
   SecretEntity,
+  SecretRecord,
   SecretStorageApi,
   SecretStorageSnapshot,
   UpsertSecretCategoryInput,
@@ -32,6 +33,10 @@ export type {
   TextProviderApi,
   TextProviderKind,
   TextProviderModelDetails,
-  TextProviderModelInfo
+  TextProviderModelInfo,
+  TextProviderConfig,
+  TextProviderModel,
+  TextProviderSnapshot,
+  UpsertTextProviderInput
 } from './text-provider.contract'
 export { TEXT_PROVIDER_IPC_CHANNELS } from './text-provider.contract'

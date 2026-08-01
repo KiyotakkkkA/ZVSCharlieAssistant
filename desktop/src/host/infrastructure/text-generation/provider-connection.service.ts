@@ -1,9 +1,12 @@
 import type { SecretStorageRepository } from "../../domain/repositories/secret-storage.repository";
+import type { TextProviderRepository } from "../../domain/repositories/text-provider.repository";
 import type {
   TestTextProviderConnectionInput,
   TestTextProviderConnectionResult,
   TextProviderKind,
   TextProviderModelInfo,
+  TextProviderSnapshot,
+  UpsertTextProviderInput,
 } from "../../../ipc/contracts";
 
 const API_KEYS_CATEGORY_ID = 1;
@@ -90,7 +93,14 @@ export class ProviderConnectionService {
     ollama: new OllamaConnectionChecker(),
   };
 
-  constructor(private readonly secrets: SecretStorageRepository) {}
+  constructor(
+    private readonly secrets: SecretStorageRepository,
+    private readonly providers: TextProviderRepository,
+  ) {}
+
+  getSnapshot(): TextProviderSnapshot {
+    return this.providers.getSnapshot();
+  }
 
   async testConnection(
     input: TestTextProviderConnectionInput,
@@ -110,5 +120,23 @@ export class ProviderConnectionService {
 
     const models = await checker.test({ baseUrl: input.baseUrl, apiKey });
     return { models, checkedAt: new Date().toISOString() };
+  }
+
+  async upsertProvider(input: UpsertTextProviderInput): Promise<TextProviderSnapshot> {
+    const name = input.name.trim();
+    if (!name) throw new Error("Название провайдера обязательно");
+    const result = await this.testConnection(input);
+    const availableIds = new Set(result.models.map((model) => model.id));
+    const enabledModelIds = input.enabledModelIds.filter((id) => availableIds.has(id));
+    return this.providers.upsert(
+      { ...input, name, baseUrl: normalizeBaseUrl(input.baseUrl), enabledModelIds },
+      input.id,
+      result.checkedAt,
+      result.models,
+    );
+  }
+
+  deleteProvider(id: number): TextProviderSnapshot {
+    return this.providers.delete(id);
   }
 }

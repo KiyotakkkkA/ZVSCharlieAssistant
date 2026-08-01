@@ -18,6 +18,8 @@ import {
   type UpsertSecretInput,
   type TestTextProviderConnectionInput,
   type TestTextProviderConnectionResult,
+  type TextProviderSnapshot,
+  type UpsertTextProviderInput,
 } from "../contracts";
 
 export const desktopApi: DesktopApi = {
@@ -47,6 +49,7 @@ export const desktopApi: DesktopApi = {
       ) as Promise<void>,
     deleteSecret: (id: number): Promise<void> =>
       ipcRenderer.invoke(SECRET_IPC_CHANNELS.deleteSecret, id) as Promise<void>,
+    copySecret: (id: number): Promise<void> => ipcRenderer.invoke(SECRET_IPC_CHANNELS.copySecret, id) as Promise<void>,
   },
   automation: {
     getSnapshot: (): Promise<AutomationSnapshot> =>
@@ -76,6 +79,7 @@ export const desktopApi: DesktopApi = {
       ) as Promise<void>,
   },
   textProviders: {
+    getSnapshot: (): Promise<TextProviderSnapshot> => ipcRenderer.invoke(TEXT_PROVIDER_IPC_CHANNELS.getSnapshot) as Promise<TextProviderSnapshot>,
     testConnection: (
       input: TestTextProviderConnectionInput,
     ): Promise<TestTextProviderConnectionResult> =>
@@ -83,5 +87,7 @@ export const desktopApi: DesktopApi = {
         TEXT_PROVIDER_IPC_CHANNELS.testConnection,
         input,
       ) as Promise<TestTextProviderConnectionResult>,
+    upsertProvider: (input: UpsertTextProviderInput): Promise<TextProviderSnapshot> => ipcRenderer.invoke(TEXT_PROVIDER_IPC_CHANNELS.upsertProvider, input) as Promise<TextProviderSnapshot>,
+    deleteProvider: (id: number): Promise<TextProviderSnapshot> => ipcRenderer.invoke(TEXT_PROVIDER_IPC_CHANNELS.deleteProvider, id) as Promise<TextProviderSnapshot>,
   },
 };

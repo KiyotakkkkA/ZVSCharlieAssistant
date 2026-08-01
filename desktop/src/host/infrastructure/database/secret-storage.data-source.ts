@@ -2,6 +2,7 @@ import type Database from "better-sqlite3";
 import type {
   SecretCategory,
   SecretEntity,
+  SecretRecord,
   UpsertSecretCategoryInput,
   UpsertSecretInput,
 } from "../../../ipc/contracts";
@@ -26,7 +27,7 @@ const mapCategory = (row: CategoryRow): SecretCategory => ({
   builtin: Boolean(row.builtin),
 });
 
-const mapSecret = (row: SecretRow): SecretEntity => ({
+const mapSecret = (row: SecretRow): SecretRecord => ({
   id: row.id,
   categoryId: row.category_id,
   label: row.label,
@@ -47,7 +48,7 @@ export class SecretStorageDataSource {
     return rows.map(mapCategory);
   }
 
-  listSecrets(): SecretEntity[] {
+  listSecrets(): SecretRecord[] {
     const rows = this.database
       .prepare(
         `SELECT id, category_id, label, content, builtin
@@ -67,7 +68,7 @@ export class SecretStorageDataSource {
     return row ? mapCategory(row) : undefined;
   }
 
-  findSecret(id: number): SecretEntity | undefined {
+  findSecret(id: number): SecretRecord | undefined {
     const row = this.database
       .prepare(
         "SELECT id, category_id, label, content, builtin FROM secret_entities WHERE id = ?",
@@ -100,21 +101,21 @@ export class SecretStorageDataSource {
     return this.findCategory(input.id)!;
   }
 
-  upsertSecret(input: UpsertSecretInput): SecretEntity {
+  upsertSecret(input: UpsertSecretInput): SecretRecord {
     if (input.id === undefined) {
       const result = this.database
         .prepare(
           `INSERT INTO secret_entities (category_id, label, content)
            VALUES (?, ?, ?)`,
         )
-        .run(input.categoryId, input.label, input.content);
+        .run(input.categoryId, input.label, input.content!);
       return this.findSecret(Number(result.lastInsertRowid))!;
     }
 
     const result = this.database
       .prepare(
         `UPDATE secret_entities
-         SET category_id = ?, label = ?, content = ?
+         SET category_id = ?, label = ?, content = COALESCE(?, content)
          WHERE id = ?`,
       )
       .run(input.categoryId, input.label, input.content, input.id);
