@@ -32,7 +32,10 @@ export const APP_PATHS = {
     index: "/storage",
     secrets: "/storage/secrets",
   },
-  settings: "/settings",
+  settings: {
+    index: "/settings",
+    providers: "/settings/providers",
+  },
 } as const;
 
 type LeafPath<T> = T extends string
@@ -96,7 +99,14 @@ export const NAVIGATION_ROUTES: readonly NavigationRoute[] = [
   {
     id: "settings",
     label: "Настройки",
-    path: APP_PATHS.settings,
     icon: SettingsIcon,
+    children: [
+      {
+        id: "settings-providers",
+        label: "Провайдеры",
+        path: APP_PATHS.settings.providers,
+        icon: RobotIcon,
+      },
+    ],
   },
 ] as const;

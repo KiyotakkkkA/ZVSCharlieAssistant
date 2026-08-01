@@ -15,6 +15,7 @@ import {
 import { ToolsListPage } from "./pages/automation/tools";
 import { StorageSecretsPage } from "./pages/storage";
 import { ChatPage } from "./pages/chat";
+import { SettingsProvidersPage } from "./pages/settings/providers";
 import "@fontsource-variable/onest";
 import "./styles/global.css";
 
@@ -72,8 +73,12 @@ createRoot(root).render(
             element={<RoutePage title="Хранилище" />}
           />
           <Route
-            path={APP_PATHS.settings}
-            element={<RoutePage title="Настройки" />}
+            path={APP_PATHS.settings.index}
+            element={<Navigate to={APP_PATHS.settings.providers} replace />}
+          />
+          <Route
+            path={APP_PATHS.settings.providers}
+            element={<SettingsProvidersPage />}
           />
           <Route
             path={APP_PATHS.storage.secrets}

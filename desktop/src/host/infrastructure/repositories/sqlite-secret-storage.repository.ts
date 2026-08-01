@@ -26,6 +26,10 @@ export class SqliteSecretStorageRepository implements SecretStorageRepository {
     };
   }
 
+  getSecret(id: number): SecretEntity | undefined {
+    return this.dataSource.findSecret(id);
+  }
+
   upsertCategory(input: UpsertSecretCategoryInput): SecretCategory {
     return this.dataSource.upsertCategory({
       ...input,

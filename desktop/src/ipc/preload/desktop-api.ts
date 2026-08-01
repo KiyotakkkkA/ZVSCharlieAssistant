@@ -3,6 +3,7 @@ import {
   AUTOMATION_IPC_CHANNELS,
   IPC_CHANNELS,
   SECRET_IPC_CHANNELS,
+  TEXT_PROVIDER_IPC_CHANNELS,
   type AppInfo,
   type AutomationAgent,
   type AutomationScenario,
@@ -15,6 +16,8 @@ import {
   type UpsertAutomationScenarioInput,
   type UpsertSecretCategoryInput,
   type UpsertSecretInput,
+  type TestTextProviderConnectionInput,
+  type TestTextProviderConnectionResult,
 } from "../contracts";
 
 export const desktopApi: DesktopApi = {
@@ -71,5 +74,14 @@ export const desktopApi: DesktopApi = {
         AUTOMATION_IPC_CHANNELS.deleteScenario,
         id,
       ) as Promise<void>,
+  },
+  textProviders: {
+    testConnection: (
+      input: TestTextProviderConnectionInput,
+    ): Promise<TestTextProviderConnectionResult> =>
+      ipcRenderer.invoke(
+        TEXT_PROVIDER_IPC_CHANNELS.testConnection,
+        input,
+      ) as Promise<TestTextProviderConnectionResult>,
   },
 };

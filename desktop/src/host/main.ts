@@ -19,6 +19,11 @@ import {
 import { AutomationDataSource } from './infrastructure/database/automation.data-source'
 import { SqliteAutomationRepository } from './infrastructure/repositories/sqlite-automation.repository'
 import { BUILTIN_AUTOMATION_TOOLS } from './infrastructure/automation/builtin-tools.registry'
+import { ProviderConnectionService } from './infrastructure/text-generation/provider-connection.service'
+import {
+  registerTextProviderHandlers,
+  removeTextProviderHandlers
+} from '../ipc/main/register-text-provider-handlers'
 
 let database: ReturnType<typeof createSqliteDatabase> | undefined
 
@@ -35,6 +40,7 @@ app.whenReady().then(() => {
   registerAppHandlers()
   registerSecretStorageHandlers(secretRepository)
   registerAutomationHandlers(automationRepository)
+  registerTextProviderHandlers(new ProviderConnectionService(secretRepository))
   createMainWindow()
 
   app.on('activate', () => {
@@ -46,6 +52,7 @@ app.on('before-quit', () => {
   removeAppHandlers()
   removeSecretStorageHandlers()
   removeAutomationHandlers()
+  removeTextProviderHandlers()
   database?.close()
   database = undefined
 })

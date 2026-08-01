@@ -12,4 +12,5 @@ export interface DesktopApi {
   getAppInfo(): Promise<AppInfo>;
   secrets: import("./secrets.contract").SecretStorageApi;
   automation: import("./automation.contract").AutomationApi;
+  textProviders: import("./text-provider.contract").TextProviderApi;
 }

@@ -78,7 +78,7 @@ export function SettingsSecretManageForm({
         <InputSmall
           value={label}
           onChange={(event) => setLabel(event.target.value)}
-          placeholder="Например, OpenAI API key"
+          placeholder="Введите название секрета..."
           maxLength={120}
           autoFocus
           required
