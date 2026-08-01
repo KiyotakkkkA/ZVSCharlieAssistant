@@ -85,10 +85,22 @@ export class TextProviderDataSource {
         if (!result.changes) throw new Error("Провайдер не найден");
       }
       this.database
-        .prepare("DELETE FROM text_provider_models WHERE provider_id=?")
+        .prepare(
+          "UPDATE text_provider_models SET enabled=0 WHERE provider_id=?",
+        )
         .run(providerId);
       const insert = this.database.prepare(
-        "INSERT INTO text_provider_models (provider_id, remote_id, name, modified_at, size, digest, details_json, enabled) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        `INSERT INTO text_provider_models (
+           provider_id, remote_id, name, modified_at, size, digest,
+           details_json, enabled
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(provider_id, remote_id) DO UPDATE SET
+           name = excluded.name,
+           modified_at = excluded.modified_at,
+           size = excluded.size,
+           digest = excluded.digest,
+           details_json = excluded.details_json,
+           enabled = excluded.enabled`,
       );
       for (const model of models)
         insert.run(
