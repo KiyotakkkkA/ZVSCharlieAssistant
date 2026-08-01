@@ -14,6 +14,7 @@ import {
 } from "./pages/automation/scenarios";
 import { ToolsListPage } from "./pages/automation/tools";
 import { StorageSecretsPage } from "./pages/storage";
+import { ChatPage } from "./pages/chat";
 import "@fontsource-variable/onest";
 import "./styles/global.css";
 
@@ -27,7 +28,7 @@ createRoot(root).render(
       <Routes>
         <Route element={<App />}>
           <Route index element={<RoutePage title="Главная" />} />
-          <Route path={APP_PATHS.chat} element={<RoutePage title="Чат" />} />
+          <Route path={APP_PATHS.chat} element={<ChatPage />} />
           <Route
             path={APP_PATHS.tasks}
             element={<RoutePage title="Задачи" />}

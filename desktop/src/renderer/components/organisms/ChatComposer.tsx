@@ -1,0 +1,292 @@
+import { useRef, type KeyboardEvent, type MouseEvent } from "react";
+import {
+  Button,
+  Dropdown,
+  InputBig,
+  Select,
+  Tooltip,
+  type SelectOption,
+} from "@kiyotakkkka/zvs-uikit-lib";
+import {
+  CalendarIcon,
+  ChatIcon,
+  FileIcon,
+  PaperclipIcon,
+  RobotIcon,
+  SendIcon,
+  StorageIcon,
+  UploadIcon,
+} from "../atoms";
+
+export type ChatMode = "chat" | "planner" | "agent";
+export type ChatModel = "gpt-5" | "sonnet" | "gemini";
+
+const models = [
+  {
+    value: "gpt-5" as const,
+    label: "GPT-5",
+    description: "Универсальная модель",
+  },
+  {
+    value: "sonnet" as const,
+    label: "Sonnet 4.5",
+    description: "Быстрые сложные задачи",
+  },
+  {
+    value: "gemini" as const,
+    label: "Gemini 2.5 Pro",
+    description: "Большой контекст",
+  },
+];
+const modes = [
+  {
+    value: "chat" as const,
+    label: "Чат",
+    description: "Свободный диалог",
+    icon: ChatIcon,
+  },
+  {
+    value: "planner" as const,
+    label: "Планировщик",
+    description: "Разобрать задачу на шаги",
+    icon: CalendarIcon,
+  },
+  {
+    value: "agent" as const,
+    label: "Агенты",
+    description: "Передать задачу исполнителю",
+    icon: RobotIcon,
+  },
+];
+
+interface ChatComposerProps {
+  text: string;
+  mode: ChatMode;
+  model: ChatModel;
+  agentId: string;
+  agentOptions: SelectOption[];
+  onTextChange: (value: string) => void;
+  onModeChange: (value: ChatMode) => void;
+  onModelChange: (value: ChatModel) => void;
+  onAgentChange: (value: string) => void;
+  onSend: () => void;
+}
+
+export function ChatComposer(props: ChatComposerProps) {
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const selectedMode = modes.find((item) => item.value === props.mode)!;
+  const selectedModel = models.find((item) => item.value === props.model)!;
+  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      props.onSend();
+    }
+  };
+
+  const focusInputFromContainer = (event: MouseEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement;
+    if (
+      target.closest(
+        "button, input, textarea, select, a, [role='button'], [data-no-composer-focus]",
+      )
+    ) {
+      return;
+    }
+    inputRef.current?.focus();
+  };
+
+  return (
+    <div className="pointer-events-none inset-x-0 bottom-0 px-4 pb-4 pt-4">
+      <div className="pointer-events-auto mx-auto max-w-4xl">
+        <div
+          className="cursor-text rounded-3xl border border-main-700 bg-main-800/95 p-2 hover:border-main-600 focus-within:border-main-600"
+          onClick={focusInputFromContainer}
+        >
+          <InputBig
+            ref={inputRef}
+            value={props.text}
+            onChange={(event) => props.onTextChange(event.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Напишите сообщение…"
+            autoResize
+            minRows={2}
+            maxRows={7}
+            classNames={{
+              root: "w-full",
+              textarea:
+                "min-h-14 resize-none border-0 bg-transparent px-3 py-2 text-main-100 shadow-none outline-none ring-0 focus:ring-0 focus:ring-offset-0",
+              footer: "hidden",
+            }}
+          />
+          <div className="flex flex-wrap items-center justify-between gap-2 px-1 pb-1">
+            <div className="flex min-w-0 items-center gap-1.5">
+              <Dropdown
+                className="shrink-0"
+                menuWidth={240}
+                menuPlacement="top-left"
+              >
+                <Tooltip label="Прикрепить файлы" placement="top-left">
+                  <Dropdown.Trigger
+                    icon={<PaperclipIcon className="size-4" />}
+                    rounded="rounded-full"
+                    className="size-9 justify-center gap-0 border-0! bg-transparent px-0 py-0 text-main-400 shadow-none ring-0! hover:bg-main-600/70 hover:text-main-50"
+                    aria-label="Прикрепить"
+                  >
+                    <span className="sr-only">Прикрепить файлы</span>
+                  </Dropdown.Trigger>
+                </Tooltip>
+                <Dropdown.Menu rounded="rounded-xl" className="p-1.5">
+                  <Dropdown.Item
+                    icon={<UploadIcon className="size-4" />}
+                    className="rounded-lg"
+                  >
+                    Загрузить с устройства
+                  </Dropdown.Item>
+                  <Dropdown.Item
+                    icon={<FileIcon className="size-4" />}
+                    className="rounded-lg"
+                  >
+                    Добавить документ
+                  </Dropdown.Item>
+                  <Dropdown.Item
+                    icon={<StorageIcon className="size-4" />}
+                    className="rounded-lg"
+                  >
+                    Выбрать из хранилища
+                  </Dropdown.Item>
+                </Dropdown.Menu>
+              </Dropdown>
+              <Dropdown
+                className="shrink-0"
+                menuWidth={260}
+                menuPlacement="top-left"
+              >
+                <Dropdown.Trigger
+                  rounded="rounded-full"
+                  className="inline-flex h-9 items-center gap-2 border-0! px-3 text-xs text-main-300 shadow-none ring-0! hover:bg-main-600/70 hover:text-main-50"
+                >
+                  <span className="flex items-center gap-2">
+                    <selectedMode.icon className="size-4 shrink-0" />
+                    <span>{selectedMode.label}</span>
+                  </span>
+                </Dropdown.Trigger>
+                <Dropdown.Menu
+                  rounded="rounded-4xl"
+                  className="p-1.5 space-y-2"
+                >
+                  {modes.map((item) => (
+                    <Dropdown.Item
+                      key={item.value}
+                      active={props.mode === item.value}
+                      icon={<item.icon className="size-4" />}
+                      className="rounded-3xl"
+                      onClick={() => props.onModeChange(item.value)}
+                    >
+                      <span className="block text-left">
+                        <span className="block text-sm font-medium">
+                          {item.label}
+                        </span>
+                        <span className="block text-xs text-main-500">
+                          {item.description}
+                        </span>
+                      </span>
+                    </Dropdown.Item>
+                  ))}
+                </Dropdown.Menu>
+              </Dropdown>
+              {props.mode === "agent" ? (
+                <Select
+                  className="max-w-48 w-fit shrink-0"
+                  value={props.agentId}
+                  onChange={props.onAgentChange}
+                  options={props.agentOptions}
+                  placeholder="Выберите агента"
+                  searchable
+                  searchPlaceholder="Найти агента"
+                  emptyMessage="Агенты не найдены"
+                  menuWidth={240}
+                  menuPlacement="top-left"
+                >
+                  <Select.Trigger
+                    rounded="rounded-full"
+                    className="h-9 w-full border-0! px-3 text-xs shadow-none ring-0! hover:bg-main-600/70"
+                  />
+                  <Select.Menu rounded="rounded-3xl">
+                    {props.agentOptions.map((agent) => (
+                      <Select.Option
+                        key={agent.value}
+                        {...agent}
+                        rounded="rounded-full"
+                      />
+                    ))}
+                  </Select.Menu>
+                </Select>
+              ) : null}
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Dropdown
+                className="shrink-0"
+                menuWidth={260}
+                menuPlacement="top-right"
+              >
+                <Dropdown.Trigger
+                  rounded="rounded-full"
+                  className="inline-flex h-9 items-center gap-2 border-0! px-3 text-xs text-main-300 shadow-none ring-0! hover:bg-main-600/70 hover:text-main-50"
+                >
+                  <span className="flex items-center">
+                    {selectedModel.label}
+                  </span>
+                </Dropdown.Trigger>
+                <Dropdown.Menu
+                  rounded="rounded-4xl"
+                  className="p-1.5 space-y-2"
+                >
+                  {models.map((item) => (
+                    <Dropdown.Item
+                      key={item.value}
+                      active={props.model === item.value}
+                      className="rounded-3xl"
+                      onClick={() => props.onModelChange(item.value)}
+                    >
+                      <span className="block text-left">
+                        <span className="block text-sm font-medium">
+                          {item.label}
+                        </span>
+                        <span className="block text-xs text-main-500">
+                          {item.description}
+                        </span>
+                      </span>
+                    </Dropdown.Item>
+                  ))}
+                </Dropdown.Menu>
+              </Dropdown>
+              <Tooltip
+                label={
+                  props.text.trim()
+                    ? "Отправить сообщение"
+                    : "Введите сообщение"
+                }
+                placement="top-right"
+              >
+                <Button
+                  variant="primary"
+                  rounded="rounded-full"
+                  label="Отправить"
+                  className="inline-flex size-9 items-center justify-center border-0! p-0 shadow-none ring-0!"
+                  disabled={!props.text.trim()}
+                  onClick={props.onSend}
+                >
+                  <SendIcon className="size-4" />
+                </Button>
+              </Tooltip>
+            </div>
+          </div>
+        </div>
+        <p className="mt-2 text-center text-[11px] text-main-600">
+          Ответы модели могут содержать неточности — проверяйте важную
+          информацию.
+        </p>
+      </div>
+    </div>
+  );
+}
