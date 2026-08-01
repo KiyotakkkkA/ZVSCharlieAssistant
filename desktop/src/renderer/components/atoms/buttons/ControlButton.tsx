@@ -19,12 +19,14 @@ const VARIANTS = {
 };
 
 export const ControlButton = ({
+  className,
   disabled = false,
   icon = "edit",
   title,
   variant = "manage",
   onClick,
 }: {
+  className?: string;
   disabled?: boolean;
   icon?: keyof typeof ICONS;
   title?: string;
@@ -35,7 +37,7 @@ export const ControlButton = ({
   <Button
     variant="ghost"
     rounded="rounded-lg"
-    className={`size-9 p-0 ${VARIANTS[variant]}`}
+    className={`size-9 p-0 ${VARIANTS[variant]} ${className || ""}`}
     onClick={onClick}
     disabled={disabled}
     title={title}

@@ -4,12 +4,12 @@ import {
   ScrollArea,
   Tooltip,
 } from "@kiyotakkkka/zvs-uikit-lib";
-import { ChatIcon, PlusIcon } from "../atoms";
+import { PlusIcon } from "../atoms";
+import { ControlButton } from "../atoms/buttons";
 
 export interface ChatDialog {
   id: string;
   title: string;
-  preview: string;
   date: string;
 }
 
@@ -64,23 +64,30 @@ export function ChatSidebar({
             <button
               key={dialog.id}
               type="button"
-              className={`flex w-full gap-3 rounded-xl p-3 text-left transition-colors ${activeDialogId === dialog.id ? "bg-main-700/65" : "hover:bg-main-700/40"}`}
+              className={`flex w-full min-h-10 gap-3 items-center rounded-xl px-3 text-left transition-colors ${activeDialogId === dialog.id ? "bg-main-700/65" : "hover:bg-main-700/40"} group`}
               onClick={() => onSelect(dialog)}
             >
-              <span
-                className={`mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg ${activeDialogId === dialog.id ? "bg-main-600 text-accent-light" : "bg-main-800 text-main-500"}`}
-              >
-                <ChatIcon className="size-4" />
-              </span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-medium text-main-200">
                   {dialog.title}
                 </span>
-                <span className="mt-1 block truncate text-xs text-main-500">
-                  {dialog.preview}
-                </span>
               </span>
-              <span className="text-[10px] text-main-400">{dialog.date}</span>
+              <span className="text-[10px] text-main-400 group-hover:hidden">
+                {dialog.date}
+              </span>
+              <div className="ml-auto gap-1 hidden transition-opacity group-hover:flex space-x-1">
+                <ControlButton
+                  className="size-6"
+                  icon="edit"
+                  title="Изменить"
+                />
+                <ControlButton
+                  className="size-6"
+                  icon="trash"
+                  variant="delete"
+                  title="Удалить"
+                />
+              </div>
             </button>
           ))}
           {dialogs.length === 0 ? (

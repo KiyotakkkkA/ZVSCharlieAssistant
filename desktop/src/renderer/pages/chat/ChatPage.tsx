@@ -15,25 +15,21 @@ const initialDialogs: ChatDialog[] = [
   {
     id: "new",
     title: "Новый диалог",
-    preview: "Начните новый разговор",
     date: "Сейчас",
   },
   {
     id: "project-plan",
     title: "План запуска проекта",
-    preview: "Разбили работу на пять этапов",
     date: "Вчера",
   },
   {
     id: "data-review",
     title: "Анализ отчёта",
-    preview: "Ключевые выводы и рекомендации",
     date: "28 июл.",
   },
   {
     id: "agent-task",
     title: "Задача для агента",
-    preview: "Подготовить структуру документа",
     date: "25 июл.",
   },
 ];
@@ -54,9 +50,7 @@ export const ChatPage = observer(function ChatPage() {
     const normalized = dialogQuery.trim().toLocaleLowerCase();
     return normalized
       ? dialogs.filter((dialog) =>
-          `${dialog.title} ${dialog.preview}`
-            .toLocaleLowerCase()
-            .includes(normalized),
+          `${dialog.title}`.toLocaleLowerCase().includes(normalized),
         )
       : dialogs;
   }, [dialogQuery, dialogs]);
@@ -79,7 +73,6 @@ export const ChatPage = observer(function ChatPage() {
     const dialog: ChatDialog = {
       id,
       title: "Новый диалог",
-      preview: "Начните новый разговор",
       date: "Сейчас",
     };
     setDialogs((current) => [dialog, ...current]);
