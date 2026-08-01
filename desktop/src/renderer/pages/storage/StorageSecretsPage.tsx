@@ -67,7 +67,7 @@ const modalNameResolver = (dialog: ManageDialog) => {
   return "";
 };
 
-export const SettingsSecretsPage = observer(function SettingsSecretsPage() {
+export const StorageSecretsPage = observer(function StorageSecretsPage() {
   const store = secretStorageStore;
   const toasts = useToasts();
   const [activeSection, setActiveSection] = useState<ActiveSection>("secrets");
@@ -303,7 +303,7 @@ export const SettingsSecretsPage = observer(function SettingsSecretsPage() {
       <PageHeader
         title="Менеджер секретов"
         description="Управляйте ключами, токенами и учётными данными, которые используют ваши агенты."
-        breadcrumbs={[{ label: "Настройки" }, { label: "Секреты" }]}
+        breadcrumbs={[{ label: "Хранилище" }, { label: "Секреты" }]}
         footer={
           <div className="flex w-full items-center justify-between">
             <Tabs

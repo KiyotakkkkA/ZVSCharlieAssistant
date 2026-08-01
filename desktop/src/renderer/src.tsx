@@ -13,7 +13,7 @@ import {
   ScenariosListPage,
 } from "./pages/automation/scenarios";
 import { ToolsListPage } from "./pages/automation/tools";
-import { SettingsSecretsPage } from "./pages/settings";
+import { StorageSecretsPage } from "./pages/storage";
 import "@fontsource-variable/onest";
 import "./styles/global.css";
 
@@ -67,16 +67,16 @@ createRoot(root).render(
             element={<ScenarioGraphEditorPage />}
           />
           <Route
-            path={APP_PATHS.storage}
+            path={APP_PATHS.storage.index}
             element={<RoutePage title="Хранилище" />}
           />
           <Route
-            path={APP_PATHS.settings.index}
+            path={APP_PATHS.settings}
             element={<RoutePage title="Настройки" />}
           />
           <Route
-            path={APP_PATHS.settings.secrets}
-            element={<SettingsSecretsPage />}
+            path={APP_PATHS.storage.secrets}
+            element={<StorageSecretsPage />}
           />
           <Route path="*" element={<Navigate to={APP_PATHS.home} replace />} />
         </Route>

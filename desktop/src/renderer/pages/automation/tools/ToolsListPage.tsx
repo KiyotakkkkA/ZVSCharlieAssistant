@@ -112,6 +112,7 @@ export const ToolsListPage = observer(function ToolsListPage() {
       )}
 
       <Modal
+        rounded="rounded-4xl"
         open={selectedTool !== null}
         onClose={() => setSelectedTool(null)}
         className="max-w-3xl"

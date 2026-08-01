@@ -28,11 +28,11 @@ export const APP_PATHS = {
       edit: "/automation/scenarios/:scenarioId",
     },
   },
-  storage: "/storage",
-  settings: {
-    index: "/settings",
-    secrets: "/settings/secrets",
+  storage: {
+    index: "/storage",
+    secrets: "/storage/secrets",
   },
+  settings: "/settings",
 } as const;
 
 type LeafPath<T> = T extends string
@@ -83,20 +83,20 @@ export const NAVIGATION_ROUTES: readonly NavigationRoute[] = [
   {
     id: "storage",
     label: "Хранилище",
-    path: APP_PATHS.storage,
     icon: StorageIcon,
+    children: [
+      {
+        id: "storage-secrets",
+        label: "Секреты",
+        path: APP_PATHS.storage.secrets,
+        icon: LockIcon,
+      },
+    ],
   },
   {
     id: "settings",
     label: "Настройки",
+    path: APP_PATHS.settings,
     icon: SettingsIcon,
-    children: [
-      {
-        id: "settings-secrets",
-        label: "Секреты",
-        path: APP_PATHS.settings.secrets,
-        icon: LockIcon,
-      },
-    ],
   },
 ] as const;

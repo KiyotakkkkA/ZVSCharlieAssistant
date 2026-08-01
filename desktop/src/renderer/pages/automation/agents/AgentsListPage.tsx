@@ -2,6 +2,7 @@ import { observer } from "mobx-react-lite";
 import {
   EmptyState,
   InputSmall,
+  Switcher,
   useToasts,
 } from "@kiyotakkkka/zvs-uikit-lib";
 import { APP_PATHS } from "../../../app/routes";
@@ -81,7 +82,8 @@ export const AgentsListPage = observer(function AgentsListPage() {
           title="Удалить агента"
           description={(agent) => (
             <p>
-              Агент <span className="font-medium text-main-50">{agent.name}</span>{" "}
+              Агент{" "}
+              <span className="font-medium text-main-50">{agent.name}</span>{" "}
               будет удалён без возможности восстановления. Сценарии, где он
               используется, потребуется проверить вручную.
             </p>
