@@ -1,13 +1,16 @@
 import { observer } from "mobx-react-lite";
 import {
-  Button,
   EmptyState,
+  InputSmall,
+  ScrollArea,
+  Switcher,
   Table,
   useToasts,
   type TableColumn,
 } from "@kiyotakkkka/zvs-uikit-lib";
 import { APP_PATHS } from "../../../app/routes";
 import { TasksIcon } from "../../../components/atoms";
+import { AutomationScenarioCard } from "../../../components/molecules";
 import { DangerModal, PageHeader } from "../../../components/organisms";
 import type { AutomationScenario } from "../../../../ipc/contracts";
 import { useHashRouter } from "../../../hooks";
@@ -16,7 +19,7 @@ import {
   ControlButton,
   CreateButton,
 } from "@renderer/components/atoms/buttons";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 interface ScenarioRow extends AutomationScenario {
   [key: string]: unknown;
@@ -25,8 +28,23 @@ interface ScenarioRow extends AutomationScenario {
 export const ScenariosListPage = observer(function ScenariosListPage() {
   const { goTo } = useHashRouter();
   const toasts = useToasts();
+  const [query, setQuery] = useState("");
+  const [viewMode, setViewMode] = useState<"table" | "cards">("cards");
   const [scenarioToDelete, setScenarioToDelete] =
     useState<AutomationScenario | null>(null);
+  const scenarios = useMemo(() => {
+    const normalized = query.trim().toLocaleLowerCase();
+    return normalized
+      ? automationStore.scenarios.filter((scenario) =>
+          scenario.name.toLocaleLowerCase().includes(normalized),
+        )
+      : automationStore.scenarios;
+  }, [query, automationStore.scenarios]);
+
+  const editScenario = (scenario: AutomationScenario) =>
+    goTo(
+      APP_PATHS.automation.scenarios.edit.replace(":scenarioId", scenario.id),
+    );
   const columns: Array<TableColumn<ScenarioRow>> = [
     {
       key: "name",
@@ -85,14 +103,7 @@ export const ScenariosListPage = observer(function ScenariosListPage() {
         <div className="flex justify-end gap-1">
           <ControlButton
             title="Открыть редактор"
-            onClick={() =>
-              goTo(
-                APP_PATHS.automation.scenarios.edit.replace(
-                  ":scenarioId",
-                  scenario.id,
-                ),
-              )
-            }
+            onClick={() => editScenario(scenario)}
           />
           <ControlButton
             title="Удалить сценарий"
@@ -106,22 +117,52 @@ export const ScenariosListPage = observer(function ScenariosListPage() {
   ];
 
   return (
-    <section className="flex min-h-full flex-col p-4">
+    <section className="flex h-full min-h-0 flex-col overflow-hidden p-4">
       <PageHeader
         title="Сценарии"
         description="Объединяйте агентов в управляемые последовательности выполнения."
         breadcrumbs={[{ label: "Автоматизация" }, { label: "Сценарии" }]}
       >
-        <CreateButton
-          label="Добавить сценарий"
-          onClick={() => goTo(APP_PATHS.automation.scenarios.create)}
-        />
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Switcher
+            value={viewMode}
+            onChange={(value) => setViewMode(value as "table" | "cards")}
+            options={[
+              { value: "table", label: "Таблица" },
+              { value: "cards", label: "Карточки" },
+            ]}
+          />
+          <InputSmall
+            preset="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            onClear={() => setQuery("")}
+            placeholder="Найти сценарий"
+            className="w-64"
+          />
+          <CreateButton
+            label="Добавить сценарий"
+            onClick={() => goTo(APP_PATHS.automation.scenarios.create)}
+          />
+        </div>
       </PageHeader>
 
-      {automationStore.scenarios.length ? (
-        <div className="overflow-hidden p-1">
+      <ScrollArea className="min-h-0 flex-1 p-1">
+      {scenarios.length && viewMode === "cards" ? (
+        <div className="grid gap-3 xl:grid-cols-3">
+          {scenarios.map((scenario) => (
+            <AutomationScenarioCard
+              key={scenario.id}
+              scenario={scenario}
+              onEdit={editScenario}
+              onDelete={setScenarioToDelete}
+            />
+          ))}
+        </div>
+      ) : scenarios.length ? (
+        <div className="overflow-hidden">
           <Table<ScenarioRow>
-            data={automationStore.scenarios.map((scenario) => ({
+            data={scenarios.map((scenario) => ({
               ...scenario,
             }))}
             columns={columns}
@@ -136,10 +177,10 @@ export const ScenariosListPage = observer(function ScenariosListPage() {
         <div className="grid min-h-80 place-items-center">
           <EmptyState
             icon={<TasksIcon className="size-6" />}
-            title="Сценариев пока нет"
-            description="Создайте первый сценарий автоматизации."
+            title={query ? "Сценарии не найдены" : "Сценариев пока нет"}
+            description={query ? "Измените поисковый запрос." : "Создайте первый сценарий автоматизации."}
             action={
-              <CreateButton
+              query ? undefined : <CreateButton
                 label="Добавить сценарий"
                 onClick={() => goTo(APP_PATHS.automation.scenarios.create)}
               />
@@ -147,6 +188,7 @@ export const ScenariosListPage = observer(function ScenariosListPage() {
           />
         </div>
       )}
+      </ScrollArea>
 
       {scenarioToDelete ? (
         <DangerModal

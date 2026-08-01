@@ -1,8 +1,11 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { observer } from "mobx-react-lite";
 import {
   Button,
   EmptyState,
+  InputSmall,
+  ScrollArea,
+  Switcher,
   Table,
   Tabs,
   useToasts,
@@ -23,6 +26,10 @@ import {
   SettingsSecretManageForm,
 } from "../../components/organisms/forms";
 import { DangerModal, FormModal, PageHeader } from "../../components/organisms";
+import {
+  StorageSecretCard,
+  StorageSecretCategoryCard,
+} from "../../components/molecules";
 import { secretStorageStore } from "../../stores";
 import {
   ControlButton,
@@ -71,7 +78,25 @@ export const StorageSecretsPage = observer(function StorageSecretsPage() {
   const store = secretStorageStore;
   const toasts = useToasts();
   const [activeSection, setActiveSection] = useState<ActiveSection>("secrets");
+  const [query, setQuery] = useState("");
+  const [viewMode, setViewMode] = useState<"table" | "cards">("cards");
   const [dialog, setDialog] = useState<ManageDialog>(null);
+  const filteredSecrets = useMemo(() => {
+    const normalized = query.trim().toLocaleLowerCase();
+    return normalized
+      ? store.secrets.filter((secret) =>
+          secret.label.toLocaleLowerCase().includes(normalized),
+        )
+      : store.secrets;
+  }, [query, store.secrets]);
+  const filteredCategories = useMemo(() => {
+    const normalized = query.trim().toLocaleLowerCase();
+    return normalized
+      ? store.categories.filter((category) =>
+          category.label.toLocaleLowerCase().includes(normalized),
+        )
+      : store.categories;
+  }, [query, store.categories]);
 
   const openCreateDialog = () => {
     if (activeSection === "secrets" && store.categories.length === 0) {
@@ -268,6 +293,15 @@ export const StorageSecretsPage = observer(function StorageSecretsPage() {
     }
 
     const isSecrets = activeSection === "secrets";
+    if (query) {
+      return (
+        <EmptyState
+          icon={isSecrets ? <KeyIcon className="size-6" /> : <FolderIcon className="size-6" />}
+          title={isSecrets ? "Секреты не найдены" : "Категории не найдены"}
+          description="Измените поисковый запрос."
+        />
+      );
+    }
     return (
       <EmptyState
         icon={
@@ -295,11 +329,11 @@ export const StorageSecretsPage = observer(function StorageSecretsPage() {
 
   const dataIsEmpty =
     activeSection === "secrets"
-      ? store.secrets.length === 0
-      : store.categories.length === 0;
+      ? filteredSecrets.length === 0
+      : filteredCategories.length === 0;
 
   return (
-    <section className="flex min-h-full flex-col p-4">
+    <section className="flex h-full min-h-0 flex-col overflow-hidden p-4">
       <PageHeader
         title="Менеджер секретов"
         description="Управляйте ключами, токенами и учётными данными, которые используют ваши агенты."
@@ -326,24 +360,63 @@ export const StorageSecretsPage = observer(function StorageSecretsPage() {
           </div>
         }
       >
-        <CreateButton
-          label={
-            activeSection === "secrets"
-              ? "Добавить секрет"
-              : "Добавить категорию"
-          }
-          onClick={openCreateDialog}
-        />
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Switcher
+            value={viewMode}
+            onChange={(value) => setViewMode(value as "table" | "cards")}
+            options={[
+              { value: "table", label: "Таблица" },
+              { value: "cards", label: "Карточки" },
+            ]}
+          />
+          <InputSmall
+            preset="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            onClear={() => setQuery("")}
+            placeholder={activeSection === "secrets" ? "Найти секрет" : "Найти категорию"}
+            className="w-64"
+          />
+          <CreateButton
+            label={activeSection === "secrets" ? "Добавить секрет" : "Добавить категорию"}
+            onClick={openCreateDialog}
+          />
+        </div>
       </PageHeader>
 
-      <div className="min-h-64 flex-1 p-1">
+      <ScrollArea className="min-h-0 flex-1 p-1">
         {dataIsEmpty || store.error ? (
           <div className="grid min-h-80 place-items-center">
             {renderEmptyState()}
           </div>
+        ) : activeSection === "secrets" && viewMode === "cards" ? (
+          <div className="grid gap-3 xl:grid-cols-3">
+            {filteredSecrets.map((secret) => (
+              <StorageSecretCard
+                key={secret.id}
+                secret={secret}
+                categoryLabel={store.categoryLabel(secret.categoryId)}
+                onCopy={(item) => void copySecret(item)}
+                onEdit={(item) => setDialog({ kind: "secret", model: item, action: "upsert" })}
+                onDelete={(item) => setDialog({ kind: "secret", model: item, action: "delete" })}
+              />
+            ))}
+          </div>
+        ) : activeSection === "categories" && viewMode === "cards" ? (
+          <div className="grid gap-3 xl:grid-cols-3">
+            {filteredCategories.map((category) => (
+              <StorageSecretCategoryCard
+                key={category.id}
+                category={category}
+                secretsCount={store.secrets.filter((secret) => secret.categoryId === category.id).length}
+                onEdit={(item) => setDialog({ kind: "category", model: item, action: "upsert" })}
+                onDelete={(item) => setDialog({ kind: "category", model: item, action: "delete" })}
+              />
+            ))}
+          </div>
         ) : activeSection === "secrets" ? (
           <Table<SecretTableRow>
-            data={store.secrets.map((secret) => ({ ...secret }))}
+            data={filteredSecrets.map((secret) => ({ ...secret }))}
             columns={secretColumns}
             rowKey="id"
             classNames={{
@@ -353,7 +426,7 @@ export const StorageSecretsPage = observer(function StorageSecretsPage() {
           />
         ) : (
           <Table<CategoryTableRow>
-            data={store.categories.map((category) => ({ ...category }))}
+            data={filteredCategories.map((category) => ({ ...category }))}
             columns={categoryColumns}
             rowKey="id"
             classNames={{
@@ -362,7 +435,7 @@ export const StorageSecretsPage = observer(function StorageSecretsPage() {
             }}
           />
         )}
-      </div>
+      </ScrollArea>
 
       {dialog?.kind === "secret" && dialog.action === "upsert" ? (
         <FormModal

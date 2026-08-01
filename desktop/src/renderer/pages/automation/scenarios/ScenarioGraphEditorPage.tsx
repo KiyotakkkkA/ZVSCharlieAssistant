@@ -282,7 +282,7 @@ export const ScenarioGraphEditorPage = observer(
     };
 
     return (
-      <section className="-m-2 flex h-[calc(100%+1rem)] min-h-155 flex-col overflow-hidden bg-main-900">
+      <section className="-m-2 flex h-[calc(100%+1rem)] min-h-0 flex-col overflow-hidden bg-main-900">
         <header className="flex h-20 shrink-0 items-center justify-between gap-4 border-b border-main-800 px-4">
           <div className="flex min-w-0 items-center gap-3">
             <Button

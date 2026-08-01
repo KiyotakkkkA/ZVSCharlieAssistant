@@ -1,15 +1,19 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { observer } from "mobx-react-lite";
 import {
   Button,
   CodeView,
   EmptyState,
+  InputSmall,
   Modal,
+  ScrollArea,
+  Switcher,
   Table,
   type TableColumn,
 } from "@kiyotakkkka/zvs-uikit-lib";
 import { EyeIcon, SettingsIcon } from "../../../components/atoms";
 import { PageHeader } from "../../../components/organisms";
+import { AutomationToolCard } from "../../../components/molecules";
 import type { AutomationTool } from "../../../../ipc/contracts";
 import { automationStore } from "../../../stores";
 import { ControlButton } from "@renderer/components/atoms/buttons";
@@ -20,6 +24,16 @@ interface ToolRow extends AutomationTool {
 
 export const ToolsListPage = observer(function ToolsListPage() {
   const [selectedTool, setSelectedTool] = useState<AutomationTool | null>(null);
+  const [query, setQuery] = useState("");
+  const [viewMode, setViewMode] = useState<"table" | "cards">("cards");
+  const tools = useMemo(() => {
+    const normalized = query.trim().toLocaleLowerCase();
+    return normalized
+      ? automationStore.tools.filter((tool) =>
+          `${tool.name} ${tool.id}`.toLocaleLowerCase().includes(normalized),
+        )
+      : automationStore.tools;
+  }, [query, automationStore.tools]);
 
   const columns: Array<TableColumn<ToolRow>> = [
     {
@@ -82,17 +96,43 @@ export const ToolsListPage = observer(function ToolsListPage() {
   ];
 
   return (
-    <section className="flex min-h-full flex-col p-4">
+    <section className="flex h-full min-h-0 flex-col overflow-hidden p-4">
       <PageHeader
         title="Инструменты"
         description="Встроенные возможности приложения, которые можно разрешать агентам."
         breadcrumbs={[{ label: "Автоматизация" }, { label: "Инструменты" }]}
-      />
+      >
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Switcher
+            value={viewMode}
+            onChange={(value) => setViewMode(value as "table" | "cards")}
+            options={[
+              { value: "table", label: "Таблица" },
+              { value: "cards", label: "Карточки" },
+            ]}
+          />
+          <InputSmall
+            preset="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            onClear={() => setQuery("")}
+            placeholder="Найти инструмент"
+            className="w-64"
+          />
+        </div>
+      </PageHeader>
 
-      {automationStore.tools.length ? (
-        <div className="overflow-hidden p-1">
+      <ScrollArea className="min-h-0 flex-1 p-1">
+      {tools.length && viewMode === "cards" ? (
+        <div className="grid gap-3 xl:grid-cols-3">
+          {tools.map((tool) => (
+            <AutomationToolCard key={tool.id} tool={tool} onOpen={setSelectedTool} />
+          ))}
+        </div>
+      ) : tools.length ? (
+        <div className="overflow-hidden">
           <Table<ToolRow>
-            data={automationStore.tools.map((tool) => ({ ...tool }))}
+            data={tools.map((tool) => ({ ...tool }))}
             columns={columns}
             rowKey="id"
             classNames={{
@@ -106,10 +146,11 @@ export const ToolsListPage = observer(function ToolsListPage() {
           <EmptyState
             icon={<SettingsIcon className="size-6" />}
             title="Инструменты не найдены"
-            description="В приложении пока не зарегистрировано встроенных инструментов."
+            description={query ? "Измените поисковый запрос." : "В приложении пока не зарегистрировано встроенных инструментов."}
           />
         </div>
       )}
+      </ScrollArea>
 
       <Modal
         rounded="rounded-4xl"
