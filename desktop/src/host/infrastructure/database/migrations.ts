@@ -149,17 +149,20 @@ const migrations: readonly Migration[] = [
           description TEXT NOT NULL DEFAULT '',
           status TEXT NOT NULL DEFAULT 'draft'
             CHECK (status IN ('draft', 'active', 'disabled')),
-          graph_json TEXT NOT NULL,
+          active_revision_id INTEGER,
           last_run_at TEXT,
           created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
           updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
 
-        CREATE TABLE automation_scenario_tool_settings (
+        CREATE TABLE automation_scenario_revisions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
           scenario_id TEXT NOT NULL,
-          tool_id TEXT NOT NULL,
-          settings_json TEXT NOT NULL DEFAULT '{}',
-          PRIMARY KEY (scenario_id, tool_id),
+          version INTEGER NOT NULL,
+          graph_json TEXT NOT NULL,
+          tool_settings_json TEXT NOT NULL DEFAULT '[]',
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE (scenario_id, version),
           FOREIGN KEY (scenario_id)
             REFERENCES automation_scenarios(id)
             ON UPDATE CASCADE
@@ -170,6 +173,8 @@ const migrations: readonly Migration[] = [
           ON automation_agents(status);
         CREATE INDEX idx_automation_scenarios_status
           ON automation_scenarios(status);
+        CREATE INDEX idx_automation_scenario_revisions_scenario
+          ON automation_scenario_revisions(scenario_id, version DESC);
       `);
     },
   },
@@ -218,7 +223,7 @@ const migrations: readonly Migration[] = [
         CREATE TABLE chat_conversations (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           title TEXT NOT NULL DEFAULT 'Новый диалог',
-          mode TEXT NOT NULL DEFAULT 'chat' CHECK (mode IN ('chat', 'planner', 'agent')),
+          mode TEXT NOT NULL DEFAULT 'chat' CHECK (mode IN ('chat', 'planner', 'agent', 'scenario')),
           agent_id TEXT,
           model_id INTEGER,
           created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -249,6 +254,7 @@ const migrations: readonly Migration[] = [
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           conversation_id INTEGER NOT NULL,
           run_id INTEGER,
+          execution_run_id INTEGER,
           role TEXT NOT NULL CHECK (role IN ('system','user','assistant','tool')),
           status TEXT NOT NULL DEFAULT 'completed' CHECK (status IN ('streaming','completed','failed','cancelled')),
           content_json TEXT NOT NULL DEFAULT '[]',
@@ -297,6 +303,45 @@ const migrations: readonly Migration[] = [
         );
         CREATE INDEX idx_chat_messages_conversation ON chat_messages(conversation_id, id);
         CREATE INDEX idx_generation_runs_conversation ON generation_runs(conversation_id, id);
+
+        CREATE TABLE execution_runs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          kind TEXT NOT NULL CHECK (kind IN ('scenario')),
+          origin TEXT NOT NULL CHECK (origin IN ('manual','chat','background')),
+          scenario_id TEXT NOT NULL,
+          scenario_revision_id INTEGER NOT NULL,
+          conversation_id INTEGER,
+          status TEXT NOT NULL CHECK (status IN ('queued','running','waiting_for_approval','completed','failed','cancelled')),
+          input_json TEXT NOT NULL DEFAULT '{}',
+          output_json TEXT,
+          error_message TEXT,
+          started_at TEXT,
+          completed_at TEXT,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (scenario_id) REFERENCES automation_scenarios(id) ON DELETE CASCADE,
+          FOREIGN KEY (scenario_revision_id) REFERENCES automation_scenario_revisions(id) ON DELETE RESTRICT,
+          FOREIGN KEY (conversation_id) REFERENCES chat_conversations(id) ON DELETE SET NULL
+        );
+
+        CREATE TABLE scenario_node_runs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          execution_id INTEGER NOT NULL,
+          node_id TEXT NOT NULL,
+          node_kind TEXT NOT NULL,
+          attempt INTEGER NOT NULL DEFAULT 1,
+          status TEXT NOT NULL CHECK (status IN ('queued','running','waiting_for_approval','completed','failed','cancelled')),
+          input_json TEXT NOT NULL DEFAULT '{}',
+          output_json TEXT,
+          error_message TEXT,
+          started_at TEXT,
+          completed_at TEXT,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(execution_id, node_id, attempt),
+          FOREIGN KEY (execution_id) REFERENCES execution_runs(id) ON DELETE CASCADE
+        );
+
+        CREATE INDEX idx_execution_runs_scenario ON execution_runs(scenario_id, id DESC);
+        CREATE INDEX idx_scenario_node_runs_execution ON scenario_node_runs(execution_id, id);
       `);
     },
   },

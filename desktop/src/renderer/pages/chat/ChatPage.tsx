@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { observer } from "mobx-react-lite";
-import { Button, InputSmall, Modal } from "@kiyotakkkka/zvs-uikit-lib";
+import { Button, InputSmall, Modal, useToasts } from "@kiyotakkkka/zvs-uikit-lib";
 import {
   ChatComposer,
   ChatFeed,
@@ -13,26 +13,34 @@ import {
 import { automationStore, chatStore, textProviderStore } from "../../stores";
 
 export const ChatPage = observer(function ChatPage() {
+  const toasts = useToasts();
   const [text, setText] = useState("");
   const [mode, setMode] = useState<ChatMode>("chat");
   const [model, setModel] = useState<ChatModel>("");
   const [agentId, setAgentId] = useState("");
+  const [scenarioId, setScenarioId] = useState("");
   const [query, setQuery] = useState("");
   const [dialogToEdit, setDialogToEdit] = useState<ChatDialog | null>(null);
   const [dialogToDelete, setDialogToDelete] = useState<ChatDialog | null>(null);
   const [dialogTitle, setDialogTitle] = useState("");
   const [renaming, setRenaming] = useState(false);
-  const modelOptions = textProviderStore.enabledModels.map((item) => ({
+  const nextModelOptions = textProviderStore.enabledModels.map((item) => ({
     value: String(item.id),
     label: item.name,
     description: textProviderStore.providers.find(
       (p) => p.id === item.providerId,
     )?.name,
   }));
-  const agentOptions = automationStore.agents.map((agent) => ({
+  const nextAgentOptions = automationStore.agents.map((agent) => ({
     value: agent.id,
     label: agent.name,
   }));
+  const nextScenarioOptions = automationStore.scenarios
+    .filter((scenario) => scenario.status === "active")
+    .map((scenario) => ({ value: scenario.id, label: scenario.name }));
+  const modelOptions = useStableOptions(nextModelOptions);
+  const agentOptions = useStableOptions(nextAgentOptions);
+  const scenarioOptions = useStableOptions(nextScenarioOptions);
   useEffect(() => {
     if (!modelOptions.some((item) => item.value === model))
       setModel(modelOptions[0]?.value ?? "");
@@ -40,6 +48,10 @@ export const ChatPage = observer(function ChatPage() {
   useEffect(() => {
     if (!agentId && agentOptions[0]) setAgentId(agentOptions[0].value);
   }, [agentId, agentOptions]);
+  useEffect(() => {
+    if (!scenarioOptions.some((item) => item.value === scenarioId))
+      setScenarioId(scenarioOptions[0]?.value ?? "");
+  }, [scenarioId, scenarioOptions]);
   const dialogs = useMemo(
     () =>
       chatStore.conversations
@@ -60,16 +72,24 @@ export const ChatPage = observer(function ChatPage() {
   );
   const send = () => {
     const value = text.trim();
-    if (!value || !model || chatStore.activeRunId) return;
+    if (!value || (mode !== "scenario" && !model) || chatStore.activeRunId)
+      return;
     setText("");
     void chatStore
       .start({
         mode,
-        modelId: Number(model),
+        modelId: mode === "scenario" ? undefined : Number(model),
         agentId: mode === "agent" ? agentId : undefined,
+        scenarioId: mode === "scenario" ? scenarioId : undefined,
         text: value,
       })
-      .catch(() => setText(value));
+      .catch((error: unknown) => {
+        setText(value);
+        toasts.danger({
+          title: mode === "scenario" ? "Не удалось запустить сценарий" : "Не удалось отправить сообщение",
+          description: readableError(error),
+        });
+      });
   };
   return (
     <section className="flex h-full min-h-0 overflow-hidden rounded-lg">
@@ -97,24 +117,30 @@ export const ChatPage = observer(function ChatPage() {
               role: item.role as "user" | "assistant",
               text: item.text,
               reasoning: item.reasoning,
+              scenarioRunId: item.scenarioRunId,
               status: item.status,
             }))}
           onSuggestionSelect={setText}
           hasMore={chatStore.hasMoreMessages}
           loadingEarlier={chatStore.loadingEarlier}
           onLoadEarlier={() => chatStore.loadEarlier()}
+          scenarioExecutions={new Map(chatStore.scenarioExecutions.entries())}
+          scenarioNodeOutput={new Map(chatStore.scenarioNodeOutput.entries())}
         />
         <ChatComposer
           text={text}
           mode={mode}
           model={model}
           agentId={agentId}
+          scenarioId={scenarioId}
           agentOptions={agentOptions}
+          scenarioOptions={scenarioOptions}
           modelOptions={modelOptions}
           onTextChange={setText}
           onModeChange={setMode}
           onModelChange={setModel}
           onAgentChange={setAgentId}
+          onScenarioChange={setScenarioId}
           onSend={send}
           running={chatStore.activeRunId !== null}
           onCancel={() => void chatStore.cancel()}
@@ -130,6 +156,16 @@ export const ChatPage = observer(function ChatPage() {
           confirmLabel="Разрешить"
           onCancel={() => void chatStore.approve(false)}
           onConfirm={() => chatStore.approve(true)}
+        />
+      ) : null}
+      {chatStore.pendingScenarioApproval ? (
+        <DangerModal
+          model={chatStore.pendingScenarioApproval}
+          title="Продолжить сценарий?"
+          description={(approval) => approval.prompt}
+          confirmLabel="Продолжить"
+          onCancel={() => void chatStore.approveScenario(false)}
+          onConfirm={() => chatStore.approveScenario(true)}
         />
       ) : null}
       {dialogToDelete ? (
@@ -201,3 +237,15 @@ export const ChatPage = observer(function ChatPage() {
     </section>
   );
 });
+
+function readableError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.replace(/^Error invoking remote method '[^']+':\s*/i, "");
+}
+
+function useStableOptions<T>(options: T[]): T[] {
+  const key = JSON.stringify(options);
+  const cache = useRef({ key, options });
+  if (cache.current.key !== key) cache.current = { key, options };
+  return cache.current.options;
+}

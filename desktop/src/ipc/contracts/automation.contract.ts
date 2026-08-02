@@ -48,7 +48,12 @@ export interface UpsertAutomationAgentInput {
 }
 
 export type AutomationScenarioNodeKind =
-  "trigger" | "agent" | "condition" | "approval" | "output";
+  | "trigger"
+  | "orchestrator"
+  | "agent"
+  | "condition"
+  | "approval"
+  | "output";
 
 export interface AutomationScenarioNode {
   id: string;
@@ -62,8 +67,12 @@ export interface AutomationScenarioNode {
 
 export interface AutomationScenarioEdge {
   id: string;
+  kind: "control" | "worker";
   source: string;
   target: string;
+  sourcePort?: string;
+  targetPort?: string;
+  condition?: Record<string, unknown>;
 }
 
 export interface AutomationScenarioGraph {
@@ -84,9 +93,65 @@ export interface AutomationScenario {
   status: AutomationStatus;
   graph: AutomationScenarioGraph;
   toolSettings: AutomationScenarioToolSetting[];
+  revisionId: number;
+  version: number;
   nodesCount: number;
   lastRunAt: string | null;
   updatedAt: string;
+}
+
+export type ScenarioRunStatus =
+  | "queued"
+  | "running"
+  | "waiting_for_approval"
+  | "completed"
+  | "failed"
+  | "cancelled";
+
+export type ScenarioRunOrigin = "manual" | "chat" | "background";
+
+export interface ScenarioRun {
+  id: number;
+  scenarioId: string;
+  scenarioRevisionId: number;
+  scenarioName: string;
+  origin: ScenarioRunOrigin;
+  status: ScenarioRunStatus;
+  input: unknown;
+  output: unknown;
+  error: string | null;
+  createdAt: string;
+  startedAt: string | null;
+  completedAt: string | null;
+}
+
+export interface ScenarioNodeRun {
+  id: number;
+  executionId: number;
+  nodeId: string;
+  nodeKind: AutomationScenarioNodeKind;
+  attempt: number;
+  status: ScenarioRunStatus;
+  input: unknown;
+  output: unknown;
+  error: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+}
+
+export type ScenarioRunEvent =
+  | { type: "run.started"; run: ScenarioRun }
+  | { type: "node.started"; runId: number; node: ScenarioNodeRun }
+  | { type: "node.output.delta"; runId: number; nodeId: string; delta: string }
+  | { type: "approval.required"; runId: number; nodeId: string; prompt: string }
+  | { type: "node.completed"; runId: number; node: ScenarioNodeRun }
+  | { type: "run.completed"; run: ScenarioRun }
+  | { type: "run.failed"; run: ScenarioRun }
+  | { type: "run.cancelled"; run: ScenarioRun };
+
+export interface ScenarioValidationResult {
+  valid: boolean;
+  issues: Array<{ nodeId?: string; message: string }>;
 }
 
 export interface UpsertAutomationScenarioInput {
@@ -112,6 +177,12 @@ export interface AutomationApi {
     input: UpsertAutomationScenarioInput,
   ): Promise<AutomationScenario>;
   deleteScenario(id: string): Promise<void>;
+  validateScenario(graph: AutomationScenarioGraph): Promise<ScenarioValidationResult>;
+  startScenario(id: string, input: unknown, origin?: ScenarioRunOrigin): Promise<ScenarioRun>;
+  cancelScenarioRun(id: number): Promise<void>;
+  approveScenarioRun(id: number, approved: boolean): Promise<void>;
+  getScenarioRun(id: number): Promise<{ run: ScenarioRun; nodes: ScenarioNodeRun[] }>;
+  subscribeScenarioRuns(listener: (event: ScenarioRunEvent) => void): () => void;
 }
 
 export const AUTOMATION_IPC_CHANNELS = {
@@ -120,4 +191,10 @@ export const AUTOMATION_IPC_CHANNELS = {
   deleteAgent: "automation:delete-agent",
   upsertScenario: "automation:upsert-scenario",
   deleteScenario: "automation:delete-scenario",
+  validateScenario: "automation:validate-scenario",
+  startScenario: "automation:start-scenario",
+  cancelScenarioRun: "automation:cancel-scenario-run",
+  approveScenarioRun: "automation:approve-scenario-run",
+  getScenarioRun: "automation:get-scenario-run",
+  scenarioRunEvent: "automation:scenario-run-event",
 } as const;

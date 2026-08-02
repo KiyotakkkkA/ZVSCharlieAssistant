@@ -1,4 +1,6 @@
-export type ChatMode = "chat" | "planner" | "agent";
+import type { ScenarioNodeRun, ScenarioRun } from "./automation.contract";
+
+export type ChatMode = "chat" | "planner" | "agent" | "scenario";
 export type RunStatus =
   | "queued"
   | "running"
@@ -18,6 +20,7 @@ export interface ChatMessage {
   id: number;
   conversationId: number;
   runId: number | null;
+  scenarioRunId: number | null;
   role: "system" | "user" | "assistant" | "tool";
   status: "streaming" | "completed" | "failed" | "cancelled";
   text: string;
@@ -29,12 +32,16 @@ export interface ChatSnapshot {
   messages: ChatMessage[];
   hasMoreMessages: boolean;
 }
-export interface ChatMessagePage { messages: ChatMessage[]; hasMore: boolean }
+export interface ChatMessagePage {
+  messages: ChatMessage[];
+  hasMore: boolean;
+}
 export interface StartRunInput {
   conversationId?: number;
   mode: ChatMode;
-  modelId: number;
+  modelId?: number;
   agentId?: string;
+  scenarioId?: string;
   text: string;
 }
 export type RunEvent =
@@ -47,6 +54,10 @@ export type RunEvent =
     }
   | { type: "text.delta"; runId: number; messageId: number; delta: string }
   | { type: "reasoning.delta"; runId: number; messageId: number; delta: string }
+  | { type: "scenario.run"; run: ScenarioRun }
+  | { type: "scenario.node"; runId: number; node: ScenarioNodeRun }
+  | { type: "scenario.node.delta"; runId: number; nodeId: string; delta: string }
+  | { type: "scenario.approval.required"; runId: number; nodeId: string; prompt: string }
   | {
       type: "tool.requested" | "tool.running" | "tool.completed";
       runId: number;
@@ -64,7 +75,10 @@ export type RunEvent =
   | { type: "run.failed"; runId: number; message: string };
 export interface ChatApi {
   getSnapshot(conversationId?: number): Promise<ChatSnapshot>;
-  getMessagesPage(conversationId: number, beforeId?: number): Promise<ChatMessagePage>;
+  getMessagesPage(
+    conversationId: number,
+    beforeId?: number,
+  ): Promise<ChatMessagePage>;
   startRun(
     input: StartRunInput,
   ): Promise<{ runId: number; conversationId: number }>;

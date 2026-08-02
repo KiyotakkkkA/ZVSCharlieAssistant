@@ -24,6 +24,9 @@ import { TextProviderDataSource } from "./infrastructure/database/text-provider.
 import { ChatDataSource } from "./infrastructure/database/chat.data-source";
 import { ProviderRegistry } from "./infrastructure/text-generation/provider.registry";
 import { RunEngine } from "./infrastructure/text-generation/run-engine";
+import { ScenarioCompiler } from "./infrastructure/automation/scenario-compiler";
+import { ScenarioRunEngine } from "./infrastructure/automation/scenario-run-engine";
+import { ScenarioExecutionDataSource } from "./infrastructure/database/scenario-execution.data-source";
 import {
   registerChatHandlers,
   removeChatHandlers,
@@ -47,17 +50,25 @@ app.whenReady().then(() => {
 
   registerAppHandlers();
   registerSecretStorageHandlers(secretRepository);
-  registerAutomationHandlers(automationRepository);
   const providerDataSource = new TextProviderDataSource(database);
   registerTextProviderHandlers(
     new ProviderConnectionService(secretRepository, providerDataSource),
   );
   const chatDataSource = new ChatDataSource(database);
+  const providerRegistry = new ProviderRegistry(chatDataSource, secretRepository);
+  const scenarioExecutions = new ScenarioExecutionDataSource(database);
+  const scenarioEngine = new ScenarioRunEngine(scenarioExecutions, providerRegistry, new ScenarioCompiler());
+  registerAutomationHandlers(
+    automationRepository,
+    scenarioExecutions,
+    scenarioEngine,
+  );
   registerChatHandlers(
     chatDataSource,
     new RunEngine(
       chatDataSource,
-      new ProviderRegistry(chatDataSource, secretRepository),
+      providerRegistry,
+      scenarioEngine,
     ),
   );
   createMainWindow();

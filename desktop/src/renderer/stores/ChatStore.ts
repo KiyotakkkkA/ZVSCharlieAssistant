@@ -4,6 +4,8 @@ import type {
   ChatMessage,
   RunEvent,
   StartRunInput,
+  ScenarioNodeRun,
+  ScenarioRun,
 } from "../../ipc/contracts";
 export class ChatStore {
   conversations: ChatConversation[] = [];
@@ -15,6 +17,14 @@ export class ChatStore {
   loading = false;
   hasMoreMessages = false;
   loadingEarlier = false;
+  activeScenarioRun: ScenarioRun | null = null;
+  scenarioNodeRuns: ScenarioNodeRun[] = [];
+  scenarioNodeOutput = new Map<string, string>();
+  scenarioExecutions = new Map<
+    number,
+    { run: ScenarioRun; nodes: ScenarioNodeRun[] }
+  >();
+  pendingScenarioApproval: { runId: number; nodeId: string; prompt: string } | null = null;
   private unsubscribe?: () => void;
   constructor() {
     makeAutoObservable(this, {}, { autoBind: true });
@@ -26,9 +36,11 @@ export class ChatStore {
       this.messages = snapshot.messages;
       this.activeConversationId = snapshot.conversations[0]?.id ?? null;
       this.hasMoreMessages = snapshot.hasMoreMessages;
+      this.scenarioExecutions.clear();
     });
     this.unsubscribe?.();
     this.unsubscribe = window.desktop.chat.subscribe(this.handleEvent);
+    await this.hydrateScenarioExecutions(snapshot.messages);
   }
   async start(input: Omit<StartRunInput, "conversationId">) {
     this.loading = true;
@@ -72,6 +84,10 @@ export class ChatStore {
     this.messages = [];
     this.activeRunId = null;
     this.hasMoreMessages = false;
+    this.activeScenarioRun = null;
+    this.scenarioNodeRuns = [];
+    this.scenarioNodeOutput.clear();
+    this.scenarioExecutions.clear();
   }
   async select(id: number) {
     const snapshot = await window.desktop.chat.getSnapshot(id);
@@ -80,35 +96,127 @@ export class ChatStore {
       this.conversations = snapshot.conversations;
       this.messages = snapshot.messages;
       this.hasMoreMessages = snapshot.hasMoreMessages;
+      this.activeScenarioRun = null;
+      this.scenarioNodeRuns = [];
+      this.scenarioNodeOutput.clear();
+      this.scenarioExecutions.clear();
     });
+    await this.hydrateScenarioExecutions(snapshot.messages);
   }
-  async loadEarlier(){if(this.loadingEarlier||!this.hasMoreMessages||!this.activeConversationId||!this.messages[0])return;this.loadingEarlier=true;try{const page=await window.desktop.chat.getMessagesPage(this.activeConversationId,this.messages[0].id);runInAction(()=>{this.messages.unshift(...page.messages);this.hasMoreMessages=page.hasMore;});}finally{runInAction(()=>{this.loadingEarlier=false;});}}
+  async loadEarlier() {
+    if (
+      this.loadingEarlier ||
+      !this.hasMoreMessages ||
+      !this.activeConversationId ||
+      !this.messages[0]
+    )
+      return;
+    this.loadingEarlier = true;
+    try {
+      const page = await window.desktop.chat.getMessagesPage(
+        this.activeConversationId,
+        this.messages[0].id,
+      );
+      runInAction(() => {
+        this.messages = [...page.messages, ...this.messages];
+        this.hasMoreMessages = page.hasMore;
+      });
+      await this.hydrateScenarioExecutions(page.messages);
+    } finally {
+      runInAction(() => {
+        this.loadingEarlier = false;
+      });
+    }
+  }
   private handleEvent(event: RunEvent) {
     runInAction(() => {
       if (event.type === "run.started") {
         this.activeRunId = event.runId;
         this.activeConversationId = event.conversationId;
-        this.messages.push(event.userMessage, event.assistantMessage);
+        this.messages = [
+          ...this.messages,
+          event.userMessage,
+          event.assistantMessage,
+        ];
         void this.refreshConversations();
+      } else if (event.type === "scenario.run") {
+        if (this.activeScenarioRun?.id !== event.run.id) {
+          this.scenarioNodeRuns = [];
+          this.scenarioNodeOutput.clear();
+        }
+        this.activeScenarioRun = event.run;
+        const assistant = [...this.messages]
+          .reverse()
+          .find((message) => message.role === "assistant" && message.status === "streaming");
+        if (assistant && assistant.scenarioRunId === null)
+          this.messages = this.messages.map((message) =>
+            message.id === assistant.id
+              ? { ...message, scenarioRunId: event.run.id }
+              : message,
+          );
+        this.scenarioExecutions.set(event.run.id, {
+          run: event.run,
+          nodes: [...this.scenarioNodeRuns],
+        });
+      } else if (event.type === "scenario.node") {
+        if (this.activeScenarioRun?.id !== event.runId) return;
+        const index = this.scenarioNodeRuns.findIndex((item) => item.id === event.node.id);
+        if (index >= 0) this.scenarioNodeRuns[index] = event.node;
+        else this.scenarioNodeRuns.push(event.node);
+        if (this.activeScenarioRun)
+          this.scenarioExecutions.set(event.runId, {
+            run: this.activeScenarioRun,
+            nodes: [...this.scenarioNodeRuns],
+          });
+      } else if (event.type === "scenario.node.delta") {
+        if (this.activeScenarioRun?.id !== event.runId) return;
+        this.scenarioNodeOutput.set(
+          event.nodeId,
+          (this.scenarioNodeOutput.get(event.nodeId) ?? "") + event.delta,
+        );
+      } else if (event.type === "scenario.approval.required") {
+        this.pendingScenarioApproval = event;
       } else if (event.type === "text.delta") {
-        const message = this.messages.find(
-          (item) => item.id === event.messageId,
+        this.messages = this.messages.map((message) =>
+          message.id === event.messageId
+            ? { ...message, text: message.text + event.delta }
+            : message,
         );
-        if (message) message.text += event.delta;
       } else if (event.type === "reasoning.delta") {
-        const message = this.messages.find(
-          (item) => item.id === event.messageId,
+        this.messages = this.messages.map((message) =>
+          message.id === event.messageId
+            ? { ...message, reasoning: message.reasoning + event.delta }
+            : message,
         );
-        if (message) message.reasoning += event.delta;
       } else if (event.type === "approval.required")
         this.pendingApproval = event;
       else if (
         event.type === "run.completed" ||
         event.type === "run.cancelled" ||
         event.type === "run.failed"
-      )
+      ) {
         this.activeRunId = null;
+        const status =
+          event.type === "run.completed"
+            ? "completed"
+            : event.type === "run.cancelled"
+              ? "cancelled"
+              : "failed";
+        this.messages = this.messages.map((message) =>
+          message.role === "assistant" &&
+          (message.runId === event.runId ||
+            message.scenarioRunId === event.runId)
+            ? { ...message, status }
+            : message,
+        );
+      }
     });
+  }
+
+  async approveScenario(approved: boolean) {
+    if (!this.pendingScenarioApproval) return;
+    await window.desktop.automation.approveScenarioRun(this.pendingScenarioApproval.runId, approved);
+    runInAction(() => { this.pendingScenarioApproval = null; });
   }
   private async refreshConversations() {
     const snapshot = await window.desktop.chat.getSnapshot(
@@ -116,6 +224,24 @@ export class ChatStore {
     );
     runInAction(() => {
       this.conversations = snapshot.conversations;
+    });
+  }
+
+  private async hydrateScenarioExecutions(messages: ChatMessage[]) {
+    const runIds = [
+      ...new Set(
+        messages
+          .map((message) => message.scenarioRunId)
+          .filter((id): id is number => typeof id === "number"),
+      ),
+    ].filter((id) => !this.scenarioExecutions.has(id));
+    const executions = await Promise.allSettled(
+      runIds.map((id) => window.desktop.automation.getScenarioRun(id)),
+    );
+    runInAction(() => {
+      for (const result of executions)
+        if (result.status === "fulfilled")
+          this.scenarioExecutions.set(result.value.run.id, result.value);
     });
   }
 }

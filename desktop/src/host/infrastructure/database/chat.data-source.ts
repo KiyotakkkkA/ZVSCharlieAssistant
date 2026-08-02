@@ -19,6 +19,7 @@ interface MessageRow {
   id: number;
   conversation_id: number;
   run_id: number | null;
+  execution_run_id?: number | null;
   role: ChatMessage["role"];
   status: ChatMessage["status"];
   content_json: string;
@@ -35,10 +36,39 @@ export class ChatDataSource {
         .all() as ConversationRow[]
     ).map(mapConversation);
     const targetId = conversationId ?? conversations[0]?.id;
-    const page = targetId ? this.messagePage(targetId) : { messages: [], hasMore: false };
-    return { conversations, messages: page.messages, hasMoreMessages: page.hasMore };
+    const page = targetId
+      ? this.messagePage(targetId)
+      : { messages: [], hasMore: false };
+    return {
+      conversations,
+      messages: page.messages,
+      hasMoreMessages: page.hasMore,
+    };
   }
-  messagePage(conversationId:number,beforeId?:number,limit=30):ChatMessagePage { const rows=(beforeId===undefined?this.db.prepare("SELECT * FROM chat_messages WHERE conversation_id=? ORDER BY id DESC LIMIT ?").all(conversationId,limit+1):this.db.prepare("SELECT * FROM chat_messages WHERE conversation_id=? AND id<? ORDER BY id DESC LIMIT ?").all(conversationId,beforeId,limit+1)) as MessageRow[];const hasMore=rows.length>limit;return{messages:rows.slice(0,limit).reverse().map(mapMessage),hasMore};}
+  messagePage(
+    conversationId: number,
+    beforeId?: number,
+    limit = 30,
+  ): ChatMessagePage {
+    const rows = (
+      beforeId === undefined
+        ? this.db
+            .prepare(
+              "SELECT * FROM chat_messages WHERE conversation_id=? ORDER BY id DESC LIMIT ?",
+            )
+            .all(conversationId, limit + 1)
+        : this.db
+            .prepare(
+              "SELECT * FROM chat_messages WHERE conversation_id=? AND id<? ORDER BY id DESC LIMIT ?",
+            )
+            .all(conversationId, beforeId, limit + 1)
+    ) as MessageRow[];
+    const hasMore = rows.length > limit;
+    return {
+      messages: rows.slice(0, limit).reverse().map(mapMessage),
+      hasMore,
+    };
+  }
   messages(conversationId: number): ChatMessage[] {
     return (
       this.db
@@ -51,14 +81,14 @@ export class ChatDataSource {
   createConversation(
     mode: ChatMode,
     agentId: string | undefined,
-    modelId: number,
+    modelId: number | undefined,
   ): number {
     return Number(
       this.db
         .prepare(
           "INSERT INTO chat_conversations(mode,agent_id,model_id) VALUES(?,?,?)",
         )
-        .run(mode, agentId ?? null, modelId).lastInsertRowid,
+        .run(mode, agentId ?? null, modelId ?? null).lastInsertRowid,
     );
   }
   createRun(
@@ -78,7 +108,7 @@ export class ChatDataSource {
   }
   addMessage(
     conversationId: number,
-    runId: number,
+    runId: number | null,
     role: ChatMessage["role"],
     text: string,
     status: ChatMessage["status"],
@@ -106,11 +136,17 @@ export class ChatDataSource {
     const row = this.db
       .prepare("SELECT content_json FROM chat_messages WHERE id=?")
       .get(messageId) as { content_json: string };
+
     const parts = JSON.parse(row.content_json) as Array<{
       type: string;
       text: string;
     }>;
-    parts[0]!.text += delta;
+    let part = parts.find((part) => part.type === "text");
+    if (!part) {
+      part = { type: "text", text: "" };
+      parts.push(part);
+    }
+    part.text += delta;
     this.db
       .prepare("UPDATE chat_messages SET content_json=? WHERE id=?")
       .run(JSON.stringify(parts), messageId);
@@ -133,10 +169,20 @@ export class ChatDataSource {
       .prepare("UPDATE chat_messages SET content_json=? WHERE id=?")
       .run(JSON.stringify(parts), messageId);
   }
+  replaceText(messageId: number, text: string) {
+    this.db
+      .prepare("UPDATE chat_messages SET content_json=? WHERE id=?")
+      .run(JSON.stringify([{ type: "text", text }]), messageId);
+  }
   setMessageStatus(id: number, status: ChatMessage["status"]) {
     this.db
       .prepare("UPDATE chat_messages SET status=? WHERE id=?")
       .run(status, id);
+  }
+  linkMessageToScenarioRun(messageId: number, executionRunId: number) {
+    this.db
+      .prepare("UPDATE chat_messages SET execution_run_id=? WHERE id=?")
+      .run(executionRunId, messageId);
   }
   setRunStatus(id: number, status: RunStatus, error?: string) {
     this.db
@@ -270,6 +316,7 @@ const mapMessage = (r: MessageRow): ChatMessage => {
     id: r.id,
     conversationId: r.conversation_id,
     runId: r.run_id,
+    scenarioRunId: r.execution_run_id ?? null,
     role: r.role,
     status: r.status,
     text: parts

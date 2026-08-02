@@ -1,24 +1,30 @@
 import {
-  type PointerEvent as ReactPointerEvent,
   type SVGProps,
+  useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
+import {
+  applyEdgeChanges,
+  type Connection,
+  type OnNodesChange,
+  type OnEdgesChange,
+} from "@xyflow/react";
 import {
   Button,
   InputBig,
   InputSmall,
   Select,
+  useToasts,
 } from "@kiyotakkkka/zvs-uikit-lib";
 import { useParams } from "react-router-dom";
 import { observer } from "mobx-react-lite";
+import { toJS } from "mobx";
 import {
   ChatIcon,
   ChevronLeftIcon,
   ClockIcon,
-  MoreIcon,
   PlusIcon,
   RobotIcon,
   SaveIcon,
@@ -27,10 +33,17 @@ import {
   TasksIcon,
 } from "../../../components/atoms";
 import { AppBreadcrumbs } from "../../../components/molecules";
+import {
+  DangerModal,
+  ScenarioGraphCanvas,
+  type ScenarioFlowEdge,
+  type ScenarioFlowNode,
+} from "../../../components/organisms";
 import { APP_PATHS } from "../../../app/routes";
 import { useHashRouter } from "../../../hooks";
 import { automationStore } from "../../../stores";
 import type {
+  AutomationStatus,
   AutomationScenarioEdge as GraphEdge,
   AutomationScenarioNode as GraphNode,
   AutomationScenarioNodeKind as NodeKind,
@@ -50,6 +63,12 @@ const nodeMeta: Record<
     color: "text-amber-200 bg-amber-400/10",
     dot: "bg-amber-300",
     icon: (props) => <ChatIcon {...props} />,
+  },
+  orchestrator: {
+    label: "Оркестратор",
+    color: "text-violet-200 bg-violet-400/10",
+    dot: "bg-violet-300",
+    icon: (props) => <RobotIcon {...props} />,
   },
   agent: {
     label: "Агент",
@@ -88,48 +107,23 @@ const initialNodes: GraphNode[] = [
   },
   {
     id: "orchestrator",
-    kind: "agent",
+    kind: "orchestrator",
     title: "Оркестратор",
     description: "Анализирует задачу",
     x: 330,
     y: 250,
   },
   {
-    id: "researcher",
-    kind: "agent",
-    title: "Исследователь",
-    description: "Собирает контекст",
-    x: 590,
-    y: 120,
-  },
-  {
-    id: "computer-operator",
-    kind: "agent",
-    title: "Оператор компьютера",
-    description: "Выполняет действие",
-    x: 590,
-    y: 380,
-  },
-  {
     id: "response",
     kind: "output",
     title: "Ответ пользователю",
     description: "Возвращает результат",
-    x: 850,
+    x: 590,
     y: 250,
   },
 ];
 
-const initialEdges: GraphEdge[] = [
-  { id: "e1", source: "chat-trigger", target: "orchestrator" },
-  { id: "e2", source: "orchestrator", target: "researcher" },
-  { id: "e3", source: "orchestrator", target: "computer-operator" },
-  { id: "e4", source: "researcher", target: "response" },
-  { id: "e5", source: "computer-operator", target: "response" },
-];
-
 const palette: Array<{ kind: NodeKind; title: string; description: string }> = [
-  { kind: "trigger", title: "Триггер", description: "Начало выполнения" },
   { kind: "agent", title: "Вызов агента", description: "Делегирование задачи" },
   {
     kind: "condition",
@@ -144,95 +138,169 @@ const palette: Array<{ kind: NodeKind; title: string; description: string }> = [
   { kind: "output", title: "Результат", description: "Завершение ветки" },
 ];
 
+const scenarioStatusOptions = [
+  { value: "draft", label: "Черновик" },
+  { value: "active", label: "Активен" },
+  { value: "disabled", label: "Отключён" },
+];
+
 export const ScenarioGraphEditorPage = observer(
   function ScenarioGraphEditorPage() {
     const { goTo } = useHashRouter();
+    const toasts = useToasts();
     const { scenarioId } = useParams();
     const scenario = automationStore.getScenario(scenarioId);
     const [nodes, setNodes] = useState<GraphNode[]>(() =>
-      scenario?.graph.nodes.length ? scenario.graph.nodes : initialNodes,
+      scenario?.graph.nodes.length ? toJS(scenario.graph.nodes) : initialNodes,
     );
     const [edges, setEdges] = useState<GraphEdge[]>(() =>
-      scenario?.graph.edges.length ? scenario.graph.edges : initialEdges,
+      scenario ? toJS(scenario.graph.edges) : [],
     );
     const [selectedNodeId, setSelectedNodeId] = useState("orchestrator");
-    const [zoom, setZoom] = useState(0.86);
-    const [errorBehavior, setErrorBehavior] = useState("stop");
-    const dragRef = useRef<{
-      id: string;
-      startX: number;
-      startY: number;
-      nodeX: number;
-      nodeY: number;
-    } | null>(null);
+    const [status, setStatus] = useState<AutomationStatus>(
+      scenario?.status ?? "draft",
+    );
 
     useEffect(() => {
       if (!scenario) return;
-      setNodes(scenario.graph.nodes);
-      setEdges(scenario.graph.edges);
-      setZoom(scenario.graph.viewport?.zoom ?? 0.86);
+      setNodes(toJS(scenario.graph.nodes));
+      setEdges(toJS(scenario.graph.edges));
       setSelectedNodeId(scenario.graph.nodes[0]?.id ?? "");
+      setStatus(scenario.status);
     }, [scenario]);
 
     const selectedNode = nodes.find((node) => node.id === selectedNodeId);
 
-    const edgePaths = useMemo(
-      () =>
-        edges.flatMap((edge) => {
-          const source = nodes.find((node) => node.id === edge.source);
-          const target = nodes.find((node) => node.id === edge.target);
-          if (!source || !target) return [];
-          const x1 = source.x + 210;
-          const y1 = source.y + 49;
-          const x2 = target.x;
-          const y2 = target.y + 49;
-          const curve = Math.max(70, Math.abs(x2 - x1) * 0.45);
-          return [
-            {
-              ...edge,
-              path: `M ${x1} ${y1} C ${x1 + curve} ${y1}, ${x2 - curve} ${y2}, ${x2} ${y2}`,
-            },
-          ];
-        }),
-      [edges, nodes],
-    );
-
-    const startDrag = (
-      event: ReactPointerEvent<HTMLDivElement>,
-      node: GraphNode,
-    ) => {
-      event.currentTarget.setPointerCapture(event.pointerId);
-      dragRef.current = {
-        id: node.id,
-        startX: event.clientX,
-        startY: event.clientY,
-        nodeX: node.x,
-        nodeY: node.y,
-      };
-      setSelectedNodeId(node.id);
-    };
-
-    const dragNode = (event: ReactPointerEvent<HTMLDivElement>) => {
-      const drag = dragRef.current;
-      if (!drag) return;
-      setNodes((current) =>
-        current.map((node) =>
-          node.id === drag.id
-            ? {
-                ...node,
-                x: Math.max(
-                  20,
-                  drag.nodeX + (event.clientX - drag.startX) / zoom,
-                ),
-                y: Math.max(
-                  20,
-                  drag.nodeY + (event.clientY - drag.startY) / zoom,
-                ),
-              }
-            : node,
+    const deleteEdge = useCallback((edgeId: string) => {
+      setEdges((current) => current.filter((edge) => edge.id !== edgeId));
+    }, []);
+    const deleteNode = useCallback((nodeId: string) => {
+      setNodes((current) => current.filter((node) => node.id !== nodeId));
+      setEdges((current) =>
+        current.filter(
+          (edge) => edge.source !== nodeId && edge.target !== nodeId,
         ),
       );
-    };
+      setSelectedNodeId((current) => (current === nodeId ? "" : current));
+    }, []);
+
+    const flowNodes = useMemo<ScenarioFlowNode[]>(
+      () =>
+        nodes.map((node) => ({
+          id: node.id,
+          type: "scenario",
+          position: { x: node.x, y: node.y },
+          data: {
+            node,
+            runStatus: automationStore.scenarioNodeRuns.find(
+              (run) => run.nodeId === node.id,
+            )?.status,
+            onDelete:
+              node.kind === "trigger" || node.kind === "orchestrator"
+                ? undefined
+                : deleteNode,
+          },
+          selected: node.id === selectedNodeId,
+          deletable: node.kind !== "trigger" && node.kind !== "orchestrator",
+          width: 210,
+          height: 98,
+          measured: { width: 210, height: 98 },
+        })),
+      [nodes, selectedNodeId, automationStore.scenarioNodeRuns, deleteNode],
+    );
+    const flowEdges = useMemo<ScenarioFlowEdge[]>(
+      () =>
+        edges.map((edge) => ({
+          ...edge,
+          sourceHandle: edge.sourcePort,
+          targetHandle: edge.targetPort,
+          type: "scenario",
+          animated: automationStore.activeScenarioRun?.status === "running",
+          style: { stroke: "rgb(139 173 77)", strokeWidth: 1.5 },
+          data: {
+            edgeId: edge.id,
+            kind: edge.kind,
+            onDelete: deleteEdge,
+          },
+        })),
+      [edges, automationStore.activeScenarioRun?.status, deleteEdge],
+    );
+    const onNodesChange: OnNodesChange<ScenarioFlowNode> = useCallback(
+      (changes) => {
+        const removed = new Set(
+          changes
+            .filter((change) => change.type === "remove")
+            .map((change) => change.id),
+        );
+        setNodes((current) =>
+          current
+            .filter((node) => !removed.has(node.id))
+            .map((node) => {
+              const position = changes.find(
+                (change) => change.type === "position" && change.id === node.id,
+              );
+              return position?.type === "position" && position.position
+                ? { ...node, x: position.position.x, y: position.position.y }
+                : node;
+            }),
+        );
+        if (removed.size)
+          setEdges((current) =>
+            current.filter(
+              (edge) => !removed.has(edge.source) && !removed.has(edge.target),
+            ),
+          );
+      },
+      [],
+    );
+    const onEdgesChange: OnEdgesChange<ScenarioFlowEdge> = useCallback(
+      (changes) => {
+        const next = applyEdgeChanges(changes, flowEdges);
+        setEdges(
+          next.map((edge) => ({
+            id: edge.id,
+            source: edge.source,
+            target: edge.target,
+            kind: edge.data?.kind === "worker" ? "worker" : "control",
+            sourcePort: edge.sourceHandle ?? undefined,
+            targetPort: edge.targetHandle ?? undefined,
+          })),
+        );
+      },
+      [flowEdges],
+    );
+    const onConnect = useCallback((connection: Connection) => {
+      if (!connection.source || !connection.target) return;
+      const sourceKind = nodes.find((node) => node.id === connection.source)?.kind;
+      const targetKind = nodes.find((node) => node.id === connection.target)?.kind;
+      const kind =
+        (sourceKind === "orchestrator" || sourceKind === "agent") &&
+        targetKind === "agent"
+          ? "worker"
+          : "control";
+      setEdges((current) => {
+        if (
+          current.some(
+            (edge) =>
+              edge.source === connection.source &&
+              edge.target === connection.target &&
+              edge.kind === kind,
+          )
+        )
+          return current;
+        return [
+          ...current,
+          {
+            id: `edge-${Date.now()}`,
+            source: connection.source!,
+            target: connection.target!,
+            kind,
+            sourcePort: connection.sourceHandle ?? undefined,
+            targetPort: connection.targetHandle ?? undefined,
+          },
+        ];
+      });
+    }, [nodes]);
 
     const addNode = (kind: NodeKind, title: string) => {
       const id = `${kind}-${Date.now()}`;
@@ -259,30 +327,65 @@ export const ScenarioGraphEditorPage = observer(
     };
 
     const saveScenario = async () => {
-      const saved = await automationStore.upsertScenario({
-        id: scenario?.id,
-        name: scenario?.name ?? "Новый сценарий",
-        description:
-          scenario?.description ??
-          "Новый сценарий автоматизации с вызовом агентов.",
-        status: scenario?.status ?? "draft",
-        graph: {
-          nodes,
-          edges,
-          viewport: { x: 0, y: 0, zoom },
-        },
-        toolSettings: scenario?.toolSettings ?? [],
-      });
-      if (!scenarioId) {
-        goTo(
-          APP_PATHS.automation.scenarios.edit.replace(":scenarioId", saved.id),
-          { replace: true },
-        );
+      try {
+        const saved = await automationStore.upsertScenario({
+          id: scenario?.id,
+          name: scenario?.name ?? "Новый сценарий",
+          description:
+            scenario?.description ??
+            "Новый сценарий автоматизации с вызовом агентов.",
+          status,
+          graph: {
+            nodes,
+            edges,
+            viewport: scenario?.graph.viewport ?? { x: 0, y: 0, zoom: 1 },
+          },
+          toolSettings: scenario?.toolSettings ?? [],
+        });
+        if (!scenarioId) {
+          goTo(
+            APP_PATHS.automation.scenarios.edit.replace(
+              ":scenarioId",
+              saved.id,
+            ),
+            { replace: true },
+          );
+        }
+        toasts.success({ title: "Сценарий сохранён" });
+        return saved;
+      } catch (error) {
+        toasts.danger({
+          title: "Не удалось сохранить сценарий",
+          description:
+            error instanceof Error ? error.message : "Неизвестная ошибка",
+        });
+        return undefined;
       }
     };
 
+    const validateScenario = async () => {
+      const result = await automationStore.validateScenario({ nodes, edges });
+      if (result.valid) toasts.success({ title: "Граф готов к запуску" });
+      else
+        toasts.danger({
+          title: "Граф содержит ошибки",
+          description: result.issues.map((issue) => issue.message).join(" · "),
+        });
+      return result.valid;
+    };
+
+    const runScenario = async () => {
+      if (!(await validateScenario())) return;
+      const saved = await saveScenario();
+      if (!saved) return;
+      await automationStore.startScenario(saved.id, {
+        message: "Ручной запуск сценария",
+      });
+      toasts.success({ title: "Сценарий запущен в фоне" });
+    };
+
     return (
-      <section className="-m-2 flex h-[calc(100%+1rem)] min-h-0 flex-col overflow-hidden bg-main-900">
+      <section className="flex h-full min-h-0 flex-col overflow-hidden bg-main-900">
         <header className="flex h-20 shrink-0 items-center justify-between gap-4 border-b border-main-800 px-4">
           <div className="flex min-w-0 items-center gap-3">
             <Button
@@ -296,18 +399,28 @@ export const ScenarioGraphEditorPage = observer(
             <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-violet-400/10 text-violet-200">
               <RobotIcon className="size-4" />
             </span>
-            <div className="min-w-0">
+            <div className="min-w-0 flex gap-3">
               <div className="flex items-center gap-2">
                 <h1 className="truncate text-sm font-semibold text-main-100">
                   {scenario?.name ?? "Новый сценарий"}
                 </h1>
-                <span className="rounded-full bg-warning-medium/10 px-2 py-0.5 text-[10px] text-warning-light">
-                  Черновик
-                </span>
               </div>
-              <p className="mt-0.5 text-xs text-main-500">
-                Изменения сохранены локально
-              </p>
+              <Select
+                className="w-30 shrink-0"
+                value={status}
+                onChange={(value) => setStatus(value as AutomationStatus)}
+                options={scenarioStatusOptions}
+              >
+                <Select.Trigger
+                  rounded="rounded-full"
+                  className="h-7 w-full border-0! bg-main-800/80 px-2.5 text-[11px] shadow-none ring-0! hover:bg-main-700"
+                />
+                <Select.Menu rounded="rounded-xl">
+                  {scenarioStatusOptions.map((option) => (
+                    <Select.Option key={option.value} {...option} />
+                  ))}
+                </Select.Menu>
+              </Select>
             </div>
           </div>
 
@@ -321,10 +434,18 @@ export const ScenarioGraphEditorPage = observer(
                 <SaveIcon className="size-4" />
                 Сохранить
               </Button>
-              <Button variant="secondary" className="px-2">
+              <Button
+                variant="secondary"
+                className="px-2"
+                onClick={() => void validateScenario()}
+              >
                 Проверить
               </Button>
-              <Button variant="primary" className="px-2">
+              <Button
+                variant="primary"
+                className="px-2"
+                onClick={() => void runScenario()}
+              >
                 <SendIcon className="size-4" />
                 Запустить
               </Button>
@@ -378,109 +499,16 @@ export const ScenarioGraphEditorPage = observer(
             </div>
           </aside>
 
-          <div className="relative min-w-0 flex-1 overflow-hidden bg-main-900">
-            <div className="absolute inset-0 bg-main-900" />
-
-            <div
-              className="absolute left-0 top-0 h-180 w-290 origin-top-left"
-              style={{ transform: `scale(${zoom})` }}
-            >
-              <svg
-                className="pointer-events-none absolute inset-0 h-full w-full overflow-visible"
-                aria-hidden
-              >
-                {edgePaths.map((edge) => (
-                  <g key={edge.id}>
-                    <path
-                      d={edge.path}
-                      fill="none"
-                      stroke="rgb(82 82 82)"
-                      strokeWidth="3"
-                    />
-                    <path
-                      d={edge.path}
-                      fill="none"
-                      stroke="rgb(183 243 74 / .45)"
-                      strokeWidth="1.4"
-                    />
-                  </g>
-                ))}
-              </svg>
-
-              {nodes.map((node) => {
-                const meta = nodeMeta[node.kind];
-                const selected = node.id === selectedNodeId;
-                return (
-                  <div
-                    key={node.id}
-                    className={`absolute w-52.5 cursor-grab select-none rounded-xl bg-main-800/95 ring-1 transition-colors active:cursor-grabbing ${
-                      selected
-                        ? "ring-accent-medium/70"
-                        : "ring-main-700 hover:ring-main-500"
-                    }`}
-                    style={{ left: node.x, top: node.y }}
-                    onPointerDown={(event) => startDrag(event, node)}
-                    onPointerMove={dragNode}
-                    onPointerUp={() => {
-                      dragRef.current = null;
-                    }}
-                  >
-                    <span
-                      className={`absolute -left-1.5 top-10.75 size-3 rounded-full border-2 border-main-800 ${meta.dot}`}
-                    />
-                    <span
-                      className={`absolute -right-1.5 top-10.75 size-3 rounded-full border-2 border-main-800 ${meta.dot}`}
-                    />
-                    <div className="flex items-center gap-3 border-b border-main-700/60 p-3">
-                      <span
-                        className={`grid size-8 shrink-0 place-items-center rounded-lg ${meta.color}`}
-                      >
-                        {meta.icon({ className: "size-4" })}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-main-100">
-                          {node.title}
-                        </p>
-                        <p className="text-[10px] uppercase tracking-wider text-main-500">
-                          {meta.label}
-                        </p>
-                      </div>
-                      <MoreIcon className="size-4 text-main-600" />
-                    </div>
-                    <p className="truncate px-3 py-2.5 text-xs text-main-400">
-                      {node.description}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="absolute bottom-4 left-4 flex items-center overflow-hidden rounded-lg bg-main-800/90 ring-1 ring-main-700">
-              <button
-                className="grid size-9 place-items-center text-main-300 hover:bg-main-700"
-                onClick={() => setZoom((value) => Math.max(0.55, value - 0.1))}
-              >
-                −
-              </button>
-              <button
-                className="h-9 min-w-14 border-x border-main-700 px-2 text-xs text-main-400 hover:bg-main-700"
-                onClick={() => setZoom(0.86)}
-              >
-                {Math.round(zoom * 100)}%
-              </button>
-              <button
-                className="grid size-9 place-items-center text-main-300 hover:bg-main-700"
-                onClick={() => setZoom((value) => Math.min(1.25, value + 0.1))}
-              >
-                +
-              </button>
-            </div>
-
-            <div className="absolute bottom-4 right-4 flex items-center gap-2 rounded-lg bg-main-800/90 px-3 py-2 text-xs text-main-400 ring-1 ring-main-700">
-              <span className="size-2 rounded-full bg-success-medium" />
-              Граф корректен · {nodes.length} узлов
-            </div>
-          </div>
+          <ScenarioGraphCanvas
+            key={scenario?.revisionId ?? "new-scenario"}
+            nodes={flowNodes}
+            edges={flowEdges}
+            nodeCount={nodes.length}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            onNodeSelect={setSelectedNodeId}
+          />
 
           <aside className="w-72 shrink-0 overflow-auto border-l border-main-800 bg-main-900/90">
             <div className="flex h-12 items-center justify-between border-b border-main-800 px-4">
@@ -522,31 +550,57 @@ export const ScenarioGraphEditorPage = observer(
                     autoResize
                   />
                 </InspectorField>
-                <InspectorField label="Поведение при ошибке">
-                  <Select
-                    value={errorBehavior}
-                    onChange={setErrorBehavior}
-                    options={[
-                      { value: "stop", label: "Остановить выполнение" },
-                      { value: "retry", label: "Повторить узел" },
-                      { value: "continue", label: "Продолжить ветку" },
-                    ]}
-                  >
-                    <Select.Trigger className="w-full" />
-                    <Select.Menu>
-                      <Select.Option
-                        value="stop"
-                        label="Остановить выполнение"
+                {selectedNode.kind === "agent" ? (
+                  <>
+                    <InspectorField label="Агент">
+                      <Select
+                        value={String(selectedNode.config?.agentId ?? "")}
+                        onChange={(agentId) =>
+                          updateSelectedNode({
+                            config: { ...selectedNode.config, agentId },
+                            description:
+                              automationStore.agents.find((agent) => agent.id === agentId)?.name ??
+                              selectedNode.description,
+                          })
+                        }
+                        options={automationStore.agents.map((agent) => ({
+                          value: agent.id,
+                          label: agent.name,
+                        }))}
+                        placeholder="Выберите агента"
+                        searchable
+                      >
+                        <Select.Trigger className="w-full" />
+                        <Select.Menu>
+                          {automationStore.agents.map((agent) => (
+                            <Select.Option
+                              key={agent.id}
+                              value={agent.id}
+                              label={agent.name}
+                            />
+                          ))}
+                        </Select.Menu>
+                      </Select>
+                    </InspectorField>
+                    <InspectorField label="Инструкции для сценария">
+                      <InputBig
+                        value={String(selectedNode.config?.scenarioInstructions ?? "")}
+                        onChange={(event) =>
+                          updateSelectedNode({
+                            config: {
+                              ...selectedNode.config,
+                              scenarioInstructions: event.target.value,
+                            },
+                          })
+                        }
+                        placeholder="Уточните роль агента, формат и ограничения результата"
+                        minRows={4}
+                        maxRows={9}
+                        autoResize
                       />
-                      <Select.Option value="retry" label="Повторить узел" />
-                      <Select.Option
-                        value="continue"
-                        label="Продолжить ветку"
-                      />
-                    </Select.Menu>
-                  </Select>
-                </InspectorField>
-
+                    </InspectorField>
+                  </>
+                ) : null}
                 <div className="rounded-lg bg-main-800/40 p-3">
                   <div className="flex items-center gap-2 text-xs font-medium text-main-300">
                     <ClockIcon className="size-3.5" />
@@ -562,8 +616,38 @@ export const ScenarioGraphEditorPage = observer(
                 Выберите узел на графе
               </div>
             )}
+            {automationStore.activeScenarioRun ? (
+              <div className="m-4 rounded-lg bg-main-800/55 p-3 text-xs text-main-300">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-medium">
+                    Запуск #{automationStore.activeScenarioRun.id}
+                  </span>
+                  <span className="text-main-500">
+                    {automationStore.activeScenarioRun.status}
+                  </span>
+                </div>
+                <p className="mt-2 text-main-500">
+                  Выполнено узлов:{" "}
+                  {
+                    automationStore.scenarioNodeRuns.filter(
+                      (item) => item.status === "completed",
+                    ).length
+                  }
+                </p>
+              </div>
+            ) : null}
           </aside>
         </div>
+        {automationStore.pendingScenarioApproval ? (
+          <DangerModal
+            model={automationStore.pendingScenarioApproval}
+            title="Продолжить сценарий?"
+            description={(approval) => approval.prompt}
+            confirmLabel="Продолжить"
+            onCancel={() => void automationStore.approveScenarioRun(false)}
+            onConfirm={() => automationStore.approveScenarioRun(true)}
+          />
+        ) : null}
       </section>
     );
   },

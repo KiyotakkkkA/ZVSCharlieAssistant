@@ -28,7 +28,10 @@ interface ScenarioRow {
   name: string;
   description: string;
   status: AutomationScenario["status"];
+  revision_id: number;
+  version: number;
   graph_json: string;
+  tool_settings_json: string;
   last_run_at: string | null;
   updated_at: string;
 }
@@ -158,9 +161,11 @@ export class AutomationDataSource {
   listScenarios(): AutomationScenario[] {
     const rows = this.database
       .prepare(
-        `SELECT id, name, description, status, graph_json,
-                last_run_at, updated_at
-         FROM automation_scenarios
+        `SELECT s.id, s.name, s.description, s.status, r.id AS revision_id,
+                r.version, r.graph_json, r.tool_settings_json,
+                s.last_run_at, s.updated_at
+         FROM automation_scenarios s
+         JOIN automation_scenario_revisions r ON r.id = s.active_revision_id
          ORDER BY updated_at DESC, name ASC`,
       )
       .all() as ScenarioRow[];
@@ -170,9 +175,12 @@ export class AutomationDataSource {
   findScenario(id: string): AutomationScenario | undefined {
     const row = this.database
       .prepare(
-        `SELECT id, name, description, status, graph_json,
-                last_run_at, updated_at
-         FROM automation_scenarios WHERE id = ?`,
+        `SELECT s.id, s.name, s.description, s.status, r.id AS revision_id,
+                r.version, r.graph_json, r.tool_settings_json,
+                s.last_run_at, s.updated_at
+         FROM automation_scenarios s
+         JOIN automation_scenario_revisions r ON r.id = s.active_revision_id
+         WHERE s.id = ?`,
       )
       .get(id) as ScenarioRow | undefined;
     return row ? this.mapScenario(row) : undefined;
@@ -186,34 +194,42 @@ export class AutomationDataSource {
       this.database
         .prepare(
           `INSERT INTO automation_scenarios
-             (id, name, description, status, graph_json)
-           VALUES (?, ?, ?, ?, ?)
+             (id, name, description, status)
+           VALUES (?, ?, ?, ?)
            ON CONFLICT(id) DO UPDATE SET
              name = excluded.name,
              description = excluded.description,
              status = excluded.status,
-             graph_json = excluded.graph_json,
              updated_at = CURRENT_TIMESTAMP`,
         )
-        .run(
-          id,
-          input.name,
-          input.description,
-          input.status,
-          JSON.stringify(input.graph),
-        );
+        .run(id, input.name, input.description, input.status);
 
+      const version = (
+        this.database
+          .prepare(
+            "SELECT COALESCE(MAX(version), 0) + 1 AS version FROM automation_scenario_revisions WHERE scenario_id = ?",
+          )
+          .get(id) as { version: number }
+      ).version;
+      const revisionId = Number(
+        this.database
+          .prepare(
+            `INSERT INTO automation_scenario_revisions
+               (scenario_id, version, graph_json, tool_settings_json)
+             VALUES (?, ?, ?, ?)`,
+          )
+          .run(
+            id,
+            version,
+            JSON.stringify(input.graph),
+            JSON.stringify(input.toolSettings),
+          ).lastInsertRowid,
+      );
       this.database
         .prepare(
-          "DELETE FROM automation_scenario_tool_settings WHERE scenario_id = ?",
+          "UPDATE automation_scenarios SET active_revision_id=?, updated_at=CURRENT_TIMESTAMP WHERE id=?",
         )
-        .run(id);
-      const insertSetting = this.database.prepare(
-        `INSERT INTO automation_scenario_tool_settings
-           (scenario_id, tool_id, settings_json) VALUES (?, ?, ?)`,
-      );
-      for (const setting of input.toolSettings)
-        insertSetting.run(id, setting.toolId, JSON.stringify(setting.settings));
+        .run(revisionId, id);
     })();
 
     return this.findScenario(id)!;
@@ -277,18 +293,10 @@ export class AutomationDataSource {
       nodes: [],
       edges: [],
     });
-    const toolSettings = (
-      this.database
-        .prepare(
-          `SELECT tool_id, settings_json
-           FROM automation_scenario_tool_settings
-           WHERE scenario_id = ? ORDER BY tool_id`,
-        )
-        .all(row.id) as Array<{ tool_id: string; settings_json: string }>
-    ).map<AutomationScenarioToolSetting>(({ tool_id, settings_json }) => ({
-      toolId: tool_id,
-      settings: parseJson<Record<string, unknown>>(settings_json, {}),
-    }));
+    const toolSettings = parseJson<AutomationScenarioToolSetting[]>(
+      row.tool_settings_json,
+      [],
+    );
 
     return {
       id: row.id,
@@ -297,6 +305,8 @@ export class AutomationDataSource {
       status: row.status,
       graph,
       toolSettings,
+      revisionId: row.revision_id,
+      version: row.version,
       nodesCount: graph.nodes.length,
       lastRunAt: row.last_run_at,
       updatedAt: row.updated_at,

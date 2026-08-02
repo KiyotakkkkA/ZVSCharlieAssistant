@@ -1,14 +1,21 @@
-import { Accordion, ScrollArea, Skeleton } from "@kiyotakkkka/zvs-uikit-lib";
+import {
+  Accordion,
+  ScrollArea,
+  Skeleton,
+  Timeline,
+} from "@kiyotakkkka/zvs-uikit-lib";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useLayoutEffect, useRef, type UIEvent } from "react";
 import { ChatIcon, RobotIcon, StorageIcon, TasksIcon } from "../atoms";
+import type { ScenarioNodeRun, ScenarioRun } from "../../../ipc/contracts";
 
 export interface ChatMessage {
   id: number;
   role: "user" | "assistant";
   text: string;
   reasoning?: string;
+  scenarioRunId?: number | null;
   status?: "streaming" | "completed" | "failed" | "cancelled";
 }
 
@@ -38,6 +45,11 @@ interface ChatFeedProps {
   hasMore: boolean;
   loadingEarlier: boolean;
   onLoadEarlier: () => Promise<void>;
+  scenarioExecutions?: Map<
+    number,
+    { run: ScenarioRun; nodes: ScenarioNodeRun[] }
+  >;
+  scenarioNodeOutput?: Map<string, string>;
 }
 
 export function ChatFeed({
@@ -48,13 +60,17 @@ export function ChatFeed({
   hasMore,
   loadingEarlier,
   onLoadEarlier,
+  scenarioExecutions = new Map(),
+  scenarioNodeOutput = new Map(),
 }: ChatFeedProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastMessageId = messages.at(-1)?.id;
   const lastMessageText = messages.at(-1)?.text;
+  const lastMessageReasoning = messages.at(-1)?.reasoning;
+  const lastMessageStatus = messages.at(-1)?.status;
   useLayoutEffect(() => { const element=scrollRef.current; if(element) element.scrollTop=element.scrollHeight; }, [conversationId]);
   useLayoutEffect(() => { const element=scrollRef.current; if(element) element.scrollTop=element.scrollHeight; }, [lastMessageId]);
-  useLayoutEffect(() => { const element=scrollRef.current; if(element && element.scrollHeight-element.scrollTop-element.clientHeight<180) element.scrollTop=element.scrollHeight; }, [lastMessageText]);
+  useLayoutEffect(() => { const element=scrollRef.current; if(element && element.scrollHeight-element.scrollTop-element.clientHeight<180) element.scrollTop=element.scrollHeight; }, [lastMessageText, lastMessageReasoning, lastMessageStatus]);
   const handleScroll = async (event:UIEvent<HTMLDivElement>) => { const element=event.currentTarget; if(element.scrollTop>80||!hasMore||loadingEarlier)return; const previousHeight=element.scrollHeight; await onLoadEarlier(); requestAnimationFrame(()=>{element.scrollTop=element.scrollHeight-previousHeight;}); };
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -130,6 +146,13 @@ export function ChatFeed({
                   >
                     {message.role === "assistant" ? (
                       <div className="min-w-0">
+                        {message.scenarioRunId &&
+                        scenarioExecutions.get(message.scenarioRunId) ? (
+                          <ScenarioExecutionHistory
+                            execution={scenarioExecutions.get(message.scenarioRunId)!}
+                            liveOutput={scenarioNodeOutput}
+                          />
+                        ) : null}
                         {message.reasoning ? (
                           <Accordion className="mb-4 overflow-hidden rounded-xl bg-main-800/45 ring-1 ring-main-700/35">
                             <Accordion.Summary className="w-full px-3.5 py-2.5 text-left text-xs font-medium text-main-400 transition-colors hover:bg-main-700/30 hover:text-main-200">
@@ -292,4 +315,115 @@ export function ChatFeed({
       </ScrollArea>
     </div>
   );
+}
+
+function ScenarioExecutionHistory({
+  execution,
+  liveOutput,
+}: {
+  execution: { run: ScenarioRun; nodes: ScenarioNodeRun[] };
+  liveOutput: Map<string, string>;
+}) {
+  const running = ["queued", "running", "waiting_for_approval"].includes(
+    execution.run.status,
+  );
+  return (
+    <section className="mb-5 overflow-hidden rounded-xl bg-main-800/40 ring-1 ring-main-700/40">
+      <header className="flex items-center justify-between gap-4 border-b border-main-700/30 px-4 py-3">
+        <span className="min-w-0">
+          <span className="block truncate text-xs font-medium text-main-200">
+            {execution.run.scenarioName}
+          </span>
+          <span className="mt-0.5 block text-[11px] text-main-500">
+            Выполнение #{execution.run.id} · {execution.nodes.length} шагов
+          </span>
+        </span>
+        <span
+          className={`flex shrink-0 items-center gap-2 text-[11px] ${
+            running
+              ? "text-accent-light"
+              : execution.run.status === "completed"
+                ? "text-success-light"
+                : "text-danger-light"
+          }`}
+        >
+          {running ? (
+            <span className="size-1.5 animate-pulse rounded-full bg-accent-light" />
+          ) : null}
+          {scenarioStatusLabel(execution.run.status)}
+        </span>
+      </header>
+      <div className="px-4 py-4">
+        <Timeline>
+          {execution.nodes.map((node) => {
+            const exposesContent =
+              node.nodeKind !== "trigger" && node.nodeKind !== "output";
+            const text = exposesContent
+              ? (running ? liveOutput.get(node.nodeId) : undefined) ??
+                formatNodeValue(node.output)
+              : "";
+            return (
+              <Timeline.Item key={node.id} icon={nodeKindIcon(node.nodeKind)}>
+                <Timeline.ItemTitle>
+                  {nodeKindLabel(node.nodeKind)} · {node.nodeId}
+                </Timeline.ItemTitle>
+                <Timeline.ItemSubTitle>
+                  {scenarioStatusLabel(node.status)}
+                </Timeline.ItemSubTitle>
+                {node.error || text ? (
+                  <Timeline.ItemContent>
+                    <div
+                      className={`max-h-72 overflow-auto whitespace-pre-wrap text-xs leading-5 ${
+                        node.error ? "text-danger-light" : "text-main-400"
+                      }`}
+                    >
+                      {node.error ?? text}
+                    </div>
+                  </Timeline.ItemContent>
+                ) : null}
+              </Timeline.Item>
+            );
+          })}
+        </Timeline>
+      </div>
+    </section>
+  );
+}
+
+function formatNodeValue(value: unknown) {
+  if (value === null || value === undefined) return "";
+  return typeof value === "string" ? value : JSON.stringify(value, null, 2);
+}
+
+function nodeKindLabel(kind: ScenarioNodeRun["nodeKind"]) {
+  return {
+    trigger: "Триггер",
+    orchestrator: "Оркестратор",
+    agent: "Агент",
+    condition: "Условие",
+    approval: "Подтверждение",
+    output: "Результат",
+  }[kind];
+}
+
+function nodeKindIcon(kind: ScenarioNodeRun["nodeKind"]) {
+  return {
+    trigger: "mdi:message-outline",
+    orchestrator: "mdi:robot-outline",
+    agent: "mdi:account-cog-outline",
+    condition: "mdi:source-branch",
+    approval: "mdi:check-decagram-outline",
+    output: "mdi:send-outline",
+  }[kind];
+}
+
+function scenarioStatusLabel(status: ScenarioRun["status"]) {
+  return {
+    queued: "В очереди",
+    running: "Выполняется",
+    waiting_for_approval: "Ожидает подтверждения",
+    completed: "Завершено",
+    failed: "Ошибка",
+    cancelled: "Отменено",
+  }[status];
 }

@@ -1,11 +1,20 @@
-import { makeAutoObservable, runInAction } from "mobx";
+import { makeAutoObservable, runInAction, toJS } from "mobx";
 import type {
   AutomationAgent,
   AutomationScenario,
   AutomationTool,
   UpsertAutomationAgentInput,
   UpsertAutomationScenarioInput,
+  AutomationScenarioGraph,
+  ScenarioNodeRun,
+  ScenarioRun,
+  ScenarioRunEvent,
+  ScenarioValidationResult,
 } from "../../ipc/contracts";
+
+function toIpcPayload<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
+}
 
 export class AutomationStore {
   tools: AutomationTool[] = [];
@@ -14,6 +23,14 @@ export class AutomationStore {
   loading = false;
   initialized = false;
   error: string | null = null;
+  activeScenarioRun: ScenarioRun | null = null;
+  scenarioNodeRuns: ScenarioNodeRun[] = [];
+  pendingScenarioApproval: {
+    runId: number;
+    nodeId: string;
+    prompt: string;
+  } | null = null;
+  private unsubscribeScenarioRuns?: () => void;
 
   constructor() {
     makeAutoObservable(this, {}, { autoBind: true });
@@ -31,6 +48,10 @@ export class AutomationStore {
         this.agents = snapshot.agents;
         this.scenarios = snapshot.scenarios;
         this.initialized = true;
+        if (!this.unsubscribeScenarioRuns)
+          this.unsubscribeScenarioRuns = window.desktop.automation.subscribeScenarioRuns(
+            this.handleScenarioEvent,
+          );
       });
     } catch (error) {
       runInAction(() => {
@@ -62,7 +83,9 @@ export class AutomationStore {
   async upsertAgent(
     input: UpsertAutomationAgentInput,
   ): Promise<AutomationAgent> {
-    const agent = await window.desktop.automation.upsertAgent(input);
+    const agent = await window.desktop.automation.upsertAgent(
+      toIpcPayload(toJS(input)),
+    );
 
     runInAction(() => {
       const index = this.agents.findIndex((item) => item.id === agent.id);
@@ -82,7 +105,9 @@ export class AutomationStore {
   async upsertScenario(
     input: UpsertAutomationScenarioInput,
   ): Promise<AutomationScenario> {
-    const scenario = await window.desktop.automation.upsertScenario(input);
+    const scenario = await window.desktop.automation.upsertScenario(
+      toIpcPayload(input),
+    );
 
     runInAction(() => {
       const index = this.scenarios.findIndex((item) => item.id === scenario.id);
@@ -98,6 +123,57 @@ export class AutomationStore {
       this.scenarios = this.scenarios.filter(
         (scenario) => scenario.id !== scenarioId,
       );
+    });
+  }
+
+  validateScenario(
+    graph: AutomationScenarioGraph,
+  ): Promise<ScenarioValidationResult> {
+    return window.desktop.automation.validateScenario(toIpcPayload(graph));
+  }
+
+  async startScenario(scenarioId: string, input: unknown): Promise<ScenarioRun> {
+    const run = await window.desktop.automation.startScenario(
+      scenarioId,
+      input,
+      "manual",
+    );
+    runInAction(() => {
+      this.activeScenarioRun = run;
+      this.scenarioNodeRuns = [];
+    });
+    return run;
+  }
+
+  async approveScenarioRun(approved: boolean): Promise<void> {
+    if (!this.pendingScenarioApproval) return;
+    await window.desktop.automation.approveScenarioRun(
+      this.pendingScenarioApproval.runId,
+      approved,
+    );
+    runInAction(() => {
+      this.pendingScenarioApproval = null;
+    });
+  }
+
+  private handleScenarioEvent(event: ScenarioRunEvent) {
+    runInAction(() => {
+      if (
+        event.type === "run.started" ||
+        event.type === "run.completed" ||
+        event.type === "run.failed" ||
+        event.type === "run.cancelled"
+      ) {
+        this.activeScenarioRun = event.run;
+      } else if (event.type === "node.started" || event.type === "node.completed") {
+        const index = this.scenarioNodeRuns.findIndex(
+          (item) => item.id === event.node.id,
+        );
+        if (index >= 0) this.scenarioNodeRuns[index] = event.node;
+        else this.scenarioNodeRuns.push(event.node);
+      } else if (event.type === "approval.required") {
+        this.pendingScenarioApproval = event;
+      }
     });
   }
 }

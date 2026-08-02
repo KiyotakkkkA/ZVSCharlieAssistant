@@ -3,14 +3,17 @@ import type { RunEvent, StartRunInput } from "../../../ipc/contracts";
 import { ChatDataSource } from "../database/chat.data-source";
 import { ProviderRegistry } from "./provider.registry";
 import { ApprovalCoordinator, ToolRegistry } from "../tools/tool.registry";
+import type { ScenarioRunEngine } from "../automation/scenario-run-engine";
 type Emit = (event: RunEvent) => void;
 export class RunEngine {
   private controllers = new Map<number, AbortController>();
+  private scenarioRunIds = new Set<number>();
   readonly approvals = new ApprovalCoordinator();
   private readonly tools: ToolRegistry;
   constructor(
     private readonly data: ChatDataSource,
     private readonly providers: ProviderRegistry,
+    private readonly scenarios?: ScenarioRunEngine,
   ) {
     this.tools = new ToolRegistry(data, this.approvals);
   }
@@ -20,6 +23,8 @@ export class RunEngine {
   ): Promise<{ runId: number; conversationId: number }> {
     const text = input.text.trim();
     if (!text) throw new Error("Сообщение не может быть пустым");
+    if (input.mode === "scenario") return this.startScenario(input, text, emit);
+    if (!input.modelId) throw new Error("Модель не выбрана");
     const agent =
       input.mode === "agent"
         ? this.data.resolveAgent(input.agentId)
@@ -75,8 +80,108 @@ export class RunEngine {
     return { runId, conversationId };
   }
   cancel(runId: number) {
-    this.controllers.get(runId)?.abort();
+    if (this.scenarioRunIds.has(runId)) this.scenarios?.cancel(runId);
+    else this.controllers.get(runId)?.abort();
     this.approvals.clear();
+  }
+  private startScenario(
+    input: StartRunInput,
+    text: string,
+    emit: Emit,
+  ): { runId: number; conversationId: number } {
+    if (!this.scenarios) throw new Error("Движок сценариев недоступен");
+    if (!input.scenarioId) throw new Error("Сценарий не выбран");
+    this.scenarios.assertRunnable(input.scenarioId);
+    const conversationId =
+      input.conversationId ??
+      this.data.createConversation("scenario", undefined, undefined);
+    const userMessage = this.data.addMessage(
+      conversationId,
+      null,
+      "user",
+      text,
+      "completed",
+    );
+    const assistantMessage = this.data.addMessage(
+      conversationId,
+      null,
+      "assistant",
+      "",
+      "streaming",
+    );
+    this.data.updateTitle(conversationId, text);
+    let scenarioRunId = 0;
+    const run = this.scenarios.start(
+      input.scenarioId,
+      { message: text },
+      "chat",
+      (event) => {
+        if (event.type === "run.started") {
+          scenarioRunId = event.run.id;
+          this.scenarioRunIds.add(event.run.id);
+          emit({
+            type: "run.started",
+            runId: event.run.id,
+            conversationId,
+            userMessage,
+            assistantMessage,
+          });
+          emit({ type: "scenario.run", run: event.run });
+        } else if (
+          event.type === "node.started" ||
+          event.type === "node.completed"
+        ) {
+          emit({ type: "scenario.node", runId: event.runId, node: event.node });
+        } else if (event.type === "node.output.delta") {
+          emit({
+            type: "scenario.node.delta",
+            runId: event.runId,
+            nodeId: event.nodeId,
+            delta: event.delta,
+          });
+        } else if (event.type === "approval.required") {
+          emit({ type: "scenario.approval.required", runId: event.runId, nodeId: event.nodeId, prompt: event.prompt });
+        } else if (event.type === "run.completed") {
+          this.scenarioRunIds.delete(event.run.id);
+          const output =
+            typeof event.run.output === "string"
+              ? event.run.output
+              : JSON.stringify(event.run.output, null, 2);
+          this.data.replaceText(assistantMessage.id, output);
+          this.data.setMessageStatus(assistantMessage.id, "completed");
+          emit({
+            type: "text.delta",
+            runId: event.run.id,
+            messageId: assistantMessage.id,
+            delta: output,
+          });
+          emit({ type: "scenario.run", run: event.run });
+          emit({ type: "run.completed", runId: event.run.id });
+        } else if (
+          event.type === "run.failed" ||
+          event.type === "run.cancelled"
+        ) {
+          this.scenarioRunIds.delete(event.run.id);
+          this.data.setMessageStatus(
+            assistantMessage.id,
+            event.type === "run.failed" ? "failed" : "cancelled",
+          );
+          emit({ type: "scenario.run", run: event.run });
+          emit(
+            event.type === "run.failed"
+              ? {
+                  type: "run.failed",
+                  runId: event.run.id,
+                  message: event.run.error ?? "Сценарий завершился с ошибкой",
+                }
+              : { type: "run.cancelled", runId: event.run.id },
+          );
+        }
+      },
+      conversationId,
+    );
+    this.data.linkMessageToScenarioRun(assistantMessage.id, run.id);
+    return { runId: scenarioRunId || run.id, conversationId };
   }
   private async execute(
     runId: number,
@@ -89,17 +194,20 @@ export class RunEngine {
     emit: Emit,
   ) {
     try {
+      if (!input.modelId) throw new Error("Модель не выбрана");
       this.data.setRunStatus(runId, "running");
       const history = this.data
         .messages(conversationId)
         .filter((m) => m.id !== assistantMessageId)
-        .map((m): ModelMessage => ({
-          role:
-            m.role === "tool"
-              ? "assistant"
-              : (m.role as "user" | "assistant" | "system"),
-          content: m.text,
-        }));
+        .map(
+          (m): ModelMessage => ({
+            role:
+              m.role === "tool"
+                ? "assistant"
+                : (m.role as "user" | "assistant" | "system"),
+            content: m.text,
+          }),
+        );
       const system =
         input.mode === "planner"
           ? "Составь практичный пошаговый план. Не выполняй действия без необходимости."

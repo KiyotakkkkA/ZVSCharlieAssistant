@@ -16,9 +16,10 @@ import {
   SendIcon,
   StorageIcon,
   UploadIcon,
+  TasksIcon,
 } from "../atoms";
 
-export type ChatMode = "chat" | "planner" | "agent";
+export type ChatMode = "chat" | "planner" | "agent" | "scenario";
 export type ChatModel = string;
 export interface ChatModelOption {
   value: string;
@@ -44,6 +45,12 @@ const modes = [
     description: "Передать задачу исполнителю",
     icon: RobotIcon,
   },
+  {
+    value: "scenario" as const,
+    label: "Сценарии",
+    description: "Запустить управляемый процесс",
+    icon: TasksIcon,
+  },
 ];
 
 interface ChatComposerProps {
@@ -51,12 +58,15 @@ interface ChatComposerProps {
   mode: ChatMode;
   model: ChatModel;
   agentId: string;
+  scenarioId: string;
   agentOptions: SelectOption[];
+  scenarioOptions: SelectOption[];
   modelOptions: ChatModelOption[];
   onTextChange: (value: string) => void;
   onModeChange: (value: ChatMode) => void;
   onModelChange: (value: ChatModel) => void;
   onAgentChange: (value: string) => void;
+  onScenarioChange: (value: string) => void;
   onSend: () => void;
   running?: boolean;
   onCancel?: () => void;
@@ -112,42 +122,44 @@ export function ChatComposer(props: ChatComposerProps) {
           />
           <div className="flex flex-wrap items-center justify-between gap-2 px-1 pb-1">
             <div className="flex min-w-0 items-center gap-1.5">
-              <Dropdown
-                className="shrink-0"
-                menuWidth={240}
-                menuPlacement="top-left"
-              >
-                <Tooltip label="Прикрепить файлы" placement="top-left">
-                  <Dropdown.Trigger
-                    icon={<PaperclipIcon className="size-4" />}
-                    rounded="rounded-full"
-                    className="size-9 justify-center gap-0 border-0! bg-transparent px-0 py-0 text-main-400 shadow-none ring-0! hover:bg-main-600/70 hover:text-main-50"
-                    aria-label="Прикрепить"
-                  >
-                    <span className="sr-only">Прикрепить файлы</span>
-                  </Dropdown.Trigger>
-                </Tooltip>
-                <Dropdown.Menu rounded="rounded-xl" className="p-1.5">
-                  <Dropdown.Item
-                    icon={<UploadIcon className="size-4" />}
-                    className="rounded-lg"
-                  >
-                    Загрузить с устройства
-                  </Dropdown.Item>
-                  <Dropdown.Item
-                    icon={<FileIcon className="size-4" />}
-                    className="rounded-lg"
-                  >
-                    Добавить документ
-                  </Dropdown.Item>
-                  <Dropdown.Item
-                    icon={<StorageIcon className="size-4" />}
-                    className="rounded-lg"
-                  >
-                    Выбрать из хранилища
-                  </Dropdown.Item>
-                </Dropdown.Menu>
-              </Dropdown>
+              {props.mode !== "scenario" ? (
+                <Dropdown
+                  className="shrink-0"
+                  menuWidth={240}
+                  menuPlacement="top-left"
+                >
+                  <Tooltip label="Прикрепить файлы" placement="top-left">
+                    <Dropdown.Trigger
+                      icon={<PaperclipIcon className="size-4" />}
+                      rounded="rounded-full"
+                      className="size-9 justify-center gap-0 border-0! bg-transparent px-0 py-0 text-main-400 shadow-none ring-0! hover:bg-main-600/70 hover:text-main-50"
+                      aria-label="Прикрепить"
+                    >
+                      <span className="sr-only">Прикрепить файлы</span>
+                    </Dropdown.Trigger>
+                  </Tooltip>
+                  <Dropdown.Menu rounded="rounded-xl" className="p-1.5">
+                    <Dropdown.Item
+                      icon={<UploadIcon className="size-4" />}
+                      className="rounded-lg"
+                    >
+                      Загрузить с устройства
+                    </Dropdown.Item>
+                    <Dropdown.Item
+                      icon={<FileIcon className="size-4" />}
+                      className="rounded-lg"
+                    >
+                      Добавить документ
+                    </Dropdown.Item>
+                    <Dropdown.Item
+                      icon={<StorageIcon className="size-4" />}
+                      className="rounded-lg"
+                    >
+                      Выбрать из хранилища
+                    </Dropdown.Item>
+                  </Dropdown.Menu>
+                </Dropdown>
+              ) : null}
               <Dropdown
                 className="shrink-0"
                 menuWidth={260}
@@ -215,45 +227,80 @@ export function ChatComposer(props: ChatComposerProps) {
                   </Select.Menu>
                 </Select>
               ) : null}
+              {props.mode === "scenario" ? (
+                <Select
+                  disabled={props.scenarioOptions.length === 0}
+                  className="max-w-56 w-fit shrink-0"
+                  value={props.scenarioId}
+                  onChange={props.onScenarioChange}
+                  options={props.scenarioOptions}
+                  placeholder={
+                    props.scenarioOptions.length
+                      ? "Выберите сценарий"
+                      : "Нет сценариев"
+                  }
+                  searchable
+                  searchPlaceholder="Найти сценарий"
+                  emptyMessage="Сценарии не найдены"
+                  menuWidth={260}
+                  menuPlacement="top-left"
+                >
+                  <Select.Trigger
+                    rounded="rounded-full"
+                    className="h-9 w-full border-0! px-3 text-xs shadow-none ring-0! hover:bg-main-600/70"
+                  />
+                  <Select.Menu rounded="rounded-3xl">
+                    {props.scenarioOptions.map((scenario) => (
+                      <Select.Option
+                        key={scenario.value}
+                        {...scenario}
+                        rounded="rounded-full"
+                      />
+                    ))}
+                  </Select.Menu>
+                </Select>
+              ) : null}
             </div>
             <div className="flex items-center gap-1.5">
-              <Dropdown
-                className="shrink-0"
-                menuWidth={260}
-                menuPlacement="top-right"
-              >
-                <Dropdown.Trigger
-                  disabled={props.modelOptions.length === 0}
-                  rounded="rounded-full"
-                  className={`inline-flex h-9 items-center gap-2 border-0! px-3 text-xs text-main-300 shadow-none ring-0! hover:bg-main-600/70 hover:text-main-50`}
+              {!["agent", "scenario"].includes(props.mode) && (
+                <Dropdown
+                  className="shrink-0"
+                  menuWidth={260}
+                  menuPlacement="top-right"
                 >
-                  <span className="flex items-center">
-                    {selectedModel?.label ?? "Нет моделей"}
-                  </span>
-                </Dropdown.Trigger>
-                <Dropdown.Menu
-                  rounded="rounded-4xl"
-                  className="p-1.5 space-y-2"
-                >
-                  {props.modelOptions.map((item) => (
-                    <Dropdown.Item
-                      key={item.value}
-                      active={props.model === item.value}
-                      className="rounded-3xl"
-                      onClick={() => props.onModelChange(item.value)}
-                    >
-                      <span className="block text-left">
-                        <span className="block text-sm font-medium">
-                          {item.label}
+                  <Dropdown.Trigger
+                    disabled={props.modelOptions.length === 0}
+                    rounded="rounded-full"
+                    className={`inline-flex h-9 items-center gap-2 border-0! px-3 text-xs text-main-300 shadow-none ring-0! hover:bg-main-600/70 hover:text-main-50`}
+                  >
+                    <span className="flex items-center">
+                      {selectedModel?.label ?? "Нет моделей"}
+                    </span>
+                  </Dropdown.Trigger>
+                  <Dropdown.Menu
+                    rounded="rounded-4xl"
+                    className="p-1.5 space-y-2"
+                  >
+                    {props.modelOptions.map((item) => (
+                      <Dropdown.Item
+                        key={item.value}
+                        active={props.model === item.value}
+                        className="rounded-3xl"
+                        onClick={() => props.onModelChange(item.value)}
+                      >
+                        <span className="block text-left">
+                          <span className="block text-sm font-medium">
+                            {item.label}
+                          </span>
+                          <span className="block text-xs text-main-500">
+                            {item.description}
+                          </span>
                         </span>
-                        <span className="block text-xs text-main-500">
-                          {item.description}
-                        </span>
-                      </span>
-                    </Dropdown.Item>
-                  ))}
-                </Dropdown.Menu>
-              </Dropdown>
+                      </Dropdown.Item>
+                    ))}
+                  </Dropdown.Menu>
+                </Dropdown>
+              )}
               <Tooltip
                 label={
                   props.running
@@ -270,7 +317,10 @@ export function ChatComposer(props: ChatComposerProps) {
                   label={props.running ? "Остановить" : "Отправить"}
                   className="inline-flex size-9 items-center justify-center border-0! p-0 shadow-none ring-0!"
                   disabled={
-                    !props.running && (!props.text.trim() || !selectedModel)
+                    !props.running &&
+                    (!props.text.trim() ||
+                      (props.mode !== "scenario" && !selectedModel) ||
+                      (props.mode === "scenario" && !props.scenarioId))
                   }
                   onClick={props.running ? props.onCancel : props.onSend}
                 >
