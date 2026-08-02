@@ -23,6 +23,7 @@ import {
 } from "../../atoms";
 import { SettingsProviderModelCard } from "../../molecules";
 import { textProviderStore } from "../../../stores";
+import { PrimaryButton } from "@renderer/components/atoms/buttons";
 
 const API_KEYS_CATEGORY_ID = 1;
 export type ProviderStatus = "connected" | "unchecked" | "error";
@@ -136,20 +137,13 @@ export function SettingsProviderManageForm({
             >
               Проверить подключение
             </Button>
-            <Button
-              variant="primary"
-              rounded="rounded-full"
+            <PrimaryButton
+              variant="save"
               loading={saving}
-              loadingText="Сохранение…"
-              className="px-4"
-              classNames={{ loaderIcon: "hidden" }}
+              label="Сохранить"
               disabled={!canSave || saving}
-              title={canSave ? undefined : "Сначала проверьте подключение"}
               onClick={() => void save()}
-            >
-              <SaveIcon className="size-4" />
-              Сохранить
-            </Button>
+            />
           </div>
         </div>
         <div className="mt-5 grid gap-5 xl:grid-cols-[220px_minmax(0,1fr)]">

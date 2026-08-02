@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { observer } from "mobx-react-lite";
 import { EmptyState, ScrollArea, useToasts } from "@kiyotakkkka/zvs-uikit-lib";
 import { StorageIcon } from "../../../components/atoms";
-import { CreateButton } from "../../../components/atoms/buttons";
+import { PrimaryButton } from "../../../components/atoms/buttons";
 import {
   DangerModal,
   PageHeader,
@@ -33,7 +33,7 @@ export const VectorStoresPage = observer(function VectorStoresPage() {
         description="Загружайте документы и управляйте базами знаний для агентов и сценариев."
         breadcrumbs={[{ label: "Хранилище" }, { label: "Векторные базы" }]}
       >
-        <CreateButton
+        <PrimaryButton
           label="Добавить хранилище"
           onClick={() => {
             void store.createStore().catch((error) =>
@@ -93,7 +93,7 @@ export const VectorStoresPage = observer(function VectorStoresPage() {
                 title="Хранилищ пока нет"
                 description="Создайте базу знаний и выберите embedding-модель."
                 action={
-                  <CreateButton
+                  <PrimaryButton
                     label="Добавить хранилище"
                     onClick={() => {
                       void store.createStore().catch((error) =>

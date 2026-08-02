@@ -20,7 +20,7 @@ import {
   vectorStoreStore,
 } from "../../../stores";
 import { Field } from "../../atoms";
-import { CreateButton } from "../../atoms/buttons";
+import { PrimaryButton } from "../../atoms/buttons";
 
 interface AutomationAgentManageFormProps {
   model?: AutomationAgent;
@@ -120,10 +120,7 @@ export const AutomationAgentManageForm = observer(
               .filter(([, selected]) => selected)
               .map(([id]) => Number(id))
           : [],
-        retrievalLimit: Math.min(
-          Math.max(Number(retrievalLimit) || 5, 1),
-          20,
-        ),
+        retrievalLimit: Math.min(Math.max(Number(retrievalLimit) || 5, 1), 20),
         maxToolCalls: model?.maxToolCalls ?? 20,
         timeoutSeconds: model?.timeoutSeconds ?? 120,
       });
@@ -213,9 +210,10 @@ export const AutomationAgentManageForm = observer(
 
             <FormSection
               title="Модель"
-              description="Проверенная модель активного провайдера, которая будет выполнять инструкции агента."
+              description="Текстовая модель, которая будет использоваться агентом для обработки запросов."
             >
               <Select
+                className="w-full"
                 value={textModelId}
                 onChange={setTextModelId}
                 options={textProviderStore.enabledModels.map((item) => ({
@@ -225,7 +223,7 @@ export const AutomationAgentManageForm = observer(
                 placeholder="Выберите модель"
                 searchable
               >
-                <Select.Trigger className="w-full" />
+                <Select.Trigger />
                 <Select.Menu>
                   {textProviderStore.enabledModels.map((item) => (
                     <Select.Option
@@ -294,8 +292,7 @@ export const AutomationAgentManageForm = observer(
                         {store.name}
                       </span>
                       <span className="mt-1 block text-xs text-main-500">
-                        {vectorDocumentCounts.get(store.id) ?? 0}{" "}
-                        документов ·{" "}
+                        {vectorDocumentCounts.get(store.id) ?? 0} документов ·{" "}
                         {store.searchMode === "hybrid"
                           ? "гибридный поиск"
                           : "векторный поиск"}
@@ -329,7 +326,7 @@ export const AutomationAgentManageForm = observer(
           <Button type="button" variant="ghost" onClick={onCancel}>
             Отмена
           </Button>
-          <CreateButton
+          <PrimaryButton
             type="submit"
             loading={submitting}
             disabled={
@@ -340,7 +337,7 @@ export const AutomationAgentManageForm = observer(
               !textModelId
             }
             label={model ? "Сохранить" : "Добавить"}
-          ></CreateButton>
+          ></PrimaryButton>
         </div>
       </form>
     );
@@ -357,7 +354,7 @@ function FormSection({
   children: React.ReactNode;
 }) {
   return (
-    <section className="grid gap-4 rounded-xl bg-main-800/20 p-5 ring-1 ring-main-700/35 xl:grid-cols-[220px_1fr]">
+    <section className="grid gap-4 rounded-xl bg-main-800/20 p-5 ring-1 ring-main-700/35 xl:grid-cols-[220px_1fr] ">
       <div>
         <h2 className="text-sm font-semibold text-main-100">{title}</h2>
         <p className="mt-1 text-xs leading-5 text-main-500">{description}</p>

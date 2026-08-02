@@ -7,7 +7,10 @@ import {
   useToasts,
 } from "@kiyotakkkka/zvs-uikit-lib";
 import { RobotIcon } from "../../../components/atoms";
-import { ControlButton, CreateButton } from "../../../components/atoms/buttons";
+import {
+  ControlButton,
+  PrimaryButton,
+} from "../../../components/atoms/buttons";
 import {
   DangerModal,
   PageHeader,
@@ -173,7 +176,7 @@ export const SettingsProvidersPage = observer(function SettingsProvidersPage() {
           />
         }
       >
-        <CreateButton label="Добавить провайдера" onClick={createProvider} />
+        <PrimaryButton label="Добавить провайдера" onClick={createProvider} />
       </PageHeader>
       <div className="flex min-h-0 flex-1 gap-3">
         <aside className="flex w-80 shrink-0 flex-col overflow-hidden rounded-xl bg-main-800/25">
@@ -236,7 +239,7 @@ export const SettingsProvidersPage = observer(function SettingsProvidersPage() {
               title="Провайдеров пока нет"
               description="Добавьте провайдера и проверьте подключение."
               action={
-                <CreateButton
+                <PrimaryButton
                   label="Добавить провайдера"
                   onClick={createProvider}
                 />

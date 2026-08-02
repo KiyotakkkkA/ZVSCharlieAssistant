@@ -16,6 +16,7 @@ import {
   type ChatModel,
 } from "../../components/organisms";
 import { automationStore, chatStore, textProviderStore } from "../../stores";
+import { PrimaryButton } from "@renderer/components/atoms/buttons";
 
 export const ChatPage = observer(function ChatPage() {
   const toasts = useToasts();
@@ -218,14 +219,13 @@ export const ChatPage = observer(function ChatPage() {
                 >
                   Отмена
                 </Button>
-                <Button
+                <PrimaryButton
                   type="submit"
-                  variant="primary"
+                  variant="save"
+                  label="Сохранить"
                   loading={renaming}
                   disabled={!dialogTitle.trim()}
-                >
-                  Сохранить
-                </Button>
+                />
               </div>
             </form>
           </Modal.Content>

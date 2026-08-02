@@ -63,9 +63,6 @@ export const ScenarioExecutionHistory = ({
           <span className="block truncate text-xs font-medium text-main-200">
             {execution.run.scenarioName}
           </span>
-          <span className="mt-0.5 block text-[11px] text-main-500">
-            Выполнение #{execution.run.id} · {execution.nodes.length} шагов
-          </span>
         </span>
         <span
           className={`flex shrink-0 items-center gap-2 text-[11px] ${

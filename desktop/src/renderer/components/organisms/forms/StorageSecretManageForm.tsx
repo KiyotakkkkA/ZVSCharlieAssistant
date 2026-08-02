@@ -10,7 +10,7 @@ import type {
   SecretEntity,
   UpsertSecretInput,
 } from "../../../../ipc/contracts";
-import { CreateButton } from "@renderer/components/atoms/buttons";
+import { PrimaryButton } from "@renderer/components/atoms/buttons";
 
 interface StorageSecretManageFormProps {
   categories: SecretCategory[];
@@ -123,7 +123,7 @@ export function StorageSecretManageForm({
         <Button type="button" variant="ghost" onClick={onCancel}>
           Отмена
         </Button>
-        <CreateButton
+        <PrimaryButton
           type="submit"
           loading={saving}
           disabled={!categoryId}

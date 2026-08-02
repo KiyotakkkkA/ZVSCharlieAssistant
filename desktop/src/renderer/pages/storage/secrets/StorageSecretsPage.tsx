@@ -4,6 +4,7 @@ import {
   Button,
   EmptyState,
   InputSmall,
+  Loader,
   ScrollArea,
   Switcher,
   Table,
@@ -12,11 +13,7 @@ import {
   type TableColumn,
 } from "@kiyotakkkka/zvs-uikit-lib";
 import type { SecretCategory, SecretEntity } from "../../../../ipc/contracts";
-import {
-  FolderIcon,
-  KeyIcon,
-  RefreshIcon,
-} from "../../../components/atoms";
+import { FolderIcon, KeyIcon, RefreshIcon } from "../../../components/atoms";
 import {
   StorageSecretCategoryManageForm,
   StorageSecretManageForm,
@@ -33,7 +30,7 @@ import {
 import { secretStorageStore } from "../../../stores";
 import {
   ControlButton,
-  CreateButton,
+  PrimaryButton,
 } from "@renderer/components/atoms/buttons";
 
 type ActiveSection = "secrets" | "categories";
@@ -324,7 +321,7 @@ export const StorageSecretsPage = observer(function StorageSecretsPage() {
             : "Создайте категорию, чтобы организовать секреты."
         }
         action={
-          <CreateButton
+          <PrimaryButton
             label={isSecrets ? "Добавить секрет" : "Добавить категорию"}
             onClick={openCreateDialog}
           />
@@ -385,7 +382,7 @@ export const StorageSecretsPage = observer(function StorageSecretsPage() {
             }
             className="w-64"
           />
-          <CreateButton
+          <PrimaryButton
             label={
               activeSection === "secrets"
                 ? "Добавить секрет"

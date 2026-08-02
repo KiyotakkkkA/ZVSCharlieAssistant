@@ -1,2 +1,2 @@
-export { CreateButton } from "./CreateButton";
+export { PrimaryButton } from "./PrimaryButton";
 export { ControlButton } from "./ControlButton";

@@ -4,7 +4,7 @@ import type {
   SecretCategory,
   UpsertSecretCategoryInput,
 } from "../../../../ipc/contracts";
-import { CreateButton } from "@renderer/components/atoms/buttons";
+import { PrimaryButton } from "@renderer/components/atoms/buttons";
 
 interface StorageSecretCategoryManageFormProps {
   model?: SecretCategory;
@@ -61,7 +61,7 @@ export function StorageSecretCategoryManageForm({
         <Button type="button" variant="ghost" onClick={onCancel}>
           Отмена
         </Button>
-        <CreateButton
+        <PrimaryButton
           loading={saving}
           label={model ? "Сохранить" : "Добавить"}
           type="submit"

@@ -17,7 +17,7 @@ import { automationStore, textProviderStore } from "../../../stores";
 import { useMemo, useState } from "react";
 import {
   ControlButton,
-  CreateButton,
+  PrimaryButton,
 } from "@renderer/components/atoms/buttons";
 import type { AutomationAgent } from "../../../../ipc/contracts";
 
@@ -158,7 +158,7 @@ export const AgentsListPage = observer(function AgentsListPage() {
             placeholder="Найти агента"
             className="w-64"
           />
-          <CreateButton
+          <PrimaryButton
             label="Добавить агента"
             onClick={() => goTo(APP_PATHS.automation.agents.create)}
           />

@@ -17,7 +17,7 @@ import { useHashRouter } from "../../../hooks";
 import { automationStore } from "../../../stores";
 import {
   ControlButton,
-  CreateButton,
+  PrimaryButton,
 } from "@renderer/components/atoms/buttons";
 import { useMemo, useState } from "react";
 
@@ -140,7 +140,7 @@ export const ScenariosListPage = observer(function ScenariosListPage() {
             placeholder="Найти сценарий"
             className="w-64"
           />
-          <CreateButton
+          <PrimaryButton
             label="Добавить сценарий"
             onClick={() => goTo(APP_PATHS.automation.scenarios.create)}
           />
@@ -185,7 +185,7 @@ export const ScenariosListPage = observer(function ScenariosListPage() {
               }
               action={
                 query ? undefined : (
-                  <CreateButton
+                  <PrimaryButton
                     label="Добавить сценарий"
                     onClick={() => goTo(APP_PATHS.automation.scenarios.create)}
                   />
