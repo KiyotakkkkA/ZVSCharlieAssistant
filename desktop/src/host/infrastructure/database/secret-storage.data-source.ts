@@ -1,7 +1,6 @@
 import type Database from "better-sqlite3";
 import type {
   SecretCategory,
-  SecretEntity,
   SecretRecord,
   UpsertSecretCategoryInput,
   UpsertSecretInput,

@@ -8,7 +8,6 @@ import {
   InputSmall,
   Select,
   Tabs,
-  Tooltip,
 } from "@kiyotakkkka/zvs-uikit-lib";
 import type {
   AutomationAgent,
@@ -20,7 +19,8 @@ import {
   textProviderStore,
   vectorStoreStore,
 } from "../../../stores";
-import { CreateButton } from "@renderer/components/atoms/buttons";
+import { Field } from "../../atoms";
+import { CreateButton } from "../../atoms/buttons";
 
 interface AutomationAgentManageFormProps {
   model?: AutomationAgent;
@@ -69,7 +69,26 @@ export const AutomationAgentManageForm = observer(
           ]),
         ),
       );
-    }, [model]);
+      setVectorStoreModel(
+        Object.fromEntries(
+          vectorStoreStore.stores.map((store) => [
+            String(store.id),
+            model?.allowedVectorStoreIds.includes(store.id) ?? false,
+          ]),
+        ),
+      );
+      setRetrievalLimit(String(model?.retrievalLimit ?? 5));
+    }, [
+      model,
+      automationStore.initialized,
+      textProviderStore.initialized,
+      vectorStoreStore.initialized,
+    ]);
+
+    useEffect(() => {
+      if (!vectorSearchEnabled && activeTab === "storage")
+        setActiveTab("basic");
+    }, [activeTab, vectorSearchEnabled]);
 
     const selectedToolIds = useMemo(
       () =>
@@ -78,7 +97,6 @@ export const AutomationAgentManageForm = observer(
           .map(([toolId]) => toolId),
       [toolModel],
     );
-
     const submit = async () => {
       await onSubmit({
         id: model?.id,
@@ -88,6 +106,15 @@ export const AutomationAgentManageForm = observer(
         textModelId: Number(textModelId),
         status,
         allowedToolIds: selectedToolIds,
+        allowedVectorStoreIds: vectorSearchEnabled
+          ? Object.entries(vectorStoreModel)
+              .filter(([, selected]) => selected)
+              .map(([id]) => Number(id))
+          : [],
+        retrievalLimit: Math.min(
+          Math.max(Number(retrievalLimit) || 5, 1),
+          20,
+        ),
         maxToolCalls: model?.maxToolCalls ?? 20,
         timeoutSeconds: model?.timeoutSeconds ?? 120,
       });
@@ -101,29 +128,20 @@ export const AutomationAgentManageForm = observer(
           void submit();
         }}
       >
-        <Tooltip
-          label={
-            vectorSearchEnabled
-              ? ""
-              : "Добавьте инструмент vecdb.search, чтобы настроить"
-          }
-          placement="bottom-left"
-        >
-          <div className="w-fit">
-            <Tabs
-              value={activeTab}
-              onChange={(value) => setActiveTab(value as "basic" | "storage")}
-              options={[
-                { value: "basic", label: "Базовые настройки" },
-                {
-                  value: "storage",
-                  label: "Работа с хранилищем",
-                  disabled: !vectorSearchEnabled,
-                },
-              ]}
-            />
-          </div>
-        </Tooltip>
+        <div className="w-fit">
+          <Tabs
+            value={activeTab}
+            onChange={(value) => setActiveTab(value as "basic" | "storage")}
+            options={[
+              { value: "basic", label: "Базовые настройки" },
+              {
+                value: "storage",
+                label: "Работа с хранилищем",
+                disabled: !vectorSearchEnabled,
+              },
+            ]}
+          />
+        </div>
 
         {activeTab === "basic" ? (
           <>
@@ -278,7 +296,6 @@ export const AutomationAgentManageForm = observer(
                 </InputCheckBoxGroup>
                 <Field label="Количество результатов" className="max-w-xs">
                   <InputSmall
-                    type="number"
                     min={1}
                     max={20}
                     value={retrievalLimit}
@@ -338,24 +355,5 @@ function FormSection({
       </div>
       <div className="space-y-4">{children}</div>
     </section>
-  );
-}
-
-function Field({
-  label,
-  children,
-  className = "",
-}: {
-  label: string;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <label className={`block ${className}`}>
-      <span className="mb-2 block text-xs font-medium text-main-400">
-        {label}
-      </span>
-      {children}
-    </label>
   );
 }

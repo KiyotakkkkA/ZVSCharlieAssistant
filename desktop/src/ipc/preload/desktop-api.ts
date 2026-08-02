@@ -33,6 +33,12 @@ import {
   type ScenarioValidationResult,
   type UpsertAutomationToolSecretBindingInput,
   type AutomationTool,
+  VECTOR_STORE_IPC_CHANNELS,
+  type VectorStoreSnapshot,
+  type UpsertVectorStoreInput,
+  type UploadVectorDocumentInput,
+  type VectorSearchInput,
+  type VectorSearchResultItem,
 } from "../contracts";
 
 export const desktopApi: DesktopApi = {
@@ -174,6 +180,40 @@ export const desktopApi: DesktopApi = {
         TEXT_PROVIDER_IPC_CHANNELS.deleteProvider,
         id,
       ) as Promise<TextProviderSnapshot>,
+  },
+  vectorStores: {
+    getSnapshot: (): Promise<VectorStoreSnapshot> =>
+      ipcRenderer.invoke(
+        VECTOR_STORE_IPC_CHANNELS.getSnapshot,
+      ) as Promise<VectorStoreSnapshot>,
+    upsertStore: (
+      input: UpsertVectorStoreInput,
+    ): Promise<VectorStoreSnapshot> =>
+      ipcRenderer.invoke(
+        VECTOR_STORE_IPC_CHANNELS.upsertStore,
+        input,
+      ) as Promise<VectorStoreSnapshot>,
+    deleteStore: (id: number): Promise<VectorStoreSnapshot> =>
+      ipcRenderer.invoke(
+        VECTOR_STORE_IPC_CHANNELS.deleteStore,
+        id,
+      ) as Promise<VectorStoreSnapshot>,
+    uploadDocuments: (
+      input: UploadVectorDocumentInput[],
+    ): Promise<VectorStoreSnapshot> =>
+      ipcRenderer.invoke(
+        VECTOR_STORE_IPC_CHANNELS.uploadDocuments,
+        input,
+      ) as Promise<VectorStoreSnapshot>,
+    deleteDocument: (id: number): Promise<VectorStoreSnapshot> =>
+      ipcRenderer.invoke(
+        VECTOR_STORE_IPC_CHANNELS.deleteDocument,
+        id,
+      ) as Promise<VectorStoreSnapshot>,
+    search: (input: VectorSearchInput): Promise<VectorSearchResultItem[]> =>
+      ipcRenderer.invoke(VECTOR_STORE_IPC_CHANNELS.search, input) as Promise<
+        VectorSearchResultItem[]
+      >,
   },
   chat: {
     getSnapshot: (id?: number): Promise<ChatSnapshot> =>

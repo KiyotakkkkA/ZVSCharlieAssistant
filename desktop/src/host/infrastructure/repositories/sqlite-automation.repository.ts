@@ -59,6 +59,7 @@ export class SqliteAutomationRepository implements AutomationRepository {
       throw new Error("Недопустимый статус агента");
     assertPositiveInteger(input.maxToolCalls, "Лимит инструментов", 10_000);
     assertPositiveInteger(input.timeoutSeconds, "Таймаут", 86_400);
+    assertPositiveInteger(input.retrievalLimit, "Лимит поиска", 20);
     const textModelId = input.textModelId;
     if (!Number.isInteger(textModelId) || textModelId <= 0)
       throw new Error("Некорректная модель");
@@ -67,6 +68,15 @@ export class SqliteAutomationRepository implements AutomationRepository {
 
     const allowedToolIds = normalizeIds(input.allowedToolIds);
     this.assertToolsExist(allowedToolIds);
+    const allowedVectorStoreIds = allowedToolIds.includes("vecdb.search")
+      ? [...new Set(input.allowedVectorStoreIds)]
+      : [];
+    for (const storeId of allowedVectorStoreIds) {
+      if (!Number.isInteger(storeId) || storeId < 1)
+        throw new Error("Некорректный идентификатор векторного хранилища");
+      if (!this.dataSource.vectorStoreExists(storeId))
+        throw new Error(`Векторное хранилище #${storeId} недоступно`);
+    }
 
     const id = input.id ?? randomUUID();
     if (input.id && !this.dataSource.findAgent(input.id))
@@ -79,6 +89,8 @@ export class SqliteAutomationRepository implements AutomationRepository {
       instructions: normalizeText(input.instructions, "Инструкции", 50_000),
       textModelId,
       allowedToolIds,
+      allowedVectorStoreIds,
+      retrievalLimit: input.retrievalLimit,
     });
   }
 

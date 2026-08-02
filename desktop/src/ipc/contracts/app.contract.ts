@@ -13,5 +13,6 @@ export interface DesktopApi {
   secrets: import("./secrets.contract").SecretStorageApi;
   automation: import("./automation.contract").AutomationApi;
   textProviders: import("./text-provider.contract").TextProviderApi;
+  vectorStores: import("./vector-store.contract").VectorStoreApi;
   chat: import("./chat.contract").ChatApi;
 }

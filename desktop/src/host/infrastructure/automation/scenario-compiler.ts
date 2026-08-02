@@ -11,6 +11,7 @@ export interface CompiledScenario {
   workerLevelsByOrchestrator: Map<string, string[][]>;
   workerIncoming: Map<string, string[]>;
   workerTerminalIdsByOrchestrator: Map<string, string[]>;
+  knowledgeStoreIdsByAgent: Map<string, number[]>;
 }
 
 export class ScenarioCompiler {
@@ -58,10 +59,24 @@ export class ScenarioCompiler {
           message: "Узел не может ссылаться сам на себя",
         });
       if (
+        edgeKind(edge) === "knowledge" &&
+        !(
+          source.kind === "knowledge_store" &&
+          target.kind === "agent" &&
+          edge.sourcePort === "knowledge-out" &&
+          edge.targetPort === "knowledge-in"
+        )
+      )
+        issues.push({
+          message: "Хранилище подключается только к knowledge-порту агента",
+        });
+      if (
         edgeKind(edge) === "worker" &&
         !(
           (source.kind === "orchestrator" || source.kind === "agent") &&
-          target.kind === "agent"
+          target.kind === "agent" &&
+          edge.sourcePort === "workers" &&
+          edge.targetPort === "worker-in"
         )
       )
         issues.push({
@@ -70,7 +85,12 @@ export class ScenarioCompiler {
         });
       if (
         edgeKind(edge) === "control" &&
-        (source.kind === "agent" || target.kind === "agent")
+        (source.kind === "agent" ||
+          target.kind === "agent" ||
+          source.kind === "knowledge_store" ||
+          target.kind === "knowledge_store" ||
+          edge.sourcePort !== "control-out" ||
+          edge.targetPort !== "control-in")
       )
         issues.push({
           message:
@@ -79,6 +99,15 @@ export class ScenarioCompiler {
     }
 
     for (const node of nodes) {
+      if (
+        node.kind === "knowledge_store" &&
+        (!Number.isInteger(Number(node.config?.vectorStoreId)) ||
+          Number(node.config?.vectorStoreId) < 1)
+      )
+        issues.push({
+          nodeId: node.id,
+          message: `Для узла «${node.title}» не выбрано хранилище`,
+        });
       if (node.kind === "agent" && !String(node.config?.agentId ?? "").trim())
         issues.push({
           nodeId: node.id,
@@ -172,7 +201,9 @@ export class ScenarioCompiler {
     if (visitedAgents !== agentDegree.size)
       issues.push({ message: "Исполнительный граф содержит цикл" });
 
-    const controlNodes = nodes.filter((node) => node.kind !== "agent");
+    const controlNodes = nodes.filter(
+      (node) => node.kind !== "agent" && node.kind !== "knowledge_store",
+    );
     const incoming = new Map(controlNodes.map((node) => [node.id, 0]));
     const outgoing = new Map(
       controlNodes.map((node) => [node.id, [] as string[]]),
@@ -221,7 +252,9 @@ export class ScenarioCompiler {
     const result = this.validate(graph);
     if (!result.valid)
       throw new Error(result.issues.map((issue) => issue.message).join("; "));
-    const controlNodes = graph.nodes.filter((node) => node.kind !== "agent");
+    const controlNodes = graph.nodes.filter(
+      (node) => node.kind !== "agent" && node.kind !== "knowledge_store",
+    );
     const byId = new Map(graph.nodes.map((node) => [node.id, node]));
     const edgeKind = (edge: AutomationScenarioEdge) =>
       resolveEdgeKind(edge, byId);
@@ -332,6 +365,22 @@ export class ScenarioCompiler {
       workerLevelsByOrchestrator,
       workerIncoming,
       workerTerminalIdsByOrchestrator,
+      knowledgeStoreIdsByAgent: new Map(
+        graph.nodes
+          .filter((node) => node.kind === "agent")
+          .map((agent) => [
+            agent.id,
+            graph.edges
+              .filter(
+                (edge) =>
+                  edgeKind(edge) === "knowledge" && edge.target === agent.id,
+              )
+              .map((edge) =>
+                Number(byId.get(edge.source)?.config?.vectorStoreId),
+              )
+              .filter((id) => Number.isInteger(id) && id > 0),
+          ]),
+      ),
     };
   }
 }
@@ -341,6 +390,11 @@ function resolveEdgeKind(
   nodes: Map<string, AutomationScenarioNode>,
 ) {
   const sourceKind = nodes.get(edge.source)?.kind;
+  if (
+    sourceKind === "knowledge_store" &&
+    nodes.get(edge.target)?.kind === "agent"
+  )
+    return "knowledge";
   return (sourceKind === "orchestrator" || sourceKind === "agent") &&
     nodes.get(edge.target)?.kind === "agent"
     ? "worker"

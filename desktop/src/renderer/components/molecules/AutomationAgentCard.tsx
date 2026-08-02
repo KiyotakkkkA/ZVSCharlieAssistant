@@ -1,4 +1,3 @@
-import { Button } from "@kiyotakkkka/zvs-uikit-lib";
 import { ClockIcon, RobotIcon } from "../atoms";
 import { APP_PATHS } from "../../app/routes";
 import type { AutomationAgent } from "../../../ipc/contracts";

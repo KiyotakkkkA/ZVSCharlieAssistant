@@ -68,4 +68,29 @@ export const BUILTIN_AUTOMATION_TOOLS: readonly AutomationTool[] = [
     secretRequirements: [ollamaApiKey],
     secretBindings: [],
   },
+  {
+    id: "vecdb.search",
+    name: "Поиск в векторной базе",
+    description: "Ищет релевантные фрагменты в разрешённых базах знаний.",
+    category: "База знаний",
+    builtin: true,
+    enabled: true,
+    requiresConfirmation: false,
+    inputSchema: {
+      type: "object",
+      required: ["query"],
+      properties: {
+        query: { type: "string" },
+        storeIds: { type: "array", items: { type: "integer" } },
+        limit: { type: "integer", minimum: 1, maximum: 20 },
+        scoreThreshold: { type: "number", minimum: 0, maximum: 1 },
+      },
+    },
+    outputSchema: {
+      type: "array",
+      items: { type: "object" },
+    },
+    secretRequirements: [],
+    secretBindings: [],
+  },
 ] as const;

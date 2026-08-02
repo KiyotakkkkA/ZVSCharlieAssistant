@@ -18,6 +18,8 @@ import {
   RobotIcon,
   SaveIcon,
   SecretOrientedSelect,
+  Field,
+  Lead,
 } from "../../atoms";
 import { SettingsProviderModelCard } from "../../molecules";
 import { textProviderStore } from "../../../stores";
@@ -151,7 +153,7 @@ export function SettingsProviderManageForm({
           </div>
         </div>
         <div className="mt-5 grid gap-5 xl:grid-cols-[220px_minmax(0,1fr)]">
-          <SectionLead
+          <Lead
             title="Подключение"
             description="Endpoint, тип провайдера и опциональный ключ."
           />
@@ -216,7 +218,7 @@ export function SettingsProviderManageForm({
               />
             </div>
           </div>
-          <SectionLead
+          <Lead
             title="Модели"
             description="Список появляется только после успешной проверки."
           />
@@ -261,38 +263,5 @@ export function SettingsProviderManageForm({
         </div>
       </div>
     </ScrollArea>
-  );
-}
-
-function SectionLead({
-  title,
-  description,
-}: {
-  title: string;
-  description: string;
-}) {
-  return (
-    <div>
-      <h3 className="text-sm font-semibold text-main-100">{title}</h3>
-      <p className="mt-1 text-xs leading-5 text-main-500">{description}</p>
-    </div>
-  );
-}
-function Field({
-  label,
-  className = "",
-  children,
-}: {
-  label: string;
-  className?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className={`block ${className}`}>
-      <span className="mb-2 block text-xs font-medium text-main-400">
-        {label}
-      </span>
-      {children}
-    </label>
   );
 }

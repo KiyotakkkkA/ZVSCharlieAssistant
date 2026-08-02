@@ -4,6 +4,7 @@ import type { RunEvent } from "../../../ipc/contracts";
 import type { SecretStorageRepository } from "../../domain/repositories/secret-storage.repository";
 import type { AutomationDataSource } from "../database/automation.data-source";
 import type { ChatDataSource } from "../database/chat.data-source";
+import type { VectorStoreService } from "../vector-store/vector-store.service";
 
 type Emit = (event: RunEvent) => void;
 
@@ -12,6 +13,7 @@ export class ToolRegistry {
     private readonly chatData: ChatDataSource,
     private readonly automationData: AutomationDataSource,
     private readonly secrets: SecretStorageRepository,
+    private readonly vectorStores: VectorStoreService,
   ) {}
 
   create(
@@ -19,6 +21,8 @@ export class ToolRegistry {
     emit: Emit,
     signal: AbortSignal,
     allowed: string[],
+    allowedVectorStoreIds: number[] = [],
+    retrievalLimit = 5,
   ): ToolSet {
     const tools: ToolSet = {
       web_search: tool({
@@ -55,12 +59,50 @@ export class ToolRegistry {
             () => this.callOllama("web_fetch", input, signal),
           ),
       }),
+      "vecdb.search": tool({
+        description:
+          "Ищет релевантные фрагменты в разрешённых агенту векторных базах знаний.",
+        inputSchema: z.object({
+          query: z.string().trim().min(1).max(2000),
+          storeIds: z.array(z.number().int().positive()).optional(),
+          limit: z.number().int().min(1).max(20).optional(),
+          scoreThreshold: z.number().min(0).max(1).optional(),
+        }),
+        execute: async (input, { toolCallId }) =>
+          this.execute(
+            runId,
+            toolCallId,
+            "vecdb.search",
+            input,
+            emit,
+            signal,
+            () => {
+              const requested = input.storeIds?.length
+                ? input.storeIds
+                : allowedVectorStoreIds;
+              const effective = requested.filter((id) =>
+                allowedVectorStoreIds.includes(id),
+              );
+              if (!effective.length)
+                throw new Error(
+                  "Агенту не разрешён доступ к векторным хранилищам",
+                );
+              return this.vectorStores.search({
+                vectorStoreIds: effective,
+                query: input.query,
+                limit: input.limit ?? retrievalLimit,
+                scoreThreshold: input.scoreThreshold,
+              });
+            },
+          ),
+      }),
     };
     return Object.fromEntries(
       Object.entries(tools).filter(
         ([id]) =>
           allowed.includes(id) &&
-          this.automationData.toolSecretId(id, "ollamaApiKey") !== undefined,
+          (id === "vecdb.search" ||
+            this.automationData.toolSecretId(id, "ollamaApiKey") !== undefined),
       ),
     );
   }

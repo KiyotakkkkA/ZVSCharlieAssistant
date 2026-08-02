@@ -40,6 +40,8 @@ export interface AutomationAgent {
   textModelId: number | null;
   status: AutomationStatus;
   allowedToolIds: string[];
+  allowedVectorStoreIds: number[];
+  retrievalLimit: number;
   maxToolCalls: number;
   timeoutSeconds: number;
   runs: number;
@@ -54,12 +56,20 @@ export interface UpsertAutomationAgentInput {
   textModelId: number;
   status: AutomationStatus;
   allowedToolIds: string[];
+  allowedVectorStoreIds: number[];
+  retrievalLimit: number;
   maxToolCalls: number;
   timeoutSeconds: number;
 }
 
 export type AutomationScenarioNodeKind =
-  "trigger" | "orchestrator" | "agent" | "condition" | "approval" | "output";
+  | "trigger"
+  | "orchestrator"
+  | "agent"
+  | "knowledge_store"
+  | "condition"
+  | "approval"
+  | "output";
 
 export interface AutomationScenarioNode {
   id: string;
@@ -73,7 +83,7 @@ export interface AutomationScenarioNode {
 
 export interface AutomationScenarioEdge {
   id: string;
-  kind: "control" | "worker";
+  kind: "control" | "worker" | "knowledge";
   source: string;
   target: string;
   sourcePort?: string;

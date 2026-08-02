@@ -13,13 +13,9 @@ import {
 } from "@kiyotakkkka/zvs-uikit-lib";
 import type { SecretCategory, SecretEntity } from "../../../../ipc/contracts";
 import {
-  CopyIcon,
-  EditIcon,
   FolderIcon,
   KeyIcon,
-  PlusIcon,
   RefreshIcon,
-  TrashIcon,
 } from "../../../components/atoms";
 import {
   StorageSecretCategoryManageForm,

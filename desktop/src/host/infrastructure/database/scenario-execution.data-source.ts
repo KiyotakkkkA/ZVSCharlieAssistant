@@ -153,9 +153,9 @@ export class ScenarioExecutionDataSource {
   }
 
   agent(id: string) {
-    return this.db
+    const agent = this.db
       .prepare(
-        `SELECT id,name,description,instructions,text_model_id FROM automation_agents
+        `SELECT id,name,description,instructions,text_model_id,retrieval_limit FROM automation_agents
        WHERE id=? AND status!='disabled'`,
       )
       .get(id) as
@@ -165,8 +165,23 @@ export class ScenarioExecutionDataSource {
           description: string;
           instructions: string;
           text_model_id: number;
+          retrieval_limit: number;
         }
       | undefined;
+    if (!agent) return undefined;
+    const allowedToolIds = (
+      this.db
+        .prepare("SELECT tool_id FROM automation_agent_tools WHERE agent_id=?")
+        .all(id) as Array<{ tool_id: string }>
+    ).map((item) => item.tool_id);
+    const allowedVectorStoreIds = (
+      this.db
+        .prepare(
+          "SELECT vector_store_id FROM automation_agent_vector_stores WHERE agent_id=?",
+        )
+        .all(id) as Array<{ vector_store_id: number }>
+    ).map((item) => item.vector_store_id);
+    return { ...agent, allowedToolIds, allowedVectorStoreIds };
   }
 
   defaultModelId(): number | undefined {

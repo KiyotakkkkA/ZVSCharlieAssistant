@@ -25,9 +25,11 @@ import {
   SendIcon,
   SettingsIcon,
   TasksIcon,
+  StorageIcon,
   TrashIcon,
 } from "../atoms";
 import type {
+  AutomationScenarioEdge as GraphEdge,
   AutomationScenarioNode as GraphNode,
   AutomationScenarioNodeKind as NodeKind,
 } from "../../../ipc/contracts";
@@ -59,6 +61,12 @@ const nodeMeta: Record<
     dot: "bg-violet-300",
     icon: (props) => <RobotIcon {...props} />,
   },
+  knowledge_store: {
+    label: "Хранилище",
+    color: "text-cyan-200 bg-cyan-400/10",
+    dot: "bg-cyan-300",
+    icon: (props) => <StorageIcon {...props} />,
+  },
   condition: {
     label: "Условие",
     color: "text-sky-200 bg-sky-400/10",
@@ -88,6 +96,7 @@ export type ScenarioFlowNode = FlowNode<ScenarioNodeData, "scenario">;
 
 export type ScenarioEdgeData = {
   edgeId: string;
+  kind: GraphEdge["kind"];
   onDelete: (edgeId: string) => void;
 } & Record<string, unknown>;
 export type ScenarioFlowEdge = FlowEdge<ScenarioEdgeData, "scenario">;
@@ -95,7 +104,6 @@ export type ScenarioFlowEdge = FlowEdge<ScenarioEdgeData, "scenario">;
 type ScenarioGraphCanvasProps = {
   nodes: ScenarioFlowNode[];
   edges: ScenarioFlowEdge[];
-  nodeCount: number;
   onNodesChange: OnNodesChange<ScenarioFlowNode>;
   onEdgesChange: OnEdgesChange<ScenarioFlowEdge>;
   onConnect: (connection: Connection) => void;
@@ -105,7 +113,6 @@ type ScenarioGraphCanvasProps = {
 export function ScenarioGraphCanvas({
   nodes,
   edges,
-  nodeCount,
   onNodesChange,
   onEdgesChange,
   onConnect,
@@ -127,16 +134,36 @@ export function ScenarioGraphCanvas({
           const target = nodes.find((node) => node.id === connection.target)
             ?.data.node;
           if (!source || !target || source.id === target.id) return false;
-          const worker =
+          const touchesKnowledgePort =
+            connection.sourceHandle === "knowledge-out" ||
+            connection.targetHandle === "knowledge-in";
+          if (touchesKnowledgePort)
+            return (
+              connection.sourceHandle === "knowledge-out" &&
+              connection.targetHandle === "knowledge-in" &&
+              source.kind === "knowledge_store" &&
+              target.kind === "agent"
+            );
+          const touchesWorkerPort =
             connection.sourceHandle === "workers" ||
             connection.targetHandle === "worker-in";
-          return worker
-            ? (source.kind === "orchestrator" || source.kind === "agent") &&
-                target.kind === "agent"
-            : source.kind !== "agent" &&
-                source.kind !== "output" &&
-                target.kind !== "agent" &&
-                target.kind !== "trigger";
+          if (touchesWorkerPort)
+            return (
+              connection.sourceHandle === "workers" &&
+              connection.targetHandle === "worker-in" &&
+              (source.kind === "orchestrator" || source.kind === "agent") &&
+              target.kind === "agent"
+            );
+          return (
+            connection.sourceHandle === "control-out" &&
+            connection.targetHandle === "control-in" &&
+            source.kind !== "agent" &&
+            source.kind !== "output" &&
+            source.kind !== "knowledge_store" &&
+            target.kind !== "agent" &&
+            target.kind !== "trigger" &&
+            target.kind !== "knowledge_store"
+          );
         }}
         onNodeClick={(_event, node) => onNodeSelect(node.id)}
         onInit={(instance) => {
@@ -249,13 +276,21 @@ const ScenarioFlowNodeView = memo(function ScenarioFlowNodeView({
       }`}
     >
       {node.kind === "agent" ? (
-        <Handle
-          id="worker-in"
-          type="target"
-          position={Position.Top}
-          className={`size-3! border-2! border-main-800! ${meta.dot}`}
-        />
-      ) : node.kind !== "trigger" ? (
+        <>
+          <Handle
+            id="worker-in"
+            type="target"
+            position={Position.Top}
+            className={`size-3! border-2! border-main-800! ${meta.dot}`}
+          />
+          <Handle
+            id="knowledge-in"
+            type="target"
+            position={Position.Left}
+            className="size-3! border-2! border-main-800! bg-cyan-300"
+          />
+        </>
+      ) : node.kind !== "trigger" && node.kind !== "knowledge_store" ? (
         <Handle
           id="control-in"
           type="target"
@@ -284,6 +319,13 @@ const ScenarioFlowNodeView = memo(function ScenarioFlowNodeView({
           type="source"
           position={Position.Bottom}
           className="size-3! border-2! border-main-800! bg-violet-300"
+        />
+      ) : node.kind === "knowledge_store" ? (
+        <Handle
+          id="knowledge-out"
+          type="source"
+          position={Position.Right}
+          className="size-3! border-2! border-main-800! bg-cyan-300"
         />
       ) : node.kind !== "output" ? (
         <Handle

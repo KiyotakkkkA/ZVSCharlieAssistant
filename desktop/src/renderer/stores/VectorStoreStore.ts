@@ -1,167 +1,165 @@
 import { makeAutoObservable, runInAction } from "mobx";
+import type {
+  UpsertVectorStoreInput,
+  VectorSearchInput,
+  VectorStoreConfig,
+  VectorStoreDocument,
+  VectorStoreSnapshot,
+} from "../../ipc/contracts";
 
-export type VectorStoreStatus = "ready" | "indexing" | "degraded" | "disabled";
-export type VectorDocumentStatus =
-  "queued" | "extracting" | "embedding" | "ready" | "failed";
-
-export interface VectorDocument {
-  id: number;
-  vectorStoreId: number;
-  fileName: string;
-  mimeType: string;
-  size: number;
-  status: VectorDocumentStatus;
-  progress: number;
-  chunkCount: number;
-  createdAt: string;
-  errorMessage: string | null;
-}
-
-export interface VectorStoreModel {
-  id: number;
-  name: string;
-  description: string;
-  embeddingModelId: number | null;
-  status: VectorStoreStatus;
-  searchMode: "vector" | "hybrid";
-  chunkSizeTokens: number;
-  chunkOverlapTokens: number;
-  vectorDimension: number | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-const now = new Date().toISOString();
+export type VectorStoreModel = VectorStoreConfig;
+export type VectorDocument = VectorStoreDocument;
 
 export class VectorStoreStore {
-  stores: VectorStoreModel[] = [];
-  documents: VectorDocument[] = [];
+  stores: VectorStoreConfig[] = [];
+  documents: VectorStoreDocument[] = [];
   initialized = false;
   loading = false;
   selectedStoreId: number | null = null;
-
+  private readonly updateVersions = new Map<number, number>();
   constructor() {
-    makeAutoObservable(this, {}, { autoBind: true });
+    makeAutoObservable<this, "updateVersions">(
+      this,
+      { updateVersions: false },
+      { autoBind: true },
+    );
   }
-
+  private apply(snapshot: VectorStoreSnapshot) {
+    this.stores = snapshot.stores;
+    this.documents = snapshot.documents;
+    this.selectedStoreId = this.stores.some(
+      (item) => item.id === this.selectedStoreId,
+    )
+      ? this.selectedStoreId
+      : (this.stores[0]?.id ?? null);
+    this.initialized = true;
+  }
   async bootstrap(force = false) {
     if (this.loading || (this.initialized && !force)) return;
     this.loading = true;
-    await Promise.resolve();
-    runInAction(() => {
-      if (!this.initialized) {
-        this.stores = [
-          {
-            id: 1,
-            name: "База знаний проекта",
-            description: "Документация, требования и рабочие материалы.",
-            embeddingModelId: null,
-            status: "ready",
-            searchMode: "hybrid",
-            chunkSizeTokens: 700,
-            chunkOverlapTokens: 100,
-            vectorDimension: 768,
-            createdAt: now,
-            updatedAt: now,
-          },
-        ];
-        this.documents = [
-          {
-            id: 1,
-            vectorStoreId: 1,
-            fileName: "Требования к проекту.pdf",
-            mimeType: "application/pdf",
-            size: 2_840_000,
-            status: "ready",
-            progress: 100,
-            chunkCount: 84,
-            createdAt: now,
-            errorMessage: null,
-          },
-          {
-            id: 2,
-            vectorStoreId: 1,
-            fileName: "Архитектура.docx",
-            mimeType:
-              "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            size: 486_000,
-            status: "ready",
-            progress: 100,
-            chunkCount: 31,
-            createdAt: now,
-            errorMessage: null,
-          },
-        ];
-      }
-      this.selectedStoreId ??= this.stores[0]?.id ?? null;
-      this.initialized = true;
-      this.loading = false;
-    });
+    try {
+      const snapshot = await window.desktop.vectorStores.getSnapshot();
+      runInAction(() => this.apply(snapshot));
+    } finally {
+      runInAction(() => {
+        this.loading = false;
+      });
+    }
   }
-
   get selectedStore() {
     return this.stores.find((item) => item.id === this.selectedStoreId);
   }
-
   documentsFor(storeId: number) {
     return this.documents.filter((item) => item.vectorStoreId === storeId);
   }
-
-  createStore() {
-    const id = Math.max(0, ...this.stores.map((item) => item.id)) + 1;
-    const item: VectorStoreModel = {
-      id,
+  async createStore() {
+    const snapshot = await window.desktop.vectorStores.upsertStore({
       name: "Новое векторное хранилище",
       description: "",
       embeddingModelId: null,
-      status: "disabled",
       searchMode: "vector",
       chunkSizeTokens: 700,
       chunkOverlapTokens: 100,
-      vectorDimension: null,
-      createdAt: now,
-      updatedAt: now,
+    });
+    runInAction(() => {
+      const previous = new Set(this.stores.map((item) => item.id));
+      this.apply(snapshot);
+      this.selectedStoreId =
+        snapshot.stores.find((item) => !previous.has(item.id))?.id ??
+        this.selectedStoreId;
+    });
+  }
+  async updateStore(id: number, patch: Partial<VectorStoreConfig>) {
+    const current = this.stores.find((item) => item.id === id);
+    if (!current) return;
+    const input: UpsertVectorStoreInput = {
+      id,
+      name: patch.name ?? current.name,
+      description: patch.description ?? current.description,
+      embeddingModelId:
+        patch.embeddingModelId === undefined
+          ? current.embeddingModelId
+          : patch.embeddingModelId,
+      searchMode: patch.searchMode ?? current.searchMode,
+      chunkSizeTokens: patch.chunkSizeTokens ?? current.chunkSizeTokens,
+      chunkOverlapTokens:
+        patch.chunkOverlapTokens ?? current.chunkOverlapTokens,
     };
-    this.stores.push(item);
-    this.selectedStoreId = id;
-  }
-
-  updateStore(id: number, patch: Partial<VectorStoreModel>) {
+    const version = (this.updateVersions.get(id) ?? 0) + 1;
+    this.updateVersions.set(id, version);
     this.stores = this.stores.map((item) =>
-      item.id === id
-        ? { ...item, ...patch, updatedAt: new Date().toISOString() }
-        : item,
+      item.id === id ? { ...item, ...patch } : item,
     );
+    try {
+      const snapshot = await window.desktop.vectorStores.upsertStore(input);
+      if (this.updateVersions.get(id) === version)
+        runInAction(() => this.apply(snapshot));
+    } catch (error) {
+      if (this.updateVersions.get(id) === version) await this.bootstrap(true);
+      throw error;
+    }
   }
-
-  deleteStore(id: number) {
-    this.stores = this.stores.filter((item) => item.id !== id);
-    this.documents = this.documents.filter((item) => item.vectorStoreId !== id);
-    if (this.selectedStoreId === id)
-      this.selectedStoreId = this.stores[0]?.id ?? null;
+  async deleteStore(id: number) {
+    const snapshot = await window.desktop.vectorStores.deleteStore(id);
+    runInAction(() => this.apply(snapshot));
   }
-
-  addFiles(storeId: number, files: File[]) {
-    let id = Math.max(0, ...this.documents.map((item) => item.id));
-    this.documents.push(
-      ...files.map((file) => ({
-        id: ++id,
+  async addFiles(storeId: number, files: File[]) {
+    const input = await Promise.all(
+      files.map(async (file) => ({
         vectorStoreId: storeId,
         fileName: file.name,
         mimeType: file.type || "text/plain",
-        size: file.size,
-        status: "queued" as const,
-        progress: 0,
-        chunkCount: 0,
-        createdAt: new Date().toISOString(),
-        errorMessage: null,
+        data: await file.arrayBuffer(),
       })),
     );
+    const previousStatuses = new Map(
+      this.documents.map((item) => [item.id, item.status]),
+    );
+    const snapshot = await window.desktop.vectorStores.uploadDocuments(input);
+    const uploadedIds = snapshot.documents
+      .filter((item) => {
+        const previousStatus = previousStatuses.get(item.id);
+        return (
+          previousStatus === undefined ||
+          (previousStatus === "failed" && item.status !== "failed")
+        );
+      })
+      .map((item) => item.id);
+    runInAction(() => this.apply(snapshot));
+    if (!uploadedIds.length)
+      throw new Error("Документы не были поставлены на обработку");
+    await this.pollUntilSettled(uploadedIds);
   }
-
-  deleteDocument(id: number) {
-    this.documents = this.documents.filter((item) => item.id !== id);
+  async deleteDocument(id: number) {
+    const snapshot = await window.desktop.vectorStores.deleteDocument(id);
+    runInAction(() => this.apply(snapshot));
+  }
+  search(input: VectorSearchInput) {
+    return window.desktop.vectorStores.search(input);
+  }
+  private async pollUntilSettled(documentIds: number[]) {
+    for (let attempt = 0; attempt < 300; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const snapshot = await window.desktop.vectorStores.getSnapshot();
+      runInAction(() => this.apply(snapshot));
+      const documents = snapshot.documents.filter((item) =>
+        documentIds.includes(item.id),
+      );
+      if (
+        documents.length === documentIds.length &&
+        documents.every(
+          (item) => item.status === "ready" || item.status === "failed",
+        )
+      ) {
+        const failed = documents.find((item) => item.status === "failed");
+        if (failed)
+          throw new Error(
+            failed.errorMessage || `Не удалось обработать «${failed.fileName}»`,
+          );
+        return;
+      }
+    }
+    throw new Error("Превышено время ожидания обработки документов");
   }
 }
-
 export const vectorStoreStore = new VectorStoreStore();

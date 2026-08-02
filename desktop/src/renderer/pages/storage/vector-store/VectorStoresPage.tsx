@@ -26,7 +26,15 @@ export const VectorStoresPage = observer(function VectorStoresPage() {
       >
         <CreateButton
           label="Добавить хранилище"
-          onClick={() => store.createStore()}
+          onClick={() => {
+            void store.createStore().catch((error) =>
+              toasts.danger({
+                title: "Не удалось создать хранилище",
+                description:
+                  error instanceof Error ? error.message : String(error),
+              }),
+            );
+          }}
         />
       </PageHeader>
       <div className="flex min-h-0 flex-1 gap-3">
@@ -78,7 +86,17 @@ export const VectorStoresPage = observer(function VectorStoresPage() {
                 action={
                   <CreateButton
                     label="Добавить хранилище"
-                    onClick={() => store.createStore()}
+                    onClick={() => {
+                      void store.createStore().catch((error) =>
+                        toasts.danger({
+                          title: "Не удалось создать хранилище",
+                          description:
+                            error instanceof Error
+                              ? error.message
+                              : String(error),
+                        }),
+                      );
+                    }}
                   />
                 }
               />
@@ -98,9 +116,17 @@ export const VectorStoresPage = observer(function VectorStoresPage() {
           )}
           onCancel={() => setStoreToDelete(null)}
           onConfirm={(item) => {
-            store.deleteStore(item.id);
             setStoreToDelete(null);
-            toasts.success({ title: "Хранилище удалено" });
+            void store
+              .deleteStore(item.id)
+              .then(() => toasts.success({ title: "Хранилище удалено" }))
+              .catch((error) =>
+                toasts.danger({
+                  title: "Не удалось удалить хранилище",
+                  description:
+                    error instanceof Error ? error.message : String(error),
+                }),
+              );
           }}
         />
       ) : null}

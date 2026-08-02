@@ -32,7 +32,7 @@ export const APP_PATHS = {
     },
   },
   storage: {
-    index: "/storage/secrets",
+    index: "/storage",
     secrets: "/storage/secrets",
     vectorDb: "/storage/vector-db",
   },
@@ -99,9 +99,9 @@ export const NAVIGATION_ROUTES: readonly NavigationRoute[] = [
         icon: LockIcon,
       },
       {
-        id: "vector-db",
+        id: "storage-vector-db",
         label: "Векторная БД",
-        path: "/storage/vector-db",
+        path: APP_PATHS.storage.vectorDb,
         icon: NumbersIcon,
       },
     ],

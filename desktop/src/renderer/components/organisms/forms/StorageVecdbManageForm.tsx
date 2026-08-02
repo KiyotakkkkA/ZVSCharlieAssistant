@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
 import { observer } from "mobx-react-lite";
 import {
+  Alert,
   Button,
+  InputBig,
   InputDropZone,
   InputSmall,
   ProgressBar,
@@ -10,7 +12,14 @@ import {
   Tabs,
   useToasts,
 } from "@kiyotakkkka/zvs-uikit-lib";
-import { FileIcon, SearchIcon, StorageIcon } from "../../atoms";
+import {
+  Field,
+  FileIcon,
+  Lead,
+  ParameterLabel,
+  SearchIcon,
+  StorageIcon,
+} from "../../atoms";
 import { ControlButton } from "../../atoms/buttons";
 import { DangerModal } from "../modals";
 import {
@@ -19,6 +28,7 @@ import {
   type VectorDocument,
   type VectorStoreModel,
 } from "../../../stores";
+import type { VectorSearchResultItem } from "../../../../ipc/contracts";
 
 type DetailTab = "documents" | "settings" | "search";
 interface StorageVecdbManageFormProps {
@@ -33,6 +43,14 @@ export const StorageVecdbManageForm = observer(function StorageVecdbManageForm({
   const toasts = useToasts();
   const [tab, setTab] = useState<DetailTab>("documents");
   const [query, setQuery] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [results, setResults] = useState<VectorSearchResultItem[]>([]);
+  const [name, setName] = useState(model.name);
+  const [description, setDescription] = useState(model.description);
+  const [chunkSize, setChunkSize] = useState(String(model.chunkSizeTokens));
+  const [chunkOverlap, setChunkOverlap] = useState(
+    String(model.chunkOverlapTokens),
+  );
   const [documentToDelete, setDocumentToDelete] =
     useState<VectorDocument | null>(null);
   const documents = vectorStoreStore.documentsFor(model.id);
@@ -50,6 +68,14 @@ export const StorageVecdbManageForm = observer(function StorageVecdbManageForm({
       }),
     [textProviderStore.models, textProviderStore.providers],
   );
+  const persist = (patch: Partial<VectorStoreModel>) => {
+    void vectorStoreStore.updateStore(model.id, patch).catch((error) =>
+      toasts.danger({
+        title: "Не удалось сохранить настройки",
+        description: error instanceof Error ? error.message : String(error),
+      }),
+    );
+  };
   return (
     <div className="flex h-full min-h-0 flex-col">
       <header className="shrink-0 border-b border-main-700/35 px-5 pt-5">
@@ -100,7 +126,24 @@ export const StorageVecdbManageForm = observer(function StorageVecdbManageForm({
               clearAllLabel="Очистить список"
               uploadedFileLabel="Документ"
               onFilesChange={(files) => {
-                if (files.length) vectorStoreStore.addFiles(model.id, files);
+                if (files.length)
+                  void vectorStoreStore
+                    .addFiles(model.id, files)
+                    .then(() =>
+                      toasts.success({
+                        title: "Документы обработаны",
+                        description: "Индекс готов к векторному поиску.",
+                      }),
+                    )
+                    .catch((error) =>
+                      toasts.danger({
+                        title: "Не удалось добавить документы",
+                        description:
+                          error instanceof Error
+                            ? error.message
+                            : String(error),
+                      }),
+                    );
               }}
             />
             {documents.length ? (
@@ -119,46 +162,72 @@ export const StorageVecdbManageForm = observer(function StorageVecdbManageForm({
           <div className="grid gap-5 p-5 xl:grid-cols-[220px_minmax(0,1fr)]">
             <Lead
               title="Основное"
-              description="Название и назначение базы знаний."
+              description="Основная информация о базе данных"
             />
-            <div className="space-y-4 rounded-xl bg-main-800/35 p-4">
-              <Field label="Название">
+            <div className="grid gap-4 rounded-xl bg-main-800/35 p-4 md:grid-cols-1">
+              <Field
+                label={
+                  <ParameterLabel description="Отображаемое название базы знаний в списках, настройках агентов и узлах сценария.">
+                    Название
+                  </ParameterLabel>
+                }
+              >
                 <InputSmall
-                  value={model.name}
-                  onChange={(event) =>
-                    vectorStoreStore.updateStore(model.id, {
-                      name: event.target.value,
-                    })
-                  }
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  onBlur={() => {
+                    const value = name.trim();
+                    if (!value) {
+                      setName(model.name);
+                      return;
+                    }
+                    if (value !== model.name) persist({ name: value });
+                  }}
                 />
               </Field>
-              <Field label="Описание">
-                <InputSmall
-                  value={model.description}
-                  onChange={(event) =>
-                    vectorStoreStore.updateStore(model.id, {
-                      description: event.target.value,
-                    })
-                  }
+              <Field
+                label={
+                  <ParameterLabel description="Кратко объясняет назначение и состав базы знаний, чтобы отличать её от других хранилищ.">
+                    Описание
+                  </ParameterLabel>
+                }
+              >
+                <InputBig
+                  value={description}
+                  classNames={{
+                    textarea: "resize-none",
+                  }}
+                  onChange={(event) => setDescription(event.target.value)}
+                  onBlur={() => {
+                    if (description !== model.description)
+                      persist({ description });
+                  }}
                 />
               </Field>
             </div>
             <Lead
               title="Векторизация"
-              description="После добавления документов смена модели потребует переиндексации."
+              description="Embedding-модель и параметры разбиения фиксируются для загруженных документов. Для их смены сначала очистите хранилище."
             />
             <div className="grid gap-4 rounded-xl bg-main-800/35 p-4 md:grid-cols-2">
-              <Field label="Embedding-модель" className="md:col-span-2">
+              <Field
+                label={
+                  <ParameterLabel description="Преобразует фрагменты документов и поисковые запросы в числовые векторы. Для одного индекса должна использоваться одна модель.">
+                    Embedding-модель
+                  </ParameterLabel>
+                }
+                className="md:col-span-2 w-fit"
+              >
                 <Select
                   value={
                     model.embeddingModelId ? String(model.embeddingModelId) : ""
                   }
                   onChange={(value) =>
-                    vectorStoreStore.updateStore(model.id, {
+                    persist({
                       embeddingModelId: Number(value),
-                      status: "ready",
                     })
                   }
+                  disabled={documents.length > 0}
                   options={embeddingModels.map((item) => ({
                     value: String(item.id),
                     label: textProviderStore.modelLabel(item.id),
@@ -178,33 +247,71 @@ export const StorageVecdbManageForm = observer(function StorageVecdbManageForm({
                   </Select.Menu>
                 </Select>
               </Field>
-              <Field label="Размер чанка">
+              <Field
+                label={
+                  <ParameterLabel description="Максимальный размер одного фрагмента в приблизительных токенах. Большие чанки сохраняют больше контекста, но могут снижать точность поиска.">
+                    Размер чанка
+                  </ParameterLabel>
+                }
+              >
                 <InputSmall
                   type="number"
-                  value={String(model.chunkSizeTokens)}
-                  onChange={(event) =>
-                    vectorStoreStore.updateStore(model.id, {
-                      chunkSizeTokens: Number(event.target.value),
-                    })
-                  }
+                  min={100}
+                  max={4096}
+                  disabled={documents.length > 0}
+                  value={chunkSize}
+                  onChange={(event) => setChunkSize(event.target.value)}
+                  onBlur={() => {
+                    const value = Number(chunkSize);
+                    if (!Number.isInteger(value) || value < 100 || value > 4096) {
+                      setChunkSize(String(model.chunkSizeTokens));
+                      return;
+                    }
+                    if (value !== model.chunkSizeTokens)
+                      persist({ chunkSizeTokens: value });
+                  }}
                 />
               </Field>
-              <Field label="Перекрытие">
+              <Field
+                label={
+                  <ParameterLabel description="Количество токенов, повторяющихся между соседними чанками. Помогает не потерять смысл на границе фрагментов.">
+                    Перекрытие
+                  </ParameterLabel>
+                }
+              >
                 <InputSmall
                   type="number"
-                  value={String(model.chunkOverlapTokens)}
-                  onChange={(event) =>
-                    vectorStoreStore.updateStore(model.id, {
-                      chunkOverlapTokens: Number(event.target.value),
-                    })
-                  }
+                  min={0}
+                  disabled={documents.length > 0}
+                  value={chunkOverlap}
+                  onChange={(event) => setChunkOverlap(event.target.value)}
+                  onBlur={() => {
+                    const value = Number(chunkOverlap);
+                    if (
+                      !Number.isInteger(value) ||
+                      value < 0 ||
+                      value > Number(chunkSize) / 2
+                    ) {
+                      setChunkOverlap(String(model.chunkOverlapTokens));
+                      return;
+                    }
+                    if (value !== model.chunkOverlapTokens)
+                      persist({ chunkOverlapTokens: value });
+                  }}
                 />
               </Field>
-              <Field label="Режим поиска" className="md:col-span-2">
+              <Field
+                label={
+                  <ParameterLabel description="Определяет способ отбора и ранжирования фрагментов при запросе к базе знаний.">
+                    Режим поиска
+                  </ParameterLabel>
+                }
+                className="md:col-span-2 w-fit"
+              >
                 <Select
                   value={model.searchMode}
                   onChange={(value) =>
-                    vectorStoreStore.updateStore(model.id, {
+                    persist({
                       searchMode: value as "vector" | "hybrid",
                     })
                   }
@@ -220,32 +327,91 @@ export const StorageVecdbManageForm = observer(function StorageVecdbManageForm({
                   </Select.Menu>
                 </Select>
               </Field>
+              <Alert
+                variant={model.searchMode === "vector" ? "info" : "warning"}
+                title={
+                  model.searchMode === "vector"
+                    ? "Векторный поиск"
+                    : "Гибридный поиск"
+                }
+                className="md:col-span-2"
+              >
+                {model.searchMode === "vector"
+                  ? "Запрос преобразуется выбранной embedding-моделью, после чего LanceDB возвращает ближайшие по смыслу фрагменты. Точное совпадение слов не обязательно."
+                  : "Сейчас используется векторное ранжирование. Полнотекстовый индекс и объединение семантической оценки с совпадениями ключевых слов пока не активированы."}
+              </Alert>
             </div>
           </div>
         ) : (
           <div className="mx-auto max-w-4xl space-y-5 p-5">
             <div className="flex gap-2">
               <InputSmall
+                className="w-lg"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Введите запрос для проверки релевантности..."
+                placeholder="Введите запрос для проверки..."
               />
-              <Button variant="secondary" disabled={!query.trim()}>
+              <Button
+                variant="secondary"
+                loading={searching}
+                className="px-2"
+                disabled={!query.trim() || searching}
+                onClick={() => {
+                  setSearching(true);
+                  void vectorStoreStore
+                    .search({ vectorStoreIds: [model.id], query, limit: 5 })
+                    .then(setResults)
+                    .catch((error) =>
+                      toasts.danger({
+                        title: "Ошибка поиска",
+                        description:
+                          error instanceof Error
+                            ? error.message
+                            : String(error),
+                      }),
+                    )
+                    .finally(() => setSearching(false));
+                }}
+              >
                 <SearchIcon className="size-4" />
                 Найти
               </Button>
             </div>
-            <div className="grid min-h-72 place-items-center rounded-xl border border-dashed border-main-700 text-center">
-              <div>
-                <SearchIcon className="mx-auto size-6 text-main-500" />
-                <p className="mt-3 text-sm text-main-300">
-                  Результаты поиска появятся здесь
-                </p>
-                <p className="mt-1 text-xs text-main-500">
-                  Поиск будет подключён вместе с retrieval runtime.
-                </p>
+            {results.length ? (
+              <div className="space-y-2">
+                {results.map((item) => (
+                  <article
+                    key={`${item.documentId}:${item.chunkIndex}`}
+                    className="rounded-xl bg-main-800/45 p-4 ring-1 ring-main-700/35"
+                  >
+                    <div className="flex items-center justify-between gap-3 text-xs">
+                      <span className="font-medium text-main-200">
+                        {item.fileName}
+                      </span>
+                      <span className="text-accent-light">
+                        {Math.round(item.score * 100)}%
+                      </span>
+                    </div>
+                    <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-main-400">
+                      {item.content}
+                    </p>
+                  </article>
+                ))}
               </div>
-            </div>
+            ) : (
+              <div className="grid min-h-72 place-items-center rounded-xl border border-dashed border-main-700 text-center">
+                <div>
+                  <SearchIcon className="mx-auto size-6 text-main-500" />
+                  <p className="mt-3 text-sm text-main-300">
+                    Результаты поиска появятся здесь
+                  </p>
+                  <p className="mt-1 text-xs text-main-500">
+                    Введите запрос, чтобы проверить индекс и релевантность
+                    фрагментов.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </ScrollArea>
@@ -258,9 +424,17 @@ export const StorageVecdbManageForm = observer(function StorageVecdbManageForm({
           )}
           onCancel={() => setDocumentToDelete(null)}
           onConfirm={(item) => {
-            vectorStoreStore.deleteDocument(item.id);
             setDocumentToDelete(null);
-            toasts.success({ title: "Документ удалён" });
+            void vectorStoreStore
+              .deleteDocument(item.id)
+              .then(() => toasts.success({ title: "Документ удалён" }))
+              .catch((error) =>
+                toasts.danger({
+                  title: "Не удалось удалить документ",
+                  description:
+                    error instanceof Error ? error.message : String(error),
+                }),
+              );
           }}
         />
       ) : null}
@@ -291,12 +465,23 @@ function DocumentRow({
         </div>
         {document.status === "ready" ? (
           <p className="mt-1 text-xs text-success-light">Готов к поиску</p>
+        ) : document.status === "failed" ? (
+          <div className="mt-1">
+            <p className="text-xs font-medium text-danger-light">
+              Ошибка обработки
+            </p>
+            {document.errorMessage ? (
+              <p className="mt-1 text-xs leading-5 text-main-500">
+                {document.errorMessage}
+              </p>
+            ) : null}
+          </div>
         ) : (
           <ProgressBar
             className="mt-2"
             value={document.progress}
             max={100}
-            label="Ожидает обработки"
+            label={documentStatusLabel(document.status)}
             showValue
           />
         )}
@@ -311,36 +496,14 @@ function DocumentRow({
   );
 }
 
-function Lead({ title, description }: { title: string; description: string }) {
-  return (
-    <div>
-      <h3 className="text-sm font-semibold text-main-100">{title}</h3>
-      <p className="mt-1 text-xs leading-5 text-main-500">{description}</p>
-    </div>
-  );
-}
-
-function Field({
-  label,
-  className = "",
-  children,
-}: {
-  label: string;
-  className?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className={className}>
-      <span className="mb-2 block text-xs font-medium text-main-400">
-        {label}
-      </span>
-      {children}
-    </label>
-  );
-}
-
 function formatBytes(value: number) {
   return value < 1024 * 1024
     ? `${Math.round(value / 1024)} КБ`
     : `${(value / 1024 / 1024).toFixed(1)} МБ`;
+}
+
+function documentStatusLabel(status: VectorDocument["status"]) {
+  if (status === "extracting") return "Извлечение текста";
+  if (status === "embedding") return "Векторизация";
+  return "Ожидает обработки";
 }

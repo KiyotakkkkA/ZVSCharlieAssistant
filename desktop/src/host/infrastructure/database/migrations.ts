@@ -342,6 +342,52 @@ const migrations: readonly Migration[] = [
       `);
     },
   },
+  {
+    version: 8,
+    up(database) {
+      database.exec(`
+        CREATE TABLE vector_stores (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          description TEXT NOT NULL DEFAULT '',
+          embedding_model_id INTEGER,
+          status TEXT NOT NULL DEFAULT 'disabled' CHECK(status IN ('ready','indexing','degraded','disabled')),
+          search_mode TEXT NOT NULL DEFAULT 'vector' CHECK(search_mode IN ('vector','hybrid')),
+          chunk_size_tokens INTEGER NOT NULL DEFAULT 700 CHECK(chunk_size_tokens BETWEEN 100 AND 4096),
+          chunk_overlap_tokens INTEGER NOT NULL DEFAULT 100 CHECK(chunk_overlap_tokens >= 0 AND chunk_overlap_tokens <= chunk_size_tokens / 2),
+          vector_dimension INTEGER,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY(embedding_model_id) REFERENCES text_provider_models(id) ON DELETE SET NULL
+        );
+        CREATE TABLE vector_store_documents (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          vector_store_id INTEGER NOT NULL,
+          file_name TEXT NOT NULL,
+          mime_type TEXT NOT NULL,
+          local_path TEXT NOT NULL,
+          content_hash TEXT NOT NULL,
+          size INTEGER NOT NULL,
+          status TEXT NOT NULL DEFAULT 'queued' CHECK(status IN ('queued','extracting','embedding','ready','failed')),
+          progress INTEGER NOT NULL DEFAULT 0 CHECK(progress BETWEEN 0 AND 100),
+          chunk_count INTEGER NOT NULL DEFAULT 0,
+          error_message TEXT,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(vector_store_id, content_hash),
+          FOREIGN KEY(vector_store_id) REFERENCES vector_stores(id) ON DELETE CASCADE
+        );
+        CREATE TABLE automation_agent_vector_stores (
+          agent_id TEXT NOT NULL,
+          vector_store_id INTEGER NOT NULL,
+          PRIMARY KEY(agent_id, vector_store_id),
+          FOREIGN KEY(agent_id) REFERENCES automation_agents(id) ON DELETE CASCADE,
+          FOREIGN KEY(vector_store_id) REFERENCES vector_stores(id) ON DELETE CASCADE
+        );
+        CREATE INDEX idx_vector_store_documents_store ON vector_store_documents(vector_store_id, status);
+        ALTER TABLE automation_agents ADD COLUMN retrieval_limit INTEGER NOT NULL DEFAULT 5 CHECK(retrieval_limit BETWEEN 1 AND 20);
+      `);
+    },
+  },
 ];
 
 export function runMigrations(database: Database.Database): void {

@@ -36,6 +36,13 @@ import {
   registerTextProviderHandlers,
   removeTextProviderHandlers,
 } from "../ipc/main/register-text-provider-handlers";
+import {
+  registerVectorStoreHandlers,
+  removeVectorStoreHandlers,
+} from "../ipc/main/register-vector-store-handlers";
+import { VectorStoreDataSource } from "./infrastructure/database/vector-store.data-source";
+import { EmbeddingService } from "./infrastructure/vector-store/embedding.service";
+import { VectorStoreService } from "./infrastructure/vector-store/vector-store.service";
 
 let database: ReturnType<typeof createSqliteDatabase> | undefined;
 
@@ -57,6 +64,15 @@ app.whenReady().then(() => {
     new ProviderConnectionService(secretRepository, providerDataSource),
   );
   const chatDataSource = new ChatDataSource(database);
+  const vectorDataSource = new VectorStoreDataSource(database);
+  vectorDataSource.recoverInterruptedDocuments();
+  const vectorService = new VectorStoreService(
+    vectorDataSource,
+    new EmbeddingService(vectorDataSource, secretRepository),
+    join(app.getPath("userData"), "vector-files"),
+    join(app.getPath("userData"), "lancedb"),
+  );
+  registerVectorStoreHandlers(vectorService);
   const providerRegistry = new ProviderRegistry(
     chatDataSource,
     secretRepository,
@@ -66,6 +82,7 @@ app.whenReady().then(() => {
     scenarioExecutions,
     providerRegistry,
     new ScenarioCompiler(),
+    vectorService,
   );
   registerAutomationHandlers(
     automationRepository,
@@ -77,7 +94,12 @@ app.whenReady().then(() => {
     new RunEngine(
       chatDataSource,
       providerRegistry,
-      new ToolRegistry(chatDataSource, automationDataSource, secretRepository),
+      new ToolRegistry(
+        chatDataSource,
+        automationDataSource,
+        secretRepository,
+        vectorService,
+      ),
       scenarioEngine,
     ),
   );
@@ -94,6 +116,7 @@ app.on("before-quit", () => {
   removeAutomationHandlers();
   removeTextProviderHandlers();
   removeChatHandlers();
+  removeVectorStoreHandlers();
   database?.close();
   database = undefined;
 });

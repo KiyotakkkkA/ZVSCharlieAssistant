@@ -19,6 +19,7 @@ interface AgentRow {
   timeout_seconds: number;
   runs: number;
   updated_at: string;
+  retrieval_limit: number;
 }
 
 interface ScenarioRow {
@@ -99,7 +100,7 @@ export class AutomationDataSource {
       .prepare(
         `SELECT id, name, description, instructions, text_model_id, status,
                 max_tool_calls,
-                timeout_seconds, runs, updated_at
+                timeout_seconds, runs, updated_at, retrieval_limit
          FROM automation_agents
          ORDER BY updated_at DESC, name ASC`,
       )
@@ -112,7 +113,7 @@ export class AutomationDataSource {
       .prepare(
         `SELECT id, name, description, instructions, text_model_id, status,
                 max_tool_calls,
-                timeout_seconds, runs, updated_at
+                timeout_seconds, runs, updated_at, retrieval_limit
          FROM automation_agents WHERE id = ?`,
       )
       .get(id) as AgentRow | undefined;
@@ -129,6 +130,16 @@ export class AutomationDataSource {
     );
   }
 
+  vectorStoreExists(id: number): boolean {
+    return Boolean(
+      this.database
+        .prepare(
+          "SELECT 1 FROM vector_stores WHERE id=? AND embedding_model_id IS NOT NULL AND status!='disabled'",
+        )
+        .get(id),
+    );
+  }
+
   upsertAgent(id: string, input: UpsertAutomationAgentInput): AutomationAgent {
     this.database.transaction(() => {
       this.database
@@ -136,8 +147,8 @@ export class AutomationDataSource {
           `INSERT INTO automation_agents (
              id, name, description, instructions, text_model_id, status,
              max_tool_calls,
-             timeout_seconds
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+             timeout_seconds, retrieval_limit
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(id) DO UPDATE SET
              name = excluded.name,
              description = excluded.description,
@@ -146,6 +157,7 @@ export class AutomationDataSource {
              status = excluded.status,
              max_tool_calls = excluded.max_tool_calls,
              timeout_seconds = excluded.timeout_seconds,
+             retrieval_limit = excluded.retrieval_limit,
              updated_at = CURRENT_TIMESTAMP`,
         )
         .run(
@@ -157,6 +169,7 @@ export class AutomationDataSource {
           input.status,
           input.maxToolCalls,
           input.timeoutSeconds,
+          input.retrievalLimit,
         );
 
       this.database
@@ -166,6 +179,14 @@ export class AutomationDataSource {
         "INSERT INTO automation_agent_tools (agent_id, tool_id) VALUES (?, ?)",
       );
       for (const toolId of input.allowedToolIds) insertTool.run(id, toolId);
+      this.database
+        .prepare("DELETE FROM automation_agent_vector_stores WHERE agent_id=?")
+        .run(id);
+      const insertStore = this.database.prepare(
+        "INSERT INTO automation_agent_vector_stores(agent_id,vector_store_id) VALUES(?,?)",
+      );
+      for (const storeId of input.allowedVectorStoreIds)
+        insertStore.run(id, storeId);
     })();
 
     return this.findAgent(id)!;
@@ -270,6 +291,13 @@ export class AutomationDataSource {
         )
         .all(row.id) as Array<{ tool_id: string }>
     ).map(({ tool_id }) => tool_id);
+    const allowedVectorStoreIds = (
+      this.database
+        .prepare(
+          "SELECT vector_store_id FROM automation_agent_vector_stores WHERE agent_id=? ORDER BY vector_store_id",
+        )
+        .all(row.id) as Array<{ vector_store_id: number }>
+    ).map((item) => item.vector_store_id);
 
     return {
       id: row.id,
@@ -279,6 +307,8 @@ export class AutomationDataSource {
       textModelId: row.text_model_id,
       status: row.status,
       allowedToolIds,
+      allowedVectorStoreIds,
+      retrievalLimit: row.retrieval_limit,
       maxToolCalls: row.max_tool_calls,
       timeoutSeconds: row.timeout_seconds,
       runs: row.runs,

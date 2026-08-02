@@ -213,15 +213,26 @@ export class RunEngine {
           : (agentInstructions ??
             "Ты полезный ассистент. Отвечай по существу.");
       let stepIndex = 0;
+      const agentRuntime =
+        input.mode === "agent"
+          ? this.data.resolveAgent(input.agentId)
+          : undefined;
       const allowedTools =
         input.mode === "agent"
-          ? (this.data.resolveAgent(input.agentId)?.allowedToolIds ?? [])
+          ? (agentRuntime?.allowedToolIds ?? [])
           : ["web_search", "web_fetch"];
       const result = streamText({
         model: this.providers.resolve(input.modelId),
         system,
         messages: history,
-        tools: this.tools.create(runId, emit, controller.signal, allowedTools),
+        tools: this.tools.create(
+          runId,
+          emit,
+          controller.signal,
+          allowedTools,
+          agentRuntime?.allowedVectorStoreIds ?? [],
+          agentRuntime?.retrieval_limit ?? 5,
+        ),
         stopWhen: stepCountIs(maxSteps),
         abortSignal: controller.signal,
         onStepFinish: ({ finishReason, toolCalls, toolResults }) => {

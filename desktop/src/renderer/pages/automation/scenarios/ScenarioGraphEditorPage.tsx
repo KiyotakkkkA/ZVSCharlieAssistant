@@ -31,8 +31,9 @@ import {
   SendIcon,
   SettingsIcon,
   TasksIcon,
+  StorageIcon,
+  Field,
 } from "../../../components/atoms";
-import { AppBreadcrumbs } from "../../../components/molecules";
 import {
   DangerModal,
   ScenarioGraphCanvas,
@@ -41,7 +42,7 @@ import {
 } from "../../../components/organisms";
 import { APP_PATHS } from "../../../app/routes";
 import { useHashRouter } from "../../../hooks";
-import { automationStore } from "../../../stores";
+import { automationStore, vectorStoreStore } from "../../../stores";
 import type {
   AutomationStatus,
   AutomationScenarioEdge as GraphEdge,
@@ -75,6 +76,12 @@ const nodeMeta: Record<
     color: "text-violet-200 bg-violet-400/10",
     dot: "bg-violet-300",
     icon: (props) => <RobotIcon {...props} />,
+  },
+  knowledge_store: {
+    label: "Хранилище",
+    color: "text-cyan-200 bg-cyan-400/10",
+    dot: "bg-cyan-300",
+    icon: (props) => <StorageIcon {...props} />,
   },
   condition: {
     label: "Условие",
@@ -125,6 +132,11 @@ const initialNodes: GraphNode[] = [
 
 const palette: Array<{ kind: NodeKind; title: string; description: string }> = [
   { kind: "agent", title: "Вызов агента", description: "Делегирование задачи" },
+  {
+    kind: "knowledge_store",
+    title: "База знаний",
+    description: "Контекст для агента",
+  },
   {
     kind: "condition",
     title: "Условие",
@@ -261,7 +273,7 @@ export const ScenarioGraphEditorPage = observer(
             id: edge.id,
             source: edge.source,
             target: edge.target,
-            kind: edge.data?.kind === "worker" ? "worker" : "control",
+            kind: edge.data?.kind ?? "control",
             sourcePort: edge.sourceHandle ?? undefined,
             targetPort: edge.targetHandle ?? undefined,
           })),
@@ -279,10 +291,13 @@ export const ScenarioGraphEditorPage = observer(
           (node) => node.id === connection.target,
         )?.kind;
         const kind =
-          (sourceKind === "orchestrator" || sourceKind === "agent") &&
-          targetKind === "agent"
-            ? "worker"
-            : "control";
+          connection.sourceHandle === "knowledge-out" &&
+          connection.targetHandle === "knowledge-in"
+            ? "knowledge"
+            : (sourceKind === "orchestrator" || sourceKind === "agent") &&
+                targetKind === "agent"
+              ? "worker"
+              : "control";
         setEdges((current) => {
           if (
             current.some(
@@ -296,7 +311,7 @@ export const ScenarioGraphEditorPage = observer(
           return [
             ...current,
             {
-              id: `edge-${Date.now()}`,
+              id: `edge-${crypto.randomUUID()}`,
               source: connection.source!,
               target: connection.target!,
               kind,
@@ -310,7 +325,7 @@ export const ScenarioGraphEditorPage = observer(
     );
 
     const addNode = (kind: NodeKind, title: string) => {
-      const id = `${kind}-${Date.now()}`;
+      const id = `${kind}-${crypto.randomUUID()}`;
       setNodes((current) => [
         ...current,
         {
@@ -510,7 +525,6 @@ export const ScenarioGraphEditorPage = observer(
             key={scenario?.revisionId ?? "new-scenario"}
             nodes={flowNodes}
             edges={flowEdges}
-            nodeCount={nodes.length}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
@@ -538,15 +552,15 @@ export const ScenarioGraphEditorPage = observer(
                   </div>
                 </div>
 
-                <InspectorField label="Название">
+                <Field label="Название">
                   <InputSmall
                     value={selectedNode.title}
                     onChange={(event) =>
                       updateSelectedNode({ title: event.target.value })
                     }
                   />
-                </InspectorField>
-                <InspectorField label="Описание">
+                </Field>
+                <Field label="Описание">
                   <InputBig
                     value={selectedNode.description}
                     onChange={(event) =>
@@ -556,10 +570,10 @@ export const ScenarioGraphEditorPage = observer(
                     maxRows={6}
                     autoResize
                   />
-                </InspectorField>
+                </Field>
                 {selectedNode.kind === "agent" ? (
                   <>
-                    <InspectorField label="Агент">
+                    <Field label="Агент">
                       <Select
                         value={String(selectedNode.config?.agentId ?? "")}
                         onChange={(agentId) =>
@@ -589,8 +603,8 @@ export const ScenarioGraphEditorPage = observer(
                           ))}
                         </Select.Menu>
                       </Select>
-                    </InspectorField>
-                    <InspectorField label="Инструкции для сценария">
+                    </Field>
+                    <Field label="Инструкции для сценария">
                       <InputBig
                         value={String(
                           selectedNode.config?.scenarioInstructions ?? "",
@@ -608,8 +622,48 @@ export const ScenarioGraphEditorPage = observer(
                         maxRows={9}
                         autoResize
                       />
-                    </InspectorField>
+                    </Field>
                   </>
+                ) : null}
+                {selectedNode.kind === "knowledge_store" ? (
+                  <Field label="Векторное хранилище">
+                    <Select
+                      value={String(selectedNode.config?.vectorStoreId ?? "")}
+                      onChange={(vectorStoreId) =>
+                        updateSelectedNode({
+                          config: {
+                            ...selectedNode.config,
+                            vectorStoreId: Number(vectorStoreId),
+                          },
+                          description:
+                            vectorStoreStore.stores.find(
+                              (item) => item.id === Number(vectorStoreId),
+                            )?.name ?? selectedNode.description,
+                        })
+                      }
+                      options={vectorStoreStore.stores
+                        .filter((item) => item.status === "ready")
+                        .map((item) => ({
+                          value: String(item.id),
+                          label: item.name,
+                        }))}
+                      placeholder="Выберите хранилище"
+                      searchable
+                    >
+                      <Select.Trigger className="w-full" />
+                      <Select.Menu>
+                        {vectorStoreStore.stores
+                          .filter((item) => item.status === "ready")
+                          .map((item) => (
+                            <Select.Option
+                              key={item.id}
+                              value={String(item.id)}
+                              label={item.name}
+                            />
+                          ))}
+                      </Select.Menu>
+                    </Select>
+                  </Field>
                 ) : null}
                 <div className="rounded-lg bg-main-800/40 p-3">
                   <div className="flex items-center gap-2 text-xs font-medium text-main-300">
@@ -662,20 +716,3 @@ export const ScenarioGraphEditorPage = observer(
     );
   },
 );
-
-function InspectorField({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="block">
-      <span className="mb-2 block text-xs font-medium text-main-400">
-        {label}
-      </span>
-      {children}
-    </label>
-  );
-}

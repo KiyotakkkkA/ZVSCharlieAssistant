@@ -62,3 +62,16 @@ export type {
   StartRunInput,
 } from "./chat.contract";
 export { CHAT_IPC_CHANNELS } from "./chat.contract";
+export type {
+  VectorStoreApi,
+  VectorStoreConfig,
+  VectorStoreDocument,
+  VectorStoreSnapshot,
+  UpsertVectorStoreInput,
+  UploadVectorDocumentInput,
+  VectorSearchInput,
+  VectorSearchResultItem,
+  VectorStoreStatus,
+  VectorDocumentStatus,
+} from "./vector-store.contract";
+export { VECTOR_STORE_IPC_CHANNELS } from "./vector-store.contract";

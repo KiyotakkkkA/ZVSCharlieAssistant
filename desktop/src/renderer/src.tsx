@@ -11,7 +11,7 @@ import {
 } from "./pages/automation/scenarios";
 import { ToolsListPage } from "./pages/automation/tools";
 import { StorageSecretsPage } from "./pages/storage/secrets";
-import { VectorStoresPage } from "./pages/storage/vector-db";
+import { VectorStoresPage } from "./pages/storage/vector-store";
 import { ChatPage } from "./pages/chat";
 import { SettingsProvidersPage } from "./pages/settings/providers";
 import "@fontsource-variable/onest";
