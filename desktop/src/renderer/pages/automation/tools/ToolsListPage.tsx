@@ -9,9 +9,10 @@ import {
   ScrollArea,
   Switcher,
   Table,
+  useToasts,
   type TableColumn,
 } from "@kiyotakkkka/zvs-uikit-lib";
-import { EyeIcon, SettingsIcon } from "../../../components/atoms";
+import { SecretOrientedSelect, SettingsIcon } from "../../../components/atoms";
 import { PageHeader } from "../../../components/organisms";
 import { AutomationToolCard } from "../../../components/molecules";
 import type { AutomationTool } from "../../../../ipc/contracts";
@@ -23,6 +24,7 @@ interface ToolRow extends AutomationTool {
 }
 
 export const ToolsListPage = observer(function ToolsListPage() {
+  const toasts = useToasts();
   const [selectedTool, setSelectedTool] = useState<AutomationTool | null>(null);
   const [query, setQuery] = useState("");
   const [viewMode, setViewMode] = useState<"table" | "cards">("cards");
@@ -200,6 +202,61 @@ export const ToolsListPage = observer(function ToolsListPage() {
                 title="Выходные данные"
                 schema={selectedTool.outputSchema}
               />
+              {selectedTool.secretRequirements.length ? (
+                <section className="space-y-3 border-t border-main-700/40 pt-5">
+                  <div>
+                    <h3 className="text-sm font-semibold text-main-200">
+                      Настройка секретов
+                    </h3>
+                  </div>
+                  {selectedTool.secretRequirements.map((requirement) => {
+                    const binding = selectedTool.secretBindings.find(
+                      (item) => item.key === requirement.key,
+                    );
+                    return (
+                      <div key={requirement.key}>
+                        <label className="mb-2 block text-xs font-medium text-main-400">
+                          {requirement.label}
+                          {requirement.required ? " · обязательно" : ""}
+                        </label>
+                        <SecretOrientedSelect
+                          categoryId={requirement.categoryId}
+                          value={binding ? String(binding.secretId) : ""}
+                          onChange={(value) => {
+                            void automationStore
+                              .upsertToolSecretBinding({
+                                toolId: selectedTool.id,
+                                key: requirement.key,
+                                secretId: value ? Number(value) : null,
+                              })
+                              .then((tool) => {
+                                setSelectedTool(tool);
+                                toasts.success({
+                                  title: "Секрет инструмента сохранён",
+                                });
+                              })
+                              .catch((error: unknown) =>
+                                toasts.danger({
+                                  title: "Не удалось сохранить секрет",
+                                  description:
+                                    error instanceof Error
+                                      ? error.message
+                                      : String(error),
+                                }),
+                              );
+                          }}
+                          placeholder="Выберите Ollama API key"
+                          searchable
+                          searchPlaceholder="Найти ключ"
+                          triggerClassName="w-full"
+                          className="w-full"
+                          menuWidth="auto"
+                        />
+                      </div>
+                    );
+                  })}
+                </section>
+              ) : null}
             </div>
           ) : null}
         </Modal.Content>
@@ -244,7 +301,6 @@ function SchemaPreview({
             ? "input.schema.json"
             : "output.schema.json"
         }
-        copyable
         defaultActions
         maxContentHeight={224}
       />

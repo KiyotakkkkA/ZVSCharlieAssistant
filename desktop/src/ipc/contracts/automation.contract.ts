@@ -10,11 +10,26 @@ export interface AutomationTool {
   requiresConfirmation: boolean;
   inputSchema: Record<string, unknown>;
   outputSchema: Record<string, unknown>;
+  secretRequirements: AutomationToolSecretRequirement[];
+  secretBindings: AutomationToolSecretBinding[];
 }
 
-export interface AgentSecretBinding {
+export interface AutomationToolSecretRequirement {
+  key: string;
+  label: string;
+  categoryId: number;
+  required: boolean;
+}
+
+export interface AutomationToolSecretBinding {
+  key: string;
   secretId: number;
-  allowedToolIds: string[];
+}
+
+export interface UpsertAutomationToolSecretBindingInput {
+  toolId: string;
+  key: string;
+  secretId: number | null;
 }
 
 export interface AutomationAgent {
@@ -25,8 +40,6 @@ export interface AutomationAgent {
   textModelId: number | null;
   status: AutomationStatus;
   allowedToolIds: string[];
-  secretBindings: AgentSecretBinding[];
-  requireDangerousActionConfirmation: boolean;
   maxToolCalls: number;
   timeoutSeconds: number;
   runs: number;
@@ -41,8 +54,6 @@ export interface UpsertAutomationAgentInput {
   textModelId: number;
   status: AutomationStatus;
   allowedToolIds: string[];
-  secretBindings: AgentSecretBinding[];
-  requireDangerousActionConfirmation: boolean;
   maxToolCalls: number;
   timeoutSeconds: number;
 }
@@ -173,6 +184,9 @@ export interface AutomationApi {
   getSnapshot(): Promise<AutomationSnapshot>;
   upsertAgent(input: UpsertAutomationAgentInput): Promise<AutomationAgent>;
   deleteAgent(id: string): Promise<void>;
+  upsertToolSecretBinding(
+    input: UpsertAutomationToolSecretBindingInput,
+  ): Promise<AutomationTool>;
   upsertScenario(
     input: UpsertAutomationScenarioInput,
   ): Promise<AutomationScenario>;
@@ -189,6 +203,7 @@ export const AUTOMATION_IPC_CHANNELS = {
   getSnapshot: "automation:get-snapshot",
   upsertAgent: "automation:upsert-agent",
   deleteAgent: "automation:delete-agent",
+  upsertToolSecretBinding: "automation:upsert-tool-secret-binding",
   upsertScenario: "automation:upsert-scenario",
   deleteScenario: "automation:delete-scenario",
   validateScenario: "automation:validate-scenario",

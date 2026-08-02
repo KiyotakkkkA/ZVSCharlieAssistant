@@ -25,7 +25,16 @@ export interface ChatMessage {
   status: "streaming" | "completed" | "failed" | "cancelled";
   text: string;
   reasoning: string;
+  toolCalls: ChatToolCall[];
   createdAt: string;
+}
+export interface ChatToolCall {
+  id: number;
+  toolId: string;
+  status: "requested" | "running" | "completed" | "failed";
+  input: unknown;
+  output: unknown | null;
+  error: string | null;
 }
 export interface ChatSnapshot {
   conversations: ChatConversation[];
@@ -63,13 +72,9 @@ export type RunEvent =
       runId: number;
       toolCallId: number;
       toolId: string;
-    }
-  | {
-      type: "approval.required";
-      runId: number;
-      toolCallId: number;
-      toolId: string;
-      input: unknown;
+      input?: unknown;
+      output?: unknown;
+      error?: string;
     }
   | { type: "run.completed" | "run.cancelled"; runId: number }
   | { type: "run.failed"; runId: number; message: string };
@@ -83,7 +88,6 @@ export interface ChatApi {
     input: StartRunInput,
   ): Promise<{ runId: number; conversationId: number }>;
   cancelRun(runId: number): Promise<void>;
-  approveToolCall(toolCallId: number, approved: boolean): Promise<void>;
   deleteConversation(id: number): Promise<void>;
   renameConversation(id: number, title: string): Promise<void>;
   subscribe(listener: (event: RunEvent) => void): () => void;
@@ -93,7 +97,6 @@ export const CHAT_IPC_CHANNELS = {
   getMessagesPage: "chat:get-messages-page",
   startRun: "chat:start-run",
   cancelRun: "chat:cancel-run",
-  approveToolCall: "chat:approve-tool-call",
   deleteConversation: "chat:delete-conversation",
   renameConversation: "chat:rename-conversation",
   event: "chat:event",

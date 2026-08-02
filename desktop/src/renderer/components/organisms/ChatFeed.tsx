@@ -1,20 +1,29 @@
 import {
   Accordion,
+  CodeView,
   ScrollArea,
   Skeleton,
   Timeline,
 } from "@kiyotakkkka/zvs-uikit-lib";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { useLayoutEffect, useRef, type UIEvent } from "react";
+import {
+  isValidElement,
+  useLayoutEffect,
+  useRef,
+  type ReactNode,
+  type UIEvent,
+} from "react";
 import { ChatIcon, RobotIcon, StorageIcon, TasksIcon } from "../atoms";
 import type { ScenarioNodeRun, ScenarioRun } from "../../../ipc/contracts";
+import type { ChatToolCall } from "../../../ipc/contracts";
 
 export interface ChatMessage {
   id: number;
   role: "user" | "assistant";
   text: string;
   reasoning?: string;
+  toolCalls?: ChatToolCall[];
   scenarioRunId?: number | null;
   status?: "streaming" | "completed" | "failed" | "cancelled";
 }
@@ -68,10 +77,31 @@ export function ChatFeed({
   const lastMessageText = messages.at(-1)?.text;
   const lastMessageReasoning = messages.at(-1)?.reasoning;
   const lastMessageStatus = messages.at(-1)?.status;
-  useLayoutEffect(() => { const element=scrollRef.current; if(element) element.scrollTop=element.scrollHeight; }, [conversationId]);
-  useLayoutEffect(() => { const element=scrollRef.current; if(element) element.scrollTop=element.scrollHeight; }, [lastMessageId]);
-  useLayoutEffect(() => { const element=scrollRef.current; if(element && element.scrollHeight-element.scrollTop-element.clientHeight<180) element.scrollTop=element.scrollHeight; }, [lastMessageText, lastMessageReasoning, lastMessageStatus]);
-  const handleScroll = async (event:UIEvent<HTMLDivElement>) => { const element=event.currentTarget; if(element.scrollTop>80||!hasMore||loadingEarlier)return; const previousHeight=element.scrollHeight; await onLoadEarlier(); requestAnimationFrame(()=>{element.scrollTop=element.scrollHeight-previousHeight;}); };
+  useLayoutEffect(() => {
+    const element = scrollRef.current;
+    if (element) element.scrollTop = element.scrollHeight;
+  }, [conversationId]);
+  useLayoutEffect(() => {
+    const element = scrollRef.current;
+    if (element) element.scrollTop = element.scrollHeight;
+  }, [lastMessageId]);
+  useLayoutEffect(() => {
+    const element = scrollRef.current;
+    if (
+      element &&
+      element.scrollHeight - element.scrollTop - element.clientHeight < 180
+    )
+      element.scrollTop = element.scrollHeight;
+  }, [lastMessageText, lastMessageReasoning, lastMessageStatus]);
+  const handleScroll = async (event: UIEvent<HTMLDivElement>) => {
+    const element = event.currentTarget;
+    if (element.scrollTop > 80 || !hasMore || loadingEarlier) return;
+    const previousHeight = element.scrollHeight;
+    await onLoadEarlier();
+    requestAnimationFrame(() => {
+      element.scrollTop = element.scrollHeight - previousHeight;
+    });
+  };
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <header className="flex h-14 shrink-0 items-center border-b border-main-700/35 px-5">
@@ -85,7 +115,12 @@ export function ChatFeed({
           </p>
         </div>
       </header>
-      <ScrollArea ref={scrollRef} className="min-h-0 flex-1" showScrollbar={false} onScroll={(event)=>void handleScroll(event)}>
+      <ScrollArea
+        ref={scrollRef}
+        className="min-h-0 flex-1"
+        showScrollbar={false}
+        onScroll={(event) => void handleScroll(event)}
+      >
         <div className="mx-auto flex min-h-full w-full max-w-5xl flex-col px-6 pb-44 pt-8">
           {messages.length === 0 ? (
             <div className="my-auto flex flex-col items-center py-12 text-center">
@@ -122,7 +157,12 @@ export function ChatFeed({
             </div>
           ) : (
             <div className="flex min-h-full flex-col gap-9 py-4">
-              {loadingEarlier?<div className="mx-auto flex items-center gap-2 text-xs text-main-500"><span className="size-1.5 animate-pulse rounded-full bg-accent-light"/>Загружаю предыдущие сообщения…</div>:null}
+              {loadingEarlier ? (
+                <div className="mx-auto flex items-center gap-2 text-xs text-main-500">
+                  <span className="size-1.5 animate-pulse rounded-full bg-accent-light" />
+                  Загружаю предыдущие сообщения…
+                </div>
+              ) : null}
               {messages.map((message) => (
                 <div
                   key={message.id}
@@ -149,7 +189,9 @@ export function ChatFeed({
                         {message.scenarioRunId &&
                         scenarioExecutions.get(message.scenarioRunId) ? (
                           <ScenarioExecutionHistory
-                            execution={scenarioExecutions.get(message.scenarioRunId)!}
+                            execution={
+                              scenarioExecutions.get(message.scenarioRunId)!
+                            }
                             liveOutput={scenarioNodeOutput}
                           />
                         ) : null}
@@ -162,6 +204,13 @@ export function ChatFeed({
                               {message.reasoning}
                             </Accordion.Content>
                           </Accordion>
+                        ) : null}
+                        {message.toolCalls?.length ? (
+                          <div className="mb-4 space-y-2">
+                            {message.toolCalls.map((call) => (
+                              <ToolCallDetails key={call.id} call={call} />
+                            ))}
+                          </div>
                         ) : null}
                         {!message.text && message.status === "streaming" ? (
                           <div
@@ -247,11 +296,7 @@ export function ChatFeed({
                                   {children}
                                 </code>
                               ),
-                              pre: ({ children }) => (
-                                <pre className="my-4 overflow-x-auto rounded-xl bg-main-900 p-4 text-[12px] leading-5 ring-1 ring-main-700/40">
-                                  {children}
-                                </pre>
-                              ),
+                              pre: MarkdownCodeBlock,
                               table: ({ children }) => (
                                 <div className="my-5 overflow-x-auto rounded-xl ring-1 ring-main-700/45">
                                   <table className="w-full min-w-lg border-collapse text-left text-[13px]">
@@ -317,6 +362,80 @@ export function ChatFeed({
   );
 }
 
+function ToolCallDetails({ call }: { call: ChatToolCall }) {
+  const label =
+    call.toolId === "web_search" ? "Поиск в интернете" : "Чтение страницы";
+  const statusLabel = {
+    requested: "Подготовка",
+    running: "Выполняется",
+    completed: "Завершено",
+    failed: "Ошибка",
+  }[call.status];
+  return (
+    <Accordion className="overflow-hidden rounded-xl bg-main-800/45 ring-1 ring-main-700/35">
+      <Accordion.Summary className="px-3.5 py-2.5 text-left transition-colors hover:bg-main-700/30">
+        <div className="flex w-full gap-3 items-center justify-between">
+          <span className="min-w-0 truncate text-xs font-medium text-main-300">
+            {label}
+          </span>
+          <span
+            className={`shrink-0 text-[11px] ${call.status === "failed" ? "text-danger-light" : call.status === "completed" ? "text-accent-light" : "text-main-500"}`}
+          >
+            {statusLabel}
+          </span>
+        </div>
+      </Accordion.Summary>
+      <Accordion.Content className="space-y-3 border-t border-main-700/30 px-3.5 py-3 text-xs leading-5 text-main-400">
+        <ToolCallValue title="Запрос" value={call.input} />
+        {call.output !== null ? (
+          <ToolCallValue title="Результат" value={call.output} />
+        ) : null}
+        {call.error ? (
+          <div className="text-danger-light">{call.error}</div>
+        ) : null}
+      </Accordion.Content>
+    </Accordion>
+  );
+}
+
+function ToolCallValue({ title, value }: { title: string; value: unknown }) {
+  const code =
+    typeof value === "string" ? value : JSON.stringify(value, null, 2);
+  return (
+    <div>
+      <div className="mb-1 text-[11px] font-medium text-main-500">{title}</div>
+      <CodeView
+        code={code}
+        language={typeof value === "string" ? "text" : "json"}
+        fileName={title === "Запрос" ? "request.json" : "response.json"}
+        copyable
+        defaultActions
+        maxContentHeight={288}
+      />
+    </div>
+  );
+}
+
+function MarkdownCodeBlock({ children }: { children?: ReactNode }) {
+  const child = isValidElement<{ children?: ReactNode; className?: string }>(
+    children,
+  )
+    ? children
+    : null;
+  const code = String(child?.props.children ?? children ?? "").replace(/\n$/, "");
+  const language = child?.props.className?.replace(/^language-/, "") || "text";
+  return (
+    <CodeView
+      className="my-4"
+      code={code}
+      language={language}
+      copyable
+      defaultActions
+      maxContentHeight={420}
+    />
+  );
+}
+
 function ScenarioExecutionHistory({
   execution,
   liveOutput,
@@ -359,8 +478,8 @@ function ScenarioExecutionHistory({
             const exposesContent =
               node.nodeKind !== "trigger" && node.nodeKind !== "output";
             const text = exposesContent
-              ? (running ? liveOutput.get(node.nodeId) : undefined) ??
-                formatNodeValue(node.output)
+              ? ((running ? liveOutput.get(node.nodeId) : undefined) ??
+                formatNodeValue(node.output))
               : "";
             return (
               <Timeline.Item key={node.id} icon={nodeKindIcon(node.nodeKind)}>

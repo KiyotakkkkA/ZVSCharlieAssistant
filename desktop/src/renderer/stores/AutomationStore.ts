@@ -10,6 +10,7 @@ import type {
   ScenarioRun,
   ScenarioRunEvent,
   ScenarioValidationResult,
+  UpsertAutomationToolSecretBindingInput,
 } from "../../ipc/contracts";
 
 function toIpcPayload<T>(value: T): T {
@@ -78,6 +79,17 @@ export class AutomationStore {
 
   getTool(toolId: string): AutomationTool | undefined {
     return this.tools.find((tool) => tool.id === toolId);
+  }
+
+  async upsertToolSecretBinding(
+    input: UpsertAutomationToolSecretBindingInput,
+  ) {
+    const tool = await window.desktop.automation.upsertToolSecretBinding(input);
+    runInAction(() => {
+      const index = this.tools.findIndex((item) => item.id === tool.id);
+      if (index >= 0) this.tools[index] = tool;
+    });
+    return tool;
   }
 
   async upsertAgent(

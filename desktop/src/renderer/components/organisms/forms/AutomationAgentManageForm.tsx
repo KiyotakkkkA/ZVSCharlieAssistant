@@ -14,7 +14,6 @@ import type {
 } from "../../../../ipc/contracts";
 import {
   automationStore,
-  secretStorageStore,
   textProviderStore,
 } from "../../../stores";
 import { CreateButton } from "@renderer/components/atoms/buttons";
@@ -38,8 +37,6 @@ export function AutomationAgentManageForm({
   const [status, setStatus] = useState<AutomationStatus>("draft");
   const [textModelId, setTextModelId] = useState("");
   const [toolModel, setToolModel] = useState<Record<string, boolean>>({});
-  const [secretModel, setSecretModel] = useState<Record<string, boolean>>({});
-  const [requireConfirmation, setRequireConfirmation] = useState(true);
 
   useEffect(() => {
     setName(model?.name ?? "");
@@ -53,22 +50,11 @@ export function AutomationAgentManageForm({
           ? String(textProviderStore.enabledModels[0].id)
           : "",
     );
-    setRequireConfirmation(model?.requireDangerousActionConfirmation ?? true);
     setToolModel(
       Object.fromEntries(
         automationStore.tools.map((tool) => [
           tool.id,
           model?.allowedToolIds.includes(tool.id) ?? false,
-        ]),
-      ),
-    );
-    setSecretModel(
-      Object.fromEntries(
-        secretStorageStore.secrets.map((secret) => [
-          String(secret.id),
-          model?.secretBindings.some(
-            (binding) => binding.secretId === secret.id,
-          ) ?? false,
         ]),
       ),
     );
@@ -83,10 +69,6 @@ export function AutomationAgentManageForm({
   );
 
   const submit = async () => {
-    const selectedSecretIds = Object.entries(secretModel)
-      .filter(([, selected]) => selected)
-      .map(([secretId]) => Number(secretId));
-
     await onSubmit({
       id: model?.id,
       name: name.trim(),
@@ -95,11 +77,6 @@ export function AutomationAgentManageForm({
       textModelId: Number(textModelId),
       status,
       allowedToolIds: selectedToolIds,
-      secretBindings: selectedSecretIds.map((secretId) => ({
-        secretId,
-        allowedToolIds: selectedToolIds,
-      })),
-      requireDangerousActionConfirmation: requireConfirmation,
       maxToolCalls: model?.maxToolCalls ?? 20,
       timeoutSeconds: model?.timeoutSeconds ?? 120,
     });
@@ -226,54 +203,6 @@ export function AutomationAgentManageForm({
             </InputCheckBox>
           ))}
         </InputCheckBoxGroup>
-      </FormSection>
-
-      <FormSection
-        title="Секреты"
-        description="Модель получает возможность использовать выбранные секреты по своему усмотрению, при этом фактические значения секретов раскрываться не будут"
-      >
-        {secretStorageStore.secrets.length ? (
-          <InputCheckBoxGroup
-            model={secretModel}
-            onModelChange={setSecretModel}
-            multiple
-            orientation="vertical"
-            className="grid gap-2 lg:grid-cols-2"
-          >
-            {secretStorageStore.secrets.map((secret) => (
-              <InputCheckBox
-                key={secret.id}
-                modelValue={String(secret.id)}
-                className="rounded-lg bg-main-800/40 p-3 ring-1 ring-main-700/45"
-              >
-                <span className="block">
-                  <span className="block text-sm font-medium text-main-100">
-                    {secret.label}
-                  </span>
-                  <span className="mt-1 block text-xs text-main-500">
-                    {secretStorageStore.categoryLabel(secret.categoryId)}
-                  </span>
-                </span>
-              </InputCheckBox>
-            ))}
-          </InputCheckBoxGroup>
-        ) : (
-          <p className="rounded-lg bg-main-800/35 p-4 text-sm text-main-500">
-            В хранилище пока нет секретов.
-          </p>
-        )}
-      </FormSection>
-
-      <FormSection
-        title="Безопасность"
-        description="Управляет политикой применение инструмента. Инструменты с пометкой `требует подтверждения` будут автоматически подтверждены при включённой опции"
-      >
-        <InputCheckBox
-          checked={requireConfirmation}
-          onChange={setRequireConfirmation}
-        >
-          Автоматическое подтверждение вызовов инструментов
-        </InputCheckBox>
       </FormSection>
 
       <div className="flex justify-end gap-2 border-t border-main-800 pt-5">

@@ -98,8 +98,6 @@ const migrations: readonly Migration[] = [
           text_model_id INTEGER,
           status TEXT NOT NULL DEFAULT 'draft'
             CHECK (status IN ('draft', 'active', 'disabled')),
-          require_dangerous_action_confirmation INTEGER NOT NULL DEFAULT 1
-            CHECK (require_dangerous_action_confirmation IN (0, 1)),
           max_tool_calls INTEGER NOT NULL DEFAULT 20 CHECK (max_tool_calls > 0),
           timeout_seconds INTEGER NOT NULL DEFAULT 120 CHECK (timeout_seconds > 0),
           runs INTEGER NOT NULL DEFAULT 0 CHECK (runs >= 0),
@@ -118,27 +116,13 @@ const migrations: readonly Migration[] = [
             ON DELETE CASCADE
         );
 
-        CREATE TABLE automation_agent_secrets (
-          agent_id TEXT NOT NULL,
+        CREATE TABLE automation_tool_secret_bindings (
+          tool_id TEXT NOT NULL,
+          binding_key TEXT NOT NULL,
           secret_id INTEGER NOT NULL,
-          PRIMARY KEY (agent_id, secret_id),
-          FOREIGN KEY (agent_id)
-            REFERENCES automation_agents(id)
-            ON UPDATE CASCADE
-            ON DELETE CASCADE,
+          PRIMARY KEY (tool_id, binding_key),
           FOREIGN KEY (secret_id)
             REFERENCES secret_entities(id)
-            ON UPDATE CASCADE
-            ON DELETE CASCADE
-        );
-
-        CREATE TABLE automation_agent_secret_tools (
-          agent_id TEXT NOT NULL,
-          secret_id INTEGER NOT NULL,
-          tool_id TEXT NOT NULL,
-          PRIMARY KEY (agent_id, secret_id, tool_id),
-          FOREIGN KEY (agent_id, secret_id)
-            REFERENCES automation_agent_secrets(agent_id, secret_id)
             ON UPDATE CASCADE
             ON DELETE CASCADE
         );

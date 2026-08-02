@@ -16,11 +16,6 @@ export function registerChatHandlers(data: ChatDataSource, engine: RunEngine) {
   ipcMain.handle(CHAT_IPC_CHANNELS.cancelRun, (_event, id: number) =>
     engine.cancel(id),
   );
-  ipcMain.handle(
-    CHAT_IPC_CHANNELS.approveToolCall,
-    (_event, id: number, approved: boolean) =>
-      engine.approvals.resolve(id, approved),
-  );
   ipcMain.handle(CHAT_IPC_CHANNELS.deleteConversation, (_event, id: number) =>
     data.deleteConversation(id),
   );

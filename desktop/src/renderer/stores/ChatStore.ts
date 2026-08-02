@@ -12,8 +12,6 @@ export class ChatStore {
   messages: ChatMessage[] = [];
   activeConversationId: number | null = null;
   activeRunId: number | null = null;
-  pendingApproval: Extract<RunEvent, { type: "approval.required" }> | null =
-    null;
   loading = false;
   hasMoreMessages = false;
   loadingEarlier = false;
@@ -57,16 +55,6 @@ export class ChatStore {
   }
   async cancel() {
     if (this.activeRunId) await window.desktop.chat.cancelRun(this.activeRunId);
-  }
-  async approve(approved: boolean) {
-    if (!this.pendingApproval) return;
-    await window.desktop.chat.approveToolCall(
-      this.pendingApproval.toolCallId,
-      approved,
-    );
-    runInAction(() => {
-      this.pendingApproval = null;
-    });
   }
   async renameConversation(id: number, title: string) {
     await window.desktop.chat.renameConversation(id, title);
@@ -188,9 +176,38 @@ export class ChatStore {
             ? { ...message, reasoning: message.reasoning + event.delta }
             : message,
         );
-      } else if (event.type === "approval.required")
-        this.pendingApproval = event;
-      else if (
+      } else if (
+        event.type === "tool.requested" ||
+        event.type === "tool.running" ||
+        event.type === "tool.completed"
+      ) {
+        this.messages = this.messages.map((message) => {
+          if (message.role !== "assistant" || message.runId !== event.runId)
+            return message;
+          const existing = message.toolCalls.find((call) => call.id === event.toolCallId);
+          const status: import("../../ipc/contracts").ChatToolCall["status"] = event.error
+            ? "failed"
+            : event.type === "tool.completed"
+              ? "completed"
+              : event.type === "tool.running"
+                ? "running"
+                : "requested";
+          const next = {
+            id: event.toolCallId,
+            toolId: event.toolId,
+            status,
+            input: event.input ?? existing?.input ?? null,
+            output: event.output ?? existing?.output ?? null,
+            error: event.error ?? existing?.error ?? null,
+          };
+          return {
+            ...message,
+            toolCalls: existing
+              ? message.toolCalls.map((call) => call.id === next.id ? next : call)
+              : [...message.toolCalls, next],
+          };
+        });
+      } else if (
         event.type === "run.completed" ||
         event.type === "run.cancelled" ||
         event.type === "run.failed"

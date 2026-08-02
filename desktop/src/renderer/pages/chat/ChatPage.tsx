@@ -117,6 +117,7 @@ export const ChatPage = observer(function ChatPage() {
               role: item.role as "user" | "assistant",
               text: item.text,
               reasoning: item.reasoning,
+              toolCalls: item.toolCalls,
               scenarioRunId: item.scenarioRunId,
               status: item.status,
             }))}
@@ -146,18 +147,6 @@ export const ChatPage = observer(function ChatPage() {
           onCancel={() => void chatStore.cancel()}
         />
       </div>
-      {chatStore.pendingApproval ? (
-        <DangerModal
-          model={chatStore.pendingApproval}
-          title="Разрешить действие агента?"
-          description={(approval) =>
-            `Инструмент «${approval.toolId}» запрашивает выполнение операции записи.`
-          }
-          confirmLabel="Разрешить"
-          onCancel={() => void chatStore.approve(false)}
-          onConfirm={() => chatStore.approve(true)}
-        />
-      ) : null}
       {chatStore.pendingScenarioApproval ? (
         <DangerModal
           model={chatStore.pendingScenarioApproval}

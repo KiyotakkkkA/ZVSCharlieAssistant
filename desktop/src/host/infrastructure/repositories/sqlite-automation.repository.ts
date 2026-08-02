@@ -8,6 +8,7 @@ import type {
   AutomationTool,
   UpsertAutomationAgentInput,
   UpsertAutomationScenarioInput,
+  UpsertAutomationToolSecretBindingInput,
 } from "../../../ipc/contracts";
 import type { AutomationRepository } from "../../domain/repositories/automation.repository";
 import { AutomationDataSource } from "../database/automation.data-source";
@@ -47,7 +48,7 @@ export class SqliteAutomationRepository implements AutomationRepository {
 
   getSnapshot(): AutomationSnapshot {
     return {
-      tools: this.tools.map((tool) => structuredClone(tool)),
+      tools: this.tools.map((tool) => this.mapTool(tool)),
       agents: this.dataSource.listAgents(),
       scenarios: this.dataSource.listScenarios(),
     };
@@ -67,23 +68,6 @@ export class SqliteAutomationRepository implements AutomationRepository {
     const allowedToolIds = normalizeIds(input.allowedToolIds);
     this.assertToolsExist(allowedToolIds);
 
-    const seenSecrets = new Set<number>();
-    const secretBindings = input.secretBindings.map((binding) => {
-      if (!Number.isInteger(binding.secretId) || binding.secretId <= 0)
-        throw new Error("Некорректный идентификатор секрета");
-      if (seenSecrets.has(binding.secretId))
-        throw new Error("Секрет привязан к агенту несколько раз");
-      seenSecrets.add(binding.secretId);
-      if (!this.dataSource.secretExists(binding.secretId))
-        throw new Error(`Секрет ${binding.secretId} не существует`);
-
-      const bindingToolIds = normalizeIds(binding.allowedToolIds);
-      this.assertToolsExist(bindingToolIds);
-      if (bindingToolIds.some((toolId) => !allowedToolIds.includes(toolId)))
-        throw new Error("Секрет разрешён инструменту, недоступному агенту");
-      return { secretId: binding.secretId, allowedToolIds: bindingToolIds };
-    });
-
     const id = input.id ?? randomUUID();
     if (input.id && !this.dataSource.findAgent(input.id))
       throw new Error("Агент не найден");
@@ -95,12 +79,37 @@ export class SqliteAutomationRepository implements AutomationRepository {
       instructions: normalizeText(input.instructions, "Инструкции", 50_000),
       textModelId,
       allowedToolIds,
-      secretBindings,
     });
   }
 
   deleteAgent(id: string): void {
     this.dataSource.deleteAgent(normalizeText(id, "Идентификатор", 120));
+  }
+
+  upsertToolSecretBinding(
+    input: UpsertAutomationToolSecretBindingInput,
+  ): AutomationTool {
+    const tool = this.toolsById.get(input.toolId);
+    if (!tool) throw new Error("Инструмент не найден");
+    const requirement = tool.secretRequirements.find(
+      (item) => item.key === input.key,
+    );
+    if (!requirement) throw new Error("Привязка секрета не поддерживается инструментом");
+    if (
+      input.secretId !== null &&
+      (!Number.isInteger(input.secretId) ||
+        !this.dataSource.secretExistsInCategory(
+          input.secretId,
+          requirement.categoryId,
+        ))
+    )
+      throw new Error("Секрет не существует или относится к другой категории");
+    this.dataSource.upsertToolSecretBinding(
+      tool.id,
+      requirement.key,
+      input.secretId,
+    );
+    return this.mapTool(tool);
   }
 
   upsertScenario(input: UpsertAutomationScenarioInput): AutomationScenario {
@@ -139,8 +148,29 @@ export class SqliteAutomationRepository implements AutomationRepository {
     for (const toolId of toolIds) {
       const tool = this.toolsById.get(toolId);
       if (!tool) throw new Error(`Инструмент ${toolId} не зарегистрирован`);
-      if (!tool.enabled) throw new Error(`Инструмент ${toolId} отключён`);
+      if (!this.mapTool(tool).enabled)
+        throw new Error(`Инструмент ${toolId} не настроен или отключён`);
     }
+  }
+
+  private mapTool(tool: AutomationTool): AutomationTool {
+    const secretBindings = this.dataSource
+      .listToolSecretBindings(tool.id)
+      .map((binding) => ({
+        key: binding.binding_key,
+        secretId: binding.secret_id,
+      }));
+    return {
+      ...structuredClone(tool),
+      enabled:
+        tool.enabled &&
+        tool.secretRequirements
+          .filter((requirement) => requirement.required)
+          .every((requirement) =>
+            secretBindings.some((binding) => binding.key === requirement.key),
+          ),
+      secretBindings,
+    };
   }
 
   private validateGraph(graph: AutomationScenarioGraph): void {

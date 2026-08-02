@@ -1,6 +1,5 @@
 import type Database from "better-sqlite3";
 import type {
-  AgentSecretBinding,
   AutomationAgent,
   AutomationScenario,
   AutomationScenarioGraph,
@@ -16,7 +15,6 @@ interface AgentRow {
   instructions: string;
   text_model_id: number | null;
   status: AutomationAgent["status"];
-  require_dangerous_action_confirmation: number;
   max_tool_calls: number;
   timeout_seconds: number;
   runs: number;
@@ -47,11 +45,60 @@ const parseJson = <T>(value: string, fallback: T): T => {
 export class AutomationDataSource {
   constructor(private readonly database: Database.Database) {}
 
+  listToolSecretBindings(toolId: string) {
+    return this.database
+      .prepare(
+        `SELECT binding_key, secret_id
+         FROM automation_tool_secret_bindings WHERE tool_id=? ORDER BY binding_key`,
+      )
+      .all(toolId) as Array<{ binding_key: string; secret_id: number }>;
+  }
+
+  toolSecretId(toolId: string, key: string): number | undefined {
+    return (
+      this.database
+        .prepare(
+          "SELECT secret_id FROM automation_tool_secret_bindings WHERE tool_id=? AND binding_key=?",
+        )
+        .get(toolId, key) as { secret_id: number } | undefined
+    )?.secret_id;
+  }
+
+  upsertToolSecretBinding(
+    toolId: string,
+    key: string,
+    secretId: number | null,
+  ) {
+    if (secretId === null) {
+      this.database
+        .prepare(
+          "DELETE FROM automation_tool_secret_bindings WHERE tool_id=? AND binding_key=?",
+        )
+        .run(toolId, key);
+      return;
+    }
+    this.database
+      .prepare(
+        `INSERT INTO automation_tool_secret_bindings(tool_id,binding_key,secret_id)
+         VALUES(?,?,?) ON CONFLICT(tool_id,binding_key)
+         DO UPDATE SET secret_id=excluded.secret_id`,
+      )
+      .run(toolId, key, secretId);
+  }
+
+  secretExistsInCategory(id: number, categoryId: number): boolean {
+    return Boolean(
+      this.database
+        .prepare("SELECT 1 FROM secret_entities WHERE id=? AND category_id=?")
+        .get(id, categoryId),
+    );
+  }
+
   listAgents(): AutomationAgent[] {
     const rows = this.database
       .prepare(
         `SELECT id, name, description, instructions, text_model_id, status,
-                require_dangerous_action_confirmation, max_tool_calls,
+                max_tool_calls,
                 timeout_seconds, runs, updated_at
          FROM automation_agents
          ORDER BY updated_at DESC, name ASC`,
@@ -64,20 +111,12 @@ export class AutomationDataSource {
     const row = this.database
       .prepare(
         `SELECT id, name, description, instructions, text_model_id, status,
-                require_dangerous_action_confirmation, max_tool_calls,
+                max_tool_calls,
                 timeout_seconds, runs, updated_at
          FROM automation_agents WHERE id = ?`,
       )
       .get(id) as AgentRow | undefined;
     return row ? this.mapAgent(row) : undefined;
-  }
-
-  secretExists(id: number): boolean {
-    return Boolean(
-      this.database
-        .prepare("SELECT 1 FROM secret_entities WHERE id = ?")
-        .get(id),
-    );
   }
 
   textModelExists(id: number): boolean {
@@ -96,16 +135,15 @@ export class AutomationDataSource {
         .prepare(
           `INSERT INTO automation_agents (
              id, name, description, instructions, text_model_id, status,
-             require_dangerous_action_confirmation, max_tool_calls,
+             max_tool_calls,
              timeout_seconds
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(id) DO UPDATE SET
              name = excluded.name,
              description = excluded.description,
              instructions = excluded.instructions,
              text_model_id = excluded.text_model_id,
              status = excluded.status,
-             require_dangerous_action_confirmation = excluded.require_dangerous_action_confirmation,
              max_tool_calls = excluded.max_tool_calls,
              timeout_seconds = excluded.timeout_seconds,
              updated_at = CURRENT_TIMESTAMP`,
@@ -117,7 +155,6 @@ export class AutomationDataSource {
           input.instructions,
           input.textModelId,
           input.status,
-          Number(input.requireDangerousActionConfirmation),
           input.maxToolCalls,
           input.timeoutSeconds,
         );
@@ -125,27 +162,11 @@ export class AutomationDataSource {
       this.database
         .prepare("DELETE FROM automation_agent_tools WHERE agent_id = ?")
         .run(id);
-      this.database
-        .prepare("DELETE FROM automation_agent_secrets WHERE agent_id = ?")
-        .run(id);
-
       const insertTool = this.database.prepare(
         "INSERT INTO automation_agent_tools (agent_id, tool_id) VALUES (?, ?)",
       );
       for (const toolId of input.allowedToolIds) insertTool.run(id, toolId);
 
-      const insertSecret = this.database.prepare(
-        "INSERT INTO automation_agent_secrets (agent_id, secret_id) VALUES (?, ?)",
-      );
-      const insertSecretTool = this.database.prepare(
-        `INSERT INTO automation_agent_secret_tools
-           (agent_id, secret_id, tool_id) VALUES (?, ?, ?)`,
-      );
-      for (const binding of input.secretBindings) {
-        insertSecret.run(id, binding.secretId);
-        for (const toolId of binding.allowedToolIds)
-          insertSecretTool.run(id, binding.secretId, toolId);
-      }
     })();
 
     return this.findAgent(id)!;
@@ -251,24 +272,6 @@ export class AutomationDataSource {
         .all(row.id) as Array<{ tool_id: string }>
     ).map(({ tool_id }) => tool_id);
 
-    const secrets = this.database
-      .prepare(
-        "SELECT secret_id FROM automation_agent_secrets WHERE agent_id = ? ORDER BY secret_id",
-      )
-      .all(row.id) as Array<{ secret_id: number }>;
-    const selectSecretTools = this.database.prepare(
-      `SELECT tool_id FROM automation_agent_secret_tools
-       WHERE agent_id = ? AND secret_id = ? ORDER BY tool_id`,
-    );
-    const secretBindings: AgentSecretBinding[] = secrets.map(
-      ({ secret_id }) => ({
-        secretId: secret_id,
-        allowedToolIds: (
-          selectSecretTools.all(row.id, secret_id) as Array<{ tool_id: string }>
-        ).map(({ tool_id }) => tool_id),
-      }),
-    );
-
     return {
       id: row.id,
       name: row.name,
@@ -277,10 +280,6 @@ export class AutomationDataSource {
       textModelId: row.text_model_id,
       status: row.status,
       allowedToolIds,
-      secretBindings,
-      requireDangerousActionConfirmation: Boolean(
-        row.require_dangerous_action_confirmation,
-      ),
       maxToolCalls: row.max_tool_calls,
       timeoutSeconds: row.timeout_seconds,
       runs: row.runs,

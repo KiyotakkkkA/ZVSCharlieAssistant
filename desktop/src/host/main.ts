@@ -27,6 +27,7 @@ import { RunEngine } from "./infrastructure/text-generation/run-engine";
 import { ScenarioCompiler } from "./infrastructure/automation/scenario-compiler";
 import { ScenarioRunEngine } from "./infrastructure/automation/scenario-run-engine";
 import { ScenarioExecutionDataSource } from "./infrastructure/database/scenario-execution.data-source";
+import { ToolRegistry } from "./infrastructure/tools/tool.registry";
 import {
   registerChatHandlers,
   removeChatHandlers,
@@ -43,8 +44,9 @@ app.whenReady().then(() => {
   const secretRepository = new SqliteSecretStorageRepository(
     new SecretStorageDataSource(database),
   );
+  const automationDataSource = new AutomationDataSource(database);
   const automationRepository = new SqliteAutomationRepository(
-    new AutomationDataSource(database),
+    automationDataSource,
     BUILTIN_AUTOMATION_TOOLS,
   );
 
@@ -68,6 +70,7 @@ app.whenReady().then(() => {
     new RunEngine(
       chatDataSource,
       providerRegistry,
+      new ToolRegistry(chatDataSource, automationDataSource, secretRepository),
       scenarioEngine,
     ),
   );

@@ -1,7 +1,6 @@
 export type { AppInfo, DesktopApi } from "./app.contract";
 export { IPC_CHANNELS } from "./app.contract";
 export type {
-  AgentSecretBinding,
   AutomationAgent,
   AutomationApi,
   AutomationScenario,
@@ -19,6 +18,9 @@ export type {
   AutomationSnapshot,
   AutomationStatus,
   AutomationTool,
+  AutomationToolSecretBinding,
+  AutomationToolSecretRequirement,
+  UpsertAutomationToolSecretBindingInput,
   UpsertAutomationAgentInput,
   UpsertAutomationScenarioInput,
 } from "./automation.contract";
@@ -53,6 +55,7 @@ export type {
   ChatMessagePage,
   ChatMode,
   ChatSnapshot,
+  ChatToolCall,
   RunEvent,
   RunStatus,
   StartRunInput,

@@ -1,103 +1,18 @@
 import type { AutomationTool } from "../../../ipc/contracts";
 
+const ollamaApiKey = {
+  key: "ollamaApiKey",
+  label: "Ollama API key",
+  categoryId: 1,
+  required: true,
+} as const;
+
 export const BUILTIN_AUTOMATION_TOOLS: readonly AutomationTool[] = [
   {
-    id: "current_time",
-    name: "Текущее время",
-    description: "Возвращает текущее локальное время.",
-    category: "Система",
-    builtin: true,
-    enabled: true,
-    requiresConfirmation: false,
-    inputSchema: { type: "object", properties: {} },
-    outputSchema: { type: "object", properties: { iso: { type: "string" } } },
-  },
-  {
-    id: "save_note",
-    name: "Сохранить заметку",
-    description:
-      "Тестовый инструмент записи заметки с обязательным подтверждением.",
-    category: "Память",
-    builtin: true,
-    enabled: true,
-    requiresConfirmation: true,
-    inputSchema: {
-      type: "object",
-      required: ["text"],
-      properties: { text: { type: "string" } },
-    },
-    outputSchema: {
-      type: "object",
-      properties: { saved: { type: "boolean" } },
-    },
-  },
-  {
-    id: "filesystem.read",
-    name: "Чтение файлов",
-    description: "Читает содержимое файла в разрешённой директории.",
-    category: "Файловая система",
-    builtin: true,
-    enabled: true,
-    requiresConfirmation: false,
-    inputSchema: {
-      type: "object",
-      required: ["path"],
-      properties: { path: { type: "string", description: "Путь к файлу" } },
-    },
-    outputSchema: {
-      type: "object",
-      properties: {
-        content: { type: "string" },
-        encoding: { type: "string" },
-      },
-    },
-  },
-  {
-    id: "filesystem.write",
-    name: "Запись файлов",
-    description: "Создаёт или изменяет файл после проверки разрешений.",
-    category: "Файловая система",
-    builtin: true,
-    enabled: true,
-    requiresConfirmation: true,
-    inputSchema: {
-      type: "object",
-      required: ["path", "content"],
-      properties: {
-        path: { type: "string" },
-        content: { type: "string" },
-      },
-    },
-    outputSchema: {
-      type: "object",
-      properties: { written: { type: "boolean" } },
-    },
-  },
-  {
-    id: "desktop.launch",
-    name: "Запуск приложения",
-    description: "Запускает установленное приложение на компьютере.",
-    category: "Управление компьютером",
-    builtin: true,
-    enabled: true,
-    requiresConfirmation: true,
-    inputSchema: {
-      type: "object",
-      required: ["application"],
-      properties: {
-        application: { type: "string" },
-        arguments: { type: "array", items: { type: "string" } },
-      },
-    },
-    outputSchema: {
-      type: "object",
-      properties: { processId: { type: "number" } },
-    },
-  },
-  {
-    id: "web.search",
+    id: "web_search",
     name: "Поиск в интернете",
-    description: "Ищет информацию и возвращает список источников.",
+    description:
+      "Ищет информацию через Ollama Web Search и возвращает список источников.",
     category: "Интернет",
     builtin: true,
     enabled: true,
@@ -105,33 +20,54 @@ export const BUILTIN_AUTOMATION_TOOLS: readonly AutomationTool[] = [
     inputSchema: {
       type: "object",
       required: ["query"],
-      properties: { query: { type: "string" } },
+      properties: {
+        query: { type: "string", description: "Поисковый запрос" },
+      },
     },
     outputSchema: {
       type: "object",
-      properties: { results: { type: "array", items: { type: "object" } } },
+      properties: {
+        results: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              title: { type: "string" },
+              url: { type: "string" },
+              content: { type: "string" },
+            },
+          },
+        },
+      },
     },
+    secretRequirements: [ollamaApiKey],
+    secretBindings: [],
   },
   {
-    id: "http.request",
-    name: "HTTP-запрос",
-    description: "Выполняет запрос к API с разрешёнными учётными данными.",
+    id: "web_fetch",
+    name: "Поиск на странице",
+    description:
+      "Получает очищенное Markdown-содержимое страницы через Ollama Web Fetch.",
     category: "Интернет",
     builtin: true,
     enabled: true,
     requiresConfirmation: false,
     inputSchema: {
       type: "object",
-      required: ["url", "method"],
+      required: ["url"],
       properties: {
-        url: { type: "string" },
-        method: { type: "string" },
-        body: { type: ["object", "null"] },
+        url: { type: "string", description: "URL страницы" },
       },
     },
     outputSchema: {
       type: "object",
-      properties: { status: { type: "number" }, body: {} },
+      properties: {
+        title: { type: "string" },
+        content: { type: "string" },
+        links: { type: "array", items: { type: "string" } },
+      },
     },
+    secretRequirements: [ollamaApiKey],
+    secretBindings: [],
   },
 ] as const;

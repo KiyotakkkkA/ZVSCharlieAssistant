@@ -8,6 +8,7 @@ import {
   type UpsertAutomationScenarioInput,
   type AutomationScenarioGraph,
   type ScenarioRunOrigin,
+  type UpsertAutomationToolSecretBindingInput,
 } from "../contracts";
 
 export function registerAutomationHandlers(
@@ -25,6 +26,11 @@ export function registerAutomationHandlers(
   );
   ipcMain.handle(AUTOMATION_IPC_CHANNELS.deleteAgent, (_event, id: string) =>
     repository.deleteAgent(id),
+  );
+  ipcMain.handle(
+    AUTOMATION_IPC_CHANNELS.upsertToolSecretBinding,
+    (_event, input: UpsertAutomationToolSecretBindingInput) =>
+      repository.upsertToolSecretBinding(input),
   );
   ipcMain.handle(
     AUTOMATION_IPC_CHANNELS.upsertScenario,

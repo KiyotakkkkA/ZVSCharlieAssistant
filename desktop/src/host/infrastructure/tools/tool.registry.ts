@@ -1,29 +1,19 @@
 import { tool, type ToolSet } from "ai";
 import { z } from "zod";
-import type { ChatDataSource } from "../database/chat.data-source";
 import type { RunEvent } from "../../../ipc/contracts";
+import type { SecretStorageRepository } from "../../domain/repositories/secret-storage.repository";
+import type { AutomationDataSource } from "../database/automation.data-source";
+import type { ChatDataSource } from "../database/chat.data-source";
+
 type Emit = (event: RunEvent) => void;
-export class ApprovalCoordinator {
-  private pending = new Map<number, (approved: boolean) => void>();
-  wait(id: number): Promise<boolean> {
-    return new Promise((resolve) => this.pending.set(id, resolve));
-  }
-  resolve(id: number, approved: boolean) {
-    const resolve = this.pending.get(id);
-    if (!resolve) throw new Error("Запрос подтверждения не найден");
-    this.pending.delete(id);
-    resolve(approved);
-  }
-  clear() {
-    for (const resolve of this.pending.values()) resolve(false);
-    this.pending.clear();
-  }
-}
+
 export class ToolRegistry {
   constructor(
-    private readonly data: ChatDataSource,
-    private readonly approvals: ApprovalCoordinator,
+    private readonly chatData: ChatDataSource,
+    private readonly automationData: AutomationDataSource,
+    private readonly secrets: SecretStorageRepository,
   ) {}
+
   create(
     runId: number,
     emit: Emit,
@@ -31,85 +21,104 @@ export class ToolRegistry {
     allowed: string[],
   ): ToolSet {
     const tools: ToolSet = {
-      current_time: tool({
-        description: "Возвращает текущее локальное время",
-        inputSchema: z.object({}),
-        execute: async (_input, { toolCallId }) =>
-          this.execute(
-            runId,
-            toolCallId,
-            "current_time",
-            "read",
-            {},
-            emit,
-            signal,
-            async () => ({ iso: new Date().toISOString() }),
+      web_search: tool({
+        description:
+          "Ищет актуальную информацию в интернете и возвращает источники с заголовком, URL и фрагментом содержимого.",
+        inputSchema: z.object({
+          query: z.string().trim().min(1).max(500),
+        }),
+        execute: async (input, { toolCallId }) =>
+          this.execute(runId, toolCallId, "web_search", input, emit, signal, () =>
+            this.callOllama("web_search", input, signal),
           ),
       }),
-      save_note: tool({
-        description: "Сохраняет заметку пользователя. Требует подтверждения.",
-        inputSchema: z.object({ text: z.string().min(1).max(2000) }),
+      web_fetch: tool({
+        description:
+          "Получает веб-страницу и возвращает её заголовок, Markdown-содержимое и найденные ссылки.",
+        inputSchema: z.object({
+          url: z.string().trim().min(1).max(4096),
+        }),
         execute: async (input, { toolCallId }) =>
-          this.execute(
-            runId,
-            toolCallId,
-            "save_note",
-            "write",
-            input,
-            emit,
-            signal,
-            async () => ({ saved: true, text: input.text }),
+          this.execute(runId, toolCallId, "web_fetch", input, emit, signal, () =>
+            this.callOllama("web_fetch", input, signal),
           ),
       }),
     };
     return Object.fromEntries(
-      Object.entries(tools).filter(([id]) => allowed.includes(id)),
+      Object.entries(tools).filter(
+        ([id]) =>
+          allowed.includes(id) &&
+          this.automationData.toolSecretId(id, "ollamaApiKey") !== undefined,
+      ),
     );
   }
+
+  private async callOllama(
+    toolId: "web_search" | "web_fetch",
+    body: { query: string } | { url: string },
+    signal: AbortSignal,
+  ) {
+    const secretId = this.automationData.toolSecretId(toolId, "ollamaApiKey");
+    const apiKey = secretId ? this.secrets.getSecret(secretId)?.content.trim() : "";
+    if (!apiKey)
+      throw new Error(`Для инструмента «${toolId}» не настроен Ollama API key`);
+    const response = await fetch(`https://ollama.com/api/${toolId}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      signal,
+    });
+    if (!response.ok) {
+      const details = (await response.text()).slice(0, 500);
+      throw new Error(
+        `Ollama ${toolId} вернул ${response.status}${details ? `: ${details}` : ""}`,
+      );
+    }
+    return response.json() as Promise<unknown>;
+  }
+
   private async execute(
     runId: number,
     callId: string,
     toolId: string,
-    risk: "read" | "write",
     input: unknown,
     emit: Emit,
     signal: AbortSignal,
     action: () => Promise<unknown>,
   ) {
-    const needsApproval = risk !== "read";
-    const id = this.data.createToolCall(
+    const id = this.chatData.createToolCall(
       runId,
       callId,
       toolId,
-      risk,
+      "read",
       input,
-      needsApproval ? "waiting_for_approval" : "requested",
+      "requested",
     );
-    emit({ type: "tool.requested", runId, toolCallId: id, toolId });
-    if (needsApproval) {
-      this.data.setRunStatus(runId, "waiting_for_approval");
-      emit({ type: "approval.required", runId, toolCallId: id, toolId, input });
-      const approved = await this.approvals.wait(id);
-      if (!approved) {
-        this.data.finishToolCall(id, "denied");
-        throw new Error("Пользователь отклонил вызов инструмента");
-      }
-    }
+    emit({ type: "tool.requested", runId, toolCallId: id, toolId, input });
     if (signal.aborted) throw new Error("Выполнение отменено");
-    this.data.setRunStatus(runId, "running");
     emit({ type: "tool.running", runId, toolCallId: id, toolId });
     try {
       const output = await action();
-      this.data.finishToolCall(id, "completed", output);
-      emit({ type: "tool.completed", runId, toolCallId: id, toolId });
+      this.chatData.finishToolCall(id, "completed", output);
+      emit({ type: "tool.completed", runId, toolCallId: id, toolId, output });
       return output;
     } catch (error) {
-      this.data.finishToolCall(
+      this.chatData.finishToolCall(
         id,
         "failed",
         undefined,
         error instanceof Error ? error.message : String(error),
       );
+      emit({
+        type: "tool.completed",
+        runId,
+        toolCallId: id,
+        toolId,
+        error: error instanceof Error ? error.message : String(error),
+      });
       throw error;
     }
   }

@@ -5,6 +5,7 @@ import type {
   ChatMessagePage,
   ChatMode,
   ChatSnapshot,
+  ChatToolCall,
   RunStatus,
 } from "../../../ipc/contracts";
 interface ConversationRow {
@@ -65,7 +66,7 @@ export class ChatDataSource {
     ) as MessageRow[];
     const hasMore = rows.length > limit;
     return {
-      messages: rows.slice(0, limit).reverse().map(mapMessage),
+      messages: rows.slice(0, limit).reverse().map((row) => this.mapMessage(row)),
       hasMore,
     };
   }
@@ -76,7 +77,7 @@ export class ChatDataSource {
           "SELECT * FROM chat_messages WHERE conversation_id=? ORDER BY id",
         )
         .all(conversationId) as MessageRow[]
-    ).map(mapMessage);
+    ).map((row) => this.mapMessage(row));
   }
   createConversation(
     mode: ChatMode,
@@ -126,7 +127,7 @@ export class ChatDataSource {
           JSON.stringify([{ type: "text", text }]),
         ).lastInsertRowid,
     );
-    return mapMessage(
+    return this.mapMessage(
       this.db
         .prepare("SELECT * FROM chat_messages WHERE id=?")
         .get(id) as MessageRow,
@@ -298,6 +299,25 @@ export class ChatDataSource {
     ).map((item) => item.tool_id);
     return { ...row, allowedToolIds };
   }
+  private mapMessage(row: MessageRow): ChatMessage {
+    const message = mapMessage(row);
+    if (!row.run_id || row.role !== "assistant") return message;
+    const calls = this.db
+      .prepare("SELECT id,tool_id,status,input_json,output_json,error_message FROM generation_tool_calls WHERE run_id=? ORDER BY id")
+      .all(row.run_id) as Array<{
+        id: number; tool_id: string; status: ChatToolCall["status"];
+        input_json: string; output_json: string | null; error_message: string | null;
+      }>;
+    message.toolCalls = calls.map((call) => ({
+      id: call.id,
+      toolId: call.tool_id,
+      status: call.status,
+      input: JSON.parse(call.input_json),
+      output: call.output_json ? JSON.parse(call.output_json) : null,
+      error: call.error_message,
+    }));
+    return message;
+  }
 }
 const mapConversation = (r: ConversationRow): ChatConversation => ({
   id: r.id,
@@ -327,6 +347,7 @@ const mapMessage = (r: MessageRow): ChatMessage => {
       .filter((p) => p.type === "reasoning")
       .map((p) => p.text ?? "")
       .join(""),
+    toolCalls: [],
     createdAt: r.created_at,
   };
 };

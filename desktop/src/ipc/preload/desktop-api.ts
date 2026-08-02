@@ -31,6 +31,8 @@ import {
   type ScenarioRunOrigin,
   type ScenarioNodeRun,
   type ScenarioValidationResult,
+  type UpsertAutomationToolSecretBindingInput,
+  type AutomationTool,
 } from "../contracts";
 
 export const desktopApi: DesktopApi = {
@@ -80,6 +82,13 @@ export const desktopApi: DesktopApi = {
         AUTOMATION_IPC_CHANNELS.deleteAgent,
         id,
       ) as Promise<void>,
+    upsertToolSecretBinding: (
+      input: UpsertAutomationToolSecretBindingInput,
+    ): Promise<AutomationTool> =>
+      ipcRenderer.invoke(
+        AUTOMATION_IPC_CHANNELS.upsertToolSecretBinding,
+        input,
+      ) as Promise<AutomationTool>,
     upsertScenario: (
       input: UpsertAutomationScenarioInput,
     ): Promise<AutomationScenario> =>
@@ -149,12 +158,6 @@ export const desktopApi: DesktopApi = {
       }>,
     cancelRun: (id: number): Promise<void> =>
       ipcRenderer.invoke(CHAT_IPC_CHANNELS.cancelRun, id) as Promise<void>,
-    approveToolCall: (id: number, approved: boolean): Promise<void> =>
-      ipcRenderer.invoke(
-        CHAT_IPC_CHANNELS.approveToolCall,
-        id,
-        approved,
-      ) as Promise<void>,
     deleteConversation: (id: number): Promise<void> =>
       ipcRenderer.invoke(
         CHAT_IPC_CHANNELS.deleteConversation,

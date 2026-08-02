@@ -2,21 +2,18 @@ import { streamText, stepCountIs, type ModelMessage } from "ai";
 import type { RunEvent, StartRunInput } from "../../../ipc/contracts";
 import { ChatDataSource } from "../database/chat.data-source";
 import { ProviderRegistry } from "./provider.registry";
-import { ApprovalCoordinator, ToolRegistry } from "../tools/tool.registry";
+import { ToolRegistry } from "../tools/tool.registry";
 import type { ScenarioRunEngine } from "../automation/scenario-run-engine";
 type Emit = (event: RunEvent) => void;
 export class RunEngine {
   private controllers = new Map<number, AbortController>();
   private scenarioRunIds = new Set<number>();
-  readonly approvals = new ApprovalCoordinator();
-  private readonly tools: ToolRegistry;
   constructor(
     private readonly data: ChatDataSource,
     private readonly providers: ProviderRegistry,
+    private readonly tools: ToolRegistry,
     private readonly scenarios?: ScenarioRunEngine,
-  ) {
-    this.tools = new ToolRegistry(data, this.approvals);
-  }
+  ) {}
   async start(
     input: StartRunInput,
     emit: Emit,
@@ -82,7 +79,6 @@ export class RunEngine {
   cancel(runId: number) {
     if (this.scenarioRunIds.has(runId)) this.scenarios?.cancel(runId);
     else this.controllers.get(runId)?.abort();
-    this.approvals.clear();
   }
   private startScenario(
     input: StartRunInput,
@@ -217,7 +213,7 @@ export class RunEngine {
       const allowedTools =
         input.mode === "agent"
           ? (this.data.resolveAgent(input.agentId)?.allowedToolIds ?? [])
-          : ["current_time"];
+          : ["web_search", "web_fetch"];
       const result = streamText({
         model: this.providers.resolve(input.modelId),
         system,
