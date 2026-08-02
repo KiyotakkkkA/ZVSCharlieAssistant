@@ -8,6 +8,7 @@ import {
   InputSmall,
   ScrollArea,
   Select,
+  Tabs,
   useToasts,
 } from "@kiyotakkkka/zvs-uikit-lib";
 import {
@@ -23,6 +24,7 @@ import { DangerModal, PageHeader } from "../../../components/organisms";
 import type {
   TextProviderKind,
   TextProviderModelInfo,
+  TextProviderType,
 } from "../../../../ipc/contracts";
 import { textProviderStore } from "../../../stores";
 import {
@@ -39,6 +41,7 @@ interface ProviderDraft {
   id: number | null;
   name: string;
   kind: TextProviderKind;
+  providerType: TextProviderType;
   baseUrl: string;
   apiKeySecretId: string;
   enabled: boolean;
@@ -66,11 +69,16 @@ const statusMeta: Record<ProviderStatus, { label: string; className: string }> =
 export const SettingsProvidersPage = observer(function SettingsProvidersPage() {
   const toasts = useToasts();
   const [providers, setProviders] = useState<ProviderDraft[]>([]);
+  const [isProviderSaving, setIsProviderSaving] = useState(false);
+  const [activeType, setActiveType] = useState<TextProviderType>("text");
   const [selectedId, setSelectedId] = useState<number | "draft" | null>(null);
   const [checking, setChecking] = useState(false);
   const [providerToDelete, setProviderToDelete] =
     useState<ProviderDraft | null>(null);
-  const selected = providers.find(
+  const visibleProviders = providers.filter(
+    (provider) => provider.providerType === activeType,
+  );
+  const selected = visibleProviders.find(
     (item) => item.id === (selectedId === "draft" ? null : selectedId),
   );
   const canSave =
@@ -99,15 +107,19 @@ export const SettingsProvidersPage = observer(function SettingsProvidersPage() {
       }),
     );
     setProviders(persisted);
+    const visible = persisted.filter(
+      (item) => item.providerType === activeType,
+    );
     setSelectedId((current) =>
-      persisted.some((item) => item.id === current)
+      visible.some((item) => item.id === current)
         ? current
-        : persisted[0]!.id,
+        : (visible[0]?.id ?? null),
     );
   }, [
     textProviderStore.initialized,
     textProviderStore.providers,
     textProviderStore.models,
+    activeType,
   ]);
 
   const updateSelected = (patch: Partial<ProviderDraft>) => {
@@ -142,6 +154,7 @@ export const SettingsProvidersPage = observer(function SettingsProvidersPage() {
         id: null,
         name: "Новое подключение Ollama",
         kind: "ollama",
+        providerType: activeType,
         baseUrl: "http://127.0.0.1:11434",
         apiKeySecretId: "",
         enabled: true,
@@ -158,6 +171,7 @@ export const SettingsProvidersPage = observer(function SettingsProvidersPage() {
     try {
       const result = await window.desktop.textProviders.testConnection({
         kind: selected.kind,
+        providerType: selected.providerType,
         baseUrl: selected.baseUrl,
         apiKeySecretId: selected.apiKeySecretId
           ? Number(selected.apiKeySecretId)
@@ -201,8 +215,22 @@ export const SettingsProvidersPage = observer(function SettingsProvidersPage() {
       <section className="flex h-full min-h-0 flex-col overflow-hidden p-4">
         <PageHeader
           title="Провайдеры моделей"
-          description="Подключайте модели для чата и агентов."
+          description={
+            activeType === "text"
+              ? "Подключайте модели для чата и агентов."
+              : "Подключайте модели для построения эмбеддингов."
+          }
           breadcrumbs={[{ label: "Настройки" }, { label: "Провайдеры" }]}
+          footer={
+            <ProviderTypeTabs
+              value={activeType}
+              providers={providers}
+              onChange={(value) => {
+                setActiveType(value);
+                setSelectedId(null);
+              }}
+            />
+          }
         >
           <CreateButton label="Добавить провайдера" onClick={createProvider} />
         </PageHeader>
@@ -210,7 +238,7 @@ export const SettingsProvidersPage = observer(function SettingsProvidersPage() {
           <EmptyState
             icon={<RobotIcon className="size-6" />}
             title="Провайдеров пока нет"
-            description="Добавьте провайдера генерации текста, проверьте подключение и выберите доступные модели."
+            description={`Добавьте провайдера ${activeType === "text" ? "генерации текста" : "эмбеддингов"}, проверьте подключение и выберите доступные модели.`}
             action={
               <CreateButton
                 label="Добавить провайдера"
@@ -227,8 +255,22 @@ export const SettingsProvidersPage = observer(function SettingsProvidersPage() {
     <section className="flex h-full min-h-0 flex-col overflow-hidden p-4">
       <PageHeader
         title="Провайдеры моделей"
-        description="Подключайте модели для чата и агентов."
+        description={
+          activeType === "text"
+            ? "Подключайте модели для чата и агентов."
+            : "Подключайте модели для построения эмбеддингов."
+        }
         breadcrumbs={[{ label: "Настройки" }, { label: "Провайдеры" }]}
+        footer={
+          <ProviderTypeTabs
+            value={activeType}
+            providers={providers}
+            onChange={(value) => {
+              setActiveType(value);
+              setSelectedId(null);
+            }}
+          />
+        }
       >
         <CreateButton label="Добавить провайдера" onClick={createProvider} />
       </PageHeader>
@@ -237,12 +279,12 @@ export const SettingsProvidersPage = observer(function SettingsProvidersPage() {
         <aside className="flex w-80 shrink-0 flex-col overflow-hidden rounded-xl bg-main-800/25">
           <div className="border-b border-main-700/35 px-4 py-3">
             <p className="text-xs font-semibold uppercase tracking-wider text-main-500">
-              Подключения · {providers.length}
+              Подключения · {visibleProviders.length}
             </p>
           </div>
           <ScrollArea className="min-h-0 flex-1 p-2">
             <div className="space-y-1.5">
-              {providers.map((provider) => {
+              {visibleProviders.map((provider) => {
                 const status = statusMeta[provider.status];
                 return (
                   <div
@@ -326,14 +368,21 @@ export const SettingsProvidersPage = observer(function SettingsProvidersPage() {
                 <Button
                   variant="primary"
                   rounded="rounded-full"
+                  loading={isProviderSaving}
+                  loadingText="Сохранение…"
                   className="px-4"
+                  classNames={{
+                    loaderIcon: "hidden",
+                  }}
                   disabled={!canSave}
                   title={canSave ? undefined : "Сначала проверьте подключение"}
-                  onClick={() =>
+                  onClick={() => {
+                    setIsProviderSaving(true);
                     void textProviderStore
                       .upsert({
                         id: selected.id ?? undefined,
                         kind: selected.kind,
+                        providerType: selected.providerType,
                         name: selected.name,
                         baseUrl: selected.baseUrl,
                         apiKeySecretId: selected.apiKeySecretId
@@ -347,7 +396,10 @@ export const SettingsProvidersPage = observer(function SettingsProvidersPage() {
                       .then(() =>
                         toasts.success({
                           title: "Настройки сохранены",
-                          description: "Провайдер доступен чату и агентам.",
+                          description:
+                            selected.providerType === "text"
+                              ? "Провайдер доступен чату и агентам."
+                              : "Провайдер доступен сервисам эмбеддингов.",
                         }),
                       )
                       .catch((error) =>
@@ -359,7 +411,8 @@ export const SettingsProvidersPage = observer(function SettingsProvidersPage() {
                               : "Неизвестная ошибка",
                         }),
                       )
-                  }
+                      .finally(() => setIsProviderSaving(false));
+                  }}
                 >
                   <SaveIcon className="size-4" />
                   Сохранить
@@ -427,7 +480,9 @@ export const SettingsProvidersPage = observer(function SettingsProvidersPage() {
                       Провайдер включён
                     </p>
                     <p className="mt-1 text-xs text-main-500">
-                      После сохранения будет доступен чату и агентам.
+                      {selected.providerType === "text"
+                        ? "После сохранения будет доступен чату и агентам."
+                        : "После сохранения будет доступен сервисам эмбеддингов."}
                     </p>
                   </div>
                   <InputCheckSlided
@@ -518,6 +573,33 @@ function SectionLead({
       <h3 className="text-sm font-semibold text-main-100">{title}</h3>
       <p className="mt-1 text-xs leading-5 text-main-500">{description}</p>
     </div>
+  );
+}
+
+function ProviderTypeTabs({
+  value,
+  providers,
+  onChange,
+}: {
+  value: TextProviderType;
+  providers: ProviderDraft[];
+  onChange: (value: TextProviderType) => void;
+}) {
+  return (
+    <Tabs
+      value={value}
+      onChange={(next) => onChange(next as TextProviderType)}
+      options={[
+        {
+          value: "text",
+          label: `Текстовые · ${providers.filter((item) => item.providerType === "text").length}`,
+        },
+        {
+          value: "embedding",
+          label: `Эмбеддинги · ${providers.filter((item) => item.providerType === "embedding").length}`,
+        },
+      ]}
+    />
   );
 }
 function Field({

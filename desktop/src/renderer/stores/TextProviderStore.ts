@@ -44,7 +44,10 @@ export class TextProviderStore {
       (model) =>
         model.enabled &&
         this.providers.some(
-          (provider) => provider.id === model.providerId && provider.enabled,
+          (provider) =>
+            provider.id === model.providerId &&
+            provider.enabled &&
+            provider.providerType === "text",
         ),
     );
   }

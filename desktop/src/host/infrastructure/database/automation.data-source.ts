@@ -123,7 +123,7 @@ export class AutomationDataSource {
     return Boolean(
       this.database
         .prepare(
-          "SELECT 1 FROM text_provider_models m JOIN text_provider_configs p ON p.id=m.provider_id WHERE m.id=? AND m.enabled=1 AND p.enabled=1",
+          "SELECT 1 FROM text_provider_models m JOIN text_provider_configs p ON p.id=m.provider_id WHERE m.id=? AND m.enabled=1 AND p.enabled=1 AND p.provider_type='text'",
         )
         .get(id),
     );

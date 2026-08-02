@@ -83,7 +83,7 @@ export class ScenarioExecutionDataSource {
   defaultModelId(): number | undefined {
     return (this.db.prepare(
       `SELECT m.id FROM text_provider_models m JOIN text_provider_configs p ON p.id=m.provider_id
-       WHERE m.enabled=1 AND p.enabled=1 ORDER BY m.id LIMIT 1`,
+       WHERE m.enabled=1 AND p.enabled=1 AND p.provider_type='text' ORDER BY m.id LIMIT 1`,
     ).get() as { id: number } | undefined)?.id;
   }
 

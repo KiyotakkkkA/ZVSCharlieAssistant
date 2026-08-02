@@ -329,6 +329,19 @@ const migrations: readonly Migration[] = [
       `);
     },
   },
+  {
+    version: 7,
+    up(database) {
+      database.exec(`
+        ALTER TABLE text_provider_configs
+          ADD COLUMN provider_type TEXT NOT NULL DEFAULT 'text'
+          CHECK (provider_type IN ('text', 'embedding'));
+
+        CREATE INDEX idx_text_provider_configs_type
+          ON text_provider_configs(provider_type, enabled);
+      `);
+    },
+  },
 ];
 
 export function runMigrations(database: Database.Database): void {

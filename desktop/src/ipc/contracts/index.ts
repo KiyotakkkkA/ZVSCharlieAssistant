@@ -40,6 +40,7 @@ export type {
   TestTextProviderConnectionResult,
   TextProviderApi,
   TextProviderKind,
+  TextProviderType,
   TextProviderModelDetails,
   TextProviderModelInfo,
   TextProviderConfig,

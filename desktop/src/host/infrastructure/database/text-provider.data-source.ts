@@ -10,6 +10,7 @@ import type {
 interface ProviderRow {
   id: number;
   kind: TextProviderConfig["kind"];
+  provider_type: TextProviderConfig["providerType"];
   name: string;
   base_url: string;
   api_key_secret_id: number | null;
@@ -57,10 +58,11 @@ export class TextProviderDataSource {
         providerId = Number(
           this.database
             .prepare(
-              "INSERT INTO text_provider_configs (kind, name, base_url, api_key_secret_id, enabled, checked_at) VALUES (?, ?, ?, ?, ?, ?)",
+              "INSERT INTO text_provider_configs (kind, provider_type, name, base_url, api_key_secret_id, enabled, checked_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
             )
             .run(
               input.kind,
+              input.providerType,
               input.name,
               input.baseUrl,
               input.apiKeySecretId ?? null,
@@ -71,10 +73,11 @@ export class TextProviderDataSource {
       else {
         const result = this.database
           .prepare(
-            "UPDATE text_provider_configs SET kind=?, name=?, base_url=?, api_key_secret_id=?, enabled=?, checked_at=?, updated_at=CURRENT_TIMESTAMP WHERE id=?",
+            "UPDATE text_provider_configs SET kind=?, provider_type=?, name=?, base_url=?, api_key_secret_id=?, enabled=?, checked_at=?, updated_at=CURRENT_TIMESTAMP WHERE id=?",
           )
           .run(
             input.kind,
+            input.providerType,
             input.name,
             input.baseUrl,
             input.apiKeySecretId ?? null,
@@ -127,6 +130,7 @@ export class TextProviderDataSource {
 const mapProvider = (row: ProviderRow): TextProviderConfig => ({
   id: row.id,
   kind: row.kind,
+  providerType: row.provider_type,
   name: row.name,
   baseUrl: row.base_url,
   apiKeySecretId: row.api_key_secret_id,

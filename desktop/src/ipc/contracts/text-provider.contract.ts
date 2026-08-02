@@ -1,7 +1,9 @@
 export type TextProviderKind = "ollama";
+export type TextProviderType = "text" | "embedding";
 
 export interface TestTextProviderConnectionInput {
   kind: TextProviderKind;
+  providerType: TextProviderType;
   baseUrl: string;
   apiKeySecretId?: number;
 }
@@ -27,6 +29,7 @@ export interface TextProviderModelInfo {
 export interface TextProviderConfig {
   id: number;
   kind: TextProviderKind;
+  providerType: TextProviderType;
   name: string;
   baseUrl: string;
   apiKeySecretId: number | null;

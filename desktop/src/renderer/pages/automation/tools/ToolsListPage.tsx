@@ -194,14 +194,6 @@ export const ToolsListPage = observer(function ToolsListPage() {
                   }
                 />
               </div>
-              <SchemaPreview
-                title="Входные данные"
-                schema={selectedTool.inputSchema}
-              />
-              <SchemaPreview
-                title="Выходные данные"
-                schema={selectedTool.outputSchema}
-              />
               {selectedTool.secretRequirements.length ? (
                 <section className="space-y-3 border-t border-main-700/40 pt-5">
                   <div>
@@ -257,6 +249,14 @@ export const ToolsListPage = observer(function ToolsListPage() {
                   })}
                 </section>
               ) : null}
+              <SchemaPreview
+                title="Входные данные"
+                schema={selectedTool.inputSchema}
+              />
+              <SchemaPreview
+                title="Выходные данные"
+                schema={selectedTool.outputSchema}
+              />
             </div>
           ) : null}
         </Modal.Content>
