@@ -11,8 +11,7 @@ export const BUILTIN_AUTOMATION_TOOLS: readonly AutomationTool[] = [
   {
     id: "web_search",
     name: "Поиск в интернете",
-    description:
-      "Ищет информацию через Ollama Web Search и возвращает список источников.",
+    description: "Ищет информацию и возвращает список источников.",
     category: "Интернет",
     builtin: true,
     enabled: true,
@@ -46,8 +45,7 @@ export const BUILTIN_AUTOMATION_TOOLS: readonly AutomationTool[] = [
   {
     id: "web_fetch",
     name: "Поиск на странице",
-    description:
-      "Получает очищенное Markdown-содержимое страницы через Ollama Web Fetch.",
+    description: "Получает очищенное содержимое страницы",
     category: "Интернет",
     builtin: true,
     enabled: true,
