@@ -1,6 +1,6 @@
 import { ToastProvider } from "@kiyotakkkka/zvs-uikit-lib";
 import { useEffect } from "react";
-import { AppContainer } from "../components/layouts";
+import { Outlet } from "react-router-dom";
 import {
   automationStore,
   secretStorageStore,
@@ -20,7 +20,7 @@ export function App() {
 
   return (
     <ToastProvider>
-      <AppContainer />
+      <Outlet />
     </ToastProvider>
   );
 }

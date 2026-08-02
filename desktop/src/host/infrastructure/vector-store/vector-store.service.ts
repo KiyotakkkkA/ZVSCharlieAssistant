@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import * as lancedb from "@lancedb/lancedb";
 import mammoth from "mammoth";
@@ -14,6 +14,8 @@ import { EmbeddingService } from "./embedding.service";
 
 export class VectorStoreService {
   private readonly writeQueues = new Map<number, Promise<void>>();
+  private connectionPromise?: Promise<lancedb.Connection>;
+  private tableNamesPromise?: Promise<Set<string>>;
 
   constructor(
     private readonly data: VectorStoreDataSource,
@@ -24,6 +26,16 @@ export class VectorStoreService {
 
   snapshot() {
     return this.data.snapshot();
+  }
+
+  documents(ids: number[]) {
+    const uniqueIds = [...new Set(ids)];
+    if (
+      uniqueIds.length > 100 ||
+      uniqueIds.some((id) => !Number.isInteger(id) || id < 1)
+    )
+      throw new Error("Некорректный список документов");
+    return this.data.documents(uniqueIds);
   }
 
   async upsert(input: UpsertVectorStoreInput) {
@@ -42,9 +54,13 @@ export class VectorStoreService {
         "Перед сменой embedding-модели удалите документы из хранилища",
       );
     if (embeddingChanged) {
-      const db = await lancedb.connect(this.lanceDir);
+      const db = await this.connect();
       const name = tableName(current.id);
-      if ((await db.tableNames()).includes(name)) await db.dropTable(name);
+      const tables = await this.tableNames();
+      if (tables.has(name)) {
+        await db.dropTable(name);
+        tables.delete(name);
+      }
     }
     this.data.upsert({
       ...input,
@@ -57,9 +73,13 @@ export class VectorStoreService {
   async deleteStore(id: number) {
     if (this.data.hasProcessingDocuments(id))
       throw new Error("Дождитесь завершения обработки документов");
-    const db = await lancedb.connect(this.lanceDir);
+    const db = await this.connect();
     const table = tableName(id);
-    if ((await db.tableNames()).includes(table)) await db.dropTable(table);
+    const tables = await this.tableNames();
+    if (tables.has(table)) {
+      await db.dropTable(table);
+      tables.delete(table);
+    }
     await rm(join(this.filesDir, String(id)), { recursive: true, force: true });
     this.data.deleteStore(id);
     return this.snapshot();
@@ -90,8 +110,8 @@ export class VectorStoreService {
     if (["queued", "extracting", "embedding"].includes(String(row.status)))
       throw new Error("Документ ещё обрабатывается");
     const storeId = Number(row.vector_store_id);
-    const db = await lancedb.connect(this.lanceDir);
-    if ((await db.tableNames()).includes(tableName(storeId)))
+    const db = await this.connect();
+    if ((await this.tableNames()).has(tableName(storeId)))
       await (
         await db.openTable(tableName(storeId))
       ).delete(`document_id = ${id}`);
@@ -122,16 +142,23 @@ export class VectorStoreService {
       throw new Error("Количество результатов должно быть целым числом");
     const limit = Math.min(Math.max(requestedLimit, 1), 20);
     const results: VectorSearchResultItem[] = [];
-    const db = await lancedb.connect(this.lanceDir);
+    const db = await this.connect();
+    const tableNames = await this.tableNames();
+    const queryVectors = new Map<number, Promise<number[]>>();
     for (const storeId of [...new Set(input.vectorStoreIds)]) {
       const store = this.data.store(storeId);
       if (!store) throw new Error(`Векторное хранилище #${storeId} не найдено`);
       if (!store.embeddingModelId || store.status === "disabled")
         throw new Error(`Хранилище «${store.name}» не настроено`);
-      if (!(await db.tableNames()).includes(tableName(storeId))) continue;
-      const [vector] = await this.embeddings.embed(store.embeddingModelId, [
-        query,
-      ]);
+      if (!tableNames.has(tableName(storeId))) continue;
+      let vectorPromise = queryVectors.get(store.embeddingModelId);
+      if (!vectorPromise) {
+        vectorPromise = this.embeddings
+          .embed(store.embeddingModelId, [query])
+          .then((vectors) => vectors[0]!);
+        queryVectors.set(store.embeddingModelId, vectorPromise);
+      }
+      const vector = await vectorPromise;
       const rows = (await (
         await db.openTable(tableName(storeId))
       )
@@ -180,7 +207,7 @@ export class VectorStoreService {
       await writeFile(path, buffer);
       this.data.setStoreState(store.id, "indexing");
       this.data.updateDocument(id, "extracting", 15);
-      const text = await extractText(path, input.fileName);
+      const text = await extractText(buffer, input.fileName);
       const chunks = chunkText(
         text,
         store.chunkSizeTokens,
@@ -254,13 +281,17 @@ export class VectorStoreService {
   ) {
     const previous = this.writeQueues.get(storeId) ?? Promise.resolve();
     const current = previous.catch(() => undefined).then(async () => {
-      const db = await lancedb.connect(this.lanceDir);
+      const db = await this.connect();
       const name = tableName(storeId);
-      if ((await db.tableNames()).includes(name)) {
+      const tables = await this.tableNames();
+      if (tables.has(name)) {
         const table = await db.openTable(name);
         await table.delete(`document_id = ${documentId}`);
         await table.add(rows);
-      } else await db.createTable(name, rows);
+      } else {
+        await db.createTable(name, rows);
+        tables.add(name);
+      }
     });
     this.writeQueues.set(storeId, current);
     try {
@@ -270,19 +301,38 @@ export class VectorStoreService {
         this.writeQueues.delete(storeId);
     }
   }
+
+  private connect() {
+    if (!this.connectionPromise)
+      this.connectionPromise = lancedb.connect(this.lanceDir).catch((error) => {
+        this.connectionPromise = undefined;
+        throw error;
+      });
+    return this.connectionPromise;
+  }
+
+  private tableNames() {
+    if (!this.tableNamesPromise)
+      this.tableNamesPromise = this.connect()
+        .then(async (db) => new Set(await db.tableNames()))
+        .catch((error) => {
+          this.tableNamesPromise = undefined;
+          throw error;
+        });
+    return this.tableNamesPromise;
+  }
 }
 
 const tableName = (id: number) => `vector_store_${id}`;
 const safeName = (name: string) =>
   name.replace(/[^a-zA-Zа-яА-Я0-9._-]+/g, "_").slice(-120);
 
-async function extractText(path: string, name: string) {
-  if (/\.txt$/i.test(name)) return readFile(path, "utf8");
+async function extractText(buffer: Buffer, name: string) {
+  if (/\.txt$/i.test(name)) return buffer.toString("utf8");
   if (/\.docx$/i.test(name))
-    return (await mammoth.extractRawText({ path })).value;
+    return (await mammoth.extractRawText({ buffer })).value;
   const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs");
-  const pdf = await getDocument({ data: new Uint8Array(await readFile(path)) })
-    .promise;
+  const pdf = await getDocument({ data: new Uint8Array(buffer) }).promise;
   const pages: string[] = [];
   for (let index = 1; index <= pdf.numPages; index++) {
     const content = await (await pdf.getPage(index)).getTextContent();

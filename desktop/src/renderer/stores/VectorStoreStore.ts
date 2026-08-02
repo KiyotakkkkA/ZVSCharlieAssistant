@@ -140,17 +140,23 @@ export class VectorStoreStore {
   private async pollUntilSettled(documentIds: number[]) {
     for (let attempt = 0; attempt < 300; attempt++) {
       await new Promise((resolve) => setTimeout(resolve, 1000));
-      const snapshot = await window.desktop.vectorStores.getSnapshot();
-      runInAction(() => this.apply(snapshot));
-      const documents = snapshot.documents.filter((item) =>
-        documentIds.includes(item.id),
+      const documents = await window.desktop.vectorStores.getDocuments(
+        documentIds,
       );
+      runInAction(() => {
+        const updates = new Map(documents.map((item) => [item.id, item]));
+        this.documents = this.documents.map(
+          (item) => updates.get(item.id) ?? item,
+        );
+      });
       if (
         documents.length === documentIds.length &&
         documents.every(
           (item) => item.status === "ready" || item.status === "failed",
         )
       ) {
+        const snapshot = await window.desktop.vectorStores.getSnapshot();
+        runInAction(() => this.apply(snapshot));
         const failed = documents.find((item) => item.status === "failed");
         if (failed)
           throw new Error(
@@ -158,6 +164,8 @@ export class VectorStoreStore {
           );
         return;
       }
+      if (!documents.length)
+        throw new Error("Документы обработки не найдены");
     }
     throw new Error("Превышено время ожидания обработки документов");
   }

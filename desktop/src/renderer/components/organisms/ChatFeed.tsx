@@ -9,6 +9,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
   isValidElement,
+  memo,
   useLayoutEffect,
   useRef,
   type ReactNode,
@@ -17,6 +18,16 @@ import {
 import { ChatIcon, RobotIcon, StorageIcon, TasksIcon } from "../atoms";
 import type { ScenarioNodeRun, ScenarioRun } from "../../../ipc/contracts";
 import type { ChatToolCall } from "../../../ipc/contracts";
+
+const MemoizedReactMarkdown = memo(
+  ReactMarkdown,
+  (previous, next) => previous.children === next.children,
+);
+const EMPTY_SCENARIO_EXECUTIONS = new Map<
+  number,
+  { run: ScenarioRun; nodes: ScenarioNodeRun[] }
+>();
+const EMPTY_SCENARIO_OUTPUT = new Map<string, string>();
 
 export interface ChatMessage {
   id: number;
@@ -69,8 +80,8 @@ export function ChatFeed({
   hasMore,
   loadingEarlier,
   onLoadEarlier,
-  scenarioExecutions = new Map(),
-  scenarioNodeOutput = new Map(),
+  scenarioExecutions = EMPTY_SCENARIO_EXECUTIONS,
+  scenarioNodeOutput = EMPTY_SCENARIO_OUTPUT,
 }: ChatFeedProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastMessageId = messages.at(-1)?.id;
@@ -189,9 +200,9 @@ export function ChatFeed({
                         {message.scenarioRunId &&
                         scenarioExecutions.get(message.scenarioRunId) ? (
                           <ScenarioExecutionHistory
-                            execution={scenarioExecutions.get(
-                              message.scenarioRunId,
-                            )!}
+                            execution={
+                              scenarioExecutions.get(message.scenarioRunId)!
+                            }
                             liveOutput={scenarioNodeOutput}
                           />
                         ) : null}
@@ -241,7 +252,7 @@ export function ChatFeed({
                             />
                           </div>
                         ) : (
-                          <ReactMarkdown
+                          <MemoizedReactMarkdown
                             remarkPlugins={[remarkGfm]}
                             components={{
                               p: ({ children }) => (
@@ -345,7 +356,7 @@ export function ChatFeed({
                             }}
                           >
                             {message.text}
-                          </ReactMarkdown>
+                          </MemoizedReactMarkdown>
                         )}
                       </div>
                     ) : (
@@ -364,7 +375,7 @@ export function ChatFeed({
 
 function ToolCallDetails({ call }: { call: ChatToolCall }) {
   const label =
-    call.toolId === "web_search" ? "Поиск в интернете" : "Чтение страницы";
+    call.toolId === "web.search" ? "Поиск в интернете" : "Чтение страницы";
   const statusLabel = {
     requested: "Подготовка",
     running: "Выполняется",

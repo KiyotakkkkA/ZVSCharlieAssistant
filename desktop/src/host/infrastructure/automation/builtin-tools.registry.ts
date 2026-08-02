@@ -9,7 +9,7 @@ const ollamaApiKey = {
 
 export const BUILTIN_AUTOMATION_TOOLS: readonly AutomationTool[] = [
   {
-    id: "web_search",
+    id: "web.search",
     name: "Поиск в интернете",
     description: "Ищет информацию и возвращает список источников.",
     category: "Интернет",
@@ -43,7 +43,7 @@ export const BUILTIN_AUTOMATION_TOOLS: readonly AutomationTool[] = [
     secretBindings: [],
   },
   {
-    id: "web_fetch",
+    id: "web.fetch",
     name: "Поиск на странице",
     description: "Получает очищенное содержимое страницы",
     category: "Интернет",

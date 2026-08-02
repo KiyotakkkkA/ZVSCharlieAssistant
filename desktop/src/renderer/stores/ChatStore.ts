@@ -29,9 +29,30 @@ export class ChatStore {
     prompt: string;
   } | null = null;
   private unsubscribe?: () => void;
+  private readonly pendingTextDeltas = new Map<number, string>();
+  private readonly pendingReasoningDeltas = new Map<number, string>();
+  private readonly pendingScenarioDeltas = new Map<string, string>();
+  private deltaTimer: number | null = null;
 
   constructor() {
-    makeAutoObservable(this, {}, { autoBind: true });
+    makeAutoObservable<
+      this,
+      | "unsubscribe"
+      | "pendingTextDeltas"
+      | "pendingReasoningDeltas"
+      | "pendingScenarioDeltas"
+      | "deltaTimer"
+    >(
+      this,
+      {
+        unsubscribe: false,
+        pendingTextDeltas: false,
+        pendingReasoningDeltas: false,
+        pendingScenarioDeltas: false,
+        deltaTimer: false,
+      },
+      { autoBind: true },
+    );
   }
 
   async bootstrap() {
@@ -80,6 +101,7 @@ export class ChatStore {
   }
 
   newConversation() {
+    this.resetPendingDeltas();
     this.activeConversationId = null;
     this.messages = [];
     this.activeRunId = null;
@@ -91,6 +113,7 @@ export class ChatStore {
   }
 
   async select(id: number) {
+    this.resetPendingDeltas();
     const snapshot = await window.desktop.chat.getSnapshot(id);
     runInAction(() => {
       this.activeConversationId = id;
@@ -178,24 +201,26 @@ export class ChatStore {
           });
       } else if (event.type === "scenario.node.delta") {
         if (this.activeScenarioRun?.id !== event.runId) return;
-        this.scenarioNodeOutput.set(
+        this.pendingScenarioDeltas.set(
           event.nodeId,
-          (this.scenarioNodeOutput.get(event.nodeId) ?? "") + event.delta,
+          (this.pendingScenarioDeltas.get(event.nodeId) ?? "") + event.delta,
         );
+        this.scheduleDeltaFlush();
       } else if (event.type === "scenario.approval.required") {
         this.pendingScenarioApproval = event;
       } else if (event.type === "text.delta") {
-        this.messages = this.messages.map((message) =>
-          message.id === event.messageId
-            ? { ...message, text: message.text + event.delta }
-            : message,
+        this.pendingTextDeltas.set(
+          event.messageId,
+          (this.pendingTextDeltas.get(event.messageId) ?? "") + event.delta,
         );
+        this.scheduleDeltaFlush();
       } else if (event.type === "reasoning.delta") {
-        this.messages = this.messages.map((message) =>
-          message.id === event.messageId
-            ? { ...message, reasoning: message.reasoning + event.delta }
-            : message,
+        this.pendingReasoningDeltas.set(
+          event.messageId,
+          (this.pendingReasoningDeltas.get(event.messageId) ?? "") +
+            event.delta,
         );
+        this.scheduleDeltaFlush();
       } else if (
         event.type === "tool.requested" ||
         event.type === "tool.running" ||
@@ -237,6 +262,7 @@ export class ChatStore {
         event.type === "run.cancelled" ||
         event.type === "run.failed"
       ) {
+        this.flushPendingDeltas();
         this.activeRunId = null;
         const status =
           event.type === "run.completed"
@@ -253,6 +279,48 @@ export class ChatStore {
         );
       }
     });
+  }
+
+  private scheduleDeltaFlush() {
+    if (this.deltaTimer !== null) return;
+    this.deltaTimer = window.setTimeout(this.flushPendingDeltas, 40);
+  }
+
+  private flushPendingDeltas() {
+    if (this.deltaTimer !== null) clearTimeout(this.deltaTimer);
+    this.deltaTimer = null;
+    if (this.pendingTextDeltas.size || this.pendingReasoningDeltas.size) {
+      const text = new Map(this.pendingTextDeltas);
+      const reasoning = new Map(this.pendingReasoningDeltas);
+      this.pendingTextDeltas.clear();
+      this.pendingReasoningDeltas.clear();
+      this.messages = this.messages.map((message) => {
+        const textDelta = text.get(message.id);
+        const reasoningDelta = reasoning.get(message.id);
+        return textDelta || reasoningDelta
+          ? {
+              ...message,
+              text: message.text + (textDelta ?? ""),
+              reasoning: message.reasoning + (reasoningDelta ?? ""),
+            }
+          : message;
+      });
+    }
+    for (const [nodeId, delta] of this.pendingScenarioDeltas) {
+      this.scenarioNodeOutput.set(
+        nodeId,
+        (this.scenarioNodeOutput.get(nodeId) ?? "") + delta,
+      );
+    }
+    this.pendingScenarioDeltas.clear();
+  }
+
+  private resetPendingDeltas() {
+    if (this.deltaTimer !== null) clearTimeout(this.deltaTimer);
+    this.deltaTimer = null;
+    this.pendingTextDeltas.clear();
+    this.pendingReasoningDeltas.clear();
+    this.pendingScenarioDeltas.clear();
   }
 
   async approveScenario(approved: boolean) {

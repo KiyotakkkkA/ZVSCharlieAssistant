@@ -200,13 +200,15 @@ export class RunEngine {
       const history = this.data
         .messages(conversationId)
         .filter((m) => m.id !== assistantMessageId)
-        .map((m): ModelMessage => ({
-          role:
-            m.role === "tool"
-              ? "assistant"
-              : (m.role as "user" | "assistant" | "system"),
-          content: m.text,
-        }));
+        .map(
+          (m): ModelMessage => ({
+            role:
+              m.role === "tool"
+                ? "assistant"
+                : (m.role as "user" | "assistant" | "system"),
+            content: m.text,
+          }),
+        );
       const system =
         input.mode === "planner"
           ? "Составь практичный пошаговый план. Не выполняй действия без необходимости."
@@ -220,7 +222,7 @@ export class RunEngine {
       const allowedTools =
         input.mode === "agent"
           ? (agentRuntime?.allowedToolIds ?? [])
-          : ["web_search", "web_fetch"];
+          : ["web.search", "web.fetch"];
       const result = streamText({
         model: this.providers.resolve(input.modelId),
         system,

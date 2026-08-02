@@ -186,6 +186,8 @@ export const desktopApi: DesktopApi = {
       ipcRenderer.invoke(
         VECTOR_STORE_IPC_CHANNELS.getSnapshot,
       ) as Promise<VectorStoreSnapshot>,
+    getDocuments: (ids) =>
+      ipcRenderer.invoke(VECTOR_STORE_IPC_CHANNELS.getDocuments, ids),
     upsertStore: (
       input: UpsertVectorStoreInput,
     ): Promise<VectorStoreSnapshot> =>

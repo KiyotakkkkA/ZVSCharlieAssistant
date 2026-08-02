@@ -1,21 +1,104 @@
-import { StrictMode } from "react";
+import { lazy, StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
-import { HashRouter, Navigate, Route, Routes } from "react-router-dom";
+import {
+  HashRouter,
+  Navigate,
+  Outlet,
+  Route,
+  Routes,
+  useLocation,
+} from "react-router-dom";
+import { Loader, ScrollArea } from "@kiyotakkkka/zvs-uikit-lib";
 import { App } from "./app/App";
 import { APP_PATHS } from "./app/routes";
+import { Header, NavigationSidebar } from "./components/layouts";
 import { RoutePage } from "./pages/RoutePage";
-import { AgentManagerPage, AgentsListPage } from "./pages/automation/agents";
-import {
-  ScenarioGraphEditorPage,
-  ScenariosListPage,
-} from "./pages/automation/scenarios";
-import { ToolsListPage } from "./pages/automation/tools";
-import { StorageSecretsPage } from "./pages/storage/secrets";
-import { VectorStoresPage } from "./pages/storage/vector-store";
-import { ChatPage } from "./pages/chat";
-import { SettingsProvidersPage } from "./pages/settings/providers";
 import "@fontsource-variable/onest";
 import "./styles/global.css";
+
+const ChatPage = lazy(() =>
+  import("./pages/chat").then(({ ChatPage }) => ({ default: ChatPage })),
+);
+const AgentsListPage = lazy(() =>
+  import("./pages/automation/agents").then(({ AgentsListPage }) => ({
+    default: AgentsListPage,
+  })),
+);
+const AgentManagerPage = lazy(() =>
+  import("./pages/automation/agents").then(({ AgentManagerPage }) => ({
+    default: AgentManagerPage,
+  })),
+);
+const ToolsListPage = lazy(() =>
+  import("./pages/automation/tools").then(({ ToolsListPage }) => ({
+    default: ToolsListPage,
+  })),
+);
+const ScenariosListPage = lazy(() =>
+  import("./pages/automation/scenarios").then(({ ScenariosListPage }) => ({
+    default: ScenariosListPage,
+  })),
+);
+const ScenarioGraphEditorPage = lazy(() =>
+  import("./pages/automation/scenarios").then(
+    ({ ScenarioGraphEditorPage }) => ({ default: ScenarioGraphEditorPage }),
+  ),
+);
+const StorageSecretsPage = lazy(() =>
+  import("./pages/storage/secrets").then(({ StorageSecretsPage }) => ({
+    default: StorageSecretsPage,
+  })),
+);
+const VectorStoresPage = lazy(() =>
+  import("./pages/storage/vector-store").then(({ VectorStoresPage }) => ({
+    default: VectorStoresPage,
+  })),
+);
+const SettingsProvidersPage = lazy(() =>
+  import("./pages/settings/providers").then(({ SettingsProvidersPage }) => ({
+    default: SettingsProvidersPage,
+  })),
+);
+
+function AppLayout() {
+  const { pathname } = useLocation();
+  const ownsContentScroll =
+    pathname === APP_PATHS.chat ||
+    pathname === APP_PATHS.automation.agents.index ||
+    pathname === APP_PATHS.automation.tools ||
+    pathname === APP_PATHS.automation.scenarios.index ||
+    pathname.startsWith(`${APP_PATHS.automation.scenarios.index}/`) ||
+    pathname === APP_PATHS.storage.secrets ||
+    pathname === APP_PATHS.storage.vectorDb;
+
+  const content = (
+    <Suspense
+      fallback={
+        <div className="grid h-full min-h-0 place-items-center">
+          <Loader />
+        </div>
+      }
+    >
+      <Outlet />
+    </Suspense>
+  );
+
+  return (
+    <div className="flex h-screen gap-3 p-3">
+      <NavigationSidebar />
+      <div className="flex min-w-0 flex-1 flex-col gap-3">
+        <Header />
+        <main className="min-h-0 flex-1 overflow-hidden rounded-lg bg-main-800/40">
+          {ownsContentScroll ? (
+            <div className="h-full min-h-0 overflow-hidden">{content}</div>
+          ) : (
+            <ScrollArea className="h-full">{content}</ScrollArea>
+          )}
+        </main>
+      </div>
+    </div>
+  );
+}
 
 const root = document.getElementById("root");
 
@@ -26,67 +109,72 @@ createRoot(root).render(
     <HashRouter>
       <Routes>
         <Route element={<App />}>
-          <Route index element={<RoutePage title="Главная" />} />
-          <Route path={APP_PATHS.chat} element={<ChatPage />} />
-          <Route
-            path={APP_PATHS.tasks}
-            element={<RoutePage title="Задачи" />}
-          />
-          <Route
-            path={APP_PATHS.automation.index}
-            element={
-              <Navigate to={APP_PATHS.automation.agents.index} replace />
-            }
-          />
-          <Route
-            path={APP_PATHS.automation.agents.index}
-            element={<AgentsListPage />}
-          />
-          <Route
-            path={APP_PATHS.automation.agents.create}
-            element={<AgentManagerPage />}
-          />
-          <Route
-            path={APP_PATHS.automation.agents.edit}
-            element={<AgentManagerPage />}
-          />
-          <Route
-            path={APP_PATHS.automation.tools}
-            element={<ToolsListPage />}
-          />
-          <Route
-            path={APP_PATHS.automation.scenarios.index}
-            element={<ScenariosListPage />}
-          />
-          <Route
-            path={APP_PATHS.automation.scenarios.create}
-            element={<ScenarioGraphEditorPage />}
-          />
-          <Route
-            path={APP_PATHS.automation.scenarios.edit}
-            element={<ScenarioGraphEditorPage />}
-          />
-          <Route
-            path={APP_PATHS.storage.index}
-            element={<RoutePage title="Хранилище" />}
-          />
-          <Route
-            path={APP_PATHS.settings.index}
-            element={<Navigate to={APP_PATHS.settings.providers} replace />}
-          />
-          <Route
-            path={APP_PATHS.settings.providers}
-            element={<SettingsProvidersPage />}
-          />
-          <Route
-            path={APP_PATHS.storage.secrets}
-            element={<StorageSecretsPage />}
-          />
-          <Route
-            path={APP_PATHS.storage.vectorDb}
-            element={<VectorStoresPage />}
-          />
-          <Route path="*" element={<Navigate to={APP_PATHS.home} replace />} />
+          <Route element={<AppLayout />}>
+            <Route index element={<RoutePage title="Главная" />} />
+            <Route path={APP_PATHS.chat} element={<ChatPage />} />
+            <Route
+              path={APP_PATHS.tasks}
+              element={<RoutePage title="Задачи" />}
+            />
+            <Route
+              path={APP_PATHS.automation.index}
+              element={
+                <Navigate to={APP_PATHS.automation.agents.index} replace />
+              }
+            />
+            <Route
+              path={APP_PATHS.automation.agents.index}
+              element={<AgentsListPage />}
+            />
+            <Route
+              path={APP_PATHS.automation.agents.create}
+              element={<AgentManagerPage />}
+            />
+            <Route
+              path={APP_PATHS.automation.agents.edit}
+              element={<AgentManagerPage />}
+            />
+            <Route
+              path={APP_PATHS.automation.tools}
+              element={<ToolsListPage />}
+            />
+            <Route
+              path={APP_PATHS.automation.scenarios.index}
+              element={<ScenariosListPage />}
+            />
+            <Route
+              path={APP_PATHS.automation.scenarios.create}
+              element={<ScenarioGraphEditorPage />}
+            />
+            <Route
+              path={APP_PATHS.automation.scenarios.edit}
+              element={<ScenarioGraphEditorPage />}
+            />
+            <Route
+              path={APP_PATHS.storage.index}
+              element={<RoutePage title="Хранилище" />}
+            />
+            <Route
+              path={APP_PATHS.settings.index}
+              element={<Navigate to={APP_PATHS.settings.providers} replace />}
+            />
+            <Route
+              path={APP_PATHS.settings.providers}
+              element={<SettingsProvidersPage />}
+            />
+            <Route
+              path={APP_PATHS.storage.secrets}
+              element={<StorageSecretsPage />}
+            />
+            <Route
+              path={APP_PATHS.storage.vectorDb}
+              element={<VectorStoresPage />}
+            />
+            <Route
+              path="*"
+              element={<Navigate to={APP_PATHS.home} replace />}
+            />
+          </Route>
         </Route>
       </Routes>
     </HashRouter>

@@ -32,6 +32,12 @@ export class ScenarioCompiler {
         byId.get(edge.target)?.kind !== "agent",
     );
     const workerEdges = edges.filter((edge) => edgeKind(edge) === "worker");
+    const workerIncomingCount = new Map<string, number>();
+    for (const edge of workerEdges)
+      workerIncomingCount.set(
+        edge.target,
+        (workerIncomingCount.get(edge.target) ?? 0) + 1,
+      );
 
     if (triggers.length !== 1)
       issues.push({ message: "Сценарий должен содержать ровно один триггер" });
@@ -115,7 +121,7 @@ export class ScenarioCompiler {
         });
       if (
         node.kind === "agent" &&
-        workerEdges.filter((edge) => edge.target === node.id).length === 0
+        (workerIncomingCount.get(node.id) ?? 0) === 0
       )
         issues.push({
           nodeId: node.id,
@@ -177,14 +183,11 @@ export class ScenarioCompiler {
     const agentDegree = new Map(
       nodes
         .filter((node) => node.kind === "agent")
-        .map((node) => [
-          node.id,
-          workerEdges.filter(
-            (edge) =>
-              edge.source !== orchestrators[0]?.id && edge.target === node.id,
-          ).length,
-        ]),
+        .map((node) => [node.id, 0]),
     );
+    for (const edge of workerEdges)
+      if (edge.source !== orchestrators[0]?.id && agentDegree.has(edge.target))
+        agentDegree.set(edge.target, (agentDegree.get(edge.target) ?? 0) + 1);
     const agentQueue = [...agentDegree]
       .filter(([, degree]) => degree === 0)
       .map(([id]) => id);
@@ -311,13 +314,18 @@ export class ScenarioCompiler {
     }
     const workerLevelsByOrchestrator = new Map<string, string[][]>();
     const workerTerminalIdsByOrchestrator = new Map<string, string[]>();
+    const workerRootsByOrchestrator = new Map<string, string[]>();
+    for (const edge of workerEdges)
+      if (byId.get(edge.source)?.kind === "orchestrator") {
+        const roots = workerRootsByOrchestrator.get(edge.source) ?? [];
+        roots.push(edge.target);
+        workerRootsByOrchestrator.set(edge.source, roots);
+      }
     for (const orchestrator of graph.nodes.filter(
       (node) => node.kind === "orchestrator",
     )) {
       const reachable = new Set<string>();
-      const stack = workerEdges
-        .filter((edge) => edge.source === orchestrator.id)
-        .map((edge) => edge.target);
+      const stack = [...(workerRootsByOrchestrator.get(orchestrator.id) ?? [])];
       while (stack.length) {
         const id = stack.pop()!;
         if (reachable.has(id)) continue;
@@ -359,28 +367,24 @@ export class ScenarioCompiler {
         ),
       );
     }
+    const knowledgeStoreIdsByAgent = new Map(
+      graph.nodes
+        .filter((node) => node.kind === "agent")
+        .map((node) => [node.id, [] as number[]]),
+    );
+    for (const edge of graph.edges) {
+      if (edgeKind(edge) !== "knowledge") continue;
+      const storeId = Number(byId.get(edge.source)?.config?.vectorStoreId);
+      if (Number.isInteger(storeId) && storeId > 0)
+        knowledgeStoreIdsByAgent.get(edge.target)?.push(storeId);
+    }
     return {
       controlOrder,
       controlIncoming,
       workerLevelsByOrchestrator,
       workerIncoming,
       workerTerminalIdsByOrchestrator,
-      knowledgeStoreIdsByAgent: new Map(
-        graph.nodes
-          .filter((node) => node.kind === "agent")
-          .map((agent) => [
-            agent.id,
-            graph.edges
-              .filter(
-                (edge) =>
-                  edgeKind(edge) === "knowledge" && edge.target === agent.id,
-              )
-              .map((edge) =>
-                Number(byId.get(edge.source)?.config?.vectorStoreId),
-              )
-              .filter((id) => Number.isInteger(id) && id > 0),
-          ]),
-      ),
+      knowledgeStoreIdsByAgent,
     };
   }
 }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { observer } from "mobx-react-lite";
 import { EmptyState, ScrollArea, useToasts } from "@kiyotakkkka/zvs-uikit-lib";
 import { StorageIcon } from "../../../components/atoms";
@@ -17,6 +17,15 @@ export const VectorStoresPage = observer(function VectorStoresPage() {
     null,
   );
   const selected = store.selectedStore;
+  const documentCounts = useMemo(() => {
+    const counts = new Map<number, number>();
+    for (const document of store.documents)
+      counts.set(
+        document.vectorStoreId,
+        (counts.get(document.vectorStoreId) ?? 0) + 1,
+      );
+    return counts;
+  }, [store.documents]);
   return (
     <section className="flex h-full min-h-0 flex-col overflow-hidden p-4">
       <PageHeader
@@ -61,7 +70,7 @@ export const VectorStoresPage = observer(function VectorStoresPage() {
                       {item.name}
                     </span>
                     <span className="mt-1 block text-xs text-main-500">
-                      {store.documentsFor(item.id).length} документов
+                      {documentCounts.get(item.id) ?? 0} документов
                     </span>
                     <Status status={item.status} />
                   </span>

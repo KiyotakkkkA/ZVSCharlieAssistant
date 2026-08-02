@@ -25,7 +25,7 @@ export class ToolRegistry {
     retrievalLimit = 5,
   ): ToolSet {
     const tools: ToolSet = {
-      web_search: tool({
+      "web.search": tool({
         description:
           "Ищет актуальную информацию в интернете и возвращает источники с заголовком, URL и фрагментом содержимого.",
         inputSchema: z.object({
@@ -35,14 +35,14 @@ export class ToolRegistry {
           this.execute(
             runId,
             toolCallId,
-            "web_search",
+            "web.search",
             input,
             emit,
             signal,
-            () => this.callOllama("web_search", input, signal),
+            () => this.callOllama("web.search", input, signal),
           ),
       }),
-      web_fetch: tool({
+      "web.fetch": tool({
         description:
           "Получает веб-страницу и возвращает её заголовок, Markdown-содержимое и найденные ссылки.",
         inputSchema: z.object({
@@ -52,11 +52,11 @@ export class ToolRegistry {
           this.execute(
             runId,
             toolCallId,
-            "web_fetch",
+            "web.fetch",
             input,
             emit,
             signal,
-            () => this.callOllama("web_fetch", input, signal),
+            () => this.callOllama("web.fetch", input, signal),
           ),
       }),
       "vecdb.search": tool({
@@ -108,7 +108,7 @@ export class ToolRegistry {
   }
 
   private async callOllama(
-    toolId: "web_search" | "web_fetch",
+    toolId: "web.search" | "web.fetch",
     body: { query: string } | { url: string },
     signal: AbortSignal,
   ) {
@@ -118,7 +118,8 @@ export class ToolRegistry {
       : "";
     if (!apiKey)
       throw new Error(`Для инструмента «${toolId}» не настроен Ollama API key`);
-    const response = await fetch(`https://ollama.com/api/${toolId}`, {
+    const endpoint = toolId.replace(".", "_");
+    const response = await fetch(`https://ollama.com/api/${endpoint}`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,

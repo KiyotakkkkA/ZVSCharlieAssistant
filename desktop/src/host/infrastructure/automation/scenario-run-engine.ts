@@ -12,6 +12,9 @@ import { ScenarioCompiler } from "./scenario-compiler";
 import type { VectorStoreService } from "../vector-store/vector-store.service";
 
 type Emit = (event: ScenarioRunEvent) => void;
+type ScenarioAgent = NonNullable<
+  ReturnType<ScenarioExecutionDataSource["agent"]>
+>;
 
 export class ScenarioRunEngine {
   private readonly controllers = new Map<number, AbortController>();
@@ -95,12 +98,13 @@ export class ScenarioRunEngine {
     emit: Emit,
   ) {
     const outputs = new Map<string, unknown>();
+    const nodesById = new Map(nodes.map((node) => [node.id, node]));
     try {
       this.data.setRunStatus(runId, "running");
       for (const nodeId of order) {
         if (controller.signal.aborted)
           throw new DOMException("Cancelled", "AbortError");
-        const node = nodes.find((item) => item.id === nodeId)!;
+        const node = nodesById.get(nodeId)!;
         const parents = incoming.get(nodeId) ?? [];
         const nodeInput =
           parents.length === 0
@@ -125,7 +129,7 @@ export class ScenarioRunEngine {
             workerIncoming,
             workerTerminalIdsByOrchestrator.get(node.id) ?? [],
             knowledgeStoreIdsByAgent,
-            nodes,
+            nodesById,
             controller.signal,
             emit,
           );
@@ -186,7 +190,7 @@ export class ScenarioRunEngine {
     workerIncoming: Map<string, string[]>,
     workerTerminalIds: string[],
     knowledgeStoreIdsByAgent: Map<string, number[]>,
-    scenarioNodes: AutomationScenarioNode[],
+    scenarioNodes: ReadonlyMap<string, AutomationScenarioNode>,
     signal: AbortSignal,
     emit: Emit,
   ): Promise<unknown> {
@@ -222,12 +226,14 @@ export class ScenarioRunEngine {
       if (!modelId) throw new Error("Для оркестратора нет доступной модели");
       const workerNodes = workerLevels
         .flat()
-        .map((id) => scenarioNodes.find((item) => item.id === id)!)
+        .map((id) => scenarioNodes.get(id)!)
         .filter(Boolean);
+      const agentsByNode = new Map<string, ScenarioAgent>();
       const scenarioAgents = workerNodes
         .map((item) => {
           const agentId = String(item.config?.agentId ?? "");
           const agent = this.data.agent(agentId);
+          if (agent) agentsByNode.set(item.id, agent);
           return agent
             ? {
                 nodeId: item.id,
@@ -266,7 +272,7 @@ ${JSON.stringify(scenarioAgents, null, 2)}
       for (const level of workerLevels) {
         const levelResults = await Promise.all(
           level.map((workerId) => {
-            const worker = scenarioNodes.find((item) => item.id === workerId);
+            const worker = scenarioNodes.get(workerId);
             if (!worker)
               throw new Error(`Исполнительный узел ${workerId} не найден`);
             const dependencies = (workerIncoming.get(workerId) ?? [])
@@ -278,6 +284,7 @@ ${JSON.stringify(scenarioAgents, null, 2)}
             return this.executeWorker(
               runId,
               worker,
+              agentsByNode.get(worker.id),
               plan,
               dependencies,
               knowledgeStoreIdsByAgent.get(worker.id) ?? [],
@@ -324,6 +331,7 @@ ${JSON.stringify(scenarioAgents, null, 2)}
   private async executeWorker(
     runId: number,
     node: AutomationScenarioNode,
+    agent: ScenarioAgent | undefined,
     plan: Record<string, unknown>,
     dependencies: Array<{ nodeId: string; agentId: string; result: string }>,
     knowledgeStoreIds: number[],
@@ -332,7 +340,6 @@ ${JSON.stringify(scenarioAgents, null, 2)}
   ) {
     if (signal.aborted) throw new DOMException("Cancelled", "AbortError");
     const agentId = String(node.config?.agentId ?? "");
-    const agent = this.data.agent(agentId);
     if (!agent)
       throw new Error(`Для узла «${node.title}» не выбран доступный агент`);
     if (!agent.text_model_id)

@@ -25,6 +25,17 @@ export class VectorStoreDataSource {
       ).map(mapDocument),
     };
   }
+  documents(ids: number[]) {
+    if (!ids.length) return [];
+    const placeholders = ids.map(() => "?").join(",");
+    return (
+      this.db
+        .prepare(
+          `SELECT * FROM vector_store_documents WHERE id IN (${placeholders})`,
+        )
+        .all(...ids) as Record<string, unknown>[]
+    ).map(mapDocument);
+  }
   store(id: number) {
     const row = this.db
       .prepare("SELECT * FROM vector_stores WHERE id=?")

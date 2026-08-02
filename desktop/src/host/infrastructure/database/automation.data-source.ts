@@ -105,7 +105,33 @@ export class AutomationDataSource {
          ORDER BY updated_at DESC, name ASC`,
       )
       .all() as AgentRow[];
-    return rows.map((row) => this.mapAgent(row));
+    const toolsByAgent = new Map<string, string[]>();
+    for (const item of this.database
+      .prepare(
+        "SELECT agent_id,tool_id FROM automation_agent_tools ORDER BY tool_id",
+      )
+      .all() as Array<{ agent_id: string; tool_id: string }>) {
+      const values = toolsByAgent.get(item.agent_id) ?? [];
+      values.push(item.tool_id);
+      toolsByAgent.set(item.agent_id, values);
+    }
+    const storesByAgent = new Map<string, number[]>();
+    for (const item of this.database
+      .prepare(
+        "SELECT agent_id,vector_store_id FROM automation_agent_vector_stores ORDER BY vector_store_id",
+      )
+      .all() as Array<{ agent_id: string; vector_store_id: number }>) {
+      const values = storesByAgent.get(item.agent_id) ?? [];
+      values.push(item.vector_store_id);
+      storesByAgent.set(item.agent_id, values);
+    }
+    return rows.map((row) =>
+      this.mapAgent(
+        row,
+        toolsByAgent.get(row.id) ?? [],
+        storesByAgent.get(row.id) ?? [],
+      ),
+    );
   }
 
   findAgent(id: string): AutomationAgent | undefined {
@@ -283,21 +309,29 @@ export class AutomationDataSource {
     if (result.changes === 0) throw new Error("Сценарий не найден");
   }
 
-  private mapAgent(row: AgentRow): AutomationAgent {
-    const allowedToolIds = (
-      this.database
-        .prepare(
-          "SELECT tool_id FROM automation_agent_tools WHERE agent_id = ? ORDER BY tool_id",
-        )
-        .all(row.id) as Array<{ tool_id: string }>
-    ).map(({ tool_id }) => tool_id);
-    const allowedVectorStoreIds = (
-      this.database
-        .prepare(
-          "SELECT vector_store_id FROM automation_agent_vector_stores WHERE agent_id=? ORDER BY vector_store_id",
-        )
-        .all(row.id) as Array<{ vector_store_id: number }>
-    ).map((item) => item.vector_store_id);
+  private mapAgent(
+    row: AgentRow,
+    toolIds?: string[],
+    vectorStoreIds?: number[],
+  ): AutomationAgent {
+    const allowedToolIds =
+      toolIds ??
+      (
+        this.database
+          .prepare(
+            "SELECT tool_id FROM automation_agent_tools WHERE agent_id = ? ORDER BY tool_id",
+          )
+          .all(row.id) as Array<{ tool_id: string }>
+      ).map(({ tool_id }) => tool_id);
+    const allowedVectorStoreIds =
+      vectorStoreIds ??
+      (
+        this.database
+          .prepare(
+            "SELECT vector_store_id FROM automation_agent_vector_stores WHERE agent_id=? ORDER BY vector_store_id",
+          )
+          .all(row.id) as Array<{ vector_store_id: number }>
+      ).map((item) => item.vector_store_id);
 
     return {
       id: row.id,

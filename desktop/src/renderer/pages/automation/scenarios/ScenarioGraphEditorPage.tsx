@@ -181,7 +181,24 @@ export const ScenarioGraphEditorPage = observer(
       setStatus(scenario.status);
     }, [scenario]);
 
-    const selectedNode = nodes.find((node) => node.id === selectedNodeId);
+    const nodesById = useMemo(
+      () => new Map(nodes.map((node) => [node.id, node])),
+      [nodes],
+    );
+    const selectedNode = nodesById.get(selectedNodeId);
+    const runStatusVersion = automationStore.scenarioNodeRuns
+      .map((run) => `${run.nodeId}:${run.status}`)
+      .join("|");
+    const runStatusByNode = useMemo(
+      () =>
+        new Map(
+          automationStore.scenarioNodeRuns.map((run) => [
+            run.nodeId,
+            run.status,
+          ]),
+        ),
+      [runStatusVersion],
+    );
 
     const deleteEdge = useCallback((edgeId: string) => {
       setEdges((current) => current.filter((edge) => edge.id !== edgeId));
@@ -204,9 +221,7 @@ export const ScenarioGraphEditorPage = observer(
           position: { x: node.x, y: node.y },
           data: {
             node,
-            runStatus: automationStore.scenarioNodeRuns.find(
-              (run) => run.nodeId === node.id,
-            )?.status,
+            runStatus: runStatusByNode.get(node.id),
             onDelete:
               node.kind === "trigger" || node.kind === "orchestrator"
                 ? undefined
@@ -218,7 +233,7 @@ export const ScenarioGraphEditorPage = observer(
           height: 98,
           measured: { width: 210, height: 98 },
         })),
-      [nodes, selectedNodeId, automationStore.scenarioNodeRuns, deleteNode],
+      [nodes, selectedNodeId, runStatusByNode, deleteNode],
     );
     const flowEdges = useMemo<ScenarioFlowEdge[]>(
       () =>
@@ -244,15 +259,20 @@ export const ScenarioGraphEditorPage = observer(
             .filter((change) => change.type === "remove")
             .map((change) => change.id),
         );
+        const positions = new Map(
+          changes.flatMap((change) =>
+            change.type === "position" && change.position
+              ? [[change.id, change.position] as const]
+              : [],
+          ),
+        );
         setNodes((current) =>
           current
             .filter((node) => !removed.has(node.id))
             .map((node) => {
-              const position = changes.find(
-                (change) => change.type === "position" && change.id === node.id,
-              );
-              return position?.type === "position" && position.position
-                ? { ...node, x: position.position.x, y: position.position.y }
+              const position = positions.get(node.id);
+              return position
+                ? { ...node, x: position.x, y: position.y }
                 : node;
             }),
         );
@@ -284,12 +304,8 @@ export const ScenarioGraphEditorPage = observer(
     const onConnect = useCallback(
       (connection: Connection) => {
         if (!connection.source || !connection.target) return;
-        const sourceKind = nodes.find(
-          (node) => node.id === connection.source,
-        )?.kind;
-        const targetKind = nodes.find(
-          (node) => node.id === connection.target,
-        )?.kind;
+        const sourceKind = nodesById.get(connection.source)?.kind;
+        const targetKind = nodesById.get(connection.target)?.kind;
         const kind =
           connection.sourceHandle === "knowledge-out" &&
           connection.targetHandle === "knowledge-in"
@@ -321,7 +337,7 @@ export const ScenarioGraphEditorPage = observer(
           ];
         });
       },
-      [nodes],
+      [nodesById],
     );
 
     const addNode = (kind: NodeKind, title: string) => {

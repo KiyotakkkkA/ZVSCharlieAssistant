@@ -1,4 +1,4 @@
-import { memo, type SVGProps } from "react";
+import { memo, useMemo, type SVGProps } from "react";
 import {
   Background,
   BaseEdge,
@@ -118,6 +118,10 @@ export function ScenarioGraphCanvas({
   onConnect,
   onNodeSelect,
 }: ScenarioGraphCanvasProps) {
+  const nodesById = useMemo(
+    () => new Map(nodes.map((node) => [node.id, node.data.node])),
+    [nodes],
+  );
   return (
     <div className="relative min-w-0 flex-1 overflow-hidden bg-main-900">
       <ReactFlow
@@ -129,10 +133,12 @@ export function ScenarioGraphCanvas({
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         isValidConnection={(connection) => {
-          const source = nodes.find((node) => node.id === connection.source)
-            ?.data.node;
-          const target = nodes.find((node) => node.id === connection.target)
-            ?.data.node;
+          const source = connection.source
+            ? nodesById.get(connection.source)
+            : undefined;
+          const target = connection.target
+            ? nodesById.get(connection.target)
+            : undefined;
           if (!source || !target || source.id === target.id) return false;
           const touchesKnowledgePort =
             connection.sourceHandle === "knowledge-out" ||

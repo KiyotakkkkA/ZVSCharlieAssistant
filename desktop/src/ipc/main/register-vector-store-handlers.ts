@@ -12,6 +12,10 @@ export function registerVectorStoreHandlers(service: VectorStoreService) {
     service.snapshot(),
   );
   ipcMain.handle(
+    VECTOR_STORE_IPC_CHANNELS.getDocuments,
+    (_event, ids: number[]) => service.documents(ids),
+  );
+  ipcMain.handle(
     VECTOR_STORE_IPC_CHANNELS.upsertStore,
     (_event, input: UpsertVectorStoreInput) => service.upsert(input),
   );

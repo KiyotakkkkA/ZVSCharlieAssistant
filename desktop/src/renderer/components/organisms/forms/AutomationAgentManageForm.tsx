@@ -48,6 +48,15 @@ export const AutomationAgentManageForm = observer(
     >({});
     const [retrievalLimit, setRetrievalLimit] = useState("5");
     const vectorSearchEnabled = Boolean(toolModel["vecdb.search"]);
+    const vectorDocumentCounts = useMemo(() => {
+      const counts = new Map<number, number>();
+      for (const document of vectorStoreStore.documents)
+        counts.set(
+          document.vectorStoreId,
+          (counts.get(document.vectorStoreId) ?? 0) + 1,
+        );
+      return counts;
+    }, [vectorStoreStore.documents]);
 
     useEffect(() => {
       setName(model?.name ?? "");
@@ -285,7 +294,7 @@ export const AutomationAgentManageForm = observer(
                         {store.name}
                       </span>
                       <span className="mt-1 block text-xs text-main-500">
-                        {vectorStoreStore.documentsFor(store.id).length}{" "}
+                        {vectorDocumentCounts.get(store.id) ?? 0}{" "}
                         документов ·{" "}
                         {store.searchMode === "hybrid"
                           ? "гибридный поиск"

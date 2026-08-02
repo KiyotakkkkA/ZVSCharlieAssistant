@@ -70,6 +70,7 @@ export interface VectorSearchResultItem {
 
 export interface VectorStoreApi {
   getSnapshot(): Promise<VectorStoreSnapshot>;
+  getDocuments(ids: number[]): Promise<VectorStoreDocument[]>;
   upsertStore(input: UpsertVectorStoreInput): Promise<VectorStoreSnapshot>;
   deleteStore(id: number): Promise<VectorStoreSnapshot>;
   uploadDocuments(
@@ -81,6 +82,7 @@ export interface VectorStoreApi {
 
 export const VECTOR_STORE_IPC_CHANNELS = {
   getSnapshot: "vector-stores:get-snapshot",
+  getDocuments: "vector-stores:get-documents",
   upsertStore: "vector-stores:upsert",
   deleteStore: "vector-stores:delete",
   uploadDocuments: "vector-stores:upload-documents",
