@@ -384,7 +384,10 @@ ${JSON.stringify(scenarioAgents, null, 2)}
             )
           : undefined,
       );
-      const completed = this.data.finishNode(nodeRun.id, "completed", output);
+      const completed = this.data.finishNode(nodeRun.id, "completed", {
+        text: output,
+        sources: workerInput.knowledge,
+      });
       emit({ type: "node.completed", runId, node: completed });
       return { nodeId: node.id, agentId, result: output };
     } catch (error) {
