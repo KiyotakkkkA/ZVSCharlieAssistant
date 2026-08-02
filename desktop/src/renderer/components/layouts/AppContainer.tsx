@@ -12,7 +12,8 @@ export function AppContainer() {
     pathname === APP_PATHS.automation.tools ||
     pathname === APP_PATHS.automation.scenarios.index ||
     pathname.startsWith(`${APP_PATHS.automation.scenarios.index}/`) ||
-    pathname === APP_PATHS.storage.secrets;
+    pathname === APP_PATHS.storage.secrets ||
+    pathname === APP_PATHS.storage.vectorDb;
 
   return (
     <div className="flex h-screen gap-3 p-3">

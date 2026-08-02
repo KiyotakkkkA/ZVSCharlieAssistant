@@ -65,8 +65,18 @@ export type RunEvent =
   | { type: "reasoning.delta"; runId: number; messageId: number; delta: string }
   | { type: "scenario.run"; run: ScenarioRun }
   | { type: "scenario.node"; runId: number; node: ScenarioNodeRun }
-  | { type: "scenario.node.delta"; runId: number; nodeId: string; delta: string }
-  | { type: "scenario.approval.required"; runId: number; nodeId: string; prompt: string }
+  | {
+      type: "scenario.node.delta";
+      runId: number;
+      nodeId: string;
+      delta: string;
+    }
+  | {
+      type: "scenario.approval.required";
+      runId: number;
+      nodeId: string;
+      prompt: string;
+    }
   | {
       type: "tool.requested" | "tool.running" | "tool.completed";
       runId: number;

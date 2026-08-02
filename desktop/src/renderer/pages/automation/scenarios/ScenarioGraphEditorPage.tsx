@@ -269,38 +269,45 @@ export const ScenarioGraphEditorPage = observer(
       },
       [flowEdges],
     );
-    const onConnect = useCallback((connection: Connection) => {
-      if (!connection.source || !connection.target) return;
-      const sourceKind = nodes.find((node) => node.id === connection.source)?.kind;
-      const targetKind = nodes.find((node) => node.id === connection.target)?.kind;
-      const kind =
-        (sourceKind === "orchestrator" || sourceKind === "agent") &&
-        targetKind === "agent"
-          ? "worker"
-          : "control";
-      setEdges((current) => {
-        if (
-          current.some(
-            (edge) =>
-              edge.source === connection.source &&
-              edge.target === connection.target &&
-              edge.kind === kind,
+    const onConnect = useCallback(
+      (connection: Connection) => {
+        if (!connection.source || !connection.target) return;
+        const sourceKind = nodes.find(
+          (node) => node.id === connection.source,
+        )?.kind;
+        const targetKind = nodes.find(
+          (node) => node.id === connection.target,
+        )?.kind;
+        const kind =
+          (sourceKind === "orchestrator" || sourceKind === "agent") &&
+          targetKind === "agent"
+            ? "worker"
+            : "control";
+        setEdges((current) => {
+          if (
+            current.some(
+              (edge) =>
+                edge.source === connection.source &&
+                edge.target === connection.target &&
+                edge.kind === kind,
+            )
           )
-        )
-          return current;
-        return [
-          ...current,
-          {
-            id: `edge-${Date.now()}`,
-            source: connection.source!,
-            target: connection.target!,
-            kind,
-            sourcePort: connection.sourceHandle ?? undefined,
-            targetPort: connection.targetHandle ?? undefined,
-          },
-        ];
-      });
-    }, [nodes]);
+            return current;
+          return [
+            ...current,
+            {
+              id: `edge-${Date.now()}`,
+              source: connection.source!,
+              target: connection.target!,
+              kind,
+              sourcePort: connection.sourceHandle ?? undefined,
+              targetPort: connection.targetHandle ?? undefined,
+            },
+          ];
+        });
+      },
+      [nodes],
+    );
 
     const addNode = (kind: NodeKind, title: string) => {
       const id = `${kind}-${Date.now()}`;
@@ -559,8 +566,9 @@ export const ScenarioGraphEditorPage = observer(
                           updateSelectedNode({
                             config: { ...selectedNode.config, agentId },
                             description:
-                              automationStore.agents.find((agent) => agent.id === agentId)?.name ??
-                              selectedNode.description,
+                              automationStore.agents.find(
+                                (agent) => agent.id === agentId,
+                              )?.name ?? selectedNode.description,
                           })
                         }
                         options={automationStore.agents.map((agent) => ({
@@ -584,7 +592,9 @@ export const ScenarioGraphEditorPage = observer(
                     </InspectorField>
                     <InspectorField label="Инструкции для сценария">
                       <InputBig
-                        value={String(selectedNode.config?.scenarioInstructions ?? "")}
+                        value={String(
+                          selectedNode.config?.scenarioInstructions ?? "",
+                        )}
                         onChange={(event) =>
                           updateSelectedNode({
                             config: {

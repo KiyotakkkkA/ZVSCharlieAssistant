@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { observer } from "mobx-react-lite";
-import { Button, InputSmall, Modal, useToasts } from "@kiyotakkkka/zvs-uikit-lib";
+import {
+  Button,
+  InputSmall,
+  Modal,
+  useToasts,
+} from "@kiyotakkkka/zvs-uikit-lib";
 import {
   ChatComposer,
   ChatFeed,
@@ -86,7 +91,10 @@ export const ChatPage = observer(function ChatPage() {
       .catch((error: unknown) => {
         setText(value);
         toasts.danger({
-          title: mode === "scenario" ? "Не удалось запустить сценарий" : "Не удалось отправить сообщение",
+          title:
+            mode === "scenario"
+              ? "Не удалось запустить сценарий"
+              : "Не удалось отправить сообщение",
           description: readableError(error),
         });
       });

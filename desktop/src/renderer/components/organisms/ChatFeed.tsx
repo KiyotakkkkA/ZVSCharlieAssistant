@@ -189,9 +189,9 @@ export function ChatFeed({
                         {message.scenarioRunId &&
                         scenarioExecutions.get(message.scenarioRunId) ? (
                           <ScenarioExecutionHistory
-                            execution={
-                              scenarioExecutions.get(message.scenarioRunId)!
-                            }
+                            execution={scenarioExecutions.get(
+                              message.scenarioRunId,
+                            )!}
                             liveOutput={scenarioNodeOutput}
                           />
                         ) : null}
@@ -422,7 +422,10 @@ function MarkdownCodeBlock({ children }: { children?: ReactNode }) {
   )
     ? children
     : null;
-  const code = String(child?.props.children ?? children ?? "").replace(/\n$/, "");
+  const code = String(child?.props.children ?? children ?? "").replace(
+    /\n$/,
+    "",
+  );
   const language = child?.props.className?.replace(/^language-/, "") || "text";
   return (
     <CodeView

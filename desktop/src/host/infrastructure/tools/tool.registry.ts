@@ -28,8 +28,14 @@ export class ToolRegistry {
           query: z.string().trim().min(1).max(500),
         }),
         execute: async (input, { toolCallId }) =>
-          this.execute(runId, toolCallId, "web_search", input, emit, signal, () =>
-            this.callOllama("web_search", input, signal),
+          this.execute(
+            runId,
+            toolCallId,
+            "web_search",
+            input,
+            emit,
+            signal,
+            () => this.callOllama("web_search", input, signal),
           ),
       }),
       web_fetch: tool({
@@ -39,8 +45,14 @@ export class ToolRegistry {
           url: z.string().trim().min(1).max(4096),
         }),
         execute: async (input, { toolCallId }) =>
-          this.execute(runId, toolCallId, "web_fetch", input, emit, signal, () =>
-            this.callOllama("web_fetch", input, signal),
+          this.execute(
+            runId,
+            toolCallId,
+            "web_fetch",
+            input,
+            emit,
+            signal,
+            () => this.callOllama("web_fetch", input, signal),
           ),
       }),
     };
@@ -59,7 +71,9 @@ export class ToolRegistry {
     signal: AbortSignal,
   ) {
     const secretId = this.automationData.toolSecretId(toolId, "ollamaApiKey");
-    const apiKey = secretId ? this.secrets.getSecret(secretId)?.content.trim() : "";
+    const apiKey = secretId
+      ? this.secrets.getSecret(secretId)?.content.trim()
+      : "";
     if (!apiKey)
       throw new Error(`Для инструмента «${toolId}» не настроен Ollama API key`);
     const response = await fetch(`https://ollama.com/api/${toolId}`, {

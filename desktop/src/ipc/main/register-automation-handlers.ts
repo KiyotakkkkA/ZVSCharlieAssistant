@@ -42,21 +42,34 @@ export function registerAutomationHandlers(
   ipcMain.handle(AUTOMATION_IPC_CHANNELS.deleteScenario, (_event, id: string) =>
     repository.deleteScenario(id),
   );
-  ipcMain.handle(AUTOMATION_IPC_CHANNELS.validateScenario, (_event, graph: AutomationScenarioGraph) =>
-    engine.compiler.validate(graph),
+  ipcMain.handle(
+    AUTOMATION_IPC_CHANNELS.validateScenario,
+    (_event, graph: AutomationScenarioGraph) => engine.compiler.validate(graph),
   );
-  ipcMain.handle(AUTOMATION_IPC_CHANNELS.startScenario, (event, id: string, input: unknown, origin: ScenarioRunOrigin = "manual") =>
-    engine.start(id, input, origin, (payload) => {
-      if (!event.sender.isDestroyed()) event.sender.send(AUTOMATION_IPC_CHANNELS.scenarioRunEvent, payload);
-    }),
+  ipcMain.handle(
+    AUTOMATION_IPC_CHANNELS.startScenario,
+    (event, id: string, input: unknown, origin: ScenarioRunOrigin = "manual") =>
+      engine.start(id, input, origin, (payload) => {
+        if (!event.sender.isDestroyed())
+          event.sender.send(AUTOMATION_IPC_CHANNELS.scenarioRunEvent, payload);
+      }),
   );
-  ipcMain.handle(AUTOMATION_IPC_CHANNELS.cancelScenarioRun, (_event, id: number) => engine.cancel(id));
-  ipcMain.handle(AUTOMATION_IPC_CHANNELS.approveScenarioRun, (_event, id: number, approved: boolean) => engine.approve(id, approved));
-  ipcMain.handle(AUTOMATION_IPC_CHANNELS.getScenarioRun, (_event, id: number) => {
-    const run = executions.run(id);
-    if (!run) throw new Error("Запуск не найден");
-    return { run, nodes: executions.nodeRuns(id) };
-  });
+  ipcMain.handle(
+    AUTOMATION_IPC_CHANNELS.cancelScenarioRun,
+    (_event, id: number) => engine.cancel(id),
+  );
+  ipcMain.handle(
+    AUTOMATION_IPC_CHANNELS.approveScenarioRun,
+    (_event, id: number, approved: boolean) => engine.approve(id, approved),
+  );
+  ipcMain.handle(
+    AUTOMATION_IPC_CHANNELS.getScenarioRun,
+    (_event, id: number) => {
+      const run = executions.run(id);
+      if (!run) throw new Error("Запуск не найден");
+      return { run, nodes: executions.nodeRuns(id) };
+    },
+  );
 }
 
 export function removeAutomationHandlers(): void {

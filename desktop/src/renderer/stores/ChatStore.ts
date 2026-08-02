@@ -7,6 +7,7 @@ import type {
   ScenarioNodeRun,
   ScenarioRun,
 } from "../../ipc/contracts";
+
 export class ChatStore {
   conversations: ChatConversation[] = [];
   messages: ChatMessage[] = [];
@@ -22,11 +23,17 @@ export class ChatStore {
     number,
     { run: ScenarioRun; nodes: ScenarioNodeRun[] }
   >();
-  pendingScenarioApproval: { runId: number; nodeId: string; prompt: string } | null = null;
+  pendingScenarioApproval: {
+    runId: number;
+    nodeId: string;
+    prompt: string;
+  } | null = null;
   private unsubscribe?: () => void;
+
   constructor() {
     makeAutoObservable(this, {}, { autoBind: true });
   }
+
   async bootstrap() {
     const snapshot = await window.desktop.chat.getSnapshot();
     runInAction(() => {
@@ -40,6 +47,7 @@ export class ChatStore {
     this.unsubscribe = window.desktop.chat.subscribe(this.handleEvent);
     await this.hydrateScenarioExecutions(snapshot.messages);
   }
+
   async start(input: Omit<StartRunInput, "conversationId">) {
     this.loading = true;
     try {
@@ -53,13 +61,16 @@ export class ChatStore {
       });
     }
   }
+
   async cancel() {
     if (this.activeRunId) await window.desktop.chat.cancelRun(this.activeRunId);
   }
+
   async renameConversation(id: number, title: string) {
     await window.desktop.chat.renameConversation(id, title);
     await this.refreshConversations();
   }
+
   async deleteConversation(id: number) {
     await window.desktop.chat.deleteConversation(id);
     const next = this.conversations.find((item) => item.id !== id);
@@ -67,6 +78,7 @@ export class ChatStore {
     else runInAction(() => this.newConversation());
     await this.refreshConversations();
   }
+
   newConversation() {
     this.activeConversationId = null;
     this.messages = [];
@@ -77,6 +89,7 @@ export class ChatStore {
     this.scenarioNodeOutput.clear();
     this.scenarioExecutions.clear();
   }
+
   async select(id: number) {
     const snapshot = await window.desktop.chat.getSnapshot(id);
     runInAction(() => {
@@ -91,6 +104,7 @@ export class ChatStore {
     });
     await this.hydrateScenarioExecutions(snapshot.messages);
   }
+
   async loadEarlier() {
     if (
       this.loadingEarlier ||
@@ -116,6 +130,7 @@ export class ChatStore {
       });
     }
   }
+
   private handleEvent(event: RunEvent) {
     runInAction(() => {
       if (event.type === "run.started") {
@@ -135,7 +150,10 @@ export class ChatStore {
         this.activeScenarioRun = event.run;
         const assistant = [...this.messages]
           .reverse()
-          .find((message) => message.role === "assistant" && message.status === "streaming");
+          .find(
+            (message) =>
+              message.role === "assistant" && message.status === "streaming",
+          );
         if (assistant && assistant.scenarioRunId === null)
           this.messages = this.messages.map((message) =>
             message.id === assistant.id
@@ -148,7 +166,9 @@ export class ChatStore {
         });
       } else if (event.type === "scenario.node") {
         if (this.activeScenarioRun?.id !== event.runId) return;
-        const index = this.scenarioNodeRuns.findIndex((item) => item.id === event.node.id);
+        const index = this.scenarioNodeRuns.findIndex(
+          (item) => item.id === event.node.id,
+        );
         if (index >= 0) this.scenarioNodeRuns[index] = event.node;
         else this.scenarioNodeRuns.push(event.node);
         if (this.activeScenarioRun)
@@ -184,14 +204,17 @@ export class ChatStore {
         this.messages = this.messages.map((message) => {
           if (message.role !== "assistant" || message.runId !== event.runId)
             return message;
-          const existing = message.toolCalls.find((call) => call.id === event.toolCallId);
-          const status: import("../../ipc/contracts").ChatToolCall["status"] = event.error
-            ? "failed"
-            : event.type === "tool.completed"
-              ? "completed"
-              : event.type === "tool.running"
-                ? "running"
-                : "requested";
+          const existing = message.toolCalls.find(
+            (call) => call.id === event.toolCallId,
+          );
+          const status: import("../../ipc/contracts").ChatToolCall["status"] =
+            event.error
+              ? "failed"
+              : event.type === "tool.completed"
+                ? "completed"
+                : event.type === "tool.running"
+                  ? "running"
+                  : "requested";
           const next = {
             id: event.toolCallId,
             toolId: event.toolId,
@@ -203,7 +226,9 @@ export class ChatStore {
           return {
             ...message,
             toolCalls: existing
-              ? message.toolCalls.map((call) => call.id === next.id ? next : call)
+              ? message.toolCalls.map((call) =>
+                  call.id === next.id ? next : call,
+                )
               : [...message.toolCalls, next],
           };
         });
@@ -232,8 +257,13 @@ export class ChatStore {
 
   async approveScenario(approved: boolean) {
     if (!this.pendingScenarioApproval) return;
-    await window.desktop.automation.approveScenarioRun(this.pendingScenarioApproval.runId, approved);
-    runInAction(() => { this.pendingScenarioApproval = null; });
+    await window.desktop.automation.approveScenarioRun(
+      this.pendingScenarioApproval.runId,
+      approved,
+    );
+    runInAction(() => {
+      this.pendingScenarioApproval = null;
+    });
   }
   private async refreshConversations() {
     const snapshot = await window.desktop.chat.getSnapshot(

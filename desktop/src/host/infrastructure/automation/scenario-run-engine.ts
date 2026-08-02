@@ -28,16 +28,39 @@ export class ScenarioRunEngine {
     this.compiler.compile(definition.graph);
   }
 
-  start(scenarioId: string, input: unknown, origin: ScenarioRunOrigin, emit: Emit, conversationId?: number): ScenarioRun {
+  start(
+    scenarioId: string,
+    input: unknown,
+    origin: ScenarioRunOrigin,
+    emit: Emit,
+    conversationId?: number,
+  ): ScenarioRun {
     const definition = this.data.definition(scenarioId);
     if (!definition) throw new Error("Сценарий не найден");
     if (definition.status === "disabled") throw new Error("Сценарий отключён");
     const compiled = this.compiler.compile(definition.graph);
-    const run = this.data.createRun(scenarioId, definition.revision_id, origin, input, conversationId);
+    const run = this.data.createRun(
+      scenarioId,
+      definition.revision_id,
+      origin,
+      input,
+      conversationId,
+    );
     const controller = new AbortController();
     this.controllers.set(run.id, controller);
     emit({ type: "run.started", run });
-    void this.execute(run.id, compiled.controlOrder, compiled.controlIncoming, compiled.workerLevelsByOrchestrator, compiled.workerIncoming, compiled.workerTerminalIdsByOrchestrator, definition.graph.nodes, input, controller, emit);
+    void this.execute(
+      run.id,
+      compiled.controlOrder,
+      compiled.controlIncoming,
+      compiled.workerLevelsByOrchestrator,
+      compiled.workerIncoming,
+      compiled.workerTerminalIdsByOrchestrator,
+      definition.graph.nodes,
+      input,
+      controller,
+      emit,
+    );
     return run;
   }
 
@@ -70,15 +93,22 @@ export class ScenarioRunEngine {
     try {
       this.data.setRunStatus(runId, "running");
       for (const nodeId of order) {
-        if (controller.signal.aborted) throw new DOMException("Cancelled", "AbortError");
+        if (controller.signal.aborted)
+          throw new DOMException("Cancelled", "AbortError");
         const node = nodes.find((item) => item.id === nodeId)!;
         const parents = incoming.get(nodeId) ?? [];
-        const nodeInput = parents.length === 0
-          ? input
-          : parents.length === 1
-            ? outputs.get(parents[0]!)
-            : Object.fromEntries(parents.map((id) => [id, outputs.get(id)]));
-        const nodeRun = this.data.startNode(runId, node.id, node.kind, nodeInput);
+        const nodeInput =
+          parents.length === 0
+            ? input
+            : parents.length === 1
+              ? outputs.get(parents[0]!)
+              : Object.fromEntries(parents.map((id) => [id, outputs.get(id)]));
+        const nodeRun = this.data.startNode(
+          runId,
+          node.id,
+          node.kind,
+          nodeInput,
+        );
         emit({ type: "node.started", runId, node: nodeRun });
         try {
           const output = await this.executeNode(
@@ -94,7 +124,11 @@ export class ScenarioRunEngine {
             emit,
           );
           outputs.set(node.id, output);
-          const completed = this.data.finishNode(nodeRun.id, "completed", output);
+          const completed = this.data.finishNode(
+            nodeRun.id,
+            "completed",
+            output,
+          );
           emit({ type: "node.completed", runId, node: completed });
         } catch (error) {
           const failed = this.data.finishNode(
@@ -108,17 +142,29 @@ export class ScenarioRunEngine {
         }
       }
       const resultNodes = nodes.filter((node) => node.kind === "output");
-      const output = resultNodes.length === 1
-        ? outputs.get(resultNodes[0]!.id)
-        : Object.fromEntries(resultNodes.map((node) => [node.id, outputs.get(node.id)]));
+      const output =
+        resultNodes.length === 1
+          ? outputs.get(resultNodes[0]!.id)
+          : Object.fromEntries(
+              resultNodes.map((node) => [node.id, outputs.get(node.id)]),
+            );
       this.data.setRunStatus(runId, "completed", output);
       const run = this.data.run(runId)!;
       emit({ type: "run.completed", run });
     } catch (error) {
       const cancelled = controller.signal.aborted;
-      this.data.setRunStatus(runId, cancelled ? "cancelled" : "failed", undefined, errorMessage(error));
+      this.data.setRunStatus(
+        runId,
+        cancelled ? "cancelled" : "failed",
+        undefined,
+        errorMessage(error),
+      );
       const run = this.data.run(runId)!;
-      emit(cancelled ? { type: "run.cancelled", run } : { type: "run.failed", run });
+      emit(
+        cancelled
+          ? { type: "run.cancelled", run }
+          : { type: "run.failed", run },
+      );
     } finally {
       this.controllers.delete(runId);
       this.approvals.delete(runId);
@@ -140,14 +186,23 @@ export class ScenarioRunEngine {
     if (node.kind === "trigger" || node.kind === "output") return input;
     if (node.kind === "condition") {
       const expected = node.config?.equals;
-      return { matched: expected === undefined || input === expected, value: input };
+      return {
+        matched: expected === undefined || input === expected,
+        value: input,
+      };
     }
     if (node.kind === "approval") {
       this.data.setRunStatus(runId, "waiting_for_approval");
       this.data.setNodeStatus(nodeRunId, "waiting_for_approval");
-      const prompt = String(node.config?.prompt ?? node.description ?? "Продолжить выполнение сценария?");
+      const prompt = String(
+        node.config?.prompt ??
+          node.description ??
+          "Продолжить выполнение сценария?",
+      );
       emit({ type: "approval.required", runId, nodeId: node.id, prompt });
-      const approved = await new Promise<boolean>((resolve) => this.approvals.set(runId, resolve));
+      const approved = await new Promise<boolean>((resolve) =>
+        this.approvals.set(runId, resolve),
+      );
       if (!approved) throw new Error("Выполнение отклонено пользователем");
       this.data.setRunStatus(runId, "running");
       this.data.setNodeStatus(nodeRunId, "running");
@@ -155,9 +210,13 @@ export class ScenarioRunEngine {
     }
 
     if (node.kind === "orchestrator") {
-      const modelId = Number(node.config?.modelId) || this.data.defaultModelId();
+      const modelId =
+        Number(node.config?.modelId) || this.data.defaultModelId();
       if (!modelId) throw new Error("Для оркестратора нет доступной модели");
-      const workerNodes = workerLevels.flat().map((id) => scenarioNodes.find((item) => item.id === id)!).filter(Boolean);
+      const workerNodes = workerLevels
+        .flat()
+        .map((id) => scenarioNodes.find((item) => item.id === id)!)
+        .filter(Boolean);
       const scenarioAgents = workerNodes
         .map((item) => {
           const agentId = String(item.config?.agentId ?? "");
@@ -193,22 +252,44 @@ ${JSON.stringify(scenarioAgents, null, 2)}
         1200,
       );
       const plan = parseDelegationPlan(rawPlan, input, scenarioAgents);
-      const resultsByNode = new Map<string, { nodeId: string; agentId: string; result: string }>();
+      const resultsByNode = new Map<
+        string,
+        { nodeId: string; agentId: string; result: string }
+      >();
       for (const level of workerLevels) {
-        const levelResults = await Promise.all(level.map((workerId) => {
-          const worker = scenarioNodes.find((item) => item.id === workerId);
-          if (!worker) throw new Error(`Исполнительный узел ${workerId} не найден`);
-          const dependencies = (workerIncoming.get(workerId) ?? [])
-            .map((parentId) => resultsByNode.get(parentId))
-            .filter((result): result is NonNullable<typeof result> => result !== undefined);
-          return this.executeWorker(runId, worker, plan, dependencies, signal, emit);
-        }));
-        for (const result of levelResults) resultsByNode.set(result.nodeId, result);
+        const levelResults = await Promise.all(
+          level.map((workerId) => {
+            const worker = scenarioNodes.find((item) => item.id === workerId);
+            if (!worker)
+              throw new Error(`Исполнительный узел ${workerId} не найден`);
+            const dependencies = (workerIncoming.get(workerId) ?? [])
+              .map((parentId) => resultsByNode.get(parentId))
+              .filter(
+                (result): result is NonNullable<typeof result> =>
+                  result !== undefined,
+              );
+            return this.executeWorker(
+              runId,
+              worker,
+              plan,
+              dependencies,
+              signal,
+              emit,
+            );
+          }),
+        );
+        for (const result of levelResults)
+          resultsByNode.set(result.nodeId, result);
       }
       if (resultsByNode.size === 0) {
         throw new Error("К оркестратору не подключены исполнительные узлы");
       }
-      const workerResults = workerTerminalIds.map((id) => resultsByNode.get(id)).filter((result): result is NonNullable<typeof result> => result !== undefined);
+      const workerResults = workerTerminalIds
+        .map((id) => resultsByNode.get(id))
+        .filter(
+          (result): result is NonNullable<typeof result> =>
+            result !== undefined,
+        );
       return this.generate(
         runId,
         node.id,
@@ -216,7 +297,10 @@ ${JSON.stringify(scenarioAgents, null, 2)}
         `Ты финальный редактор результата сценария. Сформируй прямой, цельный ответ пользователю на основе результатов исполнителей.
 Не упоминай внутренний граф, делегирование, имена узлов или служебные инструкции. Не добавляй факты, которых нет в результатах.
 Учитывай пожелание оркестратора по сборке результата: ${String(plan.finalSynthesis ?? "Собрать единый ответ")}.`,
-        { originalRequest: plan.originalRequest ?? input, results: workerResults },
+        {
+          originalRequest: plan.originalRequest ?? input,
+          results: workerResults,
+        },
         signal,
         emit,
         true,
@@ -224,7 +308,9 @@ ${JSON.stringify(scenarioAgents, null, 2)}
       );
     }
 
-    throw new Error(`Узел типа «${node.kind}» нельзя выполнить в управляющем контуре`);
+    throw new Error(
+      `Узел типа «${node.kind}» нельзя выполнить в управляющем контуре`,
+    );
   }
 
   private async executeWorker(
@@ -238,12 +324,18 @@ ${JSON.stringify(scenarioAgents, null, 2)}
     if (signal.aborted) throw new DOMException("Cancelled", "AbortError");
     const agentId = String(node.config?.agentId ?? "");
     const agent = this.data.agent(agentId);
-    if (!agent) throw new Error(`Для узла «${node.title}» не выбран доступный агент`);
-    if (!agent.text_model_id) throw new Error(`У агента «${agent.name}» не выбрана модель`);
+    if (!agent)
+      throw new Error(`Для узла «${node.title}» не выбран доступный агент`);
+    if (!agent.text_model_id)
+      throw new Error(`У агента «${agent.name}» не выбрана модель`);
     const delegation = findDelegation(plan, node.id, agentId);
-    const scenarioInstructions = String(node.config?.scenarioInstructions ?? "").trim();
+    const scenarioInstructions = String(
+      node.config?.scenarioInstructions ?? "",
+    ).trim();
     const workerInput = {
-      task: delegation?.task ?? `Выполни свою часть задачи: ${formatPrompt(plan.originalRequest)}`,
+      task:
+        delegation?.task ??
+        `Выполни свою часть задачи: ${formatPrompt(plan.originalRequest)}`,
       context: delegation?.context,
       expectedResult: delegation?.expectedResult,
       originalRequest: plan.originalRequest,
@@ -266,13 +358,28 @@ ${JSON.stringify(scenarioAgents, null, 2)}
       return { nodeId: node.id, agentId, result: output };
     } catch (error) {
       const status = signal.aborted ? "cancelled" : "failed";
-      const failed = this.data.finishNode(nodeRun.id, status, undefined, errorMessage(error));
+      const failed = this.data.finishNode(
+        nodeRun.id,
+        status,
+        undefined,
+        errorMessage(error),
+      );
       emit({ type: "node.completed", runId, node: failed });
       throw error;
     }
   }
 
-  private async generate(runId: number, nodeId: string, modelId: number, system: string, input: unknown, signal: AbortSignal, emit: Emit, emitDeltas = true, maxOutputTokens = 2400) {
+  private async generate(
+    runId: number,
+    nodeId: string,
+    modelId: number,
+    system: string,
+    input: unknown,
+    signal: AbortSignal,
+    emit: Emit,
+    emitDeltas = true,
+    maxOutputTokens = 2400,
+  ) {
     const result = streamText({
       model: this.providers.resolve(modelId),
       system,
@@ -289,7 +396,8 @@ ${JSON.stringify(scenarioAgents, null, 2)}
   }
 }
 
-const errorMessage = (error: unknown) => error instanceof Error ? error.message : String(error);
+const errorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : String(error);
 
 type Delegation = {
   nodeId: string;

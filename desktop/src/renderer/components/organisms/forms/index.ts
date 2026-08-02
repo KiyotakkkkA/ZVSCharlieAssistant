@@ -1,3 +1,9 @@
 export { AutomationAgentManageForm } from "./AutomationAgentManageForm";
-export { SettingsSecretCategoryManageForm } from "./SettingsSecretCategoryManageForm";
-export { SettingsSecretManageForm } from "./SettingsSecretManageForm";
+export { StorageSecretCategoryManageForm } from "./StorageSecretCategoryManageForm";
+export { StorageSecretManageForm } from "./StorageSecretManageForm";
+export { SettingsProviderManageForm } from "./SettingsProviderManageForm";
+export type {
+  SettingsProviderDraft,
+  ProviderStatus,
+} from "./SettingsProviderManageForm";
+export { StorageVecdbManageForm } from "./StorageVecdbManageForm";

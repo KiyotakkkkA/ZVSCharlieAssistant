@@ -101,20 +101,53 @@ export const desktopApi: DesktopApi = {
         AUTOMATION_IPC_CHANNELS.deleteScenario,
         id,
       ) as Promise<void>,
-    validateScenario: (graph: AutomationScenarioGraph): Promise<ScenarioValidationResult> =>
-      ipcRenderer.invoke(AUTOMATION_IPC_CHANNELS.validateScenario, graph) as Promise<ScenarioValidationResult>,
-    startScenario: (id: string, input: unknown, origin: ScenarioRunOrigin = "manual"): Promise<ScenarioRun> =>
-      ipcRenderer.invoke(AUTOMATION_IPC_CHANNELS.startScenario, id, input, origin) as Promise<ScenarioRun>,
+    validateScenario: (
+      graph: AutomationScenarioGraph,
+    ): Promise<ScenarioValidationResult> =>
+      ipcRenderer.invoke(
+        AUTOMATION_IPC_CHANNELS.validateScenario,
+        graph,
+      ) as Promise<ScenarioValidationResult>,
+    startScenario: (
+      id: string,
+      input: unknown,
+      origin: ScenarioRunOrigin = "manual",
+    ): Promise<ScenarioRun> =>
+      ipcRenderer.invoke(
+        AUTOMATION_IPC_CHANNELS.startScenario,
+        id,
+        input,
+        origin,
+      ) as Promise<ScenarioRun>,
     cancelScenarioRun: (id: number): Promise<void> =>
-      ipcRenderer.invoke(AUTOMATION_IPC_CHANNELS.cancelScenarioRun, id) as Promise<void>,
+      ipcRenderer.invoke(
+        AUTOMATION_IPC_CHANNELS.cancelScenarioRun,
+        id,
+      ) as Promise<void>,
     approveScenarioRun: (id: number, approved: boolean): Promise<void> =>
-      ipcRenderer.invoke(AUTOMATION_IPC_CHANNELS.approveScenarioRun, id, approved) as Promise<void>,
-    getScenarioRun: (id: number): Promise<{ run: ScenarioRun; nodes: ScenarioNodeRun[] }> =>
-      ipcRenderer.invoke(AUTOMATION_IPC_CHANNELS.getScenarioRun, id) as Promise<{ run: ScenarioRun; nodes: ScenarioNodeRun[] }>,
+      ipcRenderer.invoke(
+        AUTOMATION_IPC_CHANNELS.approveScenarioRun,
+        id,
+        approved,
+      ) as Promise<void>,
+    getScenarioRun: (
+      id: number,
+    ): Promise<{ run: ScenarioRun; nodes: ScenarioNodeRun[] }> =>
+      ipcRenderer.invoke(
+        AUTOMATION_IPC_CHANNELS.getScenarioRun,
+        id,
+      ) as Promise<{ run: ScenarioRun; nodes: ScenarioNodeRun[] }>,
     subscribeScenarioRuns: (listener: (event: ScenarioRunEvent) => void) => {
-      const handler = (_event: Electron.IpcRendererEvent, payload: ScenarioRunEvent) => listener(payload);
+      const handler = (
+        _event: Electron.IpcRendererEvent,
+        payload: ScenarioRunEvent,
+      ) => listener(payload);
       ipcRenderer.on(AUTOMATION_IPC_CHANNELS.scenarioRunEvent, handler);
-      return () => ipcRenderer.removeListener(AUTOMATION_IPC_CHANNELS.scenarioRunEvent, handler);
+      return () =>
+        ipcRenderer.removeListener(
+          AUTOMATION_IPC_CHANNELS.scenarioRunEvent,
+          handler,
+        );
     },
   },
   textProviders: {
@@ -148,7 +181,15 @@ export const desktopApi: DesktopApi = {
         CHAT_IPC_CHANNELS.getSnapshot,
         id,
       ) as Promise<ChatSnapshot>,
-    getMessagesPage: (id:number,beforeId?:number):Promise<ChatMessagePage> => ipcRenderer.invoke(CHAT_IPC_CHANNELS.getMessagesPage,id,beforeId) as Promise<ChatMessagePage>,
+    getMessagesPage: (
+      id: number,
+      beforeId?: number,
+    ): Promise<ChatMessagePage> =>
+      ipcRenderer.invoke(
+        CHAT_IPC_CHANNELS.getMessagesPage,
+        id,
+        beforeId,
+      ) as Promise<ChatMessagePage>,
     startRun: (
       input: StartRunInput,
     ): Promise<{ runId: number; conversationId: number }> =>

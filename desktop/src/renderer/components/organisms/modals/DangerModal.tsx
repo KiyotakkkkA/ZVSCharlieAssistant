@@ -18,7 +18,7 @@ export function DangerModal<TModel>({
   onConfirm,
   onCancel,
   confirmLabel = "Удалить",
-  className = "max-w-md",
+  className = "max-w-xl",
 }: DangerModalProps<TModel>) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

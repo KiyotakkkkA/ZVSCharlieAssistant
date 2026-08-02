@@ -5,6 +5,7 @@ import type {
   TextProviderSnapshot,
   UpsertTextProviderInput,
 } from "../../ipc/contracts";
+
 export class TextProviderStore {
   providers: TextProviderConfig[] = [];
   models: TextProviderModel[] = [];

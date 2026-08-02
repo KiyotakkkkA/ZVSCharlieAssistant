@@ -66,7 +66,10 @@ export class ChatDataSource {
     ) as MessageRow[];
     const hasMore = rows.length > limit;
     return {
-      messages: rows.slice(0, limit).reverse().map((row) => this.mapMessage(row)),
+      messages: rows
+        .slice(0, limit)
+        .reverse()
+        .map((row) => this.mapMessage(row)),
       hasMore,
     };
   }
@@ -303,11 +306,17 @@ export class ChatDataSource {
     const message = mapMessage(row);
     if (!row.run_id || row.role !== "assistant") return message;
     const calls = this.db
-      .prepare("SELECT id,tool_id,status,input_json,output_json,error_message FROM generation_tool_calls WHERE run_id=? ORDER BY id")
+      .prepare(
+        "SELECT id,tool_id,status,input_json,output_json,error_message FROM generation_tool_calls WHERE run_id=? ORDER BY id",
+      )
       .all(row.run_id) as Array<{
-        id: number; tool_id: string; status: ChatToolCall["status"];
-        input_json: string; output_json: string | null; error_message: string | null;
-      }>;
+      id: number;
+      tool_id: string;
+      status: ChatToolCall["status"];
+      input_json: string;
+      output_json: string | null;
+      error_message: string | null;
+    }>;
     message.toolCalls = calls.map((call) => ({
       id: call.id,
       toolId: call.tool_id,

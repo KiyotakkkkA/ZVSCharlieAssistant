@@ -57,9 +57,16 @@ app.whenReady().then(() => {
     new ProviderConnectionService(secretRepository, providerDataSource),
   );
   const chatDataSource = new ChatDataSource(database);
-  const providerRegistry = new ProviderRegistry(chatDataSource, secretRepository);
+  const providerRegistry = new ProviderRegistry(
+    chatDataSource,
+    secretRepository,
+  );
   const scenarioExecutions = new ScenarioExecutionDataSource(database);
-  const scenarioEngine = new ScenarioRunEngine(scenarioExecutions, providerRegistry, new ScenarioCompiler());
+  const scenarioEngine = new ScenarioRunEngine(
+    scenarioExecutions,
+    providerRegistry,
+    new ScenarioCompiler(),
+  );
   registerAutomationHandlers(
     automationRepository,
     scenarioExecutions,

@@ -12,7 +12,7 @@ import type {
 } from "../../../../ipc/contracts";
 import { CreateButton } from "@renderer/components/atoms/buttons";
 
-interface SettingsSecretManageFormProps {
+interface StorageSecretManageFormProps {
   categories: SecretCategory[];
   model?: SecretEntity;
   onCancel: () => void;
@@ -20,13 +20,13 @@ interface SettingsSecretManageFormProps {
   onSubmit: (input: UpsertSecretInput) => Promise<SecretEntity>;
 }
 
-export function SettingsSecretManageForm({
+export function StorageSecretManageForm({
   categories,
   model,
   onCancel,
   onConfirm,
   onSubmit,
-}: SettingsSecretManageFormProps) {
+}: StorageSecretManageFormProps) {
   const toasts = useToasts();
   const [label, setLabel] = useState(model?.label ?? "");
   const [content, setContent] = useState("");

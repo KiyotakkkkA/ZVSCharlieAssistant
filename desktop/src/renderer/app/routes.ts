@@ -5,6 +5,7 @@ import {
   GraphIcon,
   HomeIcon,
   LockIcon,
+  NumbersIcon,
   RobotIcon,
   ScriptIcon,
   SettingsIcon,
@@ -31,8 +32,9 @@ export const APP_PATHS = {
     },
   },
   storage: {
-    index: "/storage",
+    index: "/storage/secrets",
     secrets: "/storage/secrets",
+    vectorDb: "/storage/vector-db",
   },
   settings: {
     index: "/settings",
@@ -95,6 +97,12 @@ export const NAVIGATION_ROUTES: readonly NavigationRoute[] = [
         label: "Секреты",
         path: APP_PATHS.storage.secrets,
         icon: LockIcon,
+      },
+      {
+        id: "vector-db",
+        label: "Векторная БД",
+        path: "/storage/vector-db",
+        icon: NumbersIcon,
       },
     ],
   },

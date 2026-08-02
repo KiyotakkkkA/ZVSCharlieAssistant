@@ -166,7 +166,6 @@ export class AutomationDataSource {
         "INSERT INTO automation_agent_tools (agent_id, tool_id) VALUES (?, ?)",
       );
       for (const toolId of input.allowedToolIds) insertTool.run(id, toolId);
-
     })();
 
     return this.findAgent(id)!;

@@ -122,13 +122,21 @@ export function ScenarioGraphCanvas({
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         isValidConnection={(connection) => {
-          const source = nodes.find((node) => node.id === connection.source)?.data.node;
-          const target = nodes.find((node) => node.id === connection.target)?.data.node;
+          const source = nodes.find((node) => node.id === connection.source)
+            ?.data.node;
+          const target = nodes.find((node) => node.id === connection.target)
+            ?.data.node;
           if (!source || !target || source.id === target.id) return false;
-          const worker = connection.sourceHandle === "workers" || connection.targetHandle === "worker-in";
+          const worker =
+            connection.sourceHandle === "workers" ||
+            connection.targetHandle === "worker-in";
           return worker
-            ? (source.kind === "orchestrator" || source.kind === "agent") && target.kind === "agent"
-            : source.kind !== "agent" && source.kind !== "output" && target.kind !== "agent" && target.kind !== "trigger";
+            ? (source.kind === "orchestrator" || source.kind === "agent") &&
+                target.kind === "agent"
+            : source.kind !== "agent" &&
+                source.kind !== "output" &&
+                target.kind !== "agent" &&
+                target.kind !== "trigger";
         }}
         onNodeClick={(_event, node) => onNodeSelect(node.id)}
         onInit={(instance) => {
@@ -271,7 +279,12 @@ const ScenarioFlowNodeView = memo(function ScenarioFlowNodeView({
           />
         </>
       ) : node.kind === "agent" ? (
-        <Handle id="workers" type="source" position={Position.Bottom} className="size-3! border-2! border-main-800! bg-violet-300" />
+        <Handle
+          id="workers"
+          type="source"
+          position={Position.Bottom}
+          className="size-3! border-2! border-main-800! bg-violet-300"
+        />
       ) : node.kind !== "output" ? (
         <Handle
           id="control-out"

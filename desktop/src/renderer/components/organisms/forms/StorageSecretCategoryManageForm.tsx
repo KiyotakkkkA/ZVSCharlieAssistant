@@ -6,19 +6,19 @@ import type {
 } from "../../../../ipc/contracts";
 import { CreateButton } from "@renderer/components/atoms/buttons";
 
-interface SettingsSecretCategoryManageFormProps {
+interface StorageSecretCategoryManageFormProps {
   model?: SecretCategory;
   onCancel: () => void;
   onConfirm: () => void;
   onSubmit: (input: UpsertSecretCategoryInput) => Promise<SecretCategory>;
 }
 
-export function SettingsSecretCategoryManageForm({
+export function StorageSecretCategoryManageForm({
   model,
   onCancel,
   onConfirm,
   onSubmit,
-}: SettingsSecretCategoryManageFormProps) {
+}: StorageSecretCategoryManageFormProps) {
   const toasts = useToasts();
   const [label, setLabel] = useState(model?.label ?? "");
   const [saving, setSaving] = useState(false);

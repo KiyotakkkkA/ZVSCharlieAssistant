@@ -136,7 +136,12 @@ export class RunEngine {
             delta: event.delta,
           });
         } else if (event.type === "approval.required") {
-          emit({ type: "scenario.approval.required", runId: event.runId, nodeId: event.nodeId, prompt: event.prompt });
+          emit({
+            type: "scenario.approval.required",
+            runId: event.runId,
+            nodeId: event.nodeId,
+            prompt: event.prompt,
+          });
         } else if (event.type === "run.completed") {
           this.scenarioRunIds.delete(event.run.id);
           const output =
@@ -195,15 +200,13 @@ export class RunEngine {
       const history = this.data
         .messages(conversationId)
         .filter((m) => m.id !== assistantMessageId)
-        .map(
-          (m): ModelMessage => ({
-            role:
-              m.role === "tool"
-                ? "assistant"
-                : (m.role as "user" | "assistant" | "system"),
-            content: m.text,
-          }),
-        );
+        .map((m): ModelMessage => ({
+          role:
+            m.role === "tool"
+              ? "assistant"
+              : (m.role as "user" | "assistant" | "system"),
+          content: m.text,
+        }));
       const system =
         input.mode === "planner"
           ? "Составь практичный пошаговый план. Не выполняй действия без необходимости."

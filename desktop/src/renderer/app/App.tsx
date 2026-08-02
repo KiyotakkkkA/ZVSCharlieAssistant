@@ -6,6 +6,7 @@ import {
   secretStorageStore,
   textProviderStore,
   chatStore,
+  vectorStoreStore,
 } from "../stores";
 
 export function App() {
@@ -14,6 +15,7 @@ export function App() {
     void automationStore.bootstrap().catch(() => undefined);
     void textProviderStore.bootstrap().catch(() => undefined);
     void chatStore.bootstrap().catch(() => undefined);
+    void vectorStoreStore.bootstrap().catch(() => undefined);
   }, []);
 
   return (

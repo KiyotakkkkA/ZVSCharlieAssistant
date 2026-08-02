@@ -6,7 +6,10 @@ export function registerChatHandlers(data: ChatDataSource, engine: RunEngine) {
   ipcMain.handle(CHAT_IPC_CHANNELS.getSnapshot, (_event, id?: number) =>
     data.snapshot(id),
   );
-  ipcMain.handle(CHAT_IPC_CHANNELS.getMessagesPage,(_event,id:number,beforeId?:number)=>data.messagePage(id,beforeId));
+  ipcMain.handle(
+    CHAT_IPC_CHANNELS.getMessagesPage,
+    (_event, id: number, beforeId?: number) => data.messagePage(id, beforeId),
+  );
   ipcMain.handle(CHAT_IPC_CHANNELS.startRun, (event, input: StartRunInput) =>
     engine.start(input, (payload) => {
       if (!event.sender.isDestroyed())

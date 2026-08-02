@@ -50,9 +50,10 @@ export class AutomationStore {
         this.scenarios = snapshot.scenarios;
         this.initialized = true;
         if (!this.unsubscribeScenarioRuns)
-          this.unsubscribeScenarioRuns = window.desktop.automation.subscribeScenarioRuns(
-            this.handleScenarioEvent,
-          );
+          this.unsubscribeScenarioRuns =
+            window.desktop.automation.subscribeScenarioRuns(
+              this.handleScenarioEvent,
+            );
       });
     } catch (error) {
       runInAction(() => {
@@ -81,9 +82,7 @@ export class AutomationStore {
     return this.tools.find((tool) => tool.id === toolId);
   }
 
-  async upsertToolSecretBinding(
-    input: UpsertAutomationToolSecretBindingInput,
-  ) {
+  async upsertToolSecretBinding(input: UpsertAutomationToolSecretBindingInput) {
     const tool = await window.desktop.automation.upsertToolSecretBinding(input);
     runInAction(() => {
       const index = this.tools.findIndex((item) => item.id === tool.id);
@@ -144,7 +143,10 @@ export class AutomationStore {
     return window.desktop.automation.validateScenario(toIpcPayload(graph));
   }
 
-  async startScenario(scenarioId: string, input: unknown): Promise<ScenarioRun> {
+  async startScenario(
+    scenarioId: string,
+    input: unknown,
+  ): Promise<ScenarioRun> {
     const run = await window.desktop.automation.startScenario(
       scenarioId,
       input,
@@ -177,7 +179,10 @@ export class AutomationStore {
         event.type === "run.cancelled"
       ) {
         this.activeScenarioRun = event.run;
-      } else if (event.type === "node.started" || event.type === "node.completed") {
+      } else if (
+        event.type === "node.started" ||
+        event.type === "node.completed"
+      ) {
         const index = this.scenarioNodeRuns.findIndex(
           (item) => item.id === event.node.id,
         );

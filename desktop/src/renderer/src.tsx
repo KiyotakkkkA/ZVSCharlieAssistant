@@ -10,7 +10,8 @@ import {
   ScenariosListPage,
 } from "./pages/automation/scenarios";
 import { ToolsListPage } from "./pages/automation/tools";
-import { StorageSecretsPage } from "./pages/storage";
+import { StorageSecretsPage } from "./pages/storage/secrets";
+import { VectorStoresPage } from "./pages/storage/vector-db";
 import { ChatPage } from "./pages/chat";
 import { SettingsProvidersPage } from "./pages/settings/providers";
 import "@fontsource-variable/onest";
@@ -80,6 +81,10 @@ createRoot(root).render(
           <Route
             path={APP_PATHS.storage.secrets}
             element={<StorageSecretsPage />}
+          />
+          <Route
+            path={APP_PATHS.storage.vectorDb}
+            element={<VectorStoresPage />}
           />
           <Route path="*" element={<Navigate to={APP_PATHS.home} replace />} />
         </Route>

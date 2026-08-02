@@ -94,7 +94,8 @@ export class SqliteAutomationRepository implements AutomationRepository {
     const requirement = tool.secretRequirements.find(
       (item) => item.key === input.key,
     );
-    if (!requirement) throw new Error("Привязка секрета не поддерживается инструментом");
+    if (!requirement)
+      throw new Error("Привязка секрета не поддерживается инструментом");
     if (
       input.secretId !== null &&
       (!Number.isInteger(input.secretId) ||

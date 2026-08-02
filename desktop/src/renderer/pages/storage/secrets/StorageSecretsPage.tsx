@@ -11,7 +11,7 @@ import {
   useToasts,
   type TableColumn,
 } from "@kiyotakkkka/zvs-uikit-lib";
-import type { SecretCategory, SecretEntity } from "../../../ipc/contracts";
+import type { SecretCategory, SecretEntity } from "../../../../ipc/contracts";
 import {
   CopyIcon,
   EditIcon,
@@ -20,17 +20,21 @@ import {
   PlusIcon,
   RefreshIcon,
   TrashIcon,
-} from "../../components/atoms";
+} from "../../../components/atoms";
 import {
-  SettingsSecretCategoryManageForm,
-  SettingsSecretManageForm,
-} from "../../components/organisms/forms";
-import { DangerModal, FormModal, PageHeader } from "../../components/organisms";
+  StorageSecretCategoryManageForm,
+  StorageSecretManageForm,
+} from "../../../components/organisms/forms";
+import {
+  DangerModal,
+  FormModal,
+  PageHeader,
+} from "../../../components/organisms";
 import {
   StorageSecretCard,
   StorageSecretCategoryCard,
-} from "../../components/molecules";
-import { secretStorageStore } from "../../stores";
+} from "../../../components/molecules";
+import { secretStorageStore } from "../../../stores";
 import {
   ControlButton,
   CreateButton,
@@ -464,7 +468,7 @@ export const StorageSecretsPage = observer(function StorageSecretsPage() {
       {dialog?.kind === "secret" && dialog.action === "upsert" ? (
         <FormModal
           form={{
-            component: SettingsSecretManageForm,
+            component: StorageSecretManageForm,
             title: modalNameResolver(dialog),
             props: {
               categories: store.categories,
@@ -478,7 +482,7 @@ export const StorageSecretsPage = observer(function StorageSecretsPage() {
       ) : dialog?.kind === "category" && dialog.action === "upsert" ? (
         <FormModal
           form={{
-            component: SettingsSecretCategoryManageForm,
+            component: StorageSecretCategoryManageForm,
             title: modalNameResolver(dialog),
             props: { onSubmit: store.upsertCategory },
           }}
