@@ -4,5 +4,5 @@
     "composite": true,
     "types": ["node", "electron"]
   },
-  "include": ["electron.vite.config.ts", "src/host/**/*.ts", "src/ipc/**/*.ts"]
+  "include": ["electron.vite.config.ts", "src/host/**/*.ts", "src/ipc/**/*.ts", "src/default/**/*.ts"]
 }

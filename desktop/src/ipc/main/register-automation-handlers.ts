@@ -1,5 +1,5 @@
 import { ipcMain } from "electron";
-import type { AutomationRepository } from "../../host/domain/repositories/automation.repository";
+import type { AutomationRepository } from "../../host/application/ports/automation.repository";
 import type { ScenarioExecutionDataSource } from "../../host/infrastructure/database/scenario-execution.data-source";
 import type { ScenarioRunEngine } from "../../host/infrastructure/automation/scenario-run-engine";
 import {

@@ -1,4 +1,4 @@
-import type { AutomationTool } from "../../../ipc/contracts";
+import type { AutomationTool } from "../../domain/models/automation";
 
 const ollamaApiKey = {
   key: "ollamaApiKey",
@@ -89,6 +89,41 @@ export const BUILTIN_AUTOMATION_TOOLS: readonly AutomationTool[] = [
     outputSchema: {
       type: "array",
       items: { type: "object" },
+    },
+    secretRequirements: [],
+    secretBindings: [],
+  },
+  {
+    id: "reports.docx",
+    name: "Создание отчётов DOCX",
+    description: "Создаёт структурированный документ Word по встроенному шаблону оформления ГОСТ.",
+    category: "Документы",
+    builtin: true,
+    enabled: true,
+    requiresConfirmation: true,
+    inputSchema: {
+      type: "object",
+      required: ["fileName", "template", "blocks"],
+      properties: {
+        fileName: { type: "string" },
+        template: { type: "string", enum: ["mirea-report-gost"] },
+        title: { type: "string" },
+        blocks: {
+          type: "array",
+          items: {
+            type: "object",
+            description: "heading, paragraph, list, table, code или pageBreak",
+          },
+        },
+      },
+    },
+    outputSchema: {
+      type: "object",
+      properties: {
+        path: { type: "string" },
+        fileName: { type: "string" },
+        blocks: { type: "integer" },
+      },
     },
     secretRequirements: [],
     secretBindings: [],

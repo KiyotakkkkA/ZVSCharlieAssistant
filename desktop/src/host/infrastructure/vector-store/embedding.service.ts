@@ -1,4 +1,4 @@
-import type { SecretStorageRepository } from "../../domain/repositories/secret-storage.repository";
+import type { SecretStorageRepository } from "../../application/ports/secret-storage.repository";
 import type { VectorStoreDataSource } from "../database/vector-store.data-source";
 
 export class EmbeddingService {

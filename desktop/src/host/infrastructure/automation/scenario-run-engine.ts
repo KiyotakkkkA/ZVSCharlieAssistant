@@ -4,10 +4,10 @@ import type {
   ScenarioRun,
   ScenarioRunEvent,
   ScenarioRunOrigin,
-} from "../../../ipc/contracts";
+} from "../../domain/models/automation";
 import { ScenarioExecutionDataSource } from "../database/scenario-execution.data-source";
 import { ProviderRegistry } from "../text-generation/provider.registry";
-import { ScenarioCompiler } from "./scenario-compiler";
+import { ScenarioCompiler } from "../../domain/services/scenario-compiler";
 import type { VectorStoreService } from "../vector-store/vector-store.service";
 import type { ToolRegistry } from "../tools/tool.registry";
 

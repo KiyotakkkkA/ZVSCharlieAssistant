@@ -5,8 +5,8 @@ import type {
   SecretStorageSnapshot,
   UpsertSecretCategoryInput,
   UpsertSecretInput,
-} from "../../../ipc/contracts";
-import type { SecretStorageRepository } from "../../domain/repositories/secret-storage.repository";
+} from "../../domain/models/secret-storage";
+import type { SecretStorageRepository } from "../../application/ports/secret-storage.repository";
 import { SecretStorageDataSource } from "../database/secret-storage.data-source";
 
 const normalizeLabel = (label: string): string => {

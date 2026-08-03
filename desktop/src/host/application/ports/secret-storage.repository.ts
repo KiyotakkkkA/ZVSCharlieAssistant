@@ -5,7 +5,7 @@ import type {
   SecretStorageSnapshot,
   UpsertSecretCategoryInput,
   UpsertSecretInput,
-} from "../../../ipc/contracts";
+} from "../../domain/models/secret-storage";
 
 export interface SecretStorageRepository {
   getSnapshot(): SecretStorageSnapshot;

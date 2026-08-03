@@ -400,6 +400,7 @@ const migrations: readonly Migration[] = [
           status TEXT NOT NULL DEFAULT 'draft' CHECK(status IN ('draft','active','disabled')),
           version TEXT NOT NULL DEFAULT '1.0.0',
           author TEXT NOT NULL DEFAULT '',
+          builtin INTEGER NOT NULL DEFAULT 0 CHECK(builtin IN (0,1)),
           required_tool_ids_json TEXT NOT NULL DEFAULT '[]',
           updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         );

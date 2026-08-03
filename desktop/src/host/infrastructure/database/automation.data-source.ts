@@ -8,7 +8,7 @@ import type {
   UpsertAutomationScenarioInput,
   AutomationSkill,
   UpsertAutomationSkillInput,
-} from "../../../ipc/contracts";
+} from "../../domain/models/automation";
 
 interface AgentRow {
   id: string;
@@ -377,7 +377,7 @@ export class AutomationDataSource {
 
   listSkills(): Omit<AutomationSkill, "instructions">[] {
     return (this.database.prepare(`
-      SELECT s.id,s.slug,s.name,s.description,s.status,s.version,s.author,
+      SELECT s.id,s.slug,s.name,s.description,s.status,s.version,s.author,s.builtin,
              s.required_tool_ids_json,s.updated_at,COUNT(a.agent_id) assigned_agents_count
       FROM automation_skills s
       LEFT JOIN automation_agent_skills a ON a.skill_id=s.id
@@ -388,11 +388,17 @@ export class AutomationDataSource {
       version: String(row.version), author: String(row.author),
       requiredToolIds: parseJson(String(row.required_tool_ids_json), []),
       assignedAgentsCount: Number(row.assigned_agents_count), updatedAt: String(row.updated_at),
+      builtin: Boolean(row.builtin),
     }));
   }
 
-  skillExists(id: number): boolean {
-    return Boolean(this.database.prepare("SELECT 1 FROM automation_skills WHERE id=?").get(id));
+  ensureBuiltinSkill(input: Omit<UpsertAutomationSkillInput, "id" | "instructions">): number {
+    const existing = this.database.prepare("SELECT id FROM automation_skills WHERE slug=?").get(input.slug) as { id: number } | undefined;
+    if (existing) {
+      this.database.prepare(`UPDATE automation_skills SET name=?,description=?,status='active',version=?,author=?,builtin=1,required_tool_ids_json=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).run(input.name,input.description,input.version,input.author,JSON.stringify(input.requiredToolIds),existing.id);
+      return existing.id;
+    }
+    return Number(this.database.prepare(`INSERT INTO automation_skills(slug,name,description,status,version,author,builtin,required_tool_ids_json) VALUES(?,?,?,'active',?,?,1,?)`).run(input.slug,input.name,input.description,input.version,input.author,JSON.stringify(input.requiredToolIds)).lastInsertRowid);
   }
 
   upsertSkill(input: UpsertAutomationSkillInput): number {

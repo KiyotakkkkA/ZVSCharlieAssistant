@@ -2,7 +2,7 @@ import type {
   TextProviderModelInfo,
   TextProviderSnapshot,
   UpsertTextProviderInput,
-} from "../../../ipc/contracts/text-provider.contract";
+} from "../../domain/models/text-provider";
 
 export interface TextProviderRepository {
   getSnapshot(): TextProviderSnapshot;

@@ -5,7 +5,7 @@ import { ControlButton } from "../atoms/buttons";
 interface AutomationSkillCardProps {
   skill: AutomationSkill;
   onEdit: (skill: AutomationSkill) => void;
-  onDelete: (skill: AutomationSkill) => void;
+  onDelete?: (skill: AutomationSkill) => void;
 }
 
 const statusLabels: Record<AutomationSkill["status"], string> = {
@@ -49,16 +49,23 @@ export function AutomationSkillCard({
             title="Изменить навык"
             onClick={() => onEdit(skill)}
           />
-          <ControlButton
-            icon="trash"
-            title="Удалить навык"
-            variant="delete"
-            onClick={() => onDelete(skill)}
-          />
+          {!skill.builtin && onDelete ? (
+            <ControlButton
+              icon="trash"
+              title="Удалить навык"
+              variant="delete"
+              onClick={() => onDelete(skill)}
+            />
+          ) : null}
         </div>
       </div>
 
       <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-main-700/40 pt-4 text-xs text-main-500">
+        {skill.builtin ? (
+          <span className="rounded-full bg-main-700/60 px-2 py-1 text-xs text-main-300">
+            Системный
+          </span>
+        ) : null}
         <span>{skill.assignedAgentsCount} агентов</span>
         <span>·</span>
         <span>{skill.requiredToolIds.length} инструментов</span>

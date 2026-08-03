@@ -4,7 +4,7 @@ import type {
   SecretRecord,
   UpsertSecretCategoryInput,
   UpsertSecretInput,
-} from "../../../ipc/contracts";
+} from "../../domain/models/secret-storage";
 
 interface CategoryRow {
   id: number;

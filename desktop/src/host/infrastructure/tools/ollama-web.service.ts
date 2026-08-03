@@ -1,11 +1,11 @@
-import type { SecretStorageRepository } from "../../domain/repositories/secret-storage.repository";
-import type { AutomationDataSource } from "../database/automation.data-source";
+import type { SecretStorageRepository } from "../../application/ports/secret-storage.repository";
+import type { AutomationRuntimeCatalog } from "../../application/ports/automation-runtime.ports";
 
 export type OllamaWebToolId = "web.search" | "web.fetch";
 
 export class OllamaWebService {
   constructor(
-    private readonly automationData: AutomationDataSource,
+    private readonly automationCatalog: Pick<AutomationRuntimeCatalog, "toolSecretId">,
     private readonly secrets: SecretStorageRepository,
   ) {}
 
@@ -14,7 +14,7 @@ export class OllamaWebService {
     body: { query: string } | { url: string },
     signal: AbortSignal,
   ): Promise<unknown> {
-    const secretId = this.automationData.toolSecretId(toolId, "ollamaApiKey");
+    const secretId = this.automationCatalog.toolSecretId(toolId, "ollamaApiKey");
     const apiKey = secretId
       ? this.secrets.getSecret(secretId)?.content.trim()
       : "";

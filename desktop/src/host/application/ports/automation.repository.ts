@@ -1,14 +1,14 @@
 import type {
   AutomationAgent,
   AutomationScenario,
+  AutomationSkill,
   AutomationSnapshot,
+  AutomationTool,
   UpsertAutomationAgentInput,
   UpsertAutomationScenarioInput,
-  UpsertAutomationToolSecretBindingInput,
-  AutomationTool,
-  AutomationSkill,
   UpsertAutomationSkillInput,
-} from "../../../ipc/contracts";
+  UpsertAutomationToolSecretBindingInput,
+} from "../../domain/models/automation";
 
 export interface AutomationRepository {
   getSnapshot(): AutomationSnapshot;

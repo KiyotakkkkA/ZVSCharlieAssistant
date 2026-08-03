@@ -1,5 +1,5 @@
 import type { AutomationScenario } from "../../../ipc/contracts";
-import { TasksIcon } from "../atoms";
+import { ScriptIcon } from "../atoms";
 import { ControlButton } from "../atoms/buttons";
 
 interface AutomationScenarioCardProps {
@@ -23,7 +23,7 @@ export function AutomationScenarioCard({
     <article className="rounded-xl bg-main-800/30 p-5 ring-1 ring-main-700/40 transition-colors hover:bg-main-800/50 hover:ring-main-600">
       <div className="flex items-start gap-4">
         <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-main-700/50 text-main-200">
-          <TasksIcon className="size-5" />
+          <ScriptIcon className="size-5" />
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">

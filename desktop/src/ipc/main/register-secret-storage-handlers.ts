@@ -1,5 +1,5 @@
 import { clipboard, ipcMain } from "electron";
-import type { SecretStorageRepository } from "../../host/domain/repositories/secret-storage.repository";
+import type { SecretStorageRepository } from "../../host/application/ports/secret-storage.repository";
 import {
   SECRET_IPC_CHANNELS,
   type UpsertSecretCategoryInput,

@@ -1,6 +1,6 @@
 import { app, BrowserWindow } from "electron";
 import { join } from "node:path";
-import { createMainWindow } from "./application/create-main-window";
+import { createMainWindow } from "./infrastructure/electron/create-main-window";
 import {
   registerAppHandlers,
   removeAppHandlers,
@@ -19,13 +19,13 @@ import {
 import { AutomationDataSource } from "./infrastructure/database/automation.data-source";
 import { SqliteAutomationRepository } from "./infrastructure/repositories/sqlite-automation.repository";
 import { BUILTIN_AUTOMATION_TOOLS } from "./infrastructure/automation/builtin-tools.registry";
-import { SkillFilesService } from "./infrastructure/automation/skill-files.service";
+import { FileSystemSkillContentStore } from "./infrastructure/filesystem/skill-content.store";
 import { ProviderConnectionService } from "./infrastructure/text-generation/provider-connection.service";
 import { TextProviderDataSource } from "./infrastructure/database/text-provider.data-source";
 import { ChatDataSource } from "./infrastructure/database/chat.data-source";
 import { ProviderRegistry } from "./infrastructure/text-generation/provider.registry";
 import { RunEngine } from "./infrastructure/text-generation/run-engine";
-import { ScenarioCompiler } from "./infrastructure/automation/scenario-compiler";
+import { ScenarioCompiler } from "./domain/services/scenario-compiler";
 import { ScenarioRunEngine } from "./infrastructure/automation/scenario-run-engine";
 import { ScenarioExecutionDataSource } from "./infrastructure/database/scenario-execution.data-source";
 import { ToolRegistry } from "./infrastructure/tools/tool.registry";
@@ -45,6 +45,9 @@ import {
 import { VectorStoreDataSource } from "./infrastructure/database/vector-store.data-source";
 import { EmbeddingService } from "./infrastructure/vector-store/embedding.service";
 import { VectorStoreService } from "./infrastructure/vector-store/vector-store.service";
+import { ReportDocxService } from "./infrastructure/tools/report-docx.service";
+import { BuiltinSkillProvisioner } from "./application/services/builtin-skill-provisioner";
+import { DEFAULT_SKILLS } from "../default/skills";
 
 let database: ReturnType<typeof createSqliteDatabase> | undefined;
 
@@ -54,11 +57,18 @@ app.whenReady().then(() => {
     new SecretStorageDataSource(database),
   );
   const automationDataSource = new AutomationDataSource(database);
-  const skillFiles = new SkillFilesService(join(app.getPath("userData"), "skills"));
+  const skillContent = new FileSystemSkillContentStore(
+    join(app.getPath("userData"), "skills"),
+  );
+  new BuiltinSkillProvisioner(
+    automationDataSource,
+    skillContent,
+    DEFAULT_SKILLS,
+  ).provision();
   const automationRepository = new SqliteAutomationRepository(
     automationDataSource,
     BUILTIN_AUTOMATION_TOOLS,
-    skillFiles,
+    skillContent,
   );
 
   registerAppHandlers();
@@ -91,7 +101,10 @@ app.whenReady().then(() => {
     automationDataSource,
     ollamaWebService,
     vectorService,
-    skillFiles,
+    skillContent,
+    new ReportDocxService(
+      join(app.getPath("documents"), "ZVS Assistant", "Reports"),
+    ),
   );
   const scenarioEngine = new ScenarioRunEngine(
     scenarioExecutions,

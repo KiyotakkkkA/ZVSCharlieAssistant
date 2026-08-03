@@ -31,6 +31,7 @@ export const SkillManagerPage = observer(function SkillManagerPage() {
       />
       <AutomationSkillManageForm
         model={model}
+        readOnly={model?.builtin}
         submitting={busy}
         onCancel={() => goTo(APP_PATHS.automation.skills.index)}
         onSubmit={async (input) => {

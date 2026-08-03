@@ -1,11 +1,14 @@
 import { tool, type ToolSet } from "ai";
 import { z } from "zod";
-import type { RunEvent } from "../../../ipc/contracts";
-import type { AutomationDataSource } from "../database/automation.data-source";
-import type { ChatDataSource } from "../database/chat.data-source";
+import type { RunEvent } from "../../domain/models/chat";
+import type {
+  AutomationRuntimeCatalog,
+  SkillContentStore,
+  ToolCallRecorder,
+} from "../../application/ports/automation-runtime.ports";
 import type { VectorStoreService } from "../vector-store/vector-store.service";
 import { OllamaWebService } from "./ollama-web.service";
-import type { SkillFilesService } from "../automation/skill-files.service";
+import type { ReportDocxService } from "./report-docx.service";
 
 type Emit = (event: RunEvent) => void;
 
@@ -41,11 +44,12 @@ export interface ToolRegistryOptions {
 
 export class ToolRegistry {
   constructor(
-    private readonly chatData: ChatDataSource,
-    private readonly automationData: AutomationDataSource,
+    private readonly toolCalls: ToolCallRecorder,
+    private readonly automationCatalog: AutomationRuntimeCatalog,
     private readonly web: OllamaWebService,
     private readonly vectorStores: VectorStoreService,
-    private readonly skillFiles: SkillFilesService,
+    private readonly skillContent: SkillContentStore,
+    private readonly reports: ReportDocxService,
   ) {}
 
   create(options: ToolRegistryOptions): ToolSet | undefined {
@@ -117,18 +121,35 @@ export class ToolRegistry {
         inputSchema: z.object({ skillId: z.number().int().positive() }),
         execute: ({ skillId }) => {
           if (!allowedSkillIds.includes(skillId)) throw new Error("Навык не назначен агенту");
-          const skill = this.automationData.listSkills().find((item) => item.id === skillId && item.status === "active");
+          const skill = this.automationCatalog.listSkills().find((item) => item.id === skillId && item.status === "active");
           if (!skill) throw new Error("Навык недоступен");
-          return { id: skill.id, name: skill.name, instructions: this.skillFiles.read(skill.slug) };
+          return { id: skill.id, name: skill.name, instructions: this.skillContent.read(skill.slug) };
         },
+      }),
+      "reports.docx": tool({
+        description: "Создаёт единый DOCX-файл из структурированных блоков по шаблону оформления РТУ МИРЭА/ГОСТ 7.32–2017. Передавай весь документ за один вызов.",
+        inputSchema: z.object({
+          fileName: z.string().trim().min(1).max(180),
+          template: z.literal("mirea-report-gost"),
+          title: z.string().trim().max(500).optional(),
+          blocks: z.array(z.discriminatedUnion("type", [
+            z.object({ type: z.literal("heading"), level: z.union([z.literal(1), z.literal(2), z.literal(3)]), text: z.string().trim().min(1).max(500), numbered: z.boolean().optional() }),
+            z.object({ type: z.literal("paragraph"), paragraphs: z.array(z.string().trim().min(1).max(20_000)).min(1).max(200) }),
+            z.object({ type: z.literal("list"), style: z.enum(["bullet", "numbered"]), items: z.array(z.string().trim().min(1).max(5_000)).min(1).max(200) }),
+            z.object({ type: z.literal("table"), number: z.string().trim().max(30).optional(), title: z.string().trim().min(1).max(500), headers: z.array(z.string().max(1_000)).min(1).max(30), rows: z.array(z.array(z.string().max(10_000)).max(30)).max(1_000) }),
+            z.object({ type: z.literal("code"), number: z.string().trim().max(30).optional(), title: z.string().trim().min(1).max(500), language: z.string().trim().max(50).optional(), content: z.string().max(100_000) }),
+            z.object({ type: z.literal("pageBreak") }),
+          ])).min(1).max(2_000),
+        }),
+        execute: (input, { toolCallId }) => this.execute(toolCallId, "reports.docx", input, signal, observer, () => this.reports.create(input)),
       }),
     };
     const available = Object.fromEntries(
       Object.entries(tools).filter(
         ([id]) =>
           (allowedToolIds.includes(id) || (id === "skills.load" && allowedSkillIds.length > 0)) &&
-          (id === "vecdb.search" || id === "skills.load" ||
-            this.automationData.toolSecretId(id, "ollamaApiKey") !== undefined),
+          (id === "vecdb.search" || id === "skills.load" || id === "reports.docx" ||
+            this.automationCatalog.toolSecretId(id, "ollamaApiKey") !== undefined),
       ),
     );
     return Object.keys(available).length ? available : undefined;
@@ -136,7 +157,7 @@ export class ToolRegistry {
 
   skillCatalog(ids: number[]): string {
     const allowed = new Set(ids);
-    const skills = this.automationData.listSkills().filter((item) => allowed.has(item.id) && item.status === "active");
+    const skills = this.automationCatalog.listSkills().filter((item) => allowed.has(item.id) && item.status === "active");
     if (!skills.length) return "";
     return `\n\nДоступные навыки (полные инструкции загружай инструментом skills.load только когда навык релевантен):\n${skills.map((item) => `- #${item.id} ${item.name}: ${item.description}`).join("\n")}`;
   }
@@ -150,7 +171,7 @@ export class ToolRegistry {
       ...options,
       observer: {
         requested: ({ callId, toolId, input }) => {
-          const id = this.chatData.createToolCall(
+          const id = this.toolCalls.createToolCall(
             runId,
             callId,
             toolId,
@@ -164,11 +185,11 @@ export class ToolRegistry {
         running: ({ toolId }, id) =>
           emit({ type: "tool.running", runId, toolCallId: id, toolId }),
         completed: ({ toolId }, id, output) => {
-          this.chatData.finishToolCall(id, "completed", output);
+          this.toolCalls.finishToolCall(id, "completed", output);
           emit({ type: "tool.completed", runId, toolCallId: id, toolId, output });
         },
         failed: ({ toolId }, id, error) => {
-          this.chatData.finishToolCall(id, "failed", undefined, error);
+          this.toolCalls.finishToolCall(id, "failed", undefined, error);
           emit({ type: "tool.completed", runId, toolCallId: id, toolId, error });
         },
       } satisfies ToolExecutionObserver<number>,

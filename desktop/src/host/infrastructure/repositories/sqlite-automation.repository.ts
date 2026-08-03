@@ -11,10 +11,10 @@ import type {
   UpsertAutomationToolSecretBindingInput,
   AutomationSkill,
   UpsertAutomationSkillInput,
-} from "../../../ipc/contracts";
-import type { AutomationRepository } from "../../domain/repositories/automation.repository";
+} from "../../domain/models/automation";
+import type { AutomationRepository } from "../../application/ports/automation.repository";
 import { AutomationDataSource } from "../database/automation.data-source";
-import { SkillFilesService } from "../automation/skill-files.service";
+import type { SkillContentStore } from "../../application/ports/automation-runtime.ports";
 
 const statuses = new Set<AutomationStatus>(["draft", "active", "disabled"]);
 
@@ -45,7 +45,7 @@ export class SqliteAutomationRepository implements AutomationRepository {
   constructor(
     private readonly dataSource: AutomationDataSource,
     private readonly tools: readonly AutomationTool[],
-    private readonly skillFiles: SkillFilesService,
+    private readonly skillContent: SkillContentStore,
   ) {
     this.toolsById = new Map(tools.map((tool) => [tool.id, tool]));
   }
@@ -116,6 +116,8 @@ export class SqliteAutomationRepository implements AutomationRepository {
 
   upsertSkill(input: UpsertAutomationSkillInput): AutomationSkill {
     if (!statuses.has(input.status)) throw new Error("Недопустимый статус навыка");
+    const previous = input.id ? this.listSkills().find((skill) => skill.id === input.id) : undefined;
+    if (previous?.builtin) throw new Error("Системный навык доступен только для чтения");
     const slug = input.slug.trim().toLowerCase();
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug))
       throw new Error("Slug может содержать строчные латинские буквы, цифры и дефисы");
@@ -131,11 +133,11 @@ export class SqliteAutomationRepository implements AutomationRepository {
       author: input.author.trim().slice(0, 120),
       requiredToolIds,
     };
-    const previous = input.id ? this.listSkills().find((skill) => skill.id === input.id) : undefined;
     const id = this.dataSource.upsertSkill(normalized);
     try {
-      this.skillFiles.write(slug, normalized, normalized.instructions);
-      if (previous && previous.slug !== slug) this.skillFiles.remove(previous.slug);
+      this.skillContent.write(slug, normalized, normalized.instructions);
+      if (previous && previous.slug !== slug)
+        this.skillContent.remove(previous.slug);
     } catch (error) {
       if (!input.id) this.dataSource.deleteSkill(id);
       throw error;
@@ -146,14 +148,15 @@ export class SqliteAutomationRepository implements AutomationRepository {
   deleteSkill(id: number): void {
     const skill = this.listSkills().find((item) => item.id === id);
     if (!skill) throw new Error("Навык не найден");
+    if (skill.builtin) throw new Error("Системный навык нельзя удалить");
     this.dataSource.deleteSkill(id);
-    this.skillFiles.remove(skill.slug);
+    this.skillContent.remove(skill.slug);
   }
 
   private listSkills(): AutomationSkill[] {
     return this.dataSource.listSkills().map((skill) => ({
       ...skill,
-      instructions: this.skillFiles.read(skill.slug),
+      instructions: this.skillContent.read(skill.slug),
     }));
   }
 

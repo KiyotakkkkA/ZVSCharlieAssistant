@@ -75,6 +75,7 @@ export interface AutomationSkill {
   instructions: string;
   requiredToolIds: string[];
   assignedAgentsCount: number;
+  builtin: boolean;
   updatedAt: string;
 }
 

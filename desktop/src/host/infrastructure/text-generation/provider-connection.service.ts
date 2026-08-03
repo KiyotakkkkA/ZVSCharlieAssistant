@@ -1,5 +1,5 @@
-import type { SecretStorageRepository } from "../../domain/repositories/secret-storage.repository";
-import type { TextProviderRepository } from "../../domain/repositories/text-provider.repository";
+import type { SecretStorageRepository } from "../../application/ports/secret-storage.repository";
+import type { TextProviderRepository } from "../../application/ports/text-provider.repository";
 import type {
   TestTextProviderConnectionInput,
   TestTextProviderConnectionResult,
@@ -7,7 +7,7 @@ import type {
   TextProviderModelInfo,
   TextProviderSnapshot,
   UpsertTextProviderInput,
-} from "../../../ipc/contracts";
+} from "../../domain/models/text-provider";
 
 const API_KEYS_CATEGORY_ID = 1;
 

@@ -6,7 +6,7 @@ import type {
   ScenarioRun,
   ScenarioRunOrigin,
   ScenarioRunStatus,
-} from "../../../ipc/contracts";
+} from "../../domain/models/automation";
 
 const parse = (value: string | null): unknown =>
   value ? JSON.parse(value) : null;

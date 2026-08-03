@@ -3,7 +3,7 @@ import type {
   AutomationScenarioGraph,
   AutomationScenarioNode,
   ScenarioValidationResult,
-} from "../../../ipc/contracts";
+} from "../models/automation";
 
 export interface CompiledScenario {
   controlOrder: string[];

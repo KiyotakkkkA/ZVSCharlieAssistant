@@ -23,11 +23,13 @@ export const AutomationSkillManageForm = observer(
     submitting,
     onCancel,
     onSubmit,
+    readOnly = false,
   }: {
     model?: AutomationSkill;
     submitting?: boolean;
     onCancel(): void;
     onSubmit(input: UpsertAutomationSkillInput): void | Promise<void>;
+    readOnly?: boolean;
   }) {
     const [name, setName] = useState("");
     const [slug, setSlug] = useState("");
@@ -66,6 +68,7 @@ export const AutomationSkillManageForm = observer(
         className="space-y-5"
         onSubmit={(event) => {
           event.preventDefault();
+          if (readOnly) return;
           void onSubmit({
             id: model?.id,
             name: name.trim(),
@@ -92,6 +95,7 @@ export const AutomationSkillManageForm = observer(
               onChange={(e) => setName(e.target.value)}
               placeholder="Анализ юридического документа"
               required
+              disabled={readOnly}
             />
           </Field>
           <Field
@@ -110,6 +114,7 @@ export const AutomationSkillManageForm = observer(
               }
               placeholder="legal-document-review"
               required
+              disabled={readOnly}
             />
           </Field>
           <Field
@@ -125,6 +130,7 @@ export const AutomationSkillManageForm = observer(
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Когда и для каких задач применять навык"
               required
+              disabled={readOnly}
             />
           </Field>
           <Field
@@ -137,6 +143,7 @@ export const AutomationSkillManageForm = observer(
             <InputSmall
               value={version}
               onChange={(e) => setVersion(e.target.value)}
+              disabled={readOnly}
             />
           </Field>
           <Field
@@ -150,6 +157,7 @@ export const AutomationSkillManageForm = observer(
               value={author}
               onChange={(e) => setAuthor(e.target.value)}
               placeholder="Необязательно"
+              disabled={readOnly}
             />
           </Field>
           <Field
@@ -161,6 +169,7 @@ export const AutomationSkillManageForm = observer(
             className="w-fit"
           >
             <Select
+              disabled={readOnly}
               value={status}
               onChange={(value) => setStatus(value as AutomationStatus)}
               options={[
@@ -195,6 +204,7 @@ export const AutomationSkillManageForm = observer(
             autoResize
             showCount
             required
+            disabled={readOnly}
           />
         </section>
         <section className="rounded-xl bg-main-800/20 p-5 ring-1 ring-main-700/35">
@@ -218,7 +228,7 @@ export const AutomationSkillManageForm = observer(
               <InputCheckBox
                 key={tool.id}
                 modelValue={tool.id}
-                disabled={!tool.enabled}
+                disabled={!tool.enabled || readOnly}
                 className="rounded-lg bg-main-800/40 p-3 ring-1 ring-main-700/45"
               >
                 <span>
@@ -231,20 +241,22 @@ export const AutomationSkillManageForm = observer(
         </section>
         <div className="flex justify-end gap-2 border-t border-main-800 pt-5">
           <Button type="button" variant="ghost" onClick={onCancel}>
-            Отмена
+            {readOnly ? "Назад" : "Отмена"}
           </Button>
-          <PrimaryButton
-            type="submit"
-            loading={submitting}
-            disabled={
-              submitting ||
-              !name.trim() ||
-              !slug.trim() ||
-              !description.trim() ||
-              !instructions.trim()
-            }
-            label="Сохранить"
-          />
+          {!readOnly ? (
+            <PrimaryButton
+              type="submit"
+              loading={submitting}
+              disabled={
+                submitting ||
+                !name.trim() ||
+                !slug.trim() ||
+                !description.trim() ||
+                !instructions.trim()
+              }
+              label="Сохранить"
+            />
+          ) : null}
         </div>
       </form>
     );

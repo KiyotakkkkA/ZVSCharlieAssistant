@@ -26,6 +26,9 @@ interface Row extends AutomationSkill {
   [key: string]: unknown;
 }
 
+const badgeClassName =
+  "inline-flex rounded-full bg-main-700/60 px-2 py-1 text-xs text-main-300";
+
 export const SkillsListPage = observer(function SkillsListPage() {
   const { goTo } = useHashRouter();
   const toasts = useToasts();
@@ -65,6 +68,15 @@ export const SkillsListPage = observer(function SkillsListPage() {
         </span>
       ),
     },
+    {
+      key: "type",
+      title: "Тип",
+      render: (x) => (
+        <span className="inline-flex rounded-full bg-main-700/60 px-2 py-1 text-xs text-main-300">
+          {x.builtin ? "Системная" : "Пользовательская"}
+        </span>
+      ),
+    },
     { key: "agents", title: "Агенты", render: (x) => x.assignedAgentsCount },
     {
       key: "actions",
@@ -83,12 +95,14 @@ export const SkillsListPage = observer(function SkillsListPage() {
               )
             }
           />
-          <ControlButton
-            icon="trash"
-            title="Удалить"
-            variant="delete"
-            onClick={() => setRemoving(x)}
-          />
+          {!x.builtin ? (
+            <ControlButton
+              icon="trash"
+              title="Удалить"
+              variant="delete"
+              onClick={() => setRemoving(x)}
+            />
+          ) : null}
         </div>
       ),
     },
@@ -164,7 +178,11 @@ export const SkillsListPage = observer(function SkillsListPage() {
         model={removing}
         title="Удалить навык"
         description={(x) => (
-          <>Навык «<strong className="font-semibold text-main-50">{x.name}</strong>» будет удалён с диска и отвязан от агентов.</>
+          <>
+            Навык «
+            <strong className="font-semibold text-main-50">{x.name}</strong>»
+            будет удалён с диска и отвязан от агентов.
+          </>
         )}
         onCancel={() => setRemoving(null)}
         onConfirm={async (x) => {
