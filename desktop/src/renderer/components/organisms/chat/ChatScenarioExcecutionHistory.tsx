@@ -1,5 +1,7 @@
 import { ScenarioNodeRun, ScenarioRun } from "@ipc/contracts";
-import { Timeline } from "@kiyotakkkka/zvs-uikit-lib";
+import { Button, Timeline } from "@kiyotakkkka/zvs-uikit-lib";
+import { ChevronDownIcon } from "@renderer/components/atoms";
+import { useState } from "react";
 
 function formatNodeValue(value: unknown) {
   if (value === null || value === undefined) return "";
@@ -11,16 +13,16 @@ function formatNodeValue(value: unknown) {
   return typeof value === "string" ? value : JSON.stringify(value, null, 2);
 }
 
-function nodeKindLabel(kind: ScenarioNodeRun["nodeKind"]) {
+function resolveNodeLabel(node: ScenarioNodeRun) {
   return {
-    trigger: "Триггер",
-    orchestrator: "Оркестратор",
-    agent: "Агент",
+    trigger: "Начало исполнения",
+    orchestrator: "Оркестрирование",
+    agent: `Вызов агента : ${node.nodeId}`,
     knowledge_store: "Хранилище",
     condition: "Условие",
     approval: "Подтверждение",
     output: "Результат",
-  }[kind];
+  }[node.nodeKind];
 }
 
 function nodeKindIcon(kind: ScenarioNodeRun["nodeKind"]) {
@@ -53,9 +55,18 @@ export const ScenarioExecutionHistory = ({
   execution: { run: ScenarioRun; nodes: ScenarioNodeRun[] };
   liveOutput: Map<string, string>;
 }) => {
+  const [expandedNodes, setExpandedNodes] = useState<Set<number>>(new Set());
   const running = ["queued", "running", "waiting_for_approval"].includes(
     execution.run.status,
   );
+  const toggleNode = (nodeId: number) =>
+    setExpandedNodes((current) => {
+      const next = new Set(current);
+      if (next.has(nodeId)) next.delete(nodeId);
+      else next.add(nodeId);
+      return next;
+    });
+
   return (
     <section className="mb-5 overflow-hidden rounded-xl bg-main-800/40 ring-1 ring-main-700/40">
       <header className="flex items-center justify-between gap-4 border-b border-main-700/30 px-4 py-3">
@@ -88,22 +99,47 @@ export const ScenarioExecutionHistory = ({
               ? ((running ? liveOutput.get(node.nodeId) : undefined) ??
                 formatNodeValue(node.output))
               : "";
+            const hasContent = Boolean(node.error || text);
+            const expanded = hasContent && expandedNodes.has(node.id);
             return (
               <Timeline.Item key={node.id} icon={nodeKindIcon(node.nodeKind)}>
-                <Timeline.ItemTitle>
-                  {nodeKindLabel(node.nodeKind)} · {node.nodeId}
+                <Timeline.ItemTitle className="flex min-w-0 items-center justify-between gap-3">
+                  <span className="min-w-0 truncate">
+                    {resolveNodeLabel(node)}
+                  </span>
+                  {hasContent ? (
+                    <Button
+                      type="button"
+                      rounded="rounded-lg"
+                      variant="ghost"
+                      aria-expanded={expanded}
+                      aria-label={expanded ? "Свернуть шаг" : "Развернуть шаг"}
+                      onClick={() => toggleNode(node.id)}
+                      className="size-7 shrink-0 p-0 text-main-400 hover:bg-main-600/20 hover:text-main-50"
+                    >
+                      <ChevronDownIcon
+                        className={`size-4 transition-transform duration-300 ease-out ${expanded ? "rotate-180" : "rotate-0"}`}
+                      />
+                    </Button>
+                  ) : null}
                 </Timeline.ItemTitle>
                 <Timeline.ItemSubTitle>
                   {scenarioStatusLabel(node.status)}
                 </Timeline.ItemSubTitle>
-                {node.error || text ? (
+                {hasContent ? (
                   <Timeline.ItemContent>
                     <div
-                      className={`max-h-72 overflow-auto whitespace-pre-wrap text-xs leading-5 ${
-                        node.error ? "text-danger-light" : "text-main-400"
-                      }`}
+                      className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out ${expanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
                     >
-                      {node.error ?? text}
+                      <div className="min-h-0 overflow-hidden">
+                        <div
+                          className={`max-h-72 overflow-auto whitespace-pre-wrap pt-2 text-xs leading-5 ${
+                            node.error ? "text-danger-light" : "text-main-400"
+                          }`}
+                        >
+                          {node.error ?? text}
+                        </div>
+                      </div>
                     </div>
                   </Timeline.ItemContent>
                 ) : null}

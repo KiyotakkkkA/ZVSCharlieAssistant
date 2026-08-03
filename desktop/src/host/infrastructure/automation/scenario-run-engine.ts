@@ -1,5 +1,4 @@
-import { stepCountIs, streamText, tool, type ToolSet } from "ai";
-import { z } from "zod";
+import { stepCountIs, streamText, type ToolSet } from "ai";
 import type {
   AutomationScenarioNode,
   ScenarioRun,
@@ -10,6 +9,7 @@ import { ScenarioExecutionDataSource } from "../database/scenario-execution.data
 import { ProviderRegistry } from "../text-generation/provider.registry";
 import { ScenarioCompiler } from "./scenario-compiler";
 import type { VectorStoreService } from "../vector-store/vector-store.service";
+import type { ToolRegistry } from "../tools/tool.registry";
 
 type Emit = (event: ScenarioRunEvent) => void;
 type ScenarioAgent = NonNullable<
@@ -25,6 +25,7 @@ export class ScenarioRunEngine {
     private readonly providers: ProviderRegistry,
     readonly compiler: ScenarioCompiler,
     private readonly vectorStores: VectorStoreService,
+    private readonly tools: ToolRegistry,
   ) {}
 
   assertRunnable(scenarioId: string) {
@@ -358,6 +359,7 @@ ${JSON.stringify(scenarioAgents, null, 2)}
       dependencies,
       knowledge: [] as Awaited<ReturnType<VectorStoreService["search"]>>,
     };
+    const webSources: ScenarioWebSource[] = [];
     const nodeRun = this.data.startNode(runId, node.id, node.kind, workerInput);
     emit({ type: "node.started", runId, node: nodeRun });
     try {
@@ -377,16 +379,44 @@ ${JSON.stringify(scenarioAgents, null, 2)}
         emit,
         true,
         2400,
-        agent.allowedToolIds.includes("vecdb.search")
-          ? this.createVectorTools(
-              agent.allowedVectorStoreIds,
-              agent.retrieval_limit,
-            )
-          : undefined,
+        this.tools.create({
+          signal,
+          allowedToolIds: agent.allowedToolIds,
+          allowedVectorStoreIds: agent.allowedVectorStoreIds,
+          retrievalLimit: agent.retrieval_limit,
+          observer: {
+            requested: () => undefined,
+            completed: (event, _reference, result) => {
+              if (event.toolId === "vecdb.search" && Array.isArray(result)) {
+                for (const source of result) {
+                  if (!isVectorSource(source)) continue;
+                  if (
+                    !workerInput.knowledge.some(
+                      (current) =>
+                        current.documentId === source.documentId &&
+                        current.chunkIndex === source.chunkIndex,
+                    )
+                  )
+                    workerInput.knowledge.push(source);
+                }
+              } else if (
+                event.toolId === "web.search" ||
+                event.toolId === "web.fetch"
+              )
+                collectScenarioWebSources(
+                  webSources,
+                  event.toolId,
+                  event.input,
+                  result,
+                );
+            },
+          },
+        }),
       );
       const completed = this.data.finishNode(nodeRun.id, "completed", {
         text: output,
         sources: workerInput.knowledge,
+        webSources,
       });
       emit({ type: "node.completed", runId, node: completed });
       return { nodeId: node.id, agentId, result: output };
@@ -432,44 +462,63 @@ ${JSON.stringify(scenarioAgents, null, 2)}
     return text;
   }
 
-  private createVectorTools(
-    allowedStoreIds: number[],
-    retrievalLimit: number,
-  ): ToolSet {
-    return {
-      "vecdb.search": tool({
-        description: "Ищет релевантные фрагменты в разрешённых базах знаний.",
-        inputSchema: z.object({
-          query: z.string().trim().min(1).max(2000),
-          storeIds: z.array(z.number().int().positive()).optional(),
-          limit: z.number().int().min(1).max(20).optional(),
-          scoreThreshold: z.number().min(0).max(1).optional(),
-        }),
-        execute: (input) => {
-          const requested = input.storeIds?.length
-            ? input.storeIds
-            : allowedStoreIds;
-          const effective = requested.filter((id) =>
-            allowedStoreIds.includes(id),
-          );
-          if (!effective.length)
-            throw new Error(
-              "Агенту не разрешён доступ к векторным хранилищам",
-            );
-          return this.vectorStores.search({
-            vectorStoreIds: effective,
-            query: input.query,
-            limit: input.limit ?? retrievalLimit,
-            scoreThreshold: input.scoreThreshold,
-          });
-        },
-      }),
-    };
-  }
 }
 
 const errorMessage = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
+
+type ScenarioWebSource = { title: string; url: string; content: string };
+
+function collectScenarioWebSources(
+  target: ScenarioWebSource[],
+  toolId: "web.search" | "web.fetch",
+  input: unknown,
+  output: unknown,
+) {
+  const result = isRecord(output) ? output : {};
+  const rows =
+    toolId === "web.search" && Array.isArray(result.results)
+      ? result.results
+      : toolId === "web.fetch"
+        ? [{ ...result, url: isRecord(input) ? input.url : undefined }]
+        : [];
+  for (const value of rows) {
+    if (!isRecord(value) || typeof value.url !== "string") continue;
+    const url = normalizeWebUrl(value.url);
+    if (!url || target.some((source) => source.url === url)) continue;
+    target.push({
+      url,
+      title:
+        typeof value.title === "string" && value.title.trim()
+          ? value.title.trim()
+          : url,
+      content: typeof value.content === "string" ? value.content.trim() : "",
+    });
+  }
+}
+
+function normalizeWebUrl(value: string) {
+  try {
+    return new URL(/^https?:\/\//i.test(value) ? value : `https://${value}`)
+      .href;
+  } catch {
+    return "";
+  }
+}
+
+function isVectorSource(
+  value: unknown,
+): value is Awaited<ReturnType<VectorStoreService["search"]>>[number] {
+  return (
+    isRecord(value) &&
+    Number.isInteger(value.documentId) &&
+    Number.isInteger(value.chunkIndex) &&
+    typeof value.fileName === "string" &&
+    typeof value.content === "string" &&
+    typeof value.score === "number" &&
+    (value.pageNumber === null || Number.isInteger(value.pageNumber))
+  );
+}
 
 type Delegation = {
   nodeId: string;

@@ -28,6 +28,7 @@ import { ScenarioCompiler } from "./infrastructure/automation/scenario-compiler"
 import { ScenarioRunEngine } from "./infrastructure/automation/scenario-run-engine";
 import { ScenarioExecutionDataSource } from "./infrastructure/database/scenario-execution.data-source";
 import { ToolRegistry } from "./infrastructure/tools/tool.registry";
+import { OllamaWebService } from "./infrastructure/tools/ollama-web.service";
 import {
   registerChatHandlers,
   removeChatHandlers,
@@ -78,11 +79,22 @@ app.whenReady().then(() => {
     secretRepository,
   );
   const scenarioExecutions = new ScenarioExecutionDataSource(database);
+  const ollamaWebService = new OllamaWebService(
+    automationDataSource,
+    secretRepository,
+  );
+  const toolRegistry = new ToolRegistry(
+    chatDataSource,
+    automationDataSource,
+    ollamaWebService,
+    vectorService,
+  );
   const scenarioEngine = new ScenarioRunEngine(
     scenarioExecutions,
     providerRegistry,
     new ScenarioCompiler(),
     vectorService,
+    toolRegistry,
   );
   registerAutomationHandlers(
     automationRepository,
@@ -94,12 +106,7 @@ app.whenReady().then(() => {
     new RunEngine(
       chatDataSource,
       providerRegistry,
-      new ToolRegistry(
-        chatDataSource,
-        automationDataSource,
-        secretRepository,
-        vectorService,
-      ),
+      toolRegistry,
       scenarioEngine,
     ),
   );

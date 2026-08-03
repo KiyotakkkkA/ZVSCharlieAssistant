@@ -1,4 +1,4 @@
-import { SlidedPanel, Tabs } from "@kiyotakkkka/zvs-uikit-lib";
+import { ScrollArea, SlidedPanel, Tabs } from "@kiyotakkkka/zvs-uikit-lib";
 import { useEffect, useMemo, useState } from "react";
 import type { ChatToolCall, ScenarioNodeRun } from "../../../../ipc/contracts";
 import { WebIcon } from "../../atoms";
@@ -33,6 +33,10 @@ interface VectorSourceRow {
 const toolVectorCache = new WeakMap<ChatToolCall[], VectorSourceRow[]>();
 const scenarioSourceCache = new WeakMap<ScenarioNodeRun[], VectorSourceRow[]>();
 const webSourceCache = new WeakMap<ChatToolCall[], WebChatSource[]>();
+const scenarioWebSourceCache = new WeakMap<
+  ScenarioNodeRun[],
+  WebChatSource[]
+>();
 
 export function collectChatSources(
   toolCalls?: ChatToolCall[],
@@ -43,7 +47,10 @@ export function collectChatSources(
       ...collectToolVectorRows(toolCalls),
       ...collectScenarioRows(scenarioNodes),
     ]),
-    web: collectWebSources(toolCalls),
+    web: mergeWebSources([
+      ...collectWebSources(toolCalls),
+      ...collectScenarioWebSources(scenarioNodes),
+    ]),
   };
 }
 
@@ -84,7 +91,7 @@ export function ChatSourcePanel({
       </SlidedPanel.Header>
       <SlidedPanel.Content className="flex min-h-0 flex-col gap-4">
         <Tabs value={selectedTab} onChange={setSelectedTab} options={tabs} />
-        <div className="min-h-0 space-y-2 overflow-y-auto pr-1">
+        <ScrollArea className="pr-1 space-y-2">
           {selectedTab === "web"
             ? sources.web.map((source) => (
                 <WebSourceCard key={source.url} source={source} />
@@ -96,7 +103,7 @@ export function ChatSourcePanel({
                   onOpen={onClose}
                 />
               ))}
-        </div>
+        </ScrollArea>
       </SlidedPanel.Content>
     </SlidedPanel>
   );
@@ -150,7 +157,6 @@ function WebSourceCard({ source }: { source: WebChatSource }) {
     >
       <div className="flex items-start gap-3">
         <span className="relative grid size-9 shrink-0 place-items-center overflow-hidden rounded-lg bg-main-700/55 text-main-400">
-          <WebIcon className="size-4" />
           {faviconUrl(source.url) ? (
             <img
               src={faviconUrl(source.url)}
@@ -158,7 +164,9 @@ function WebSourceCard({ source }: { source: WebChatSource }) {
               className="absolute inset-0 size-full object-contain p-2"
               onError={(event) => event.currentTarget.remove()}
             />
-          ) : null}
+          ) : (
+            <WebIcon className="size-4" />
+          )}
         </span>
         <span className="min-w-0">
           <span className="block truncate text-sm font-medium text-main-100 group-hover:text-main-50">
@@ -245,6 +253,29 @@ function collectWebSources(toolCalls?: ChatToolCall[]) {
   const result = [...sources.values()];
   webSourceCache.set(toolCalls, result);
   return result;
+}
+
+function collectScenarioWebSources(nodes?: ScenarioNodeRun[]) {
+  if (!nodes?.length) return [];
+  const cached = scenarioWebSourceCache.get(nodes);
+  if (cached) return cached;
+  const sources = new Map<string, WebChatSource>();
+  for (const node of nodes) {
+    if (node.nodeKind !== "agent") continue;
+    const output = asRecord(node.output);
+    const rows = Array.isArray(output?.webSources) ? output.webSources : [];
+    for (const value of rows) {
+      const row = asRecord(value);
+      addWebSource(sources, row?.url, row?.title, row?.content);
+    }
+  }
+  const result = [...sources.values()];
+  scenarioWebSourceCache.set(nodes, result);
+  return result;
+}
+
+function mergeWebSources(sources: WebChatSource[]) {
+  return [...new Map(sources.map((source) => [source.url, source])).values()];
 }
 
 function addWebSource(

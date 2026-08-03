@@ -227,14 +227,12 @@ export class RunEngine {
         model: this.providers.resolve(input.modelId),
         system,
         messages: history,
-        tools: this.tools.create(
-          runId,
-          emit,
-          controller.signal,
-          allowedTools,
-          agentRuntime?.allowedVectorStoreIds ?? [],
-          agentRuntime?.retrieval_limit ?? 5,
-        ),
+        tools: this.tools.createForChat(runId, emit, {
+          signal: controller.signal,
+          allowedToolIds: allowedTools,
+          allowedVectorStoreIds: agentRuntime?.allowedVectorStoreIds ?? [],
+          retrievalLimit: agentRuntime?.retrieval_limit ?? 5,
+        }),
         stopWhen: stepCountIs(maxSteps),
         abortSignal: controller.signal,
         onStepFinish: ({ finishReason, toolCalls, toolResults }) => {
