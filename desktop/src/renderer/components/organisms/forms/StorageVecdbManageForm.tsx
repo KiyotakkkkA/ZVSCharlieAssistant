@@ -333,7 +333,7 @@ export const StorageVecdbManageForm = observer(function StorageVecdbManageForm({
                 </Select>
               </Field>
               <Alert
-                variant={model.searchMode === "vector" ? "info" : "warning"}
+                variant="info"
                 title={
                   model.searchMode === "vector"
                     ? "Векторный поиск"
@@ -342,8 +342,8 @@ export const StorageVecdbManageForm = observer(function StorageVecdbManageForm({
                 className="md:col-span-2"
               >
                 {model.searchMode === "vector"
-                  ? "Запрос преобразуется выбранной embedding-моделью, после чего LanceDB возвращает ближайшие по смыслу фрагменты. Точное совпадение слов не обязательно."
-                  : "Сейчас используется векторное ранжирование. Полнотекстовый индекс и объединение семантической оценки с совпадениями ключевых слов пока не активированы."}
+                  ? "Запрос преобразуется выбранной embedding-моделью, после чего в ответ попадают ближайшие по смыслу фрагменты. Точное совпадение слов не обязательно."
+                  : "Одновременно выполняется семантический и полнотекстовый поиск, затем результаты объединяются и ранжируются. Это повышает точность для названий, терминов, артикулов и точных формулировок."}
               </Alert>
             </div>
           </div>
@@ -421,26 +421,26 @@ export const StorageVecdbManageForm = observer(function StorageVecdbManageForm({
         )}
       </ScrollArea>
       <DangerModal
-          open={documentToDelete !== null}
-          model={documentToDelete}
-          title="Удалить документ?"
-          description={(item) => (
-            <>Документ «{item.fileName}» и все его чанки будут удалены.</>
-          )}
-          onCancel={() => setDocumentToDelete(null)}
-          onConfirm={(item) => {
-            setDocumentToDelete(null);
-            void vectorStoreStore
-              .deleteDocument(item.id)
-              .then(() => toasts.success({ title: "Документ удалён" }))
-              .catch((error) =>
-                toasts.danger({
-                  title: "Не удалось удалить документ",
-                  description:
-                    error instanceof Error ? error.message : String(error),
-                }),
-              );
-          }}
+        open={documentToDelete !== null}
+        model={documentToDelete}
+        title="Удалить документ?"
+        description={(item) => (
+          <>Документ «{item.fileName}» и все его чанки будут удалены.</>
+        )}
+        onCancel={() => setDocumentToDelete(null)}
+        onConfirm={(item) => {
+          setDocumentToDelete(null);
+          void vectorStoreStore
+            .deleteDocument(item.id)
+            .then(() => toasts.success({ title: "Документ удалён" }))
+            .catch((error) =>
+              toasts.danger({
+                title: "Не удалось удалить документ",
+                description:
+                  error instanceof Error ? error.message : String(error),
+              }),
+            );
+        }}
       />
     </div>
   );

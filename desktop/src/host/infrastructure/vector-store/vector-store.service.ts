@@ -14,8 +14,10 @@ import { EmbeddingService } from "./embedding.service";
 
 export class VectorStoreService {
   private readonly writeQueues = new Map<number, Promise<void>>();
+  private readonly ftsIndexPromises = new Map<number, Promise<void>>();
   private connectionPromise?: Promise<lancedb.Connection>;
   private tableNamesPromise?: Promise<Set<string>>;
+  private rrfPromise?: ReturnType<typeof lancedb.rerankers.RRFReranker.create>;
 
   constructor(
     private readonly data: VectorStoreDataSource,
@@ -62,11 +64,19 @@ export class VectorStoreService {
         tables.delete(name);
       }
     }
-    this.data.upsert({
+    const storeId = this.data.upsert({
       ...input,
       name: input.name.trim(),
       description: input.description.trim(),
     });
+    if (input.searchMode === "hybrid") {
+      const tables = await this.tableNames();
+      if (tables.has(tableName(storeId))) {
+        const table = await (await this.connect()).openTable(tableName(storeId));
+        this.ftsIndexPromises.delete(storeId);
+        await this.ensureFtsIndex(storeId, table);
+      }
+    }
     return this.snapshot();
   }
 
@@ -80,6 +90,7 @@ export class VectorStoreService {
       await db.dropTable(table);
       tables.delete(table);
     }
+    this.ftsIndexPromises.delete(id);
     await rm(join(this.filesDir, String(id)), { recursive: true, force: true });
     this.data.deleteStore(id);
     return this.snapshot();
@@ -159,14 +170,28 @@ export class VectorStoreService {
         queryVectors.set(store.embeddingModelId, vectorPromise);
       }
       const vector = await vectorPromise;
-      const rows = (await (
-        await db.openTable(tableName(storeId))
-      )
-        .vectorSearch(vector!)
-        .limit(limit)
-        .toArray()) as Array<Record<string, unknown>>;
+      const table = await db.openTable(tableName(storeId));
+      if (store.searchMode === "hybrid")
+        await this.ensureFtsIndex(storeId, table);
+      const rows = (await (store.searchMode === "hybrid"
+        ? table
+            .query()
+            .nearestTo(vector!)
+            .fullTextSearch(query, { columns: ["text"] })
+            .rerank(await this.rrf())
+            .limit(limit)
+            .toArray()
+        : table.vectorSearch(vector!).limit(limit).toArray())) as Array<
+        Record<string, unknown>
+      >;
       for (const row of rows) {
-        const score = 1 / (1 + Number(row._distance ?? 0));
+        const score =
+          store.searchMode === "hybrid"
+            ? Math.min(
+                1,
+                Math.max(0, Number(row._relevance_score ?? 0) / (2 / 60)),
+              )
+            : 1 / (1 + Number(row._distance ?? 0));
         if (score < (input.scoreThreshold ?? 0)) continue;
         results.push({
           documentId: Number(row.document_id),
@@ -288,9 +313,15 @@ export class VectorStoreService {
         const table = await db.openTable(name);
         await table.delete(`document_id = ${documentId}`);
         await table.add(rows);
+        if (this.data.store(storeId)?.searchMode === "hybrid") {
+          this.ftsIndexPromises.delete(storeId);
+          await this.ensureFtsIndex(storeId, table);
+        }
       } else {
-        await db.createTable(name, rows);
+        const table = await db.createTable(name, rows);
         tables.add(name);
+        if (this.data.store(storeId)?.searchMode === "hybrid")
+          await this.ensureFtsIndex(storeId, table);
       }
     });
     this.writeQueues.set(storeId, current);
@@ -309,6 +340,40 @@ export class VectorStoreService {
         throw error;
       });
     return this.connectionPromise;
+  }
+
+  private ensureFtsIndex(storeId: number, table: lancedb.Table) {
+    let pending = this.ftsIndexPromises.get(storeId);
+    if (!pending) {
+      pending = table
+        .createIndex("text", {
+          config: lancedb.Index.fts({
+            baseTokenizer: "simple",
+            lowercase: true,
+            stem: false,
+            removeStopWords: false,
+          }),
+          replace: true,
+          waitTimeoutSeconds: 60,
+        })
+        .catch((error) => {
+          this.ftsIndexPromises.delete(storeId);
+          throw error;
+        });
+      this.ftsIndexPromises.set(storeId, pending);
+    }
+    return pending;
+  }
+
+  private rrf() {
+    if (!this.rrfPromise)
+      this.rrfPromise = lancedb.rerankers.RRFReranker.create(60).catch(
+        (error) => {
+          this.rrfPromise = undefined;
+          throw error;
+        },
+      );
+    return this.rrfPromise;
   }
 
   private tableNames() {
