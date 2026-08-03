@@ -3,7 +3,6 @@ import {
   CodeView,
   ScrollArea,
   Skeleton,
-  Timeline,
 } from "@kiyotakkkka/zvs-uikit-lib";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -16,13 +15,20 @@ import {
   type ReactNode,
   type UIEvent,
 } from "react";
-import { ChatIcon, RobotIcon, StorageIcon, TasksIcon } from "../../atoms";
+import {
+  ChatIcon,
+  RobotIcon,
+  StorageIcon,
+  SvgIcon,
+  TasksIcon,
+  WebIcon,
+} from "../../atoms";
 import type { ScenarioNodeRun, ScenarioRun } from "../../../../ipc/contracts";
 import type { ChatToolCall } from "../../../../ipc/contracts";
 import {
   ChatSourcePanel,
   collectChatSources,
-  type ChatSource,
+  type ChatSources,
 } from "./ChatSourcePanel";
 import { ScenarioExecutionHistory } from "./ChatScenarioExcecutionHistory";
 
@@ -35,6 +41,7 @@ const EMPTY_SCENARIO_EXECUTIONS = new Map<
   { run: ScenarioRun; nodes: ScenarioNodeRun[] }
 >();
 const EMPTY_SCENARIO_OUTPUT = new Map<string, string>();
+const EMPTY_CHAT_SOURCES: ChatSources = { internal: [], web: [] };
 
 export interface ChatMessage {
   id: number;
@@ -91,7 +98,8 @@ export function ChatFeed({
   scenarioNodeOutput = EMPTY_SCENARIO_OUTPUT,
 }: ChatFeedProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [openedSources, setOpenedSources] = useState<ChatSource[]>([]);
+  const [openedSources, setOpenedSources] =
+    useState<ChatSources>(EMPTY_CHAT_SOURCES);
   const lastMessageId = messages.at(-1)?.id;
   const lastMessageText = messages.at(-1)?.text;
   const lastMessageReasoning = messages.at(-1)?.reasoning;
@@ -389,7 +397,7 @@ export function ChatFeed({
       </ScrollArea>
       <ChatSourcePanel
         sources={openedSources}
-        onClose={() => setOpenedSources([])}
+        onClose={() => setOpenedSources(EMPTY_CHAT_SOURCES)}
       />
     </div>
   );
@@ -402,10 +410,11 @@ const MessageSourcesButton = memo(function MessageSourcesButton({
 }: {
   toolCalls?: ChatToolCall[];
   scenarioNodes?: ScenarioNodeRun[];
-  onOpen: (sources: ChatSource[]) => void;
+  onOpen: (sources: ChatSources) => void;
 }) {
   const sources = collectChatSources(toolCalls, scenarioNodes);
-  if (!sources.length) return null;
+  const count = sources.internal.length + sources.web.length;
+  if (!count) return null;
   return (
     <button
       type="button"
@@ -415,15 +424,32 @@ const MessageSourcesButton = memo(function MessageSourcesButton({
       <StorageIcon className="size-4 text-accent-light" />
       Источники
       <span className="rounded-md bg-main-700/60 px-1.5 py-0.5 text-[10px] text-main-400">
-        {sources.length}
+        {count}
       </span>
     </button>
   );
 });
 
 function ToolCallDetails({ call }: { call: ChatToolCall }) {
-  const label =
-    call.toolId === "web.search" ? "Поиск в интернете" : "Чтение страницы";
+  if (call.toolId === "web.search" || call.toolId === "web.fetch")
+    return (
+      <CompactToolStatus
+        icon={WebIcon}
+        running="Идёт поиск в интернете"
+        completed="Выполнен поиск в интернете"
+        status={call.status}
+      />
+    );
+  if (call.toolId === "vecdb.search")
+    return (
+      <CompactToolStatus
+        icon={StorageIcon}
+        running="Идёт поиск в хранилище"
+        completed="Поиск в хранилище завершён"
+        status={call.status}
+      />
+    );
+  const label = call.toolId;
   const statusLabel = {
     requested: "Подготовка",
     running: "Выполняется",
@@ -454,6 +480,28 @@ function ToolCallDetails({ call }: { call: ChatToolCall }) {
         ) : null}
       </Accordion.Content>
     </Accordion>
+  );
+}
+
+function CompactToolStatus({
+  icon: Icon,
+  running,
+  completed,
+  status,
+}: {
+  icon: SvgIcon;
+  running: string;
+  completed: string;
+  status: ChatToolCall["status"];
+}) {
+  const done = status === "completed" || status === "failed";
+  return (
+    <div className="flex items-center gap-2.5 py-1.5 text-xs text-main-400">
+      <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-main-800/60 text-main-400">
+        <Icon className="size-4" />
+      </span>
+      <span>{done ? completed : running}</span>
+    </div>
   );
 }
 

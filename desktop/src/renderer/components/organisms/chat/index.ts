@@ -10,7 +10,9 @@ export { ChatFeed, type ChatMessage } from "./ChatFeed";
 export {
   ChatSourcePanel,
   collectChatSources,
-  type ChatSource,
+  type ChatSources,
+  type InternalChatSource,
+  type WebChatSource,
 } from "./ChatSourcePanel";
 
 export { ChatSidebar, type ChatDialog } from "./ChatSidebar";
