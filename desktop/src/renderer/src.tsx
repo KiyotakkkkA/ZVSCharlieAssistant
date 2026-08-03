@@ -44,6 +44,8 @@ const ScenarioGraphEditorPage = lazy(() =>
     ({ ScenarioGraphEditorPage }) => ({ default: ScenarioGraphEditorPage }),
   ),
 );
+const SkillsListPage = lazy(() => import("./pages/automation/skills").then(({ SkillsListPage }) => ({ default: SkillsListPage })));
+const SkillManagerPage = lazy(() => import("./pages/automation/skills").then(({ SkillManagerPage }) => ({ default: SkillManagerPage })));
 const StorageSecretsPage = lazy(() =>
   import("./pages/storage/secrets").then(({ StorageSecretsPage }) => ({
     default: StorageSecretsPage,
@@ -66,6 +68,7 @@ function AppLayout() {
     pathname === APP_PATHS.chat ||
     pathname === APP_PATHS.automation.agents.index ||
     pathname === APP_PATHS.automation.tools ||
+    pathname === APP_PATHS.automation.skills.index ||
     pathname === APP_PATHS.automation.scenarios.index ||
     pathname.startsWith(`${APP_PATHS.automation.scenarios.index}/`) ||
     pathname === APP_PATHS.storage.secrets ||
@@ -138,6 +141,9 @@ createRoot(root).render(
               path={APP_PATHS.automation.tools}
               element={<ToolsListPage />}
             />
+            <Route path={APP_PATHS.automation.skills.index} element={<SkillsListPage />} />
+            <Route path={APP_PATHS.automation.skills.create} element={<SkillManagerPage />} />
+            <Route path={APP_PATHS.automation.skills.edit} element={<SkillManagerPage />} />
             <Route
               path={APP_PATHS.automation.scenarios.index}
               element={<ScenariosListPage />}

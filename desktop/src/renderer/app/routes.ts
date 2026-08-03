@@ -8,6 +8,7 @@ import {
   NumbersIcon,
   RobotIcon,
   ScriptIcon,
+  SkillIcon,
   SettingsIcon,
   StorageIcon,
   TasksIcon,
@@ -25,6 +26,11 @@ export const APP_PATHS = {
       edit: "/automation/agents/:agentId",
     },
     tools: "/automation/tools",
+    skills: {
+      index: "/automation/skills",
+      create: "/automation/skills/new",
+      edit: "/automation/skills/:skillId",
+    },
     scenarios: {
       index: "/automation/scenarios",
       create: "/automation/scenarios/new",
@@ -84,6 +90,12 @@ export const NAVIGATION_ROUTES: readonly NavigationRoute[] = [
         label: "Сценарии",
         path: APP_PATHS.automation.scenarios.index,
         icon: ScriptIcon,
+      },
+      {
+        id: "automation-skills",
+        label: "Навыки",
+        path: APP_PATHS.automation.skills.index,
+        icon: SkillIcon,
       },
     ],
   },

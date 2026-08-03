@@ -17,11 +17,13 @@ export type {
   AutomationScenarioToolSetting,
   AutomationSnapshot,
   AutomationStatus,
+  AutomationSkill,
   AutomationTool,
   AutomationToolSecretBinding,
   AutomationToolSecretRequirement,
   UpsertAutomationToolSecretBindingInput,
   UpsertAutomationAgentInput,
+  UpsertAutomationSkillInput,
   UpsertAutomationScenarioInput,
 } from "./automation.contract";
 export { AUTOMATION_IPC_CHANNELS } from "./automation.contract";

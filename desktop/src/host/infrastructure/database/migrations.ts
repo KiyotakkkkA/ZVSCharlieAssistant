@@ -388,6 +388,32 @@ const migrations: readonly Migration[] = [
       `);
     },
   },
+  {
+    version: 9,
+    up(database) {
+      database.exec(`
+        CREATE TABLE automation_skills (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          slug TEXT NOT NULL UNIQUE,
+          name TEXT NOT NULL,
+          description TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'draft' CHECK(status IN ('draft','active','disabled')),
+          version TEXT NOT NULL DEFAULT '1.0.0',
+          author TEXT NOT NULL DEFAULT '',
+          required_tool_ids_json TEXT NOT NULL DEFAULT '[]',
+          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE automation_agent_skills (
+          agent_id TEXT NOT NULL,
+          skill_id INTEGER NOT NULL,
+          PRIMARY KEY(agent_id, skill_id),
+          FOREIGN KEY(agent_id) REFERENCES automation_agents(id) ON DELETE CASCADE,
+          FOREIGN KEY(skill_id) REFERENCES automation_skills(id) ON DELETE CASCADE
+        );
+        CREATE INDEX idx_automation_skills_status ON automation_skills(status, updated_at);
+      `);
+    },
+  },
 ];
 
 export function runMigrations(database: Database.Database): void {

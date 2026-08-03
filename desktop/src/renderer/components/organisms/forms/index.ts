@@ -1,4 +1,5 @@
 export { AutomationAgentManageForm } from "./AutomationAgentManageForm";
+export { AutomationSkillManageForm } from "./AutomationSkillManageForm";
 export { StorageSecretCategoryManageForm } from "./StorageSecretCategoryManageForm";
 export { StorageSecretManageForm } from "./StorageSecretManageForm";
 export { SettingsProviderManageForm } from "./SettingsProviderManageForm";

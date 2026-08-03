@@ -1,6 +1,7 @@
 export { AutomationAgentCard } from "./AutomationAgentCard";
 export { AutomationScenarioCard } from "./AutomationScenarioCard";
 export { AutomationToolCard } from "./AutomationToolCard";
+export { AutomationSkillCard } from "./AutomationSkillCard";
 export { StorageSecretCard } from "./StorageSecretCard";
 export { StorageSecretCategoryCard } from "./StorageSecretCategoryCard";
 export { SettingsProviderModelCard } from "./SettingsProviderModelCard";

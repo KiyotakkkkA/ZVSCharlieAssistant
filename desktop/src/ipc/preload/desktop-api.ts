@@ -33,6 +33,8 @@ import {
   type ScenarioValidationResult,
   type UpsertAutomationToolSecretBindingInput,
   type AutomationTool,
+  type AutomationSkill,
+  type UpsertAutomationSkillInput,
   VECTOR_STORE_IPC_CHANNELS,
   type VectorStoreSnapshot,
   type UpsertVectorStoreInput,
@@ -88,6 +90,10 @@ export const desktopApi: DesktopApi = {
         AUTOMATION_IPC_CHANNELS.deleteAgent,
         id,
       ) as Promise<void>,
+    upsertSkill: (input: UpsertAutomationSkillInput): Promise<AutomationSkill> =>
+      ipcRenderer.invoke(AUTOMATION_IPC_CHANNELS.upsertSkill, input) as Promise<AutomationSkill>,
+    deleteSkill: (id: number): Promise<void> =>
+      ipcRenderer.invoke(AUTOMATION_IPC_CHANNELS.deleteSkill, id) as Promise<void>,
     upsertToolSecretBinding: (
       input: UpsertAutomationToolSecretBindingInput,
     ): Promise<AutomationTool> =>

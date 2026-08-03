@@ -181,7 +181,8 @@ export class ScenarioExecutionDataSource {
         )
         .all(id) as Array<{ vector_store_id: number }>
     ).map((item) => item.vector_store_id);
-    return { ...agent, allowedToolIds, allowedVectorStoreIds };
+    const allowedSkillIds = (this.db.prepare("SELECT skill_id FROM automation_agent_skills WHERE agent_id=? ORDER BY skill_id").all(id) as Array<{ skill_id: number }>).map((item) => item.skill_id);
+    return { ...agent, allowedToolIds, allowedVectorStoreIds, allowedSkillIds };
   }
 
   defaultModelId(): number | undefined {

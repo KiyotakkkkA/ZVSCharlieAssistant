@@ -255,7 +255,7 @@ export const SettingsProvidersPage = observer(function SettingsProvidersPage() {
           title="Удалить провайдера?"
           description={(item) => (
             <>
-              Подключение «{item.name}» и сохранённый список моделей будут
+              Подключение «<strong className="font-semibold text-main-50">{item.name}</strong>» и сохранённый список моделей будут
               удалены.
             </>
           )}

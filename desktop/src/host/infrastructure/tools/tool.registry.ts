@@ -5,6 +5,7 @@ import type { AutomationDataSource } from "../database/automation.data-source";
 import type { ChatDataSource } from "../database/chat.data-source";
 import type { VectorStoreService } from "../vector-store/vector-store.service";
 import { OllamaWebService } from "./ollama-web.service";
+import type { SkillFilesService } from "../automation/skill-files.service";
 
 type Emit = (event: RunEvent) => void;
 
@@ -34,6 +35,7 @@ export interface ToolRegistryOptions {
   allowedToolIds: string[];
   allowedVectorStoreIds?: number[];
   retrievalLimit?: number;
+  allowedSkillIds?: number[];
   observer?: ToolExecutionObserver;
 }
 
@@ -43,6 +45,7 @@ export class ToolRegistry {
     private readonly automationData: AutomationDataSource,
     private readonly web: OllamaWebService,
     private readonly vectorStores: VectorStoreService,
+    private readonly skillFiles: SkillFilesService,
   ) {}
 
   create(options: ToolRegistryOptions): ToolSet | undefined {
@@ -52,6 +55,7 @@ export class ToolRegistry {
       allowedVectorStoreIds = [],
       retrievalLimit = 5,
       observer,
+      allowedSkillIds = [],
     } = options;
     const tools: ToolSet = {
       "web.search": tool({
@@ -108,16 +112,33 @@ export class ToolRegistry {
             },
           ),
       }),
+      "skills.load": tool({
+        description: "Загружает полные инструкции назначенного агенту навыка. Используй перед применением навыка.",
+        inputSchema: z.object({ skillId: z.number().int().positive() }),
+        execute: ({ skillId }) => {
+          if (!allowedSkillIds.includes(skillId)) throw new Error("Навык не назначен агенту");
+          const skill = this.automationData.listSkills().find((item) => item.id === skillId && item.status === "active");
+          if (!skill) throw new Error("Навык недоступен");
+          return { id: skill.id, name: skill.name, instructions: this.skillFiles.read(skill.slug) };
+        },
+      }),
     };
     const available = Object.fromEntries(
       Object.entries(tools).filter(
         ([id]) =>
-          allowedToolIds.includes(id) &&
-          (id === "vecdb.search" ||
+          (allowedToolIds.includes(id) || (id === "skills.load" && allowedSkillIds.length > 0)) &&
+          (id === "vecdb.search" || id === "skills.load" ||
             this.automationData.toolSecretId(id, "ollamaApiKey") !== undefined),
       ),
     );
     return Object.keys(available).length ? available : undefined;
+  }
+
+  skillCatalog(ids: number[]): string {
+    const allowed = new Set(ids);
+    const skills = this.automationData.listSkills().filter((item) => allowed.has(item.id) && item.status === "active");
+    if (!skills.length) return "";
+    return `\n\nДоступные навыки (полные инструкции загружай инструментом skills.load только когда навык релевантен):\n${skills.map((item) => `- #${item.id} ${item.name}: ${item.description}`).join("\n")}`;
   }
 
   createForChat(

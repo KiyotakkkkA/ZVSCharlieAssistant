@@ -19,6 +19,7 @@ import {
 import { AutomationDataSource } from "./infrastructure/database/automation.data-source";
 import { SqliteAutomationRepository } from "./infrastructure/repositories/sqlite-automation.repository";
 import { BUILTIN_AUTOMATION_TOOLS } from "./infrastructure/automation/builtin-tools.registry";
+import { SkillFilesService } from "./infrastructure/automation/skill-files.service";
 import { ProviderConnectionService } from "./infrastructure/text-generation/provider-connection.service";
 import { TextProviderDataSource } from "./infrastructure/database/text-provider.data-source";
 import { ChatDataSource } from "./infrastructure/database/chat.data-source";
@@ -53,9 +54,11 @@ app.whenReady().then(() => {
     new SecretStorageDataSource(database),
   );
   const automationDataSource = new AutomationDataSource(database);
+  const skillFiles = new SkillFilesService(join(app.getPath("userData"), "skills"));
   const automationRepository = new SqliteAutomationRepository(
     automationDataSource,
     BUILTIN_AUTOMATION_TOOLS,
+    skillFiles,
   );
 
   registerAppHandlers();
@@ -88,6 +91,7 @@ app.whenReady().then(() => {
     automationDataSource,
     ollamaWebService,
     vectorService,
+    skillFiles,
   );
   const scenarioEngine = new ScenarioRunEngine(
     scenarioExecutions,

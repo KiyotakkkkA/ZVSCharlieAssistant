@@ -169,9 +169,9 @@ export const ChatPage = observer(function ChatPage() {
           open={dialogToDelete !== null}
           model={dialogToDelete}
           title="Удалить диалог?"
-          description={(dialog) =>
-            `Диалог «${dialog.title}» и вся его история будут удалены.`
-          }
+          description={(dialog) => (
+            <>Диалог «<strong className="font-semibold text-main-50">{dialog.title}</strong>» и вся его история будут удалены.</>
+          )}
           onCancel={() => setDialogToDelete(null)}
           onConfirm={async (dialog) => {
             await chatStore.deleteConversation(Number(dialog.id));

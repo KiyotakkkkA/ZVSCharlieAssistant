@@ -205,7 +205,7 @@ export const AgentsListPage = observer(function AgentsListPage() {
           description={(agent) => (
             <p>
               Агент{" "}
-              <span className="font-medium text-main-50">{agent.name}</span>{" "}
+              «<strong className="font-semibold text-main-50">{agent.name}</strong>»{" "}
               будет удалён без возможности восстановления. Перепроверьте
               сценарии в которых был использован данный агент.
             </p>

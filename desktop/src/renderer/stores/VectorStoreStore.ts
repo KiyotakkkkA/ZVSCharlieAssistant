@@ -17,6 +17,7 @@ export class VectorStoreStore {
   loading = false;
   selectedStoreId: number | null = null;
   private readonly updateVersions = new Map<number, number>();
+
   constructor() {
     makeAutoObservable<this, "updateVersions">(
       this,
@@ -24,6 +25,7 @@ export class VectorStoreStore {
       { autoBind: true },
     );
   }
+
   private apply(snapshot: VectorStoreSnapshot) {
     this.stores = snapshot.stores;
     this.documents = snapshot.documents;
@@ -34,6 +36,7 @@ export class VectorStoreStore {
       : (this.stores[0]?.id ?? null);
     this.initialized = true;
   }
+
   async bootstrap(force = false) {
     if (this.loading || (this.initialized && !force)) return;
     this.loading = true;
@@ -46,12 +49,15 @@ export class VectorStoreStore {
       });
     }
   }
+
   get selectedStore() {
     return this.stores.find((item) => item.id === this.selectedStoreId);
   }
+
   documentsFor(storeId: number) {
     return this.documents.filter((item) => item.vectorStoreId === storeId);
   }
+
   async createStore() {
     const snapshot = await window.desktop.vectorStores.upsertStore({
       name: "Новое векторное хранилище",
@@ -69,6 +75,7 @@ export class VectorStoreStore {
         this.selectedStoreId;
     });
   }
+
   async updateStore(id: number, patch: Partial<VectorStoreConfig>) {
     const current = this.stores.find((item) => item.id === id);
     if (!current) return;
@@ -99,10 +106,12 @@ export class VectorStoreStore {
       throw error;
     }
   }
+
   async deleteStore(id: number) {
     const snapshot = await window.desktop.vectorStores.deleteStore(id);
     runInAction(() => this.apply(snapshot));
   }
+
   async addFiles(storeId: number, files: File[]) {
     const input = await Promise.all(
       files.map(async (file) => ({
@@ -130,19 +139,21 @@ export class VectorStoreStore {
       throw new Error("Документы не были поставлены на обработку");
     await this.pollUntilSettled(uploadedIds);
   }
+
   async deleteDocument(id: number) {
     const snapshot = await window.desktop.vectorStores.deleteDocument(id);
     runInAction(() => this.apply(snapshot));
   }
+
   search(input: VectorSearchInput) {
     return window.desktop.vectorStores.search(input);
   }
+
   private async pollUntilSettled(documentIds: number[]) {
     for (let attempt = 0; attempt < 300; attempt++) {
       await new Promise((resolve) => setTimeout(resolve, 1000));
-      const documents = await window.desktop.vectorStores.getDocuments(
-        documentIds,
-      );
+      const documents =
+        await window.desktop.vectorStores.getDocuments(documentIds);
       runInAction(() => {
         const updates = new Map(documents.map((item) => [item.id, item]));
         this.documents = this.documents.map(
@@ -164,10 +175,10 @@ export class VectorStoreStore {
           );
         return;
       }
-      if (!documents.length)
-        throw new Error("Документы обработки не найдены");
+      if (!documents.length) throw new Error("Документы обработки не найдены");
     }
     throw new Error("Превышено время ожидания обработки документов");
   }
 }
+
 export const vectorStoreStore = new VectorStoreStore();

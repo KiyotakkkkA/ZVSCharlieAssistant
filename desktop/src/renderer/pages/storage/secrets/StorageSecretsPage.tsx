@@ -487,10 +487,9 @@ export const StorageSecretsPage = observer(function StorageSecretsPage() {
           description={(target) => (
             <p>
               Вы уверены, что хотите удалить{" "}
-              <span className="font-medium text-main-50">
+              «<strong className="font-semibold text-main-50">
                 {target.model?.label}
-              </span>
-              ? Это действие нельзя будет отменить.
+              </strong>»? Это действие нельзя будет отменить.
             </p>
           )}
           onCancel={() => setDialog(null)}

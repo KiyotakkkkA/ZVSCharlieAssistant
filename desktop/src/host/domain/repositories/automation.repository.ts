@@ -6,12 +6,16 @@ import type {
   UpsertAutomationScenarioInput,
   UpsertAutomationToolSecretBindingInput,
   AutomationTool,
+  AutomationSkill,
+  UpsertAutomationSkillInput,
 } from "../../../ipc/contracts";
 
 export interface AutomationRepository {
   getSnapshot(): AutomationSnapshot;
   upsertAgent(input: UpsertAutomationAgentInput): AutomationAgent;
   deleteAgent(id: string): void;
+  upsertSkill(input: UpsertAutomationSkillInput): AutomationSkill;
+  deleteSkill(id: number): void;
   upsertToolSecretBinding(
     input: UpsertAutomationToolSecretBindingInput,
   ): AutomationTool;

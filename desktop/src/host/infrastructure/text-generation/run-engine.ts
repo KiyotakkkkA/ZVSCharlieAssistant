@@ -209,7 +209,7 @@ export class RunEngine {
             content: m.text,
           }),
         );
-      const system =
+      const baseSystem =
         input.mode === "planner"
           ? "Составь практичный пошаговый план. Не выполняй действия без необходимости."
           : (agentInstructions ??
@@ -223,6 +223,7 @@ export class RunEngine {
         input.mode === "agent"
           ? (agentRuntime?.allowedToolIds ?? [])
           : ["web.search", "web.fetch"];
+      const system = `${baseSystem}${this.tools.skillCatalog(agentRuntime?.allowedSkillIds ?? [])}`;
       const result = streamText({
         model: this.providers.resolve(input.modelId),
         system,
@@ -232,6 +233,7 @@ export class RunEngine {
           allowedToolIds: allowedTools,
           allowedVectorStoreIds: agentRuntime?.allowedVectorStoreIds ?? [],
           retrievalLimit: agentRuntime?.retrieval_limit ?? 5,
+          allowedSkillIds: agentRuntime?.allowedSkillIds ?? [],
         }),
         stopWhen: stepCountIs(maxSteps),
         abortSignal: controller.signal,

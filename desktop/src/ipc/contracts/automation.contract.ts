@@ -41,6 +41,7 @@ export interface AutomationAgent {
   status: AutomationStatus;
   allowedToolIds: string[];
   allowedVectorStoreIds: number[];
+  allowedSkillIds: number[];
   retrievalLimit: number;
   maxToolCalls: number;
   timeoutSeconds: number;
@@ -57,9 +58,36 @@ export interface UpsertAutomationAgentInput {
   status: AutomationStatus;
   allowedToolIds: string[];
   allowedVectorStoreIds: number[];
+  allowedSkillIds: number[];
   retrievalLimit: number;
   maxToolCalls: number;
   timeoutSeconds: number;
+}
+
+export interface AutomationSkill {
+  id: number;
+  slug: string;
+  name: string;
+  description: string;
+  status: AutomationStatus;
+  version: string;
+  author: string;
+  instructions: string;
+  requiredToolIds: string[];
+  assignedAgentsCount: number;
+  updatedAt: string;
+}
+
+export interface UpsertAutomationSkillInput {
+  id?: number;
+  slug: string;
+  name: string;
+  description: string;
+  status: AutomationStatus;
+  version: string;
+  author: string;
+  instructions: string;
+  requiredToolIds: string[];
 }
 
 export type AutomationScenarioNodeKind =
@@ -183,12 +211,15 @@ export interface AutomationSnapshot {
   tools: AutomationTool[];
   agents: AutomationAgent[];
   scenarios: AutomationScenario[];
+  skills: AutomationSkill[];
 }
 
 export interface AutomationApi {
   getSnapshot(): Promise<AutomationSnapshot>;
   upsertAgent(input: UpsertAutomationAgentInput): Promise<AutomationAgent>;
   deleteAgent(id: string): Promise<void>;
+  upsertSkill(input: UpsertAutomationSkillInput): Promise<AutomationSkill>;
+  deleteSkill(id: number): Promise<void>;
   upsertToolSecretBinding(
     input: UpsertAutomationToolSecretBindingInput,
   ): Promise<AutomationTool>;
@@ -218,6 +249,8 @@ export const AUTOMATION_IPC_CHANNELS = {
   getSnapshot: "automation:get-snapshot",
   upsertAgent: "automation:upsert-agent",
   deleteAgent: "automation:delete-agent",
+  upsertSkill: "automation:upsert-skill",
+  deleteSkill: "automation:delete-skill",
   upsertToolSecretBinding: "automation:upsert-tool-secret-binding",
   upsertScenario: "automation:upsert-scenario",
   deleteScenario: "automation:delete-scenario",

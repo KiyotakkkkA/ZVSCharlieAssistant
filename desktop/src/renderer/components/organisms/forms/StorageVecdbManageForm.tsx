@@ -425,7 +425,7 @@ export const StorageVecdbManageForm = observer(function StorageVecdbManageForm({
         model={documentToDelete}
         title="Удалить документ?"
         description={(item) => (
-          <>Документ «{item.fileName}» и все его чанки будут удалены.</>
+          <>Документ «<strong className="font-semibold text-main-50">{item.fileName}</strong>» и все его чанки будут удалены.</>
         )}
         onCancel={() => setDocumentToDelete(null)}
         onConfirm={(item) => {

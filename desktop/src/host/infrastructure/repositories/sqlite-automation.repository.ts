@@ -9,9 +9,12 @@ import type {
   UpsertAutomationAgentInput,
   UpsertAutomationScenarioInput,
   UpsertAutomationToolSecretBindingInput,
+  AutomationSkill,
+  UpsertAutomationSkillInput,
 } from "../../../ipc/contracts";
 import type { AutomationRepository } from "../../domain/repositories/automation.repository";
 import { AutomationDataSource } from "../database/automation.data-source";
+import { SkillFilesService } from "../automation/skill-files.service";
 
 const statuses = new Set<AutomationStatus>(["draft", "active", "disabled"]);
 
@@ -42,6 +45,7 @@ export class SqliteAutomationRepository implements AutomationRepository {
   constructor(
     private readonly dataSource: AutomationDataSource,
     private readonly tools: readonly AutomationTool[],
+    private readonly skillFiles: SkillFilesService,
   ) {
     this.toolsById = new Map(tools.map((tool) => [tool.id, tool]));
   }
@@ -51,6 +55,7 @@ export class SqliteAutomationRepository implements AutomationRepository {
       tools: this.tools.map((tool) => this.mapTool(tool)),
       agents: this.dataSource.listAgents(),
       scenarios: this.dataSource.listScenarios(),
+      skills: this.listSkills(),
     };
   }
 
@@ -77,6 +82,16 @@ export class SqliteAutomationRepository implements AutomationRepository {
       if (!this.dataSource.vectorStoreExists(storeId))
         throw new Error(`Векторное хранилище #${storeId} недоступно`);
     }
+    const allowedSkillIds = [...new Set(input.allowedSkillIds)];
+    const skillsById = new Map(this.listSkills().map((skill) => [skill.id, skill]));
+    for (const skillId of allowedSkillIds) {
+      const skill = skillsById.get(skillId);
+      if (!Number.isInteger(skillId) || !skill)
+        throw new Error(`Навык #${skillId} не найден`);
+      if (skill.status !== "active") throw new Error(`Навык «${skill.name}» не активен`);
+      const missingTool = skill.requiredToolIds.find((toolId) => !allowedToolIds.includes(toolId));
+      if (missingTool) throw new Error(`Для навыка «${skill.name}» разрешите инструмент ${missingTool}`);
+    }
 
     const id = input.id ?? randomUUID();
     if (input.id && !this.dataSource.findAgent(input.id))
@@ -91,11 +106,55 @@ export class SqliteAutomationRepository implements AutomationRepository {
       allowedToolIds,
       allowedVectorStoreIds,
       retrievalLimit: input.retrievalLimit,
+      allowedSkillIds,
     });
   }
 
   deleteAgent(id: string): void {
     this.dataSource.deleteAgent(normalizeText(id, "Идентификатор", 120));
+  }
+
+  upsertSkill(input: UpsertAutomationSkillInput): AutomationSkill {
+    if (!statuses.has(input.status)) throw new Error("Недопустимый статус навыка");
+    const slug = input.slug.trim().toLowerCase();
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug))
+      throw new Error("Slug может содержать строчные латинские буквы, цифры и дефисы");
+    const requiredToolIds = normalizeIds(input.requiredToolIds);
+    this.assertToolsExist(requiredToolIds);
+    const normalized: UpsertAutomationSkillInput = {
+      ...input,
+      slug,
+      name: normalizeText(input.name, "Название", 120),
+      description: normalizeText(input.description, "Описание", 500),
+      instructions: normalizeText(input.instructions, "Инструкции", 50_000),
+      version: normalizeText(input.version, "Версия", 30),
+      author: input.author.trim().slice(0, 120),
+      requiredToolIds,
+    };
+    const previous = input.id ? this.listSkills().find((skill) => skill.id === input.id) : undefined;
+    const id = this.dataSource.upsertSkill(normalized);
+    try {
+      this.skillFiles.write(slug, normalized, normalized.instructions);
+      if (previous && previous.slug !== slug) this.skillFiles.remove(previous.slug);
+    } catch (error) {
+      if (!input.id) this.dataSource.deleteSkill(id);
+      throw error;
+    }
+    return this.listSkills().find((skill) => skill.id === id)!;
+  }
+
+  deleteSkill(id: number): void {
+    const skill = this.listSkills().find((item) => item.id === id);
+    if (!skill) throw new Error("Навык не найден");
+    this.dataSource.deleteSkill(id);
+    this.skillFiles.remove(skill.slug);
+  }
+
+  private listSkills(): AutomationSkill[] {
+    return this.dataSource.listSkills().map((skill) => ({
+      ...skill,
+      instructions: this.skillFiles.read(skill.slug),
+    }));
   }
 
   upsertToolSecretBinding(

@@ -42,7 +42,8 @@ export const AutomationAgentManageForm = observer(
     const [status, setStatus] = useState<AutomationStatus>("draft");
     const [textModelId, setTextModelId] = useState("");
     const [toolModel, setToolModel] = useState<Record<string, boolean>>({});
-    const [activeTab, setActiveTab] = useState<"basic" | "storage">("basic");
+    const [activeTab, setActiveTab] = useState<"basic" | "storage" | "skills">("basic");
+    const [skillModel, setSkillModel] = useState<Record<string, boolean>>({});
     const [vectorStoreModel, setVectorStoreModel] = useState<
       Record<string, boolean>
     >({});
@@ -87,6 +88,7 @@ export const AutomationAgentManageForm = observer(
         ),
       );
       setRetrievalLimit(String(model?.retrievalLimit ?? 5));
+      setSkillModel(Object.fromEntries(automationStore.skills.map((skill) => [String(skill.id), model?.allowedSkillIds.includes(skill.id) ?? false])));
     }, [
       model,
       automationStore.initialized,
@@ -120,6 +122,7 @@ export const AutomationAgentManageForm = observer(
               .filter(([, selected]) => selected)
               .map(([id]) => Number(id))
           : [],
+        allowedSkillIds: Object.entries(skillModel).filter(([, selected]) => selected).map(([id]) => Number(id)),
         retrievalLimit: Math.min(Math.max(Number(retrievalLimit) || 5, 1), 20),
         maxToolCalls: model?.maxToolCalls ?? 20,
         timeoutSeconds: model?.timeoutSeconds ?? 120,
@@ -137,7 +140,7 @@ export const AutomationAgentManageForm = observer(
         <div className="w-fit">
           <Tabs
             value={activeTab}
-            onChange={(value) => setActiveTab(value as "basic" | "storage")}
+            onChange={(value) => setActiveTab(value as "basic" | "storage" | "skills")}
             options={[
               { value: "basic", label: "Базовые настройки" },
               {
@@ -145,6 +148,7 @@ export const AutomationAgentManageForm = observer(
                 label: "Работа с хранилищем",
                 disabled: !vectorSearchEnabled,
               },
+              { value: "skills", label: "Навыки" },
             ]}
           />
         </div>
@@ -267,7 +271,7 @@ export const AutomationAgentManageForm = observer(
               </InputCheckBoxGroup>
             </FormSection>
           </>
-        ) : (
+        ) : activeTab === "storage" ? (
           <FormSection
             title="Доступ к базам знаний"
             description="Выберите хранилища, в которых агент сможет выполнять поиск через vecdb.search."
@@ -319,6 +323,10 @@ export const AutomationAgentManageForm = observer(
                 embedding-модель.
               </div>
             )}
+          </FormSection>
+        ) : (
+          <FormSection title="Навыки" description="Назначьте агенту переиспользуемые инструкции. Они загружаются по необходимости и не раздувают каждый запрос.">
+            {automationStore.skills.length ? <InputCheckBoxGroup model={skillModel} onModelChange={setSkillModel} multiple orientation="vertical" className="grid gap-2 lg:grid-cols-2">{automationStore.skills.map((skill) => <InputCheckBox key={skill.id} modelValue={String(skill.id)} disabled={skill.status !== "active"} className="rounded-lg bg-main-800/40 p-3 ring-1 ring-main-700/45"><span><span className="block text-sm font-medium text-main-100">{skill.name}</span><span className="mt-1 block text-xs text-main-500">{skill.description}</span></span></InputCheckBox>)}</InputCheckBoxGroup> : <div className="rounded-lg border border-dashed border-main-700 p-6 text-center text-sm text-main-500">Сначала создайте навык в разделе «Автоматизация → Навыки».</div>}
           </FormSection>
         )}
 

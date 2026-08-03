@@ -204,7 +204,7 @@ export const ScenariosListPage = observer(function ScenariosListPage() {
           description={(scenario) => (
             <p>
               Сценарий{" "}
-              <span className="font-medium text-main-50">{scenario.name}</span>{" "}
+              «<strong className="font-semibold text-main-50">{scenario.name}</strong>»{" "}
               и сохранённая схема графа будут удалены без возможности
               восстановления.
             </p>
