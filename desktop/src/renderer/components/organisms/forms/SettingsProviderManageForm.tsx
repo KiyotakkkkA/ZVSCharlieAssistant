@@ -160,6 +160,7 @@ export function SettingsProviderManageForm({
             </Field>
             <Field label="Тип провайдера">
               <Select
+                className="w-full"
                 value="ollama"
                 onChange={() => undefined}
                 options={[{ value: "ollama", label: "Ollama" }]}

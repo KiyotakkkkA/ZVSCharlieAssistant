@@ -11,15 +11,16 @@ import {
   ControlButton,
   PrimaryButton,
 } from "../../../components/atoms/buttons";
-import {
-  DangerModal,
-  PageHeader,
-  SettingsProviderManageForm,
-  type ProviderStatus,
-  type SettingsProviderDraft,
-} from "../../../components/organisms";
+
 import type { TextProviderType } from "../../../../ipc/contracts";
 import { textProviderStore } from "../../../stores";
+import { PageHeader } from "@renderer/components/organisms";
+import {
+  ProviderStatus,
+  SettingsProviderDraft,
+  SettingsProviderManageForm,
+} from "@renderer/components/organisms/forms";
+import { DangerModal } from "@renderer/components/organisms/modals";
 
 const statusMeta: Record<ProviderStatus, { label: string; className: string }> =
   {
@@ -248,8 +249,8 @@ export const SettingsProvidersPage = observer(function SettingsProvidersPage() {
           </div>
         )}
       </div>
-      {providerToDelete?.id ? (
-        <DangerModal
+      <DangerModal
+          open={providerToDelete?.id != null}
           model={providerToDelete}
           title="Удалить провайдера?"
           description={(item) => (
@@ -265,8 +266,7 @@ export const SettingsProvidersPage = observer(function SettingsProvidersPage() {
             setProviderToDelete(null);
             toasts.success({ title: "Провайдер удалён" });
           }}
-        />
-      ) : null}
+      />
     </section>
   );
 });

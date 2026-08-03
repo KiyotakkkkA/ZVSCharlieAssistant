@@ -18,11 +18,7 @@ import {
   StorageSecretCategoryManageForm,
   StorageSecretManageForm,
 } from "../../../components/organisms/forms";
-import {
-  DangerModal,
-  FormModal,
-  PageHeader,
-} from "../../../components/organisms";
+import { PageHeader } from "../../../components/organisms";
 import {
   StorageSecretCard,
   StorageSecretCategoryCard,
@@ -32,6 +28,7 @@ import {
   ControlButton,
   PrimaryButton,
 } from "@renderer/components/atoms/buttons";
+import { FormModal, DangerModal } from "@renderer/components/organisms/modals";
 
 type ActiveSection = "secrets" | "categories";
 type ManageDialog =
@@ -458,8 +455,8 @@ export const StorageSecretsPage = observer(function StorageSecretsPage() {
         )}
       </ScrollArea>
 
-      {dialog?.kind === "secret" && dialog.action === "upsert" ? (
-        <FormModal
+      <FormModal
+          open={dialog?.kind === "secret" && dialog.action === "upsert"}
           form={{
             component: StorageSecretManageForm,
             title: modalNameResolver(dialog),
@@ -468,23 +465,23 @@ export const StorageSecretsPage = observer(function StorageSecretsPage() {
               onSubmit: store.upsertSecret,
             },
           }}
-          model={dialog.model}
+          model={dialog?.kind === "secret" ? dialog.model : undefined}
           onCancel={() => setDialog(null)}
           onConfirm={() => setDialog(null)}
-        />
-      ) : dialog?.kind === "category" && dialog.action === "upsert" ? (
-        <FormModal
+      />
+      <FormModal
+          open={dialog?.kind === "category" && dialog.action === "upsert"}
           form={{
             component: StorageSecretCategoryManageForm,
             title: modalNameResolver(dialog),
             props: { onSubmit: store.upsertCategory },
           }}
-          model={dialog.model}
+          model={dialog?.kind === "category" ? dialog.model : undefined}
           onCancel={() => setDialog(null)}
           onConfirm={() => setDialog(null)}
-        />
-      ) : dialog?.action === "delete" && dialog.model ? (
-        <DangerModal
+      />
+      <DangerModal
+          open={dialog?.action === "delete" && dialog.model != null}
           model={dialog}
           title={modalNameResolver(dialog)}
           description={(target) => (
@@ -510,8 +507,7 @@ export const StorageSecretsPage = observer(function StorageSecretsPage() {
             }
             setDialog(null);
           }}
-        />
-      ) : null}
+      />
     </section>
   );
 });

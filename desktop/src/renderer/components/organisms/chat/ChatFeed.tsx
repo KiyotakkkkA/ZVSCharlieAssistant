@@ -16,9 +16,9 @@ import {
   type ReactNode,
   type UIEvent,
 } from "react";
-import { ChatIcon, RobotIcon, StorageIcon, TasksIcon } from "../atoms";
-import type { ScenarioNodeRun, ScenarioRun } from "../../../ipc/contracts";
-import type { ChatToolCall } from "../../../ipc/contracts";
+import { ChatIcon, RobotIcon, StorageIcon, TasksIcon } from "../../atoms";
+import type { ScenarioNodeRun, ScenarioRun } from "../../../../ipc/contracts";
+import type { ChatToolCall } from "../../../../ipc/contracts";
 import {
   ChatSourcePanel,
   collectChatSources,

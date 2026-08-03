@@ -3,12 +3,10 @@ import { observer } from "mobx-react-lite";
 import { EmptyState, ScrollArea, useToasts } from "@kiyotakkkka/zvs-uikit-lib";
 import { StorageIcon } from "../../../components/atoms";
 import { PrimaryButton } from "../../../components/atoms/buttons";
-import {
-  DangerModal,
-  PageHeader,
-  StorageVecdbManageForm,
-} from "../../../components/organisms";
+import { PageHeader } from "../../../components/organisms";
 import { vectorStoreStore, type VectorStoreModel } from "../../../stores";
+import { StorageVecdbManageForm } from "@renderer/components/organisms/forms";
+import { DangerModal } from "@renderer/components/organisms/modals";
 
 export const VectorStoresPage = observer(function VectorStoresPage() {
   const store = vectorStoreStore;
@@ -113,32 +111,30 @@ export const VectorStoresPage = observer(function VectorStoresPage() {
           )}
         </div>
       </div>
-      {storeToDelete ? (
-        <DangerModal
-          model={storeToDelete}
-          title="Удалить векторное хранилище?"
-          description={(item) => (
-            <>
-              Хранилище «{item.name}», документы и поисковый индекс будут
-              удалены.
-            </>
-          )}
-          onCancel={() => setStoreToDelete(null)}
-          onConfirm={(item) => {
-            setStoreToDelete(null);
-            void store
-              .deleteStore(item.id)
-              .then(() => toasts.success({ title: "Хранилище удалено" }))
-              .catch((error) =>
-                toasts.danger({
-                  title: "Не удалось удалить хранилище",
-                  description:
-                    error instanceof Error ? error.message : String(error),
-                }),
-              );
-          }}
-        />
-      ) : null}
+      <DangerModal
+        open={!!storeToDelete}
+        model={storeToDelete}
+        title="Удалить векторное хранилище?"
+        description={(item) => (
+          <>
+            Хранилище «{item.name}», документы и поисковый индекс будут удалены.
+          </>
+        )}
+        onCancel={() => setStoreToDelete(null)}
+        onConfirm={(item) => {
+          setStoreToDelete(null);
+          void store
+            .deleteStore(item.id)
+            .then(() => toasts.success({ title: "Хранилище удалено" }))
+            .catch((error) =>
+              toasts.danger({
+                title: "Не удалось удалить хранилище",
+                description:
+                  error instanceof Error ? error.message : String(error),
+              }),
+            );
+        }}
+      />
     </section>
   );
 });

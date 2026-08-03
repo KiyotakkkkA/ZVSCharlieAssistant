@@ -15,6 +15,7 @@ export interface FormModalDefinition<TModel, TFormProps extends object> {
 }
 
 interface FormModalProps<TModel, TFormProps extends object> {
+  open: boolean;
   form: FormModalDefinition<TModel, TFormProps>;
   model?: TModel;
   onConfirm: () => void;
@@ -22,6 +23,7 @@ interface FormModalProps<TModel, TFormProps extends object> {
 }
 
 export function FormModal<TModel, TFormProps extends object>({
+  open,
   form,
   model,
   onConfirm,
@@ -31,7 +33,7 @@ export function FormModal<TModel, TFormProps extends object>({
 
   return (
     <Modal
-      open
+      open={open}
       rounded="rounded-4xl"
       onClose={onCancel}
       className={form.className ?? "max-w-xl"}

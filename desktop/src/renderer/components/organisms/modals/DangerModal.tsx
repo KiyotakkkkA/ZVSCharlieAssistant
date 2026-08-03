@@ -1,8 +1,9 @@
 import { Button, Modal } from "@kiyotakkkka/zvs-uikit-lib";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 interface DangerModalProps<TModel> {
-  model: TModel;
+  open: boolean;
+  model: TModel | null | undefined;
   title: ReactNode;
   description: ReactNode | ((model: TModel) => ReactNode);
   onConfirm: (model: TModel) => void | Promise<void>;
@@ -12,6 +13,7 @@ interface DangerModalProps<TModel> {
 }
 
 export function DangerModal<TModel>({
+  open,
   model,
   title,
   description,
@@ -23,7 +25,12 @@ export function DangerModal<TModel>({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!open) setError(null);
+  }, [open]);
+
   const confirm = async () => {
+    if (model == null) return;
     setLoading(true);
     setError(null);
     try {
@@ -41,7 +48,7 @@ export function DangerModal<TModel>({
 
   return (
     <Modal
-      open
+      open={open}
       rounded="rounded-4xl"
       onClose={loading ? () => undefined : onCancel}
       closeOnOverlayClick={!loading}
@@ -54,7 +61,9 @@ export function DangerModal<TModel>({
         <div className="space-y-5">
           <div className="text-sm leading-6 text-main-400">
             {typeof description === "function"
-              ? description(model)
+              ? model != null
+                ? description(model)
+                : null
               : description}
           </div>
           {error ? (

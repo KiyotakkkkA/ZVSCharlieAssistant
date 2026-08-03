@@ -11,7 +11,7 @@ import {
 import { APP_PATHS } from "../../../app/routes";
 import { RobotIcon } from "../../../components/atoms";
 import { AutomationAgentCard } from "../../../components/molecules";
-import { DangerModal, PageHeader } from "../../../components/organisms";
+import { PageHeader } from "../../../components/organisms";
 import { useHashRouter } from "../../../hooks";
 import { automationStore, textProviderStore } from "../../../stores";
 import { useMemo, useState } from "react";
@@ -20,6 +20,7 @@ import {
   PrimaryButton,
 } from "@renderer/components/atoms/buttons";
 import type { AutomationAgent } from "../../../../ipc/contracts";
+import { DangerModal } from "@renderer/components/organisms/modals";
 
 interface AgentTableRow extends AutomationAgent {
   [key: string]: unknown;
@@ -197,8 +198,8 @@ export const AgentsListPage = observer(function AgentsListPage() {
         )}
       </ScrollArea>
 
-      {agentToDelete ? (
-        <DangerModal
+      <DangerModal
+          open={agentToDelete !== null}
           model={agentToDelete}
           title="Удалить агента"
           description={(agent) => (
@@ -215,8 +216,7 @@ export const AgentsListPage = observer(function AgentsListPage() {
             setAgentToDelete(null);
             toasts.success({ title: "Агент удалён" });
           }}
-        />
-      ) : null}
+      />
     </section>
   );
 });

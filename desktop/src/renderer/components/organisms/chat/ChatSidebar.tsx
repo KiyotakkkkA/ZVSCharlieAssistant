@@ -4,8 +4,8 @@ import {
   ScrollArea,
   Tooltip,
 } from "@kiyotakkkka/zvs-uikit-lib";
-import { PlusIcon } from "../atoms";
-import { ControlButton } from "../atoms/buttons";
+import { PlusIcon } from "../../atoms";
+import { ControlButton } from "../../atoms/buttons";
 
 export interface ChatDialog {
   id: string;

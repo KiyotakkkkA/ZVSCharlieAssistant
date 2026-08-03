@@ -11,7 +11,7 @@ import {
 import { APP_PATHS } from "../../../app/routes";
 import { TasksIcon } from "../../../components/atoms";
 import { AutomationScenarioCard } from "../../../components/molecules";
-import { DangerModal, PageHeader } from "../../../components/organisms";
+import { PageHeader } from "../../../components/organisms";
 import type { AutomationScenario } from "../../../../ipc/contracts";
 import { useHashRouter } from "../../../hooks";
 import { automationStore } from "../../../stores";
@@ -20,6 +20,7 @@ import {
   PrimaryButton,
 } from "@renderer/components/atoms/buttons";
 import { useMemo, useState } from "react";
+import { DangerModal } from "@renderer/components/organisms/modals";
 
 interface ScenarioRow extends AutomationScenario {
   [key: string]: unknown;
@@ -196,8 +197,8 @@ export const ScenariosListPage = observer(function ScenariosListPage() {
         )}
       </ScrollArea>
 
-      {scenarioToDelete ? (
-        <DangerModal
+      <DangerModal
+          open={scenarioToDelete !== null}
           model={scenarioToDelete}
           title="Удалить сценарий"
           description={(scenario) => (
@@ -214,8 +215,7 @@ export const ScenariosListPage = observer(function ScenariosListPage() {
             setScenarioToDelete(null);
             toasts.success({ title: "Сценарий удалён" });
           }}
-        />
-      ) : null}
+      />
     </section>
   );
 });

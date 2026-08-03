@@ -17,7 +17,7 @@ import {
   StorageIcon,
   UploadIcon,
   TasksIcon,
-} from "../atoms";
+} from "../../atoms";
 
 export type ChatMode = "chat" | "planner" | "agent" | "scenario";
 export type ChatModel = string;

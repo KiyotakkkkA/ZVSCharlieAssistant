@@ -216,7 +216,7 @@ export const StorageVecdbManageForm = observer(function StorageVecdbManageForm({
                     Embedding-модель
                   </ParameterLabel>
                 }
-                className="md:col-span-2 w-fit"
+                className="md:col-span-2"
               >
                 <Select
                   value={
@@ -227,6 +227,7 @@ export const StorageVecdbManageForm = observer(function StorageVecdbManageForm({
                       embeddingModelId: Number(value),
                     })
                   }
+                  className="w-full"
                   disabled={documents.length > 0}
                   options={embeddingModels.map((item) => ({
                     value: String(item.id),
@@ -263,7 +264,11 @@ export const StorageVecdbManageForm = observer(function StorageVecdbManageForm({
                   onChange={(event) => setChunkSize(event.target.value)}
                   onBlur={() => {
                     const value = Number(chunkSize);
-                    if (!Number.isInteger(value) || value < 100 || value > 4096) {
+                    if (
+                      !Number.isInteger(value) ||
+                      value < 100 ||
+                      value > 4096
+                    ) {
                       setChunkSize(String(model.chunkSizeTokens));
                       return;
                     }
@@ -415,8 +420,8 @@ export const StorageVecdbManageForm = observer(function StorageVecdbManageForm({
           </div>
         )}
       </ScrollArea>
-      {documentToDelete ? (
-        <DangerModal
+      <DangerModal
+          open={documentToDelete !== null}
           model={documentToDelete}
           title="Удалить документ?"
           description={(item) => (
@@ -436,8 +441,7 @@ export const StorageVecdbManageForm = observer(function StorageVecdbManageForm({
                 }),
               );
           }}
-        />
-      ) : null}
+      />
     </div>
   );
 });

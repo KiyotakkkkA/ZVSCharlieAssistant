@@ -1,5 +1,5 @@
 import { SlidedPanel, Tabs } from "@kiyotakkkka/zvs-uikit-lib";
-import type { ChatToolCall, ScenarioNodeRun } from "../../../ipc/contracts";
+import type { ChatToolCall, ScenarioNodeRun } from "../../../../ipc/contracts";
 
 const SOURCE_TABS = [{ value: "internal", label: "Внутреннее хранилище" }];
 

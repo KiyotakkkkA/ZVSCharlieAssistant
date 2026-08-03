@@ -35,7 +35,6 @@ import {
   Field,
 } from "../../../components/atoms";
 import {
-  DangerModal,
   ScenarioGraphCanvas,
   type ScenarioFlowEdge,
   type ScenarioFlowNode,
@@ -49,6 +48,7 @@ import type {
   AutomationScenarioNode as GraphNode,
   AutomationScenarioNodeKind as NodeKind,
 } from "../../../../ipc/contracts";
+import { DangerModal } from "@renderer/components/organisms/modals";
 
 const nodeMeta: Record<
   NodeKind,
@@ -718,16 +718,15 @@ export const ScenarioGraphEditorPage = observer(
             ) : null}
           </aside>
         </div>
-        {automationStore.pendingScenarioApproval ? (
-          <DangerModal
+        <DangerModal
+            open={automationStore.pendingScenarioApproval !== null}
             model={automationStore.pendingScenarioApproval}
             title="Продолжить сценарий?"
             description={(approval) => approval.prompt}
             confirmLabel="Продолжить"
             onCancel={() => void automationStore.approveScenarioRun(false)}
             onConfirm={() => automationStore.approveScenarioRun(true)}
-          />
-        ) : null}
+        />
       </section>
     );
   },

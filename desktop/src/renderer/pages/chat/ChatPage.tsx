@@ -10,13 +10,13 @@ import {
   ChatComposer,
   ChatFeed,
   ChatSidebar,
-  DangerModal,
   type ChatDialog,
   type ChatMode,
   type ChatModel,
-} from "../../components/organisms";
+} from "../../components/organisms/chat";
 import { automationStore, chatStore, textProviderStore } from "../../stores";
 import { PrimaryButton } from "@renderer/components/atoms/buttons";
+import { DangerModal } from "@renderer/components/organisms/modals";
 
 export const ChatPage = observer(function ChatPage() {
   const toasts = useToasts();
@@ -156,18 +156,17 @@ export const ChatPage = observer(function ChatPage() {
           onCancel={() => void chatStore.cancel()}
         />
       </div>
-      {chatStore.pendingScenarioApproval ? (
-        <DangerModal
+      <DangerModal
+          open={chatStore.pendingScenarioApproval !== null}
           model={chatStore.pendingScenarioApproval}
           title="Продолжить сценарий?"
           description={(approval) => approval.prompt}
           confirmLabel="Продолжить"
           onCancel={() => void chatStore.approveScenario(false)}
           onConfirm={() => chatStore.approveScenario(true)}
-        />
-      ) : null}
-      {dialogToDelete ? (
-        <DangerModal
+      />
+      <DangerModal
+          open={dialogToDelete !== null}
           model={dialogToDelete}
           title="Удалить диалог?"
           description={(dialog) =>
@@ -178,8 +177,7 @@ export const ChatPage = observer(function ChatPage() {
             await chatStore.deleteConversation(Number(dialog.id));
             setDialogToDelete(null);
           }}
-        />
-      ) : null}
+      />
       {dialogToEdit ? (
         <Modal
           open
