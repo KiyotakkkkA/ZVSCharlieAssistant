@@ -5,7 +5,7 @@ description: "Creates structured Word reports compliant with GOST 7.32-2017 and 
 
 # Academic DOCX report creation
 
-Use `reports.docx` when the user asks for a report, coursework, practice report, or another academic Word document. Build the complete document in `blocks` and make one tool call. Do not send Markdown or HTML: document structure is expressed only through block types.
+Use `reports_docx` when the user asks for a report, coursework, practice report, or another academic Word document. Build the complete document in `blocks` and make one tool call. Do not send Markdown or HTML: document structure is expressed only through block types.
 
 ## Required call shape
 
@@ -33,13 +33,23 @@ Level 1 example:
 Level 2 example:
 
 ```json
-{ "type": "heading", "level": 2, "text": "1.1 Subject area overview", "numbered": true }
+{
+  "type": "heading",
+  "level": 2,
+  "text": "1.1 Subject area overview",
+  "numbered": true
+}
 ```
 
 Level 3 example:
 
 ```json
-{ "type": "heading", "level": 3, "text": "1.1.1 Existing process limitations", "numbered": true }
+{
+  "type": "heading",
+  "level": 3,
+  "text": "1.1.1 Existing process limitations",
+  "numbered": true
+}
 ```
 
 Unnumbered section example:
@@ -138,15 +148,61 @@ Use `pageBreak` before an appendix or another section that must explicitly start
   "fileName": "information-system-report.docx",
   "template": "mirea-report-gost",
   "blocks": [
-    { "type": "heading", "level": 1, "text": "INTRODUCTION", "numbered": false },
-    { "type": "paragraph", "paragraphs": ["The report describes the results of the completed practical work."] },
-    { "type": "heading", "level": 1, "text": "1 SYSTEM ANALYSIS", "numbered": true },
-    { "type": "heading", "level": 2, "text": "1.1 Requirements", "numbered": true },
-    { "type": "list", "style": "bullet", "items": ["reliable data storage;", "controlled access;", "auditable operations."] },
-    { "type": "table", "number": "1.1", "title": "System requirements", "headers": ["Requirement", "Priority"], "rows": [["Data integrity", "High"], ["Availability", "Medium"]] },
-    { "type": "code", "number": "1.1", "title": "Configuration example", "language": "json", "content": "{\n  \"enabled\": true\n}" },
+    {
+      "type": "heading",
+      "level": 1,
+      "text": "INTRODUCTION",
+      "numbered": false
+    },
+    {
+      "type": "paragraph",
+      "paragraphs": [
+        "The report describes the results of the completed practical work."
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 1,
+      "text": "1 SYSTEM ANALYSIS",
+      "numbered": true
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "1.1 Requirements",
+      "numbered": true
+    },
+    {
+      "type": "list",
+      "style": "bullet",
+      "items": [
+        "reliable data storage;",
+        "controlled access;",
+        "auditable operations."
+      ]
+    },
+    {
+      "type": "table",
+      "number": "1.1",
+      "title": "System requirements",
+      "headers": ["Requirement", "Priority"],
+      "rows": [
+        ["Data integrity", "High"],
+        ["Availability", "Medium"]
+      ]
+    },
+    {
+      "type": "code",
+      "number": "1.1",
+      "title": "Configuration example",
+      "language": "json",
+      "content": "{\n  \"enabled\": true\n}"
+    },
     { "type": "heading", "level": 1, "text": "CONCLUSION", "numbered": false },
-    { "type": "paragraph", "paragraphs": ["The objectives of the work were achieved."] }
+    {
+      "type": "paragraph",
+      "paragraphs": ["The objectives of the work were achieved."]
+    }
   ]
 }
 ```

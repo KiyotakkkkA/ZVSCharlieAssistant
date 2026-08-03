@@ -389,7 +389,7 @@ ${JSON.stringify(scenarioAgents, null, 2)}
           observer: {
             requested: () => undefined,
             completed: (event, _reference, result) => {
-              if (event.toolId === "vecdb.search" && Array.isArray(result)) {
+              if (event.toolId === "vecdb_search" && Array.isArray(result)) {
                 for (const source of result) {
                   if (!isVectorSource(source)) continue;
                   if (
@@ -402,8 +402,8 @@ ${JSON.stringify(scenarioAgents, null, 2)}
                     workerInput.knowledge.push(source);
                 }
               } else if (
-                event.toolId === "web.search" ||
-                event.toolId === "web.fetch"
+                event.toolId === "web_search" ||
+                event.toolId === "web_fetch"
               )
                 collectScenarioWebSources(
                   webSources,
@@ -411,9 +411,12 @@ ${JSON.stringify(scenarioAgents, null, 2)}
                   event.input,
                   result,
                 );
-              else if (event.toolId === "reports.docx") {
+              else if (event.toolId === "reports_docx") {
                 const artifact = parseScenarioArtifact(result);
-                if (artifact && !artifacts.some((item) => item.path === artifact.path))
+                if (
+                  artifact &&
+                  !artifacts.some((item) => item.path === artifact.path)
+                )
                   artifacts.push(artifact);
               }
             },
@@ -453,12 +456,18 @@ ${JSON.stringify(scenarioAgents, null, 2)}
     maxOutputTokens = 2400,
     tools?: ToolSet,
   ) {
+    const generationSettings = this.providers.generationSettings(modelId);
     const result = streamText({
       model: this.providers.resolve(modelId),
       system,
       prompt: typeof input === "string" ? input : JSON.stringify(input),
       abortSignal: signal,
-      maxOutputTokens,
+      maxOutputTokens: Math.min(
+        maxOutputTokens,
+        generationSettings.maxOutputTokens,
+      ),
+      temperature: generationSettings.temperature,
+      topP: generationSettings.topP,
       tools,
       stopWhen: tools ? stepCountIs(10) : undefined,
     });
@@ -469,7 +478,6 @@ ${JSON.stringify(scenarioAgents, null, 2)}
     }
     return text;
   }
-
 }
 
 const errorMessage = (error: unknown) =>
@@ -490,15 +498,15 @@ function parseScenarioArtifact(value: unknown): ScenarioArtifact | undefined {
 
 function collectScenarioWebSources(
   target: ScenarioWebSource[],
-  toolId: "web.search" | "web.fetch",
+  toolId: "web_search" | "web_fetch",
   input: unknown,
   output: unknown,
 ) {
   const result = isRecord(output) ? output : {};
   const rows =
-    toolId === "web.search" && Array.isArray(result.results)
+    toolId === "web_search" && Array.isArray(result.results)
       ? result.results
-      : toolId === "web.fetch"
+      : toolId === "web_fetch"
         ? [{ ...result, url: isRecord(input) ? input.url : undefined }]
         : [];
   for (const value of rows) {

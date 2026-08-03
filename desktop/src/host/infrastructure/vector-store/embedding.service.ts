@@ -16,7 +16,9 @@ export class EmbeddingService {
     let response: Response;
     try {
       response = await fetch(
-        `${model.base_url.replace(/\/+$/, "")}/api/embed`,
+        model.kind === "openrouter"
+          ? `${model.base_url.replace(/\/+$/, "")}/embeddings`
+          : `${model.base_url.replace(/\/+$/, "")}/api/embed`,
         {
           method: "POST",
           headers: {
@@ -38,22 +40,32 @@ export class EmbeddingService {
       throw new Error(
         `Embedding API вернул ${response.status}: ${(await response.text()).slice(0, 300)}`,
       );
-    const payload = (await response.json()) as { embeddings?: number[][] };
+    const payload = (await response.json()) as {
+      embeddings?: number[][];
+      data?: Array<{ embedding?: number[]; index?: number }>;
+    };
+    const embeddings =
+      model.kind === "openrouter"
+        ? (payload.data ?? [])
+            .slice()
+            .sort((left, right) => (left.index ?? 0) - (right.index ?? 0))
+            .map((item) => item.embedding ?? [])
+        : payload.embeddings;
     if (
-      !payload.embeddings?.length ||
-      payload.embeddings.length !== input.length
+      !embeddings?.length ||
+      embeddings.length !== input.length
     )
       throw new Error("Embedding API вернул некорректный ответ");
-    const dimension = payload.embeddings[0]?.length ?? 0;
+    const dimension = embeddings[0]?.length ?? 0;
     if (
       !dimension ||
-      payload.embeddings.some(
+      embeddings.some(
         (vector) =>
           vector.length !== dimension ||
           vector.some((value) => !Number.isFinite(value)),
       )
     )
       throw new Error("Embedding API вернул векторы некорректной размерности");
-    return payload.embeddings;
+    return embeddings;
   }
 }

@@ -222,10 +222,12 @@ export class RunEngine {
       const allowedTools =
         input.mode === "agent"
           ? (agentRuntime?.allowedToolIds ?? [])
-          : ["web.search", "web.fetch"];
+          : ["web_search", "web_fetch"];
       const system = `${baseSystem}${this.tools.skillCatalog(agentRuntime?.allowedSkillIds ?? [])}`;
+      const generationSettings = this.providers.generationSettings(input.modelId);
       const result = streamText({
         model: this.providers.resolve(input.modelId),
+        ...generationSettings,
         system,
         messages: history,
         tools: this.tools.createForChat(runId, emit, {
@@ -247,7 +249,9 @@ export class RunEngine {
         },
       });
       for await (const part of result.stream) {
-        if (part.type === "text-delta") {
+        if (part.type === "error") {
+          throw normalizeStreamError(part.error);
+        } else if (part.type === "text-delta") {
           this.data.appendText(assistantMessageId, part.text);
           emit({
             type: "text.delta",
@@ -293,4 +297,14 @@ export class RunEngine {
       this.controllers.delete(runId);
     }
   }
+}
+
+function normalizeStreamError(error: unknown): Error {
+  if (error instanceof Error) return error;
+  if (typeof error === "string") return new Error(error);
+  if (error && typeof error === "object" && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string" && message.trim()) return new Error(message);
+  }
+  return new Error("Ошибка при обращении к модели");
 }

@@ -210,11 +210,12 @@ export class VectorStoreDataSource {
   embeddingModel(id: number) {
     return this.db
       .prepare(
-        `SELECT m.remote_id,p.base_url,p.api_key_secret_id FROM text_provider_models m JOIN text_provider_configs p ON p.id=m.provider_id WHERE m.id=? AND m.enabled=1 AND p.enabled=1 AND p.provider_type='embedding'`,
+        `SELECT m.remote_id,p.kind,p.base_url,p.api_key_secret_id FROM text_provider_models m JOIN text_provider_configs p ON p.id=m.provider_id WHERE m.id=? AND m.enabled=1 AND p.enabled=1 AND p.provider_type='embedding'`,
       )
       .get(id) as
       | {
           remote_id: string;
+          kind: "ollama" | "openrouter";
           base_url: string;
           api_key_secret_id: number | null;
         }

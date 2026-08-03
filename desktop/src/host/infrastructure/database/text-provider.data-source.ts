@@ -4,6 +4,8 @@ import type {
   TextProviderModel,
   TextProviderModelDetails,
   TextProviderModelInfo,
+  TextProviderLimits,
+  TextProviderGenerationSettings,
   TextProviderSnapshot,
   UpsertTextProviderInput,
 } from "../../domain/models/text-provider";
@@ -18,6 +20,8 @@ interface ProviderRow {
   checked_at: string;
   created_at: string;
   updated_at: string;
+  limits_json: string | null;
+  generation_settings_json: string;
 }
 interface ModelRow {
   id: number;
@@ -51,6 +55,7 @@ export class TextProviderDataSource {
     id: number | undefined,
     checkedAt: string,
     models: TextProviderModelInfo[],
+    limits: TextProviderLimits | null,
   ): TextProviderSnapshot {
     this.database.transaction(() => {
       let providerId = id;
@@ -58,7 +63,7 @@ export class TextProviderDataSource {
         providerId = Number(
           this.database
             .prepare(
-              "INSERT INTO text_provider_configs (kind, provider_type, name, base_url, api_key_secret_id, enabled, checked_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+              "INSERT INTO text_provider_configs (kind, provider_type, name, base_url, api_key_secret_id, enabled, checked_at, limits_json, generation_settings_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             )
             .run(
               input.kind,
@@ -68,12 +73,14 @@ export class TextProviderDataSource {
               input.apiKeySecretId ?? null,
               Number(input.enabled),
               checkedAt,
+              limits ? JSON.stringify(limits) : null,
+              JSON.stringify(input.generationSettings),
             ).lastInsertRowid,
         );
       else {
         const result = this.database
           .prepare(
-            "UPDATE text_provider_configs SET kind=?, provider_type=?, name=?, base_url=?, api_key_secret_id=?, enabled=?, checked_at=?, updated_at=CURRENT_TIMESTAMP WHERE id=?",
+            "UPDATE text_provider_configs SET kind=?, provider_type=?, name=?, base_url=?, api_key_secret_id=?, enabled=?, checked_at=?, limits_json=?, generation_settings_json=?, updated_at=CURRENT_TIMESTAMP WHERE id=?",
           )
           .run(
             input.kind,
@@ -83,6 +90,8 @@ export class TextProviderDataSource {
             input.apiKeySecretId ?? null,
             Number(input.enabled),
             checkedAt,
+            limits ? JSON.stringify(limits) : null,
+            JSON.stringify(input.generationSettings),
             providerId,
           );
         if (!result.changes) throw new Error("Провайдер не найден");
@@ -136,9 +145,22 @@ const mapProvider = (row: ProviderRow): TextProviderConfig => ({
   apiKeySecretId: row.api_key_secret_id,
   enabled: Boolean(row.enabled),
   checkedAt: row.checked_at,
+  limits: row.limits_json
+    ? (JSON.parse(row.limits_json) as TextProviderLimits)
+    : null,
+  generationSettings: parseGenerationSettings(row.generation_settings_json),
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
+
+const parseGenerationSettings = (value: string): TextProviderGenerationSettings => {
+  const parsed = JSON.parse(value || "{}") as Partial<TextProviderGenerationSettings>;
+  return {
+    maxOutputTokens: parsed.maxOutputTokens ?? 2048,
+    temperature: parsed.temperature ?? 0.7,
+    topP: parsed.topP ?? 0.9,
+  };
+};
 const mapModel = (row: ModelRow): TextProviderModel => ({
   providerId: row.provider_id,
   id: row.id,

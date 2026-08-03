@@ -23,7 +23,7 @@ export const DEFAULT_SKILLS: readonly DefaultSkillDefinition[] = [
       "Creates structured Word reports compliant with GOST 7.32-2017 and RTU MIREA academic formatting requirements.",
     version: "1.1.0",
     author: "ZVS Assistant",
-    requiredToolIds: ["reports.docx"],
+    requiredToolIds: ["reports_docx"],
     instructions,
   },
 ] as const;

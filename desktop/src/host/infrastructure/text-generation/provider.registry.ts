@@ -1,5 +1,6 @@
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import type { LanguageModel } from "ai";
+import type { TextProviderGenerationSettings } from "../../domain/models/text-provider";
 import type { SecretStorageRepository } from "../../application/ports/secret-storage.repository";
 import { ChatDataSource } from "../database/chat.data-source";
 export class ProviderRegistry {
@@ -10,16 +11,40 @@ export class ProviderRegistry {
   resolve(modelId: number): LanguageModel {
     const row = this.data.resolveModel(modelId);
     if (!row) throw new Error("Модель отключена или не найдена");
-    if (row.kind !== "ollama")
-      throw new Error(`Провайдер ${row.kind} пока не поддерживается runtime`);
     const apiKey = row.api_key_secret_id
       ? this.secrets.getSecret(row.api_key_secret_id)?.content
       : undefined;
     const provider = createOpenAICompatible({
-      name: `ollama-${modelId}`,
-      baseURL: `${row.base_url.replace(/\/+$/, "")}/v1`,
-      apiKey: apiKey || "ollama",
+      name: row.kind,
+      baseURL:
+        row.kind === "ollama"
+          ? `${row.base_url.replace(/\/+$/, "")}/v1`
+          : row.base_url.replace(/\/+$/, ""),
+      apiKey: apiKey || (row.kind === "ollama" ? "ollama" : undefined),
+      headers:
+        row.kind === "openrouter"
+          ? { "X-OpenRouter-Title": "ZVS Assistant" }
+          : undefined,
     });
     return provider.chatModel(row.remote_id);
+  }
+
+  generationSettings(modelId: number): TextProviderGenerationSettings {
+    const row = this.data.resolveModel(modelId);
+    if (!row) throw new Error("Модель отключена или не найдена");
+    const configured = JSON.parse(
+      row.generation_settings_json || "{}",
+    ) as Partial<TextProviderGenerationSettings>;
+    const details = JSON.parse(row.details_json || "{}") as {
+      maxCompletionTokens?: number;
+    };
+    const requested = configured.maxOutputTokens ?? 2048;
+    return {
+      maxOutputTokens: details.maxCompletionTokens
+        ? Math.min(requested, details.maxCompletionTokens)
+        : requested,
+      temperature: configured.temperature ?? 0.7,
+      topP: configured.topP ?? 0.9,
+    };
   }
 }

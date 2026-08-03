@@ -137,6 +137,7 @@ export const ChatPage = observer(function ChatPage() {
               role: item.role as "user" | "assistant",
               text: item.text,
               reasoning: item.reasoning,
+              error: item.error,
               toolCalls: item.toolCalls,
               scenarioRunId: item.scenarioRunId,
               status: item.status,

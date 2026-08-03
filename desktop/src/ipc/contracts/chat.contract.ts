@@ -25,6 +25,7 @@ export interface ChatMessage {
   status: "streaming" | "completed" | "failed" | "cancelled";
   text: string;
   reasoning: string;
+  error: string | null;
   toolCalls: ChatToolCall[];
   createdAt: string;
 }

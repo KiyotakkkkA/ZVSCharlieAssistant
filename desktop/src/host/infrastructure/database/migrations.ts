@@ -415,6 +415,25 @@ const migrations: readonly Migration[] = [
       `);
     },
   },
+  {
+    version: 10,
+    up(database) {
+      database.exec(`
+        ALTER TABLE text_provider_configs
+          ADD COLUMN limits_json TEXT;
+      `);
+    },
+  },
+  {
+    version: 11,
+    up(database) {
+      database.exec(`
+        ALTER TABLE text_provider_configs
+          ADD COLUMN generation_settings_json TEXT NOT NULL
+          DEFAULT '{"maxOutputTokens":2048,"temperature":0.7,"topP":0.9}';
+      `);
+    },
+  },
 ];
 
 export function runMigrations(database: Database.Database): void {

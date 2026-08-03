@@ -220,7 +220,7 @@ function collectToolVectorRows(toolCalls?: ChatToolCall[]) {
   const cached = toolVectorCache.get(toolCalls);
   if (cached) return cached;
   const rows = toolCalls.flatMap((call) =>
-    call.toolId === "vecdb.search" &&
+    call.toolId === "vecdb_search" &&
     call.status === "completed" &&
     Array.isArray(call.output)
       ? call.output.filter(isVectorSource)
@@ -237,14 +237,14 @@ function collectWebSources(toolCalls?: ChatToolCall[]) {
   const sources = new Map<string, WebChatSource>();
   for (const call of toolCalls) {
     if (call.status !== "completed") continue;
-    if (call.toolId === "web.search") {
+    if (call.toolId === "web_search") {
       const output = asRecord(call.output);
       const results = Array.isArray(output?.results) ? output.results : [];
       for (const result of results) {
         const row = asRecord(result);
         addWebSource(sources, row?.url, row?.title, row?.content);
       }
-    } else if (call.toolId === "web.fetch") {
+    } else if (call.toolId === "web_fetch") {
       const output = asRecord(call.output);
       const input = asRecord(call.input);
       addWebSource(sources, input?.url, output?.title, output?.content);

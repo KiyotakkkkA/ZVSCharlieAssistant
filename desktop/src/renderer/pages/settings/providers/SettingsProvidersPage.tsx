@@ -6,7 +6,11 @@ import {
   Tabs,
   useToasts,
 } from "@kiyotakkkka/zvs-uikit-lib";
-import { OllamaIcon, RobotIcon } from "../../../components/atoms";
+import {
+  OllamaIcon,
+  OpenrouterIcon,
+  RobotIcon,
+} from "../../../components/atoms";
 import {
   ControlButton,
   PrimaryButton,
@@ -24,6 +28,12 @@ import { DangerModal } from "@renderer/components/organisms/modals";
 
 const ICONS = {
   ollama: OllamaIcon,
+  openrouter: OpenrouterIcon,
+} as const;
+
+const PROVIDER_LABELS = {
+  ollama: "Ollama",
+  openrouter: "OpenRouter",
 } as const;
 
 const statusMeta: Record<ProviderStatus, { label: string; className: string }> =
@@ -54,7 +64,8 @@ export const SettingsProvidersPage = observer(function SettingsProvidersPage() {
     selected?.status === "connected" &&
     !checking &&
     Boolean(selected.name.trim()) &&
-    Boolean(selected.baseUrl.trim());
+    Boolean(selected.baseUrl.trim()) &&
+    (selected.kind !== "openrouter" || Boolean(selected.apiKeySecretId));
 
   useEffect(() => {
     if (!textProviderStore.initialized) return;
@@ -66,6 +77,7 @@ export const SettingsProvidersPage = observer(function SettingsProvidersPage() {
         models: textProviderStore.models
           .filter((model) => model.providerId === provider.id)
           .map((model) => ({ ...model, id: model.remoteId })),
+        limits: provider.limits,
       }),
     );
     setProviders((current) =>
@@ -102,6 +114,7 @@ export const SettingsProvidersPage = observer(function SettingsProvidersPage() {
       status: "unchecked",
       models: [],
       checkedAt: undefined,
+      limits: null,
     });
   const updateModel = (id: string, enabled: boolean) =>
     selected &&
@@ -123,6 +136,12 @@ export const SettingsProvidersPage = observer(function SettingsProvidersPage() {
         enabled: true,
         status: "unchecked",
         models: [],
+        limits: null,
+        generationSettings: {
+          maxOutputTokens: 2048,
+          temperature: 0.7,
+          topP: 0.9,
+        },
       },
     ]);
     setSelectedId("draft");
@@ -142,6 +161,7 @@ export const SettingsProvidersPage = observer(function SettingsProvidersPage() {
       updateSelected({
         status: "connected",
         checkedAt: result.checkedAt,
+        limits: result.limits,
         models: result.models.map((model) => ({
           ...model,
           enabled:
@@ -154,9 +174,14 @@ export const SettingsProvidersPage = observer(function SettingsProvidersPage() {
         description: `Получено моделей: ${result.models.length}.`,
       });
     } catch (error) {
-      updateSelected({ status: "error", models: [], checkedAt: undefined });
+      updateSelected({
+        status: "error",
+        models: [],
+        checkedAt: undefined,
+        limits: null,
+      });
       toasts.danger({
-        title: "Не удалось подключиться к Ollama",
+        title: `Не удалось подключиться к ${PROVIDER_LABELS[selected.kind]}`,
         description:
           error instanceof Error ? error.message : "Неизвестная ошибка",
       });
@@ -211,7 +236,8 @@ export const SettingsProvidersPage = observer(function SettingsProvidersPage() {
                       {provider.name}
                     </span>
                     <span className="mt-1 block text-xs text-main-500">
-                      Ollama · {provider.models.length} моделей
+                      {PROVIDER_LABELS[provider.kind]} ·{" "}
+                      {provider.models.length} моделей
                     </span>
                     <span
                       className={`mt-2 block text-[10px] ${statusMeta[provider.status].className}`}

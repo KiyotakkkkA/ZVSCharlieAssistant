@@ -1,8 +1,10 @@
 import { useState } from "react";
 import {
   Badge,
+  Alert,
   Button,
   InputCheckSlided,
+  InputCheckBox,
   InputSmall,
   ScrollArea,
   Select,
@@ -11,18 +13,23 @@ import {
 import type {
   TextProviderKind,
   TextProviderModelInfo,
+  TextProviderLimits,
+  TextProviderGenerationSettings,
   TextProviderType,
 } from "../../../../ipc/contracts";
 import {
   RefreshIcon,
-  RobotIcon,
-  SaveIcon,
   SecretOrientedSelect,
   Field,
   Lead,
   OllamaIcon,
+  OpenrouterIcon,
+  ParameterLabel,
 } from "../../atoms";
-import { SettingsProviderModelCard } from "../../molecules";
+import {
+  SettingsProviderOllamaModelCard,
+  SettingsProviderOpenrouterModelCard,
+} from "../../molecules";
 import { textProviderStore } from "../../../stores";
 import { PrimaryButton } from "@renderer/components/atoms/buttons";
 
@@ -42,6 +49,8 @@ export interface SettingsProviderDraft {
   status: ProviderStatus;
   models: ProviderModelDraft[];
   checkedAt?: string;
+  limits: TextProviderLimits | null;
+  generationSettings: TextProviderGenerationSettings;
 }
 
 interface SettingsProviderManageFormProps {
@@ -56,7 +65,13 @@ interface SettingsProviderManageFormProps {
 
 const ICONS = {
   ollama: OllamaIcon,
+  openrouter: OpenrouterIcon,
 } as const;
+
+const PROVIDER_LABELS: Record<TextProviderKind, string> = {
+  ollama: "Ollama",
+  openrouter: "OpenRouter",
+};
 
 const IconResolver = (icon: keyof typeof ICONS) => {
   const IconComponent = ICONS[icon];
@@ -74,6 +89,29 @@ export function SettingsProviderManageForm({
 }: SettingsProviderManageFormProps) {
   const toasts = useToasts();
   const [saving, setSaving] = useState(false);
+  const [modelQuery, setModelQuery] = useState("");
+  const [freeOnly, setFreeOnly] = useState(false);
+  const [noTrainingOnly, setNoTrainingOnly] = useState(false);
+  const visibleModels = model.models.filter((item) => {
+    const query = modelQuery.trim().toLocaleLowerCase();
+    const matchesQuery =
+      !query ||
+      item.name.toLocaleLowerCase().includes(query) ||
+      item.id.toLocaleLowerCase().includes(query);
+    const isFree = [
+      item.details.promptPrice,
+      item.details.completionPrice,
+      item.details.requestPrice,
+    ].every((price) => Number(price ?? 0) === 0);
+    return (
+      matchesQuery &&
+      (model.kind !== "openrouter" || !freeOnly || isFree) &&
+      (model.kind !== "openrouter" ||
+        !noTrainingOnly ||
+        item.details.doesNotTrain === true ||
+        item.details.zeroDataRetention === true)
+    );
+  });
   const save = async () => {
     setSaving(true);
     try {
@@ -90,6 +128,7 @@ export function SettingsProviderManageForm({
         enabledModelIds: model.models
           .filter((item) => item.enabled)
           .map((item) => item.id),
+        generationSettings: model.generationSettings,
       });
       toasts.success({
         title: "Настройки сохранены",
@@ -125,7 +164,7 @@ export function SettingsProviderManageForm({
                   rounded="rounded-full"
                   className="bg-main-700/60 text-main-300"
                 >
-                  Ollama
+                  {PROVIDER_LABELS[model.kind]}
                 </Badge>
               </div>
               <p className="mt-1 text-xs text-main-500">
@@ -142,7 +181,11 @@ export function SettingsProviderManageForm({
               className="px-4"
               loading={checking}
               loadingText="Проверка…"
-              disabled={!model.baseUrl.trim() || checking}
+              disabled={
+                !model.baseUrl.trim() ||
+                (model.kind === "openrouter" && !model.apiKeySecretId) ||
+                checking
+              }
               onClick={() => void onTestConnection()}
             >
               Проверить подключение
@@ -159,7 +202,7 @@ export function SettingsProviderManageForm({
         <div className="mt-5 grid gap-5 xl:grid-cols-[220px_minmax(0,1fr)]">
           <Lead
             title="Подключение"
-            description="Endpoint, тип провайдера и опциональный ключ."
+            description="Настройки подключения к провайдеру."
           />
           <div className="grid gap-4 rounded-xl bg-main-800/35 p-4 md:grid-cols-2">
             <Field label="Название">
@@ -171,14 +214,28 @@ export function SettingsProviderManageForm({
             <Field label="Тип провайдера">
               <Select
                 className="w-full"
-                value="ollama"
-                onChange={() => undefined}
-                options={[{ value: "ollama", label: "Ollama" }]}
-                disabled
+                value={model.kind}
+                onChange={(value) => {
+                  const kind = value as TextProviderKind;
+                  onConnectionChange({
+                    kind,
+                    baseUrl:
+                      kind === "openrouter"
+                        ? "https://openrouter.ai/api/v1"
+                        : "http://127.0.0.1:11434",
+                    apiKeySecretId: "",
+                    limits: null,
+                  });
+                }}
+                options={[
+                  { value: "ollama", label: "Ollama" },
+                  { value: "openrouter", label: "OpenRouter" },
+                ]}
               >
                 <Select.Trigger className="w-full" />
                 <Select.Menu>
                   <Select.Option value="ollama" label="Ollama" />
+                  <Select.Option value="openrouter" label="OpenRouter" />
                 </Select.Menu>
               </Select>
             </Field>
@@ -191,14 +248,21 @@ export function SettingsProviderManageForm({
                 placeholder="http://127.0.0.1:11434"
               />
             </Field>
-            <Field label="Ключ API (необязательно)" className="md:col-span-2">
+            <Field
+              label={`Ключ API${model.kind === "openrouter" ? "" : " (необязательно)"}`}
+              className="md:col-span-2"
+            >
               <SecretOrientedSelect
                 categoryId={API_KEYS_CATEGORY_ID}
                 value={model.apiKeySecretId}
                 onChange={(apiKeySecretId) =>
                   onConnectionChange({ apiKeySecretId })
                 }
-                placeholder="Выберите ключ или оставьте поле пустым..."
+                placeholder={
+                  model.kind === "openrouter"
+                    ? "Выберите OpenRouter API key"
+                    : "Выберите ключ или оставьте поле пустым..."
+                }
                 searchable
                 searchPlaceholder="Найти ключ"
                 className="w-full"
@@ -206,6 +270,9 @@ export function SettingsProviderManageForm({
                 menuWidth="auto"
               />
             </Field>
+            {model.kind === "openrouter" && model.limits ? (
+              <OpenRouterLimits limits={model.limits} />
+            ) : null}
             <div className="md:col-span-2 flex items-center justify-between rounded-lg bg-main-700/20 p-3">
               <div>
                 <p className="text-sm font-medium text-main-200">
@@ -223,50 +290,226 @@ export function SettingsProviderManageForm({
               />
             </div>
           </div>
-          <Lead
-            title="Модели"
-            description="Список появляется только после успешной проверки."
-          />
-          <div className="rounded-xl bg-main-800/35 p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <span className="text-xs text-main-500">
-                Доступно: {model.models.length}
-              </span>
-              <Button
-                variant="ghost"
-                rounded="rounded-lg"
-                className="px-3 text-main-300"
-                loading={checking}
-                disabled={model.status !== "connected" || checking}
-                onClick={() => void onTestConnection()}
-              >
-                <RefreshIcon className="size-4" />
-                Синхронизировать
-              </Button>
-            </div>
-            {model.models.length ? (
-              <div className="space-y-2">
-                {model.models.map((item) => (
-                  <SettingsProviderModelCard
-                    key={item.id}
-                    model={item}
-                    enabled={item.enabled}
-                    onEnabledChange={(enabled) =>
-                      onModelChange(item.id, enabled)
+          {model.providerType === "text" ? (
+            <>
+              <Lead
+                title="Генерация"
+                description="Параметры генерации ответа"
+              />
+              <div className="grid gap-4 rounded-xl bg-main-800/35 p-4 md:grid-cols-3">
+                <Field
+                  label={
+                    <ParameterLabel description="Верхняя граница длины одного ответа модели. Чем выше значение, тем больше потенциальная стоимость запроса и расход доступного лимита. Для OpenRouter значение дополнительно ограничивается максимумом выбранной модели.">
+                      Максимум токенов ответа
+                    </ParameterLabel>
+                  }
+                >
+                  <InputSmall
+                    type="number"
+                    min={1}
+                    max={131072}
+                    value={model.generationSettings.maxOutputTokens}
+                    onChange={(event) =>
+                      onChange({
+                        generationSettings: {
+                          ...model.generationSettings,
+                          maxOutputTokens: clampNumber(
+                            event.target.value,
+                            1,
+                            131072,
+                          ),
+                        },
+                      })
                     }
                   />
-                ))}
+                </Field>
+                <Field
+                  label={
+                    <ParameterLabel description="Управляет случайностью генерации: низкие значения делают ответы более предсказуемыми и точными, высокие — более разнообразными и творческими.">
+                      Температура
+                    </ParameterLabel>
+                  }
+                >
+                  <InputSmall
+                    type="number"
+                    min={0}
+                    max={2}
+                    step={0.1}
+                    value={model.generationSettings.temperature}
+                    onChange={(event) =>
+                      onChange({
+                        generationSettings: {
+                          ...model.generationSettings,
+                          temperature: clampNumber(event.target.value, 0, 2),
+                        },
+                      })
+                    }
+                  />
+                </Field>
+                <Field
+                  label={
+                    <ParameterLabel description="Ограничивает выбор токенов наиболее вероятной частью распределения. Обычно достаточно менять либо Top P, либо температуру, не оба параметра одновременно.">
+                      Top P
+                    </ParameterLabel>
+                  }
+                >
+                  <InputSmall
+                    type="number"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={model.generationSettings.topP}
+                    onChange={(event) =>
+                      onChange({
+                        generationSettings: {
+                          ...model.generationSettings,
+                          topP: clampNumber(event.target.value, 0, 1),
+                        },
+                      })
+                    }
+                  />
+                </Field>
+                {model.kind === "openrouter" && (
+                  <Alert
+                    variant="info"
+                    title="Лимит OpenRouter"
+                    className="md:col-span-3"
+                  >
+                    Лимит ответа применяется к каждому запросу и дополнительно
+                    ограничивается возможностями выбранной модели. Уменьшите его
+                    при ошибке нехватки кредитов.
+                  </Alert>
+                )}
+              </div>
+            </>
+          ) : null}
+          <Lead
+            title="Модели"
+            description="Список доступных моделей провайдера."
+          />
+          <div className="rounded-xl bg-main-800/35 p-4">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <span className="text-xs text-main-500">
+                {visibleModels.length === model.models.length
+                  ? `Доступно: ${model.models.length}`
+                  : `Показано: ${visibleModels.length} из ${model.models.length}`}
+              </span>
+              <div className="flex items-center gap-2">
+                {model.models.length ? (
+                  <InputSmall
+                    value={modelQuery}
+                    onChange={(event) => setModelQuery(event.target.value)}
+                    placeholder="Найти модель"
+                    className="w-56"
+                  />
+                ) : null}
+                <Button
+                  variant="ghost"
+                  rounded="rounded-lg"
+                  className="px-3 text-main-300"
+                  loading={checking}
+                  disabled={model.status !== "connected" || checking}
+                  onClick={() => void onTestConnection()}
+                >
+                  <RefreshIcon className="size-4" />
+                  Синхронизировать
+                </Button>
+              </div>
+            </div>
+            {model.kind === "openrouter" && model.models.length ? (
+              <div className="mb-3 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-main-700/30 pt-3">
+                <InputCheckBox
+                  checked={freeOnly}
+                  onChange={setFreeOnly}
+                  className="whitespace-nowrap text-xs text-main-300"
+                >
+                  Только бесплатные
+                </InputCheckBox>
+                <InputCheckBox
+                  checked={noTrainingOnly}
+                  onChange={setNoTrainingOnly}
+                  className="whitespace-nowrap text-xs text-main-300"
+                >
+                  Не использует данные для обучения
+                </InputCheckBox>
+              </div>
+            ) : null}
+            {visibleModels.length ? (
+              <div className="space-y-2">
+                {visibleModels.map((item) =>
+                  model.kind === "openrouter" ? (
+                    <SettingsProviderOpenrouterModelCard
+                      key={item.id}
+                      model={item}
+                      enabled={item.enabled}
+                      onEnabledChange={(enabled) =>
+                        onModelChange(item.id, enabled)
+                      }
+                    />
+                  ) : (
+                    <SettingsProviderOllamaModelCard
+                      key={item.id}
+                      model={item}
+                      enabled={item.enabled}
+                      onEnabledChange={(enabled) =>
+                        onModelChange(item.id, enabled)
+                      }
+                    />
+                  ),
+                )}
               </div>
             ) : (
               <div className="grid min-h-36 place-items-center rounded-lg border border-dashed border-main-700 px-6 text-center text-sm text-main-500">
-                {model.status === "error"
-                  ? "Исправьте параметры и повторите проверку подключения."
-                  : "Проверьте подключение"}
+                {model.models.length &&
+                (modelQuery.trim() || freeOnly || noTrainingOnly)
+                  ? "Модели не соответствуют выбранным фильтрам. Синхронизируйте список, если провайдер был проверен до добавления фильтров."
+                  : model.status === "error"
+                    ? "Исправьте параметры и повторите проверку подключения."
+                    : "Проверьте подключение"}
               </div>
             )}
           </div>
         </div>
       </div>
     </ScrollArea>
+  );
+}
+
+function clampNumber(value: string, min: number, max: number) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : min;
+}
+
+function OpenRouterLimits({ limits }: { limits: TextProviderLimits }) {
+  const money = (value: number | null) =>
+    value === null
+      ? "Без ограничения"
+      : `$${value.toLocaleString("ru-RU", { maximumFractionDigits: 4 })}`;
+  return (
+    <div className="md:col-span-2 grid gap-3 rounded-xl bg-main-700/20 p-4 sm:grid-cols-3">
+      <div>
+        <p className="text-[11px] text-main-500">Остаток лимита</p>
+        <p className="mt-1 text-base font-semibold text-accent-light">
+          {money(limits.limitRemaining)}
+        </p>
+      </div>
+      <div>
+        <p className="text-[11px] text-main-500">Использовано</p>
+        <p className="mt-1 text-base font-semibold text-main-100">
+          {money(limits.usage)}
+        </p>
+      </div>
+      <div>
+        <p className="text-[11px] text-main-500">Период сброса</p>
+        <p className="mt-1 text-sm font-medium text-main-200">
+          {limits.limitReset ?? "Не задан"}
+        </p>
+      </div>
+      <p className="sm:col-span-3 text-[11px] text-main-500">
+        За день: {money(limits.usageDaily)} · за неделю:{" "}
+        {money(limits.usageWeekly)} · за месяц: {money(limits.usageMonthly)}
+        {limits.isFreeTier ? " · бесплатный тариф" : ""}
+      </p>
+    </div>
   );
 }

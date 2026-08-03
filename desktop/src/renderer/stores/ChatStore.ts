@@ -293,7 +293,14 @@ export class ChatStore {
           message.role === "assistant" &&
           (message.runId === event.runId ||
             message.scenarioRunId === event.runId)
-            ? { ...message, status }
+            ? {
+                ...message,
+                status,
+                error:
+                  event.type === "run.failed"
+                    ? event.message
+                    : null,
+              }
             : message,
         );
       }

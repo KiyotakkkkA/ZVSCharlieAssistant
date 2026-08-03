@@ -73,7 +73,7 @@ export class SqliteAutomationRepository implements AutomationRepository {
 
     const allowedToolIds = normalizeIds(input.allowedToolIds);
     this.assertToolsExist(allowedToolIds);
-    const allowedVectorStoreIds = allowedToolIds.includes("vecdb.search")
+    const allowedVectorStoreIds = allowedToolIds.includes("vecdb_search")
       ? [...new Set(input.allowedVectorStoreIds)]
       : [];
     for (const storeId of allowedVectorStoreIds) {
@@ -83,14 +83,22 @@ export class SqliteAutomationRepository implements AutomationRepository {
         throw new Error(`Векторное хранилище #${storeId} недоступно`);
     }
     const allowedSkillIds = [...new Set(input.allowedSkillIds)];
-    const skillsById = new Map(this.listSkills().map((skill) => [skill.id, skill]));
+    const skillsById = new Map(
+      this.listSkills().map((skill) => [skill.id, skill]),
+    );
     for (const skillId of allowedSkillIds) {
       const skill = skillsById.get(skillId);
       if (!Number.isInteger(skillId) || !skill)
         throw new Error(`Навык #${skillId} не найден`);
-      if (skill.status !== "active") throw new Error(`Навык «${skill.name}» не активен`);
-      const missingTool = skill.requiredToolIds.find((toolId) => !allowedToolIds.includes(toolId));
-      if (missingTool) throw new Error(`Для навыка «${skill.name}» разрешите инструмент ${missingTool}`);
+      if (skill.status !== "active")
+        throw new Error(`Навык «${skill.name}» не активен`);
+      const missingTool = skill.requiredToolIds.find(
+        (toolId) => !allowedToolIds.includes(toolId),
+      );
+      if (missingTool)
+        throw new Error(
+          `Для навыка «${skill.name}» разрешите инструмент ${missingTool}`,
+        );
     }
 
     const id = input.id ?? randomUUID();
@@ -115,12 +123,18 @@ export class SqliteAutomationRepository implements AutomationRepository {
   }
 
   upsertSkill(input: UpsertAutomationSkillInput): AutomationSkill {
-    if (!statuses.has(input.status)) throw new Error("Недопустимый статус навыка");
-    const previous = input.id ? this.listSkills().find((skill) => skill.id === input.id) : undefined;
-    if (previous?.builtin) throw new Error("Системный навык доступен только для чтения");
+    if (!statuses.has(input.status))
+      throw new Error("Недопустимый статус навыка");
+    const previous = input.id
+      ? this.listSkills().find((skill) => skill.id === input.id)
+      : undefined;
+    if (previous?.builtin)
+      throw new Error("Системный навык доступен только для чтения");
     const slug = input.slug.trim().toLowerCase();
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug))
-      throw new Error("Slug может содержать строчные латинские буквы, цифры и дефисы");
+      throw new Error(
+        "Slug может содержать строчные латинские буквы, цифры и дефисы",
+      );
     const requiredToolIds = normalizeIds(input.requiredToolIds);
     this.assertToolsExist(requiredToolIds);
     const normalized: UpsertAutomationSkillInput = {

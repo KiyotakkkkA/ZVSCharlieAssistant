@@ -43,6 +43,7 @@ export interface ChatMessage {
   role: "user" | "assistant";
   text: string;
   reasoning?: string;
+  error?: string | null;
   toolCalls?: ChatToolCall[];
   scenarioRunId?: number | null;
   status?: "streaming" | "completed" | "failed" | "cancelled";
@@ -219,6 +220,7 @@ export function ChatFeed({
                     text={message.text}
                     reasoning={message.reasoning}
                     status={message.status}
+                    error={message.error}
                     toolCalls={message.toolCalls}
                     disabled={actionsDisabled}
                     onCopy={() => void copyMessage(message.text)}

@@ -9,7 +9,7 @@ const ollamaApiKey = {
 
 export const BUILTIN_AUTOMATION_TOOLS: readonly AutomationTool[] = [
   {
-    id: "web.search",
+    id: "web_search",
     name: "Поиск в интернете",
     description: "Ищет информацию и возвращает список источников.",
     category: "Интернет",
@@ -43,7 +43,7 @@ export const BUILTIN_AUTOMATION_TOOLS: readonly AutomationTool[] = [
     secretBindings: [],
   },
   {
-    id: "web.fetch",
+    id: "web_fetch",
     name: "Поиск на странице",
     description: "Получает очищенное содержимое страницы",
     category: "Интернет",
@@ -69,7 +69,7 @@ export const BUILTIN_AUTOMATION_TOOLS: readonly AutomationTool[] = [
     secretBindings: [],
   },
   {
-    id: "vecdb.search",
+    id: "vecdb_search",
     name: "Поиск в векторной базе",
     description: "Ищет релевантные фрагменты в разрешённых базах знаний.",
     category: "База знаний",
@@ -94,9 +94,10 @@ export const BUILTIN_AUTOMATION_TOOLS: readonly AutomationTool[] = [
     secretBindings: [],
   },
   {
-    id: "reports.docx",
+    id: "reports_docx",
     name: "Создание отчётов DOCX",
-    description: "Создаёт структурированный документ Word по встроенному шаблону оформления ГОСТ.",
+    description:
+      "Создаёт структурированный документ Word по встроенному шаблону оформления ГОСТ.",
     category: "Документы",
     builtin: true,
     enabled: true,

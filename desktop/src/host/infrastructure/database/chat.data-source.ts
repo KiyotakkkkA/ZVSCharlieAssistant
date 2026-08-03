@@ -312,7 +312,7 @@ export class ChatDataSource {
   resolveModel(id: number) {
     return this.db
       .prepare(
-        "SELECT m.id,m.remote_id,p.kind,p.base_url,p.api_key_secret_id FROM text_provider_models m JOIN text_provider_configs p ON p.id=m.provider_id WHERE m.id=? AND m.enabled=1 AND p.enabled=1 AND p.provider_type='text'",
+        "SELECT m.id,m.remote_id,m.details_json,p.kind,p.base_url,p.api_key_secret_id,p.generation_settings_json FROM text_provider_models m JOIN text_provider_configs p ON p.id=m.provider_id WHERE m.id=? AND m.enabled=1 AND p.enabled=1 AND p.provider_type='text'",
       )
       .get(id) as
       | {
@@ -321,6 +321,8 @@ export class ChatDataSource {
           kind: string;
           base_url: string;
           api_key_secret_id: number | null;
+          details_json: string;
+          generation_settings_json: string;
         }
       | undefined;
   }
@@ -357,6 +359,10 @@ export class ChatDataSource {
   private mapMessage(row: MessageRow): ChatMessage {
     const message = mapMessage(row);
     if (!row.run_id || row.role !== "assistant") return message;
+    const run = this.db
+      .prepare("SELECT error_message FROM generation_runs WHERE id=?")
+      .get(row.run_id) as { error_message: string | null } | undefined;
+    message.error = run?.error_message ?? null;
     const calls = this.db
       .prepare(
         "SELECT id,tool_id,status,input_json,output_json,error_message FROM generation_tool_calls WHERE run_id=? ORDER BY id",
@@ -408,6 +414,7 @@ const mapMessage = (r: MessageRow): ChatMessage => {
       .filter((p) => p.type === "reasoning")
       .map((p) => p.text ?? "")
       .join(""),
+    error: null,
     toolCalls: [],
     createdAt: r.created_at,
   };

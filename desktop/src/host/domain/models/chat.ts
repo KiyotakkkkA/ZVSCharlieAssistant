@@ -4,7 +4,7 @@ export type ChatMode = "chat" | "planner" | "agent" | "scenario";
 export type RunStatus = "queued" | "running" | "waiting_for_approval" | "completed" | "failed" | "cancelled";
 export interface ChatConversation { id: number; title: string; mode: ChatMode; agentId: string | null; modelId: number | null; updatedAt: string }
 export interface ChatToolCall { id: number; toolId: string; status: "requested" | "running" | "completed" | "failed"; input: unknown; output: unknown | null; error: string | null }
-export interface ChatMessage { id: number; conversationId: number; runId: number | null; scenarioRunId: number | null; role: "system" | "user" | "assistant" | "tool"; status: "streaming" | "completed" | "failed" | "cancelled"; text: string; reasoning: string; toolCalls: ChatToolCall[]; createdAt: string }
+export interface ChatMessage { id: number; conversationId: number; runId: number | null; scenarioRunId: number | null; role: "system" | "user" | "assistant" | "tool"; status: "streaming" | "completed" | "failed" | "cancelled"; text: string; reasoning: string; error: string | null; toolCalls: ChatToolCall[]; createdAt: string }
 export interface ChatSnapshot { conversations: ChatConversation[]; messages: ChatMessage[]; hasMoreMessages: boolean }
 export interface ChatMessagePage { messages: ChatMessage[]; hasMore: boolean }
 export interface StartRunInput { conversationId?: number; mode: ChatMode; modelId?: number; agentId?: string; scenarioId?: string; text: string }
