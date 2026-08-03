@@ -1,11 +1,5 @@
 import { ScrollArea, useToasts } from "@kiyotakkkka/zvs-uikit-lib";
-import {
-  memo,
-  useLayoutEffect,
-  useRef,
-  useState,
-  type UIEvent,
-} from "react";
+import { memo, useLayoutEffect, useRef, useState, type UIEvent } from "react";
 import {
   ChatIcon,
   RobotIcon,
@@ -38,7 +32,7 @@ const EMPTY_SCENARIO_OUTPUT = new Map<string, string>();
 const EMPTY_CHAT_SOURCES: ChatSources = { internal: [], web: [] };
 const EMPTY_CHAT_ARTIFACTS: ChatArtifact[] = [];
 
-export interface ChatMessage {
+interface ChatMessage {
   id: number;
   role: "user" | "assistant";
   text: string;
@@ -105,7 +99,9 @@ export function ChatFeed({
     useState<ChatSources>(EMPTY_CHAT_SOURCES);
   const [openedArtifacts, setOpenedArtifacts] =
     useState<ChatArtifact[]>(EMPTY_CHAT_ARTIFACTS);
-  const [messageToDelete, setMessageToDelete] = useState<ChatMessage | null>(null);
+  const [messageToDelete, setMessageToDelete] = useState<ChatMessage | null>(
+    null,
+  );
   const copyMessage = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -226,8 +222,14 @@ export function ChatFeed({
                     onCopy={() => void copyMessage(message.text)}
                     onDelete={() => setMessageToDelete(message)}
                     beforeContent={
-                      message.scenarioRunId && scenarioExecutions.get(message.scenarioRunId) ? (
-                        <ScenarioExecutionHistory execution={scenarioExecutions.get(message.scenarioRunId)!} liveOutput={scenarioNodeOutput} />
+                      message.scenarioRunId &&
+                      scenarioExecutions.get(message.scenarioRunId) ? (
+                        <ScenarioExecutionHistory
+                          execution={scenarioExecutions.get(
+                            message.scenarioRunId,
+                          )!}
+                          liveOutput={scenarioNodeOutput}
+                        />
                       ) : null
                     }
                     actions={
@@ -274,7 +276,14 @@ export function ChatFeed({
         model={messageToDelete}
         title="Удалить сообщение?"
         description={(message) => (
-          <>Сообщение «<strong className="font-semibold text-main-50">{message.text.slice(0, 80)}{message.text.length > 80 ? "…" : ""}</strong>» и вся история после него будут удалены.</>
+          <>
+            Сообщение «
+            <strong className="font-semibold text-main-50">
+              {message.text.slice(0, 80)}
+              {message.text.length > 80 ? "…" : ""}
+            </strong>
+            » и вся история после него будут удалены.
+          </>
         )}
         onCancel={() => setMessageToDelete(null)}
         onConfirm={async (message) => {

@@ -3,9 +3,7 @@ import { basename, isAbsolute, relative, resolve } from "node:path";
 import { dialog } from "electron";
 import type { GeneratedArtifactExporter } from "../../application/ports/generated-artifact.port";
 
-export class ElectronGeneratedArtifactExporter
-  implements GeneratedArtifactExporter
-{
+export class ElectronGeneratedArtifactExporter implements GeneratedArtifactExporter {
   private readonly allowedRoot: string;
 
   constructor(root: string) {

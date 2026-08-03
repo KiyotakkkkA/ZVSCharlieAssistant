@@ -157,8 +157,7 @@ export class VectorStoreDataSource {
         "SELECT id,status FROM vector_store_documents WHERE vector_store_id=? AND content_hash=?",
       )
       .get(storeId, hash) as
-      | { id: number; status: VectorDocumentStatus }
-      | undefined;
+      { id: number; status: VectorDocumentStatus } | undefined;
   }
   document(id: number) {
     return this.db
@@ -194,7 +193,9 @@ export class VectorStoreDataSource {
   }
   refreshStoreState(id: number, dimension?: number) {
     const statuses = this.db
-      .prepare("SELECT status FROM vector_store_documents WHERE vector_store_id=?")
+      .prepare(
+        "SELECT status FROM vector_store_documents WHERE vector_store_id=?",
+      )
       .all(id) as Array<{ status: VectorDocumentStatus }>;
     const status: VectorStoreConfig["status"] = statuses.some((item) =>
       ["queued", "extracting", "embedding"].includes(item.status),

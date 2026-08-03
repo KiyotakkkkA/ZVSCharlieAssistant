@@ -48,7 +48,10 @@ export const desktopApi: DesktopApi = {
   getAppInfo: (): Promise<AppInfo> =>
     ipcRenderer.invoke(IPC_CHANNELS.getAppInfo) as Promise<AppInfo>,
   saveGeneratedArtifact: (input: GeneratedArtifactInput): Promise<boolean> =>
-    ipcRenderer.invoke(IPC_CHANNELS.saveGeneratedArtifact, input) as Promise<boolean>,
+    ipcRenderer.invoke(
+      IPC_CHANNELS.saveGeneratedArtifact,
+      input,
+    ) as Promise<boolean>,
   secrets: {
     getSnapshot: (): Promise<SecretStorageSnapshot> =>
       ipcRenderer.invoke(
@@ -93,10 +96,18 @@ export const desktopApi: DesktopApi = {
         AUTOMATION_IPC_CHANNELS.deleteAgent,
         id,
       ) as Promise<void>,
-    upsertSkill: (input: UpsertAutomationSkillInput): Promise<AutomationSkill> =>
-      ipcRenderer.invoke(AUTOMATION_IPC_CHANNELS.upsertSkill, input) as Promise<AutomationSkill>,
+    upsertSkill: (
+      input: UpsertAutomationSkillInput,
+    ): Promise<AutomationSkill> =>
+      ipcRenderer.invoke(
+        AUTOMATION_IPC_CHANNELS.upsertSkill,
+        input,
+      ) as Promise<AutomationSkill>,
     deleteSkill: (id: number): Promise<void> =>
-      ipcRenderer.invoke(AUTOMATION_IPC_CHANNELS.deleteSkill, id) as Promise<void>,
+      ipcRenderer.invoke(
+        AUTOMATION_IPC_CHANNELS.deleteSkill,
+        id,
+      ) as Promise<void>,
     upsertToolSecretBinding: (
       input: UpsertAutomationToolSecretBindingInput,
     ): Promise<AutomationTool> =>
@@ -261,7 +272,10 @@ export const desktopApi: DesktopApi = {
         id,
         title,
       ) as Promise<void>,
-    truncateMessages: (conversationId: number, fromMessageId: number): Promise<void> =>
+    truncateMessages: (
+      conversationId: number,
+      fromMessageId: number,
+    ): Promise<void> =>
       ipcRenderer.invoke(
         CHAT_IPC_CHANNELS.truncateMessages,
         conversationId,

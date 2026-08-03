@@ -181,9 +181,7 @@ export class ScenarioCompiler {
         workerOutgoing.get(edge.source)!.push(edge.target);
     }
     const agentDegree = new Map(
-      nodes
-        .filter((node) => node.kind === "agent")
-        .map((node) => [node.id, 0]),
+      nodes.filter((node) => node.kind === "agent").map((node) => [node.id, 0]),
     );
     for (const edge of workerEdges)
       if (edge.source !== orchestrators[0]?.id && agentDegree.has(edge.target))

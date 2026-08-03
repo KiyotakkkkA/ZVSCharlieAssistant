@@ -8,7 +8,7 @@ import type {
   ScenarioRun,
 } from "../../ipc/contracts";
 
-export class ChatStore {
+class ChatStore {
   conversations: ChatConversation[] = [];
   messages: ChatMessage[] = [];
   activeConversationId: number | null = null;
@@ -114,7 +114,8 @@ export class ChatStore {
         (message) => message.id < fromMessageId,
       );
       for (const message of removed)
-        if (message.scenarioRunId) this.scenarioExecutions.delete(message.scenarioRunId);
+        if (message.scenarioRunId)
+          this.scenarioExecutions.delete(message.scenarioRunId);
     });
     await this.refreshConversations();
   }
@@ -296,10 +297,7 @@ export class ChatStore {
             ? {
                 ...message,
                 status,
-                error:
-                  event.type === "run.failed"
-                    ? event.message
-                    : null,
+                error: event.type === "run.failed" ? event.message : null,
               }
             : message,
         );

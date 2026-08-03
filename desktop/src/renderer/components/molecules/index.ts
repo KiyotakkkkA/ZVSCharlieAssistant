@@ -6,7 +6,5 @@ export { StorageSecretCard } from "./StorageSecretCard";
 export { StorageSecretCategoryCard } from "./StorageSecretCategoryCard";
 export { AppBreadcrumbs, type AppBreadcrumbItem } from "./AppBreadcrumbs";
 export { NavigationTreeItem } from "./NavigationTreeItem";
-export { ChatAssistantMsgBlock } from "./ChatAssistantMsgBlock";
-export { ChatUserMsgBlock } from "./ChatUserMsgBlock";
 export { SettingsProviderOllamaModelCard } from "./SettingsProviderOllamaModelCard";
 export { SettingsProviderOpenrouterModelCard } from "./SettingsProviderOpenrouterModelCard";

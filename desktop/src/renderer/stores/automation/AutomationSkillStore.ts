@@ -1,17 +1,34 @@
 import { makeAutoObservable, runInAction } from "mobx";
-import type { AutomationSkill, UpsertAutomationSkillInput } from "../../../ipc/contracts";
+import type {
+  AutomationSkill,
+  UpsertAutomationSkillInput,
+} from "../../../ipc/contracts";
 export class AutomationSkillStore {
   items: AutomationSkill[] = [];
-  constructor() { makeAutoObservable(this, {}, { autoBind: true }); }
-  hydrate(items: AutomationSkill[]) { this.items = items; }
-  get(id?: number) { return this.items.find((item) => item.id === id); }
+  constructor() {
+    makeAutoObservable(this, {}, { autoBind: true });
+  }
+  hydrate(items: AutomationSkill[]) {
+    this.items = items;
+  }
+  get(id?: number) {
+    return this.items.find((item) => item.id === id);
+  }
   async upsert(input: UpsertAutomationSkillInput) {
-    const item = await window.desktop.automation.upsertSkill(JSON.parse(JSON.stringify(input)));
-    runInAction(() => { const index = this.items.findIndex(({ id }) => id === item.id); if (index >= 0) this.items[index] = item; else this.items.unshift(item); });
+    const item = await window.desktop.automation.upsertSkill(
+      JSON.parse(JSON.stringify(input)),
+    );
+    runInAction(() => {
+      const index = this.items.findIndex(({ id }) => id === item.id);
+      if (index >= 0) this.items[index] = item;
+      else this.items.unshift(item);
+    });
     return item;
   }
   async remove(id: number) {
     await window.desktop.automation.deleteSkill(id);
-    runInAction(() => { this.items = this.items.filter((item) => item.id !== id); });
+    runInAction(() => {
+      this.items = this.items.filter((item) => item.id !== id);
+    });
   }
 }

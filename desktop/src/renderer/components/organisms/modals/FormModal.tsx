@@ -1,13 +1,13 @@
 import { Modal } from "@kiyotakkkka/zvs-uikit-lib";
 import type { ComponentType, ReactNode } from "react";
 
-export interface FormModalFormProps<TModel> {
+interface FormModalFormProps<TModel> {
   model?: TModel;
   onConfirm: () => void;
   onCancel: () => void;
 }
 
-export interface FormModalDefinition<TModel, TFormProps extends object> {
+interface FormModalDefinition<TModel, TFormProps extends object> {
   component: ComponentType<FormModalFormProps<TModel> & TFormProps>;
   title: ReactNode;
   props: TFormProps;

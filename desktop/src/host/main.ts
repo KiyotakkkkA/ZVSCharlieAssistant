@@ -72,7 +72,11 @@ app.whenReady().then(() => {
     skillContent,
   );
 
-  const reportsRoot = join(app.getPath("documents"), "ZVS Assistant", "Reports");
+  const reportsRoot = join(
+    app.getPath("documents"),
+    "ZVS Assistant",
+    "Reports",
+  );
   registerAppHandlers(new ElectronGeneratedArtifactExporter(reportsRoot));
   registerSecretStorageHandlers(secretRepository);
   const providerDataSource = new TextProviderDataSource(database);

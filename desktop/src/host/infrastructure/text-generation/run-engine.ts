@@ -200,15 +200,13 @@ export class RunEngine {
       const history = this.data
         .messages(conversationId)
         .filter((m) => m.id !== assistantMessageId)
-        .map(
-          (m): ModelMessage => ({
-            role:
-              m.role === "tool"
-                ? "assistant"
-                : (m.role as "user" | "assistant" | "system"),
-            content: m.text,
-          }),
-        );
+        .map((m): ModelMessage => ({
+          role:
+            m.role === "tool"
+              ? "assistant"
+              : (m.role as "user" | "assistant" | "system"),
+          content: m.text,
+        }));
       const baseSystem =
         input.mode === "planner"
           ? "Составь практичный пошаговый план. Не выполняй действия без необходимости."
@@ -224,7 +222,9 @@ export class RunEngine {
           ? (agentRuntime?.allowedToolIds ?? [])
           : ["web_search", "web_fetch"];
       const system = `${baseSystem}${this.tools.skillCatalog(agentRuntime?.allowedSkillIds ?? [])}`;
-      const generationSettings = this.providers.generationSettings(input.modelId);
+      const generationSettings = this.providers.generationSettings(
+        input.modelId,
+      );
       const result = streamText({
         model: this.providers.resolve(input.modelId),
         ...generationSettings,
@@ -304,7 +304,8 @@ function normalizeStreamError(error: unknown): Error {
   if (typeof error === "string") return new Error(error);
   if (error && typeof error === "object" && "message" in error) {
     const message = (error as { message?: unknown }).message;
-    if (typeof message === "string" && message.trim()) return new Error(message);
+    if (typeof message === "string" && message.trim())
+      return new Error(message);
   }
   return new Error("Ошибка при обращении к модели");
 }

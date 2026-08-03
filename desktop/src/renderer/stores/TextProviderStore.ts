@@ -6,7 +6,7 @@ import type {
   UpsertTextProviderInput,
 } from "../../ipc/contracts";
 
-export class TextProviderStore {
+class TextProviderStore {
   providers: TextProviderConfig[] = [];
   models: TextProviderModel[] = [];
   initialized = false;

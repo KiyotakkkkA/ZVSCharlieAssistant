@@ -1,5 +1,5 @@
 export type TextProviderKind = "ollama" | "openrouter";
-export type TextProviderType = "text" | "embedding";
+type TextProviderType = "text" | "embedding";
 
 export interface TextProviderModelDetails {
   parentModel: string;

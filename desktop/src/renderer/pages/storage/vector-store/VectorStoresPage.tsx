@@ -117,7 +117,9 @@ export const VectorStoresPage = observer(function VectorStoresPage() {
         title="Удалить векторное хранилище?"
         description={(item) => (
           <>
-            Хранилище «<strong className="font-semibold text-main-50">{item.name}</strong>», документы и поисковый индекс будут удалены.
+            Хранилище «
+            <strong className="font-semibold text-main-50">{item.name}</strong>
+            », документы и поисковый индекс будут удалены.
           </>
         )}
         onCancel={() => setStoreToDelete(null)}

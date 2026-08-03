@@ -26,9 +26,6 @@ interface Row extends AutomationSkill {
   [key: string]: unknown;
 }
 
-const badgeClassName =
-  "inline-flex rounded-full bg-main-700/60 px-2 py-1 text-xs text-main-300";
-
 export const SkillsListPage = observer(function SkillsListPage() {
   const { goTo } = useHashRouter();
   const toasts = useToasts();

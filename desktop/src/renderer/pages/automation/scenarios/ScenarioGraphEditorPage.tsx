@@ -719,13 +719,13 @@ export const ScenarioGraphEditorPage = observer(
           </aside>
         </div>
         <DangerModal
-            open={automationStore.pendingScenarioApproval !== null}
-            model={automationStore.pendingScenarioApproval}
-            title="Продолжить сценарий?"
-            description={(approval) => approval.prompt}
-            confirmLabel="Продолжить"
-            onCancel={() => void automationStore.approveScenarioRun(false)}
-            onConfirm={() => automationStore.approveScenarioRun(true)}
+          open={automationStore.pendingScenarioApproval !== null}
+          model={automationStore.pendingScenarioApproval}
+          title="Продолжить сценарий?"
+          description={(approval) => approval.prompt}
+          confirmLabel="Продолжить"
+          onCancel={() => void automationStore.approveScenarioRun(false)}
+          onConfirm={() => automationStore.approveScenarioRun(true)}
         />
       </section>
     );

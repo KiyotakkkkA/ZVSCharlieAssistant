@@ -153,28 +153,43 @@ export const ChatPage = observer(function ChatPage() {
           }}
           onEditMessage={async (messageId, nextText) => {
             try {
-              const messageIndex = chatStore.messages.findIndex((item) => item.id === messageId);
+              const messageIndex = chatStore.messages.findIndex(
+                (item) => item.id === messageId,
+              );
               const nextAssistant = chatStore.messages
                 .slice(messageIndex + 1)
                 .find((item) => item.role === "assistant");
-              const editRunOptions: Omit<StartRunInput, "conversationId" | "text"> =
+              const editRunOptions: Omit<
+                StartRunInput,
+                "conversationId" | "text"
+              > =
                 active?.mode === "scenario"
                   ? {
                       mode: "scenario",
                       scenarioId: nextAssistant?.scenarioRunId
-                        ? chatStore.scenarioExecutions.get(nextAssistant.scenarioRunId)?.run.scenarioId
+                        ? chatStore.scenarioExecutions.get(
+                            nextAssistant.scenarioRunId,
+                          )?.run.scenarioId
                         : scenarioId,
                     }
                   : {
                       mode: active?.mode ?? mode,
                       modelId: active?.modelId ?? Number(model),
-                      agentId: active?.mode === "agent" ? active.agentId ?? undefined : undefined,
+                      agentId:
+                        active?.mode === "agent"
+                          ? (active.agentId ?? undefined)
+                          : undefined,
                     };
-              if (editRunOptions.mode === "scenario" && !editRunOptions.scenarioId)
-                throw new Error("Не удалось определить сценарий исходного сообщения");
+              if (
+                editRunOptions.mode === "scenario" &&
+                !editRunOptions.scenarioId
+              )
+                throw new Error(
+                  "Не удалось определить сценарий исходного сообщения",
+                );
               await chatStore.truncateMessages(messageId);
               await startMessage(nextText, editRunOptions);
-              toasts.success({ title: "Сообщение изменено, ответ создаётся заново" });
+              toasts.success({ title: "Сообщение успешно изменено!" });
             } catch (error) {
               toasts.danger({
                 title: "Не удалось изменить сообщение",

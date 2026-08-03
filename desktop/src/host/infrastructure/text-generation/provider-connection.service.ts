@@ -47,7 +47,10 @@ class OllamaConnectionChecker implements ProviderConnectionChecker {
   async test({
     baseUrl,
     apiKey,
-  }: ProviderConnectionRequest): Promise<{ models: TextProviderModelInfo[]; limits: null }> {
+  }: ProviderConnectionRequest): Promise<{
+    models: TextProviderModelInfo[];
+    limits: null;
+  }> {
     const endpoint = `${normalizeBaseUrl(baseUrl)}/api/tags`;
     const response = await fetch(endpoint, {
       method: "GET",
@@ -146,19 +149,26 @@ class OpenRouterConnectionChecker implements ProviderConnectionChecker {
       }),
     ]);
     if (!modelsResponse.ok)
-      throw new Error(`OpenRouter models API вернул HTTP ${modelsResponse.status}`);
+      throw new Error(
+        `OpenRouter models API вернул HTTP ${modelsResponse.status}`,
+      );
     if (!zdrModelsResponse.ok)
-      throw new Error(`OpenRouter ZDR models API вернул HTTP ${zdrModelsResponse.status}`);
+      throw new Error(
+        `OpenRouter ZDR models API вернул HTTP ${zdrModelsResponse.status}`,
+      );
     if (!keyResponse.ok)
       throw new Error(`OpenRouter key API вернул HTTP ${keyResponse.status}`);
-    const modelPayload = (await modelsResponse.json()) as OpenRouterModelsResponse;
-    const zdrModelPayload = (await zdrModelsResponse.json()) as OpenRouterModelsResponse;
+    const modelPayload =
+      (await modelsResponse.json()) as OpenRouterModelsResponse;
+    const zdrModelPayload =
+      (await zdrModelsResponse.json()) as OpenRouterModelsResponse;
     const keyPayload = (await keyResponse.json()) as OpenRouterKeyResponse;
     if (!Array.isArray(modelPayload.data))
       throw new Error("OpenRouter вернул ответ без массива data");
     if (!Array.isArray(zdrModelPayload.data))
       throw new Error("OpenRouter вернул некорректный список ZDR-моделей");
-    if (!keyPayload.data) throw new Error("OpenRouter не вернул данные API-ключа");
+    if (!keyPayload.data)
+      throw new Error("OpenRouter не вернул данные API-ключа");
     // The models catalogue does not expose endpoint data policies on each
     // model. `zdr=true` is the only documented catalogue-level privacy
     // filter. A ZDR endpoint neither retains prompts nor trains on them, so it
@@ -171,11 +181,14 @@ class OpenRouterConnectionChecker implements ProviderConnectionChecker {
     );
     const models = modelPayload.data.map((model, index) => {
       const id = model.id?.trim();
-      if (!id) throw new Error(`Модель OpenRouter под индексом ${index} не имеет id`);
+      if (!id)
+        throw new Error(`Модель OpenRouter под индексом ${index} не имеет id`);
       return {
         id,
         name: model.name?.trim() || id,
-        modifiedAt: model.created ? new Date(model.created * 1000).toISOString() : "",
+        modifiedAt: model.created
+          ? new Date(model.created * 1000).toISOString()
+          : "",
         size: 0,
         digest: "",
         details: {
@@ -185,7 +198,8 @@ class OpenRouterConnectionChecker implements ProviderConnectionChecker {
           families: null,
           parameterSize: "",
           quantizationLevel: "",
-          contextLength: model.context_length ?? model.top_provider?.context_length,
+          contextLength:
+            model.context_length ?? model.top_provider?.context_length,
           maxCompletionTokens: model.top_provider?.max_completion_tokens,
           inputModalities: model.architecture?.input_modalities ?? [],
           outputModalities: model.architecture?.output_modalities ?? [],

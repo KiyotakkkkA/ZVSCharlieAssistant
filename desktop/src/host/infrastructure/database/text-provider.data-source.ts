@@ -153,8 +153,12 @@ const mapProvider = (row: ProviderRow): TextProviderConfig => ({
   updatedAt: row.updated_at,
 });
 
-const parseGenerationSettings = (value: string): TextProviderGenerationSettings => {
-  const parsed = JSON.parse(value || "{}") as Partial<TextProviderGenerationSettings>;
+const parseGenerationSettings = (
+  value: string,
+): TextProviderGenerationSettings => {
+  const parsed = JSON.parse(
+    value || "{}",
+  ) as Partial<TextProviderGenerationSettings>;
   return {
     maxOutputTokens: parsed.maxOutputTokens ?? 2048,
     temperature: parsed.temperature ?? 0.7,

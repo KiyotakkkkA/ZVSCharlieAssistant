@@ -2,7 +2,9 @@ import { app, ipcMain } from "electron";
 import { IPC_CHANNELS, type AppInfo } from "../contracts";
 import type { GeneratedArtifactExporter } from "../../host/application/ports/generated-artifact.port";
 
-export function registerAppHandlers(artifacts: GeneratedArtifactExporter): void {
+export function registerAppHandlers(
+  artifacts: GeneratedArtifactExporter,
+): void {
   ipcMain.handle(IPC_CHANNELS.getAppInfo, (): AppInfo => ({
     name: app.getName(),
     version: app.getVersion(),

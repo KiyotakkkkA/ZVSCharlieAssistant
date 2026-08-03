@@ -10,7 +10,7 @@ import type {
 export type VectorStoreModel = VectorStoreConfig;
 export type VectorDocument = VectorStoreDocument;
 
-export class VectorStoreStore {
+class VectorStoreStore {
   stores: VectorStoreConfig[] = [];
   documents: VectorStoreDocument[] = [];
   initialized = false;

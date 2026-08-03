@@ -1,4 +1,4 @@
-export interface LeadProps {
+interface LeadProps {
   title: string;
   description: string;
   className?: string;

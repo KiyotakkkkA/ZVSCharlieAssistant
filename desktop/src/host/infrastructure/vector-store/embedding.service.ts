@@ -51,10 +51,7 @@ export class EmbeddingService {
             .sort((left, right) => (left.index ?? 0) - (right.index ?? 0))
             .map((item) => item.embedding ?? [])
         : payload.embeddings;
-    if (
-      !embeddings?.length ||
-      embeddings.length !== input.length
-    )
+    if (!embeddings?.length || embeddings.length !== input.length)
       throw new Error("Embedding API вернул некорректный ответ");
     const dimension = embeddings[0]?.length ?? 0;
     if (

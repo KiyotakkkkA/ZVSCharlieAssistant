@@ -11,7 +11,7 @@ import type { SkillContentStore } from "../../application/ports/automation-runti
 export class FileSystemSkillContentStore implements SkillContentStore {
   private readonly resolvedRoot: string;
 
-  constructor(private readonly root: string) {
+  constructor(root: string) {
     this.resolvedRoot = resolve(root);
     mkdirSync(this.resolvedRoot, { recursive: true });
   }

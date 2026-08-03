@@ -17,11 +17,7 @@ export class BuiltinSkillProvisioner {
         ...definition,
         status: definition.status ?? "active",
       });
-      this.content.write(
-        definition.slug,
-        definition,
-        definition.instructions,
-      );
+      this.content.write(definition.slug, definition, definition.instructions);
     }
   }
 }

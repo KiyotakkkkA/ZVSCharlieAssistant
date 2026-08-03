@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-export interface FieldProps {
+interface FieldProps {
   label: ReactNode;
   children: ReactNode;
   className?: string;
@@ -9,9 +9,7 @@ export interface FieldProps {
 export function Field({ label, children, className = "" }: FieldProps) {
   return (
     <label className={`block ${className}`}>
-      <div className="mb-2 text-xs font-medium text-main-400">
-        {label}
-      </div>
+      <div className="mb-2 text-xs font-medium text-main-400">{label}</div>
       {children}
     </label>
   );

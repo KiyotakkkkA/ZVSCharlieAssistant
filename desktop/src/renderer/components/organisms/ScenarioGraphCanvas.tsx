@@ -87,14 +87,14 @@ const nodeMeta: Record<
   },
 };
 
-export type ScenarioNodeData = {
+type ScenarioNodeData = {
   node: GraphNode;
   runStatus?: string;
   onDelete?: (nodeId: string) => void;
 } & Record<string, unknown>;
 export type ScenarioFlowNode = FlowNode<ScenarioNodeData, "scenario">;
 
-export type ScenarioEdgeData = {
+type ScenarioEdgeData = {
   edgeId: string;
   kind: GraphEdge["kind"];
   onDelete: (edgeId: string) => void;

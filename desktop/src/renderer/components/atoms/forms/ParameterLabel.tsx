@@ -1,15 +1,12 @@
 import type { ReactNode } from "react";
 import { Floating } from "@kiyotakkkka/zvs-uikit-lib";
 
-export interface ParameterLabelProps {
+interface ParameterLabelProps {
   children: ReactNode;
   description: string;
 }
 
-export function ParameterLabel({
-  children,
-  description,
-}: ParameterLabelProps) {
+export function ParameterLabel({ children, description }: ParameterLabelProps) {
   return (
     <Floating anchor="top-left">
       <Floating.Trigger>

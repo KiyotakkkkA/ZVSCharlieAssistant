@@ -9,7 +9,7 @@ import type {
 const getErrorMessage = (error: unknown): string =>
   error instanceof Error ? error.message : "Неизвестная ошибка";
 
-export class SecretStorageStore {
+class SecretStorageStore {
   categories: SecretCategory[] = [];
   secrets: SecretEntity[] = [];
   loading = false;

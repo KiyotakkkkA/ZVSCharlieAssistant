@@ -1,6 +1,6 @@
-export { AutomationStore, automationStore } from "./AutomationStore";
-export { SecretStorageStore, secretStorageStore } from "./SecretStorageStore";
-export { TextProviderStore, textProviderStore } from "./TextProviderStore";
-export { ChatStore, chatStore } from "./ChatStore";
-export { VectorStoreStore, vectorStoreStore } from "./VectorStoreStore";
+export { automationStore } from "./AutomationStore";
+export { secretStorageStore } from "./SecretStorageStore";
+export { textProviderStore } from "./TextProviderStore";
+export { chatStore } from "./ChatStore";
+export { vectorStoreStore } from "./VectorStoreStore";
 export type { VectorDocument, VectorStoreModel } from "./VectorStoreStore";

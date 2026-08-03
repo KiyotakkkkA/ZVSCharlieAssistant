@@ -199,23 +199,23 @@ export const AgentsListPage = observer(function AgentsListPage() {
       </ScrollArea>
 
       <DangerModal
-          open={agentToDelete !== null}
-          model={agentToDelete}
-          title="Удалить агента"
-          description={(agent) => (
-            <p>
-              Агент{" "}
-              «<strong className="font-semibold text-main-50">{agent.name}</strong>»{" "}
-              будет удалён без возможности восстановления. Перепроверьте
-              сценарии в которых был использован данный агент.
-            </p>
-          )}
-          onCancel={() => setAgentToDelete(null)}
-          onConfirm={async (agent) => {
-            await automationStore.deleteAgent(agent.id);
-            setAgentToDelete(null);
-            toasts.success({ title: "Агент удалён" });
-          }}
+        open={agentToDelete !== null}
+        model={agentToDelete}
+        title="Удалить агента"
+        description={(agent) => (
+          <p>
+            Агент «
+            <strong className="font-semibold text-main-50">{agent.name}</strong>
+            » будет удалён без возможности восстановления. Перепроверьте
+            сценарии в которых был использован данный агент.
+          </p>
+        )}
+        onCancel={() => setAgentToDelete(null)}
+        onConfirm={async (agent) => {
+          await automationStore.deleteAgent(agent.id);
+          setAgentToDelete(null);
+          toasts.success({ title: "Агент удалён" });
+        }}
       />
     </section>
   );

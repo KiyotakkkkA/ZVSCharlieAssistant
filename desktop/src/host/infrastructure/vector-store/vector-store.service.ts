@@ -47,7 +47,8 @@ export class VectorStoreService {
       !this.data.embeddingModel(input.embeddingModelId)
     )
       throw new Error("Выбрана недоступная embedding-модель");
-    const current = input.id === undefined ? undefined : this.data.store(input.id);
+    const current =
+      input.id === undefined ? undefined : this.data.store(input.id);
     const embeddingChanged =
       current !== undefined &&
       current.embeddingModelId !== input.embeddingModelId;
@@ -72,7 +73,9 @@ export class VectorStoreService {
     if (input.searchMode === "hybrid") {
       const tables = await this.tableNames();
       if (tables.has(tableName(storeId))) {
-        const table = await (await this.connect()).openTable(tableName(storeId));
+        const table = await (
+          await this.connect()
+        ).openTable(tableName(storeId));
         this.ftsIndexPromises.delete(storeId);
         await this.ensureFtsIndex(storeId, table);
       }
@@ -137,11 +140,7 @@ export class VectorStoreService {
     if (!query) throw new Error("Поисковый запрос пуст");
     if (!input.vectorStoreIds.length)
       throw new Error("Не выбрано векторное хранилище");
-    if (
-      input.vectorStoreIds.some(
-        (id) => !Number.isInteger(id) || id < 1,
-      )
-    )
+    if (input.vectorStoreIds.some((id) => !Number.isInteger(id) || id < 1))
       throw new Error("Передан некорректный идентификатор хранилища");
     if (
       input.scoreThreshold !== undefined &&
@@ -251,7 +250,10 @@ export class VectorStoreService {
         this.data.updateDocument(
           id,
           "embedding",
-          40 + Math.round((Math.min(index + 16, chunks.length) / chunks.length) * 50),
+          40 +
+            Math.round(
+              (Math.min(index + 16, chunks.length) / chunks.length) * 50,
+            ),
         );
       }
       const rows = chunks.map((text, index) => ({
@@ -305,25 +307,27 @@ export class VectorStoreService {
     rows: Array<Record<string, unknown>>,
   ) {
     const previous = this.writeQueues.get(storeId) ?? Promise.resolve();
-    const current = previous.catch(() => undefined).then(async () => {
-      const db = await this.connect();
-      const name = tableName(storeId);
-      const tables = await this.tableNames();
-      if (tables.has(name)) {
-        const table = await db.openTable(name);
-        await table.delete(`document_id = ${documentId}`);
-        await table.add(rows);
-        if (this.data.store(storeId)?.searchMode === "hybrid") {
-          this.ftsIndexPromises.delete(storeId);
-          await this.ensureFtsIndex(storeId, table);
+    const current = previous
+      .catch(() => undefined)
+      .then(async () => {
+        const db = await this.connect();
+        const name = tableName(storeId);
+        const tables = await this.tableNames();
+        if (tables.has(name)) {
+          const table = await db.openTable(name);
+          await table.delete(`document_id = ${documentId}`);
+          await table.add(rows);
+          if (this.data.store(storeId)?.searchMode === "hybrid") {
+            this.ftsIndexPromises.delete(storeId);
+            await this.ensureFtsIndex(storeId, table);
+          }
+        } else {
+          const table = await db.createTable(name, rows);
+          tables.add(name);
+          if (this.data.store(storeId)?.searchMode === "hybrid")
+            await this.ensureFtsIndex(storeId, table);
         }
-      } else {
-        const table = await db.createTable(name, rows);
-        tables.add(name);
-        if (this.data.store(storeId)?.searchMode === "hybrid")
-          await this.ensureFtsIndex(storeId, table);
-      }
-    });
+      });
     this.writeQueues.set(storeId, current);
     try {
       await current;

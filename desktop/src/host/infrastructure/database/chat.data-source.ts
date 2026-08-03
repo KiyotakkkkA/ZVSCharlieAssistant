@@ -269,7 +269,9 @@ export class ChatDataSource {
   truncateMessages(conversationId: number, fromMessageId: number) {
     const truncate = this.db.transaction(() => {
       const target = this.db
-        .prepare("SELECT id FROM chat_messages WHERE id=? AND conversation_id=?")
+        .prepare(
+          "SELECT id FROM chat_messages WHERE id=? AND conversation_id=?",
+        )
         .get(fromMessageId, conversationId);
       if (!target) throw new Error("Сообщение не найдено");
 
@@ -304,7 +306,9 @@ export class ChatDataSource {
       deleteByIds("generation_runs", generationRunIds);
       deleteByIds("execution_runs", executionRunIds);
       this.db
-        .prepare("UPDATE chat_conversations SET updated_at=CURRENT_TIMESTAMP WHERE id=?")
+        .prepare(
+          "UPDATE chat_conversations SET updated_at=CURRENT_TIMESTAMP WHERE id=?",
+        )
         .run(conversationId);
     });
     truncate();
@@ -353,7 +357,13 @@ export class ChatDataSource {
         )
         .all(id) as Array<{ vector_store_id: number }>
     ).map((item) => item.vector_store_id);
-    const allowedSkillIds = (this.db.prepare("SELECT skill_id FROM automation_agent_skills WHERE agent_id=? ORDER BY skill_id").all(id) as Array<{ skill_id: number }>).map((item) => item.skill_id);
+    const allowedSkillIds = (
+      this.db
+        .prepare(
+          "SELECT skill_id FROM automation_agent_skills WHERE agent_id=? ORDER BY skill_id",
+        )
+        .all(id) as Array<{ skill_id: number }>
+    ).map((item) => item.skill_id);
     return { ...row, allowedToolIds, allowedVectorStoreIds, allowedSkillIds };
   }
   private mapMessage(row: MessageRow): ChatMessage {

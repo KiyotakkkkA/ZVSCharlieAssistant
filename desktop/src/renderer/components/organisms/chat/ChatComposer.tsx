@@ -21,7 +21,7 @@ import {
 
 export type ChatMode = "chat" | "planner" | "agent" | "scenario";
 export type ChatModel = string;
-export interface ChatModelOption {
+interface ChatModelOption {
   value: string;
   label: string;
   description?: string;

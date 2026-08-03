@@ -30,7 +30,8 @@ export function registerAutomationHandlers(
   );
   ipcMain.handle(
     AUTOMATION_IPC_CHANNELS.upsertSkill,
-    (_event, input: UpsertAutomationSkillInput) => repository.upsertSkill(input),
+    (_event, input: UpsertAutomationSkillInput) =>
+      repository.upsertSkill(input),
   );
   ipcMain.handle(AUTOMATION_IPC_CHANNELS.deleteSkill, (_event, id: number) =>
     repository.deleteSkill(id),

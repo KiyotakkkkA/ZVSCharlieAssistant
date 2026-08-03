@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { ChatToolCall, ScenarioNodeRun } from "../../../../ipc/contracts";
 import { WebIcon } from "../../atoms";
 
-export interface InternalChatSource {
+interface InternalChatSource {
   documentId: number;
   fileName: string;
   pages: number[];
@@ -11,7 +11,7 @@ export interface InternalChatSource {
   excerpts: string[];
 }
 
-export interface WebChatSource {
+interface WebChatSource {
   title: string;
   url: string;
   excerpt: string;

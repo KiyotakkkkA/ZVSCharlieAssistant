@@ -12,13 +12,13 @@ import type { ReportDocxService } from "./report-docx.service";
 
 type Emit = (event: RunEvent) => void;
 
-export interface ToolExecutionEvent {
+interface ToolExecutionEvent {
   callId: string;
   toolId: string;
   input: unknown;
 }
 
-export interface ToolExecutionObserver<TReference = unknown> {
+interface ToolExecutionObserver<TReference = unknown> {
   requested(event: ToolExecutionEvent): TReference;
   running?(event: ToolExecutionEvent, reference: TReference): void;
   completed?(
@@ -33,7 +33,7 @@ export interface ToolExecutionObserver<TReference = unknown> {
   ): void;
 }
 
-export interface ToolRegistryOptions {
+interface ToolRegistryOptions {
   signal: AbortSignal;
   allowedToolIds: string[];
   allowedVectorStoreIds?: number[];

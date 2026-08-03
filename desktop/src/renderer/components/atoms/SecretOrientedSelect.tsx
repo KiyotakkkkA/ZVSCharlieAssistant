@@ -2,7 +2,7 @@ import { observer } from "mobx-react-lite";
 import { Select, type SelectProps } from "@kiyotakkkka/zvs-uikit-lib";
 import { secretStorageStore } from "../../stores";
 
-export interface SecretOrientedSelectProps extends Omit<
+interface SecretOrientedSelectProps extends Omit<
   SelectProps,
   "children" | "options"
 > {

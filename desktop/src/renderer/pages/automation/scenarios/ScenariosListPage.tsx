@@ -198,23 +198,25 @@ export const ScenariosListPage = observer(function ScenariosListPage() {
       </ScrollArea>
 
       <DangerModal
-          open={scenarioToDelete !== null}
-          model={scenarioToDelete}
-          title="Удалить сценарий"
-          description={(scenario) => (
-            <p>
-              Сценарий{" "}
-              «<strong className="font-semibold text-main-50">{scenario.name}</strong>»{" "}
-              и сохранённая схема графа будут удалены без возможности
-              восстановления.
-            </p>
-          )}
-          onCancel={() => setScenarioToDelete(null)}
-          onConfirm={async (scenario) => {
-            await automationStore.deleteScenario(scenario.id);
-            setScenarioToDelete(null);
-            toasts.success({ title: "Сценарий удалён" });
-          }}
+        open={scenarioToDelete !== null}
+        model={scenarioToDelete}
+        title="Удалить сценарий"
+        description={(scenario) => (
+          <p>
+            Сценарий «
+            <strong className="font-semibold text-main-50">
+              {scenario.name}
+            </strong>
+            » и сохранённая схема графа будут удалены без возможности
+            восстановления.
+          </p>
+        )}
+        onCancel={() => setScenarioToDelete(null)}
+        onConfirm={async (scenario) => {
+          await automationStore.deleteScenario(scenario.id);
+          setScenarioToDelete(null);
+          toasts.success({ title: "Сценарий удалён" });
+        }}
       />
     </section>
   );

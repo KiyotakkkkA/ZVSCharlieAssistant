@@ -35,7 +35,7 @@ import { PrimaryButton } from "@renderer/components/atoms/buttons";
 
 const API_KEYS_CATEGORY_ID = 1;
 export type ProviderStatus = "connected" | "unchecked" | "error";
-export interface ProviderModelDraft extends TextProviderModelInfo {
+interface ProviderModelDraft extends TextProviderModelInfo {
   enabled: boolean;
 }
 export interface SettingsProviderDraft {

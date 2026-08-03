@@ -44,8 +44,16 @@ const ScenarioGraphEditorPage = lazy(() =>
     ({ ScenarioGraphEditorPage }) => ({ default: ScenarioGraphEditorPage }),
   ),
 );
-const SkillsListPage = lazy(() => import("./pages/automation/skills").then(({ SkillsListPage }) => ({ default: SkillsListPage })));
-const SkillManagerPage = lazy(() => import("./pages/automation/skills").then(({ SkillManagerPage }) => ({ default: SkillManagerPage })));
+const SkillsListPage = lazy(() =>
+  import("./pages/automation/skills").then(({ SkillsListPage }) => ({
+    default: SkillsListPage,
+  })),
+);
+const SkillManagerPage = lazy(() =>
+  import("./pages/automation/skills").then(({ SkillManagerPage }) => ({
+    default: SkillManagerPage,
+  })),
+);
 const StorageSecretsPage = lazy(() =>
   import("./pages/storage/secrets").then(({ StorageSecretsPage }) => ({
     default: StorageSecretsPage,
@@ -141,9 +149,18 @@ createRoot(root).render(
               path={APP_PATHS.automation.tools}
               element={<ToolsListPage />}
             />
-            <Route path={APP_PATHS.automation.skills.index} element={<SkillsListPage />} />
-            <Route path={APP_PATHS.automation.skills.create} element={<SkillManagerPage />} />
-            <Route path={APP_PATHS.automation.skills.edit} element={<SkillManagerPage />} />
+            <Route
+              path={APP_PATHS.automation.skills.index}
+              element={<SkillsListPage />}
+            />
+            <Route
+              path={APP_PATHS.automation.skills.create}
+              element={<SkillManagerPage />}
+            />
+            <Route
+              path={APP_PATHS.automation.skills.edit}
+              element={<SkillManagerPage />}
+            />
             <Route
               path={APP_PATHS.automation.scenarios.index}
               element={<ScenariosListPage />}

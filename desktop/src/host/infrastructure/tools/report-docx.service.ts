@@ -189,29 +189,27 @@ export class ReportDocxService {
             }),
           ],
         }),
-        ...block.content
-          .split(/\r?\n/)
-          .map(
-            (line) =>
-              new Paragraph({
-                spacing: { line: 240 },
-                border: {
-                  left: { style: BorderStyle.SINGLE, size: 4, color: "808080" },
-                  right: {
-                    style: BorderStyle.SINGLE,
-                    size: 4,
-                    color: "808080",
-                  },
+        ...block.content.split(/\r?\n/).map(
+          (line) =>
+            new Paragraph({
+              spacing: { line: 240 },
+              border: {
+                left: { style: BorderStyle.SINGLE, size: 4, color: "808080" },
+                right: {
+                  style: BorderStyle.SINGLE,
+                  size: 4,
+                  color: "808080",
                 },
-                children: [
-                  new TextRun({
-                    text: line || " ",
-                    font: "Courier New",
-                    size: 20,
-                  }),
-                ],
-              }),
-          ),
+              },
+              children: [
+                new TextRun({
+                  text: line || " ",
+                  font: "Courier New",
+                  size: 20,
+                }),
+              ],
+            }),
+        ),
       ];
     const caption = new Paragraph({
       spacing: { before: cm(0.6), after: 0, line: 240 },

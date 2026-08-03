@@ -4,7 +4,6 @@ import {
   Button,
   EmptyState,
   InputSmall,
-  Loader,
   ScrollArea,
   Switcher,
   Table,
@@ -456,56 +455,57 @@ export const StorageSecretsPage = observer(function StorageSecretsPage() {
       </ScrollArea>
 
       <FormModal
-          open={dialog?.kind === "secret" && dialog.action === "upsert"}
-          form={{
-            component: StorageSecretManageForm,
-            title: modalNameResolver(dialog),
-            props: {
-              categories: store.categories,
-              onSubmit: store.upsertSecret,
-            },
-          }}
-          model={dialog?.kind === "secret" ? dialog.model : undefined}
-          onCancel={() => setDialog(null)}
-          onConfirm={() => setDialog(null)}
+        open={dialog?.kind === "secret" && dialog.action === "upsert"}
+        form={{
+          component: StorageSecretManageForm,
+          title: modalNameResolver(dialog),
+          props: {
+            categories: store.categories,
+            onSubmit: store.upsertSecret,
+          },
+        }}
+        model={dialog?.kind === "secret" ? dialog.model : undefined}
+        onCancel={() => setDialog(null)}
+        onConfirm={() => setDialog(null)}
       />
       <FormModal
-          open={dialog?.kind === "category" && dialog.action === "upsert"}
-          form={{
-            component: StorageSecretCategoryManageForm,
-            title: modalNameResolver(dialog),
-            props: { onSubmit: store.upsertCategory },
-          }}
-          model={dialog?.kind === "category" ? dialog.model : undefined}
-          onCancel={() => setDialog(null)}
-          onConfirm={() => setDialog(null)}
+        open={dialog?.kind === "category" && dialog.action === "upsert"}
+        form={{
+          component: StorageSecretCategoryManageForm,
+          title: modalNameResolver(dialog),
+          props: { onSubmit: store.upsertCategory },
+        }}
+        model={dialog?.kind === "category" ? dialog.model : undefined}
+        onCancel={() => setDialog(null)}
+        onConfirm={() => setDialog(null)}
       />
       <DangerModal
-          open={dialog?.action === "delete" && dialog.model != null}
-          model={dialog}
-          title={modalNameResolver(dialog)}
-          description={(target) => (
-            <p>
-              Вы уверены, что хотите удалить{" "}
-              «<strong className="font-semibold text-main-50">
-                {target.model?.label}
-              </strong>»? Это действие нельзя будет отменить.
-            </p>
-          )}
-          onCancel={() => setDialog(null)}
-          onConfirm={async (target) => {
-            if (target.kind === "secret") {
-              await store.deleteSecret(target.model!.id);
-              toasts.success({ title: "Секрет удалён" });
-            } else {
-              await store.deleteCategory(target.model!.id);
-              toasts.success({
-                title: "Категория удалена",
-                description: "Все секреты в этой категории также были удалены.",
-              });
-            }
-            setDialog(null);
-          }}
+        open={dialog?.action === "delete" && dialog.model != null}
+        model={dialog}
+        title={modalNameResolver(dialog)}
+        description={(target) => (
+          <p>
+            Вы уверены, что хотите удалить «
+            <strong className="font-semibold text-main-50">
+              {target.model?.label}
+            </strong>
+            »? Это действие нельзя будет отменить.
+          </p>
+        )}
+        onCancel={() => setDialog(null)}
+        onConfirm={async (target) => {
+          if (target.kind === "secret") {
+            await store.deleteSecret(target.model!.id);
+            toasts.success({ title: "Секрет удалён" });
+          } else {
+            await store.deleteCategory(target.model!.id);
+            toasts.success({
+              title: "Категория удалена",
+              description: "Все секреты в этой категории также были удалены.",
+            });
+          }
+          setDialog(null);
+        }}
       />
     </section>
   );

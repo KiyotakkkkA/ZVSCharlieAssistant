@@ -129,7 +129,9 @@ export class AutomationDataSource {
     }
     const skillsByAgent = new Map<string, number[]>();
     for (const item of this.database
-      .prepare("SELECT agent_id,skill_id FROM automation_agent_skills ORDER BY skill_id")
+      .prepare(
+        "SELECT agent_id,skill_id FROM automation_agent_skills ORDER BY skill_id",
+      )
       .all() as Array<{ agent_id: string; skill_id: number }>) {
       const values = skillsByAgent.get(item.agent_id) ?? [];
       values.push(item.skill_id);
@@ -353,9 +355,13 @@ export class AutomationDataSource {
       ).map((item) => item.vector_store_id);
     const allowedSkillIds =
       skillIds ??
-      (this.database
-        .prepare("SELECT skill_id FROM automation_agent_skills WHERE agent_id=? ORDER BY skill_id")
-        .all(row.id) as Array<{ skill_id: number }>).map((item) => item.skill_id);
+      (
+        this.database
+          .prepare(
+            "SELECT skill_id FROM automation_agent_skills WHERE agent_id=? ORDER BY skill_id",
+          )
+          .all(row.id) as Array<{ skill_id: number }>
+      ).map((item) => item.skill_id);
 
     return {
       id: row.id,
@@ -376,46 +382,110 @@ export class AutomationDataSource {
   }
 
   listSkills(): Omit<AutomationSkill, "instructions">[] {
-    return (this.database.prepare(`
+    return (
+      this.database
+        .prepare(
+          `
       SELECT s.id,s.slug,s.name,s.description,s.status,s.version,s.author,s.builtin,
              s.required_tool_ids_json,s.updated_at,COUNT(a.agent_id) assigned_agents_count
       FROM automation_skills s
       LEFT JOIN automation_agent_skills a ON a.skill_id=s.id
       GROUP BY s.id ORDER BY s.updated_at DESC,s.name ASC
-    `).all() as Array<Record<string, unknown>>).map((row) => ({
-      id: Number(row.id), slug: String(row.slug), name: String(row.name),
-      description: String(row.description), status: row.status as AutomationSkill["status"],
-      version: String(row.version), author: String(row.author),
+    `,
+        )
+        .all() as Array<Record<string, unknown>>
+    ).map((row) => ({
+      id: Number(row.id),
+      slug: String(row.slug),
+      name: String(row.name),
+      description: String(row.description),
+      status: row.status as AutomationSkill["status"],
+      version: String(row.version),
+      author: String(row.author),
       requiredToolIds: parseJson(String(row.required_tool_ids_json), []),
-      assignedAgentsCount: Number(row.assigned_agents_count), updatedAt: String(row.updated_at),
+      assignedAgentsCount: Number(row.assigned_agents_count),
+      updatedAt: String(row.updated_at),
       builtin: Boolean(row.builtin),
     }));
   }
 
-  ensureBuiltinSkill(input: Omit<UpsertAutomationSkillInput, "id" | "instructions">): number {
-    const existing = this.database.prepare("SELECT id FROM automation_skills WHERE slug=?").get(input.slug) as { id: number } | undefined;
+  ensureBuiltinSkill(
+    input: Omit<UpsertAutomationSkillInput, "id" | "instructions">,
+  ): number {
+    const existing = this.database
+      .prepare("SELECT id FROM automation_skills WHERE slug=?")
+      .get(input.slug) as { id: number } | undefined;
     if (existing) {
-      this.database.prepare(`UPDATE automation_skills SET name=?,description=?,status='active',version=?,author=?,builtin=1,required_tool_ids_json=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).run(input.name,input.description,input.version,input.author,JSON.stringify(input.requiredToolIds),existing.id);
+      this.database
+        .prepare(
+          `UPDATE automation_skills SET name=?,description=?,status='active',version=?,author=?,builtin=1,required_tool_ids_json=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`,
+        )
+        .run(
+          input.name,
+          input.description,
+          input.version,
+          input.author,
+          JSON.stringify(input.requiredToolIds),
+          existing.id,
+        );
       return existing.id;
     }
-    return Number(this.database.prepare(`INSERT INTO automation_skills(slug,name,description,status,version,author,builtin,required_tool_ids_json) VALUES(?,?,?,'active',?,?,1,?)`).run(input.slug,input.name,input.description,input.version,input.author,JSON.stringify(input.requiredToolIds)).lastInsertRowid);
+    return Number(
+      this.database
+        .prepare(
+          `INSERT INTO automation_skills(slug,name,description,status,version,author,builtin,required_tool_ids_json) VALUES(?,?,?,'active',?,?,1,?)`,
+        )
+        .run(
+          input.slug,
+          input.name,
+          input.description,
+          input.version,
+          input.author,
+          JSON.stringify(input.requiredToolIds),
+        ).lastInsertRowid,
+    );
   }
 
   upsertSkill(input: UpsertAutomationSkillInput): number {
     if (input.id) {
-      const result = this.database.prepare(`UPDATE automation_skills SET slug=?,name=?,description=?,status=?,version=?,author=?,required_tool_ids_json=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).run(
-        input.slug,input.name,input.description,input.status,input.version,input.author,JSON.stringify(input.requiredToolIds),input.id,
-      );
+      const result = this.database
+        .prepare(
+          `UPDATE automation_skills SET slug=?,name=?,description=?,status=?,version=?,author=?,required_tool_ids_json=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`,
+        )
+        .run(
+          input.slug,
+          input.name,
+          input.description,
+          input.status,
+          input.version,
+          input.author,
+          JSON.stringify(input.requiredToolIds),
+          input.id,
+        );
       if (!result.changes) throw new Error("Навык не найден");
       return input.id;
     }
-    return Number(this.database.prepare(`INSERT INTO automation_skills(slug,name,description,status,version,author,required_tool_ids_json) VALUES(?,?,?,?,?,?,?)`).run(
-      input.slug,input.name,input.description,input.status,input.version,input.author,JSON.stringify(input.requiredToolIds),
-    ).lastInsertRowid);
+    return Number(
+      this.database
+        .prepare(
+          `INSERT INTO automation_skills(slug,name,description,status,version,author,required_tool_ids_json) VALUES(?,?,?,?,?,?,?)`,
+        )
+        .run(
+          input.slug,
+          input.name,
+          input.description,
+          input.status,
+          input.version,
+          input.author,
+          JSON.stringify(input.requiredToolIds),
+        ).lastInsertRowid,
+    );
   }
 
   deleteSkill(id: number): void {
-    const result = this.database.prepare("DELETE FROM automation_skills WHERE id=?").run(id);
+    const result = this.database
+      .prepare("DELETE FROM automation_skills WHERE id=?")
+      .run(id);
     if (!result.changes) throw new Error("Навык не найден");
   }
 
