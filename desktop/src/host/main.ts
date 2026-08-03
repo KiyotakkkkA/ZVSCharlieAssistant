@@ -48,6 +48,7 @@ import { VectorStoreService } from "./infrastructure/vector-store/vector-store.s
 import { ReportDocxService } from "./infrastructure/tools/report-docx.service";
 import { BuiltinSkillProvisioner } from "./application/services/builtin-skill-provisioner";
 import { DEFAULT_SKILLS } from "../default/skills";
+import { ElectronGeneratedArtifactExporter } from "./infrastructure/electron/generated-artifact.exporter";
 
 let database: ReturnType<typeof createSqliteDatabase> | undefined;
 
@@ -71,7 +72,8 @@ app.whenReady().then(() => {
     skillContent,
   );
 
-  registerAppHandlers();
+  const reportsRoot = join(app.getPath("documents"), "ZVS Assistant", "Reports");
+  registerAppHandlers(new ElectronGeneratedArtifactExporter(reportsRoot));
   registerSecretStorageHandlers(secretRepository);
   const providerDataSource = new TextProviderDataSource(database);
   registerTextProviderHandlers(
@@ -102,9 +104,7 @@ app.whenReady().then(() => {
     ollamaWebService,
     vectorService,
     skillContent,
-    new ReportDocxService(
-      join(app.getPath("documents"), "ZVS Assistant", "Reports"),
-    ),
+    new ReportDocxService(reportsRoot),
   );
   const scenarioEngine = new ScenarioRunEngine(
     scenarioExecutions,

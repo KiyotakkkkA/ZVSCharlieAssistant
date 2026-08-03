@@ -12,6 +12,7 @@ import {
   SettingsIcon,
   StorageIcon,
   TasksIcon,
+  ToolsIcon,
 } from "../components/atoms";
 
 export const APP_PATHS = {
@@ -83,7 +84,7 @@ export const NAVIGATION_ROUTES: readonly NavigationRoute[] = [
         id: "automation-tools",
         label: "Инструменты",
         path: APP_PATHS.automation.tools,
-        icon: SettingsIcon,
+        icon: ToolsIcon,
       },
       {
         id: "automation-scenarios",

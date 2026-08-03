@@ -22,6 +22,7 @@ import {
   SvgIcon,
   TasksIcon,
   WebIcon,
+  WordIcon,
 } from "../../atoms";
 import type { ScenarioNodeRun, ScenarioRun } from "../../../../ipc/contracts";
 import type { ChatToolCall } from "../../../../ipc/contracts";
@@ -31,6 +32,11 @@ import {
   type ChatSources,
 } from "./ChatSourcePanel";
 import { ScenarioExecutionHistory } from "./ChatScenarioExcecutionHistory";
+import {
+  ChatArtifactPanel,
+  collectChatArtifacts,
+  type ChatArtifact,
+} from "./ChatArtifactPanel";
 
 const MemoizedReactMarkdown = memo(
   ReactMarkdown,
@@ -42,6 +48,7 @@ const EMPTY_SCENARIO_EXECUTIONS = new Map<
 >();
 const EMPTY_SCENARIO_OUTPUT = new Map<string, string>();
 const EMPTY_CHAT_SOURCES: ChatSources = { internal: [], web: [] };
+const EMPTY_CHAT_ARTIFACTS: ChatArtifact[] = [];
 
 export interface ChatMessage {
   id: number;
@@ -100,6 +107,8 @@ export function ChatFeed({
   const scrollRef = useRef<HTMLDivElement>(null);
   const [openedSources, setOpenedSources] =
     useState<ChatSources>(EMPTY_CHAT_SOURCES);
+  const [openedArtifacts, setOpenedArtifacts] =
+    useState<ChatArtifact[]>(EMPTY_CHAT_ARTIFACTS);
   const lastMessageId = messages.at(-1)?.id;
   const lastMessageText = messages.at(-1)?.text;
   const lastMessageReasoning = messages.at(-1)?.reasoning;
@@ -384,6 +393,16 @@ export function ChatFeed({
                           }
                           onOpen={setOpenedSources}
                         />
+                        <MessageArtifactsButton
+                          toolCalls={message.toolCalls}
+                          scenarioNodes={
+                            message.scenarioRunId
+                              ? scenarioExecutions.get(message.scenarioRunId)
+                                  ?.nodes
+                              : undefined
+                          }
+                          onOpen={setOpenedArtifacts}
+                        />
                       </div>
                     ) : (
                       message.text
@@ -398,6 +417,10 @@ export function ChatFeed({
       <ChatSourcePanel
         sources={openedSources}
         onClose={() => setOpenedSources(EMPTY_CHAT_SOURCES)}
+      />
+      <ChatArtifactPanel
+        artifacts={openedArtifacts}
+        onClose={() => setOpenedArtifacts(EMPTY_CHAT_ARTIFACTS)}
       />
     </div>
   );
@@ -430,6 +453,32 @@ const MessageSourcesButton = memo(function MessageSourcesButton({
   );
 });
 
+const MessageArtifactsButton = memo(function MessageArtifactsButton({
+  toolCalls,
+  scenarioNodes,
+  onOpen,
+}: {
+  toolCalls?: ChatToolCall[];
+  scenarioNodes?: ScenarioNodeRun[];
+  onOpen: (artifacts: ChatArtifact[]) => void;
+}) {
+  const artifacts = collectChatArtifacts(toolCalls, scenarioNodes);
+  if (!artifacts.length) return null;
+  return (
+    <button
+      type="button"
+      className="mt-5 inline-flex cursor-pointer items-center gap-2 rounded-lg bg-main-800/55 px-3 py-2 text-xs font-medium text-main-300 transition-colors hover:bg-main-700/70 hover:text-main-50"
+      onClick={() => onOpen(artifacts)}
+    >
+      <WordIcon className="size-4 text-accent-light" />
+      Созданные артефакты
+      <span className="rounded-md bg-main-700/60 px-1.5 py-0.5 text-[10px] text-main-400">
+        {artifacts.length}
+      </span>
+    </button>
+  );
+});
+
 function ToolCallDetails({ call }: { call: ChatToolCall }) {
   if (call.toolId === "web.search" || call.toolId === "web.fetch")
     return (
@@ -446,6 +495,15 @@ function ToolCallDetails({ call }: { call: ChatToolCall }) {
         icon={StorageIcon}
         running="Идёт поиск в хранилище"
         completed="Поиск в хранилище завершён"
+        status={call.status}
+      />
+    );
+  if (call.toolId === "reports.docx")
+    return (
+      <CompactToolStatus
+        icon={WordIcon}
+        running="Идёт создание отчета"
+        completed="Отчет DOCX создан"
         status={call.status}
       />
     );

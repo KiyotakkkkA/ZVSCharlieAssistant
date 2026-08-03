@@ -6,6 +6,7 @@ import {
   TEXT_PROVIDER_IPC_CHANNELS,
   CHAT_IPC_CHANNELS,
   type AppInfo,
+  type GeneratedArtifactInput,
   type AutomationAgent,
   type AutomationScenario,
   type AutomationSnapshot,
@@ -46,6 +47,8 @@ import {
 export const desktopApi: DesktopApi = {
   getAppInfo: (): Promise<AppInfo> =>
     ipcRenderer.invoke(IPC_CHANNELS.getAppInfo) as Promise<AppInfo>,
+  saveGeneratedArtifact: (input: GeneratedArtifactInput): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.saveGeneratedArtifact, input) as Promise<boolean>,
   secrets: {
     getSnapshot: (): Promise<SecretStorageSnapshot> =>
       ipcRenderer.invoke(

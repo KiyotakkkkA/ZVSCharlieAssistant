@@ -14,5 +14,10 @@ export {
   type InternalChatSource,
   type WebChatSource,
 } from "./ChatSourcePanel";
+export {
+  ChatArtifactPanel,
+  collectChatArtifacts,
+  type ChatArtifact,
+} from "./ChatArtifactPanel";
 
 export { ChatSidebar, type ChatDialog } from "./ChatSidebar";

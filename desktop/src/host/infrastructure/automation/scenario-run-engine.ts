@@ -360,6 +360,7 @@ ${JSON.stringify(scenarioAgents, null, 2)}
       knowledge: [] as Awaited<ReturnType<VectorStoreService["search"]>>,
     };
     const webSources: ScenarioWebSource[] = [];
+    const artifacts: ScenarioArtifact[] = [];
     const nodeRun = this.data.startNode(runId, node.id, node.kind, workerInput);
     emit({ type: "node.started", runId, node: nodeRun });
     try {
@@ -410,6 +411,11 @@ ${JSON.stringify(scenarioAgents, null, 2)}
                   event.input,
                   result,
                 );
+              else if (event.toolId === "reports.docx") {
+                const artifact = parseScenarioArtifact(result);
+                if (artifact && !artifacts.some((item) => item.path === artifact.path))
+                  artifacts.push(artifact);
+              }
             },
           },
         }),
@@ -418,6 +424,7 @@ ${JSON.stringify(scenarioAgents, null, 2)}
         text: output,
         sources: workerInput.knowledge,
         webSources,
+        artifacts,
       });
       emit({ type: "node.completed", runId, node: completed });
       return { nodeId: node.id, agentId, result: output };
@@ -469,6 +476,17 @@ const errorMessage = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
 
 type ScenarioWebSource = { title: string; url: string; content: string };
+type ScenarioArtifact = { kind: "document"; path: string; fileName: string };
+
+function parseScenarioArtifact(value: unknown): ScenarioArtifact | undefined {
+  if (
+    !isRecord(value) ||
+    typeof value.path !== "string" ||
+    typeof value.fileName !== "string"
+  )
+    return undefined;
+  return { kind: "document", path: value.path, fileName: value.fileName };
+}
 
 function collectScenarioWebSources(
   target: ScenarioWebSource[],
