@@ -20,6 +20,7 @@ import {
   SecretOrientedSelect,
   Field,
   Lead,
+  OllamaIcon,
 } from "../../atoms";
 import { SettingsProviderModelCard } from "../../molecules";
 import { textProviderStore } from "../../../stores";
@@ -52,6 +53,15 @@ interface SettingsProviderManageFormProps {
   onModelChange: (modelId: string, enabled: boolean) => void;
   onTestConnection: () => void | Promise<void>;
 }
+
+const ICONS = {
+  ollama: OllamaIcon,
+} as const;
+
+const IconResolver = (icon: keyof typeof ICONS) => {
+  const IconComponent = ICONS[icon];
+  return <IconComponent className="size-5" />;
+};
 
 export function SettingsProviderManageForm({
   model,
@@ -104,7 +114,7 @@ export function SettingsProviderManageForm({
         <div className="flex flex-wrap items-start justify-between gap-4 border-b border-main-700/35 pb-5">
           <div className="flex items-center gap-3">
             <span className="grid size-11 place-items-center rounded-xl bg-accent-medium/10 text-accent-light">
-              <RobotIcon className="size-5" />
+              {IconResolver(model.kind)}
             </span>
             <div>
               <div className="flex items-center gap-2">

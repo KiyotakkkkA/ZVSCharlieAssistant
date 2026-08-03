@@ -6,7 +6,7 @@ import {
   Tabs,
   useToasts,
 } from "@kiyotakkkka/zvs-uikit-lib";
-import { RobotIcon } from "../../../components/atoms";
+import { OllamaIcon, RobotIcon } from "../../../components/atoms";
 import {
   ControlButton,
   PrimaryButton,
@@ -22,12 +22,21 @@ import {
 } from "@renderer/components/organisms/forms";
 import { DangerModal } from "@renderer/components/organisms/modals";
 
+const ICONS = {
+  ollama: OllamaIcon,
+} as const;
+
 const statusMeta: Record<ProviderStatus, { label: string; className: string }> =
   {
     connected: { label: "Проверен", className: "text-success-light" },
     unchecked: { label: "Не проверен", className: "text-main-500" },
     error: { label: "Ошибка", className: "text-danger-light" },
   };
+
+const IconResolver = (icon: keyof typeof ICONS) => {
+  const IconComponent = ICONS[icon];
+  return <IconComponent className="size-5" />;
+};
 
 export const SettingsProvidersPage = observer(function SettingsProvidersPage() {
   const toasts = useToasts();
@@ -195,7 +204,7 @@ export const SettingsProvidersPage = observer(function SettingsProvidersPage() {
                   className={`flex items-start gap-3 rounded-xl p-3 transition-colors ${provider.id === (selectedId === "draft" ? null : selectedId) ? "bg-main-700/65" : "hover:bg-main-700/35"}`}
                 >
                   <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent-medium/10 text-accent-light">
-                    <RobotIcon className="size-5" />
+                    {IconResolver(provider.kind)}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-medium text-main-100">
@@ -250,22 +259,23 @@ export const SettingsProvidersPage = observer(function SettingsProvidersPage() {
         )}
       </div>
       <DangerModal
-          open={providerToDelete?.id != null}
-          model={providerToDelete}
-          title="Удалить провайдера?"
-          description={(item) => (
-            <>
-              Подключение «<strong className="font-semibold text-main-50">{item.name}</strong>» и сохранённый список моделей будут
-              удалены.
-            </>
-          )}
-          onCancel={() => setProviderToDelete(null)}
-          onConfirm={async (item) => {
-            if (item.id === null) return;
-            await textProviderStore.delete(item.id);
-            setProviderToDelete(null);
-            toasts.success({ title: "Провайдер удалён" });
-          }}
+        open={providerToDelete?.id != null}
+        model={providerToDelete}
+        title="Удалить провайдера?"
+        description={(item) => (
+          <>
+            Подключение «
+            <strong className="font-semibold text-main-50">{item.name}</strong>»
+            и сохранённый список моделей будут удалены.
+          </>
+        )}
+        onCancel={() => setProviderToDelete(null)}
+        onConfirm={async (item) => {
+          if (item.id === null) return;
+          await textProviderStore.delete(item.id);
+          setProviderToDelete(null);
+          toasts.success({ title: "Провайдер удалён" });
+        }}
       />
     </section>
   );
