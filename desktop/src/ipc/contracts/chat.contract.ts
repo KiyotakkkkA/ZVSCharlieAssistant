@@ -100,6 +100,7 @@ export interface ChatApi {
   cancelRun(runId: number): Promise<void>;
   deleteConversation(id: number): Promise<void>;
   renameConversation(id: number, title: string): Promise<void>;
+  truncateMessages(conversationId: number, fromMessageId: number): Promise<void>;
   subscribe(listener: (event: RunEvent) => void): () => void;
 }
 export const CHAT_IPC_CHANNELS = {
@@ -109,5 +110,6 @@ export const CHAT_IPC_CHANNELS = {
   cancelRun: "chat:cancel-run",
   deleteConversation: "chat:delete-conversation",
   renameConversation: "chat:rename-conversation",
+  truncateMessages: "chat:truncate-messages",
   event: "chat:event",
 } as const;

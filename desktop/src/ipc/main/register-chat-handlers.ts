@@ -26,6 +26,11 @@ export function registerChatHandlers(data: ChatDataSource, engine: RunEngine) {
     CHAT_IPC_CHANNELS.renameConversation,
     (_event, id: number, title: string) => data.renameConversation(id, title),
   );
+  ipcMain.handle(
+    CHAT_IPC_CHANNELS.truncateMessages,
+    (_event, conversationId: number, fromMessageId: number) =>
+      data.truncateMessages(conversationId, fromMessageId),
+  );
 }
 export function removeChatHandlers() {
   for (const channel of Object.values(CHAT_IPC_CHANNELS))

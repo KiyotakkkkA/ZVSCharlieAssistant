@@ -100,6 +100,25 @@ export class ChatStore {
     await this.refreshConversations();
   }
 
+  async truncateMessages(fromMessageId: number) {
+    const conversationId = this.activeConversationId;
+    if (!conversationId) throw new Error("Диалог не выбран");
+    if (this.activeRunId)
+      throw new Error("Дождитесь завершения текущего ответа");
+    await window.desktop.chat.truncateMessages(conversationId, fromMessageId);
+    runInAction(() => {
+      const removed = this.messages.filter(
+        (message) => message.id >= fromMessageId,
+      );
+      this.messages = this.messages.filter(
+        (message) => message.id < fromMessageId,
+      );
+      for (const message of removed)
+        if (message.scenarioRunId) this.scenarioExecutions.delete(message.scenarioRunId);
+    });
+    await this.refreshConversations();
+  }
+
   newConversation() {
     this.resetPendingDeltas();
     this.activeConversationId = null;

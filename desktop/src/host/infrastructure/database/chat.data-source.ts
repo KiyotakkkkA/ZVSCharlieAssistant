@@ -266,6 +266,49 @@ export class ChatDataSource {
       .run(normalized, id);
     if (!result.changes) throw new Error("Диалог не найден");
   }
+  truncateMessages(conversationId: number, fromMessageId: number) {
+    const truncate = this.db.transaction(() => {
+      const target = this.db
+        .prepare("SELECT id FROM chat_messages WHERE id=? AND conversation_id=?")
+        .get(fromMessageId, conversationId);
+      if (!target) throw new Error("Сообщение не найдено");
+
+      const suffix = this.db
+        .prepare(
+          "SELECT DISTINCT run_id,execution_run_id FROM chat_messages WHERE conversation_id=? AND id>=?",
+        )
+        .all(conversationId, fromMessageId) as Array<{
+        run_id: number | null;
+        execution_run_id: number | null;
+      }>;
+      const generationRunIds = suffix
+        .map((row) => row.run_id)
+        .filter((id): id is number => id !== null);
+      const executionRunIds = suffix
+        .map((row) => row.execution_run_id)
+        .filter((id): id is number => id !== null);
+
+      this.db
+        .prepare("DELETE FROM chat_messages WHERE conversation_id=? AND id>=?")
+        .run(conversationId, fromMessageId);
+      const deleteByIds = (
+        table: "generation_runs" | "execution_runs",
+        ids: number[],
+      ) => {
+        if (!ids.length) return;
+        const placeholders = ids.map(() => "?").join(",");
+        this.db
+          .prepare(`DELETE FROM ${table} WHERE id IN (${placeholders})`)
+          .run(...ids);
+      };
+      deleteByIds("generation_runs", generationRunIds);
+      deleteByIds("execution_runs", executionRunIds);
+      this.db
+        .prepare("UPDATE chat_conversations SET updated_at=CURRENT_TIMESTAMP WHERE id=?")
+        .run(conversationId);
+    });
+    truncate();
+  }
   resolveModel(id: number) {
     return this.db
       .prepare(

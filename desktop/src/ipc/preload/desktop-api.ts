@@ -261,6 +261,12 @@ export const desktopApi: DesktopApi = {
         id,
         title,
       ) as Promise<void>,
+    truncateMessages: (conversationId: number, fromMessageId: number): Promise<void> =>
+      ipcRenderer.invoke(
+        CHAT_IPC_CHANNELS.truncateMessages,
+        conversationId,
+        fromMessageId,
+      ) as Promise<void>,
     subscribe: (listener: (event: RunEvent) => void) => {
       const handler = (_event: Electron.IpcRendererEvent, payload: RunEvent) =>
         listener(payload);

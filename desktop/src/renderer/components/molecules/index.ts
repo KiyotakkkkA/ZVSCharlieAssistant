@@ -7,3 +7,5 @@ export { StorageSecretCategoryCard } from "./StorageSecretCategoryCard";
 export { SettingsProviderModelCard } from "./SettingsProviderModelCard";
 export { AppBreadcrumbs, type AppBreadcrumbItem } from "./AppBreadcrumbs";
 export { NavigationTreeItem } from "./NavigationTreeItem";
+export { ChatAssistantMsgBlock } from "./ChatAssistantMsgBlock";
+export { ChatUserMsgBlock } from "./ChatUserMsgBlock";

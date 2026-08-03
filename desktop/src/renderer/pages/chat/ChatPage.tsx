@@ -17,6 +17,7 @@ import {
 import { automationStore, chatStore, textProviderStore } from "../../stores";
 import { PrimaryButton } from "@renderer/components/atoms/buttons";
 import { DangerModal } from "@renderer/components/organisms/modals";
+import type { StartRunInput } from "../../../ipc/contracts";
 
 export const ChatPage = observer(function ChatPage() {
   const toasts = useToasts();
@@ -76,29 +77,39 @@ export const ChatPage = observer(function ChatPage() {
   const active = chatStore.conversations.find(
     (item) => item.id === chatStore.activeConversationId,
   );
+  const startMessage = async (
+    value: string,
+    runOptions: Omit<StartRunInput, "conversationId" | "text"> = {
+      mode,
+      modelId: mode === "scenario" ? undefined : Number(model),
+      agentId: mode === "agent" ? agentId : undefined,
+      scenarioId: mode === "scenario" ? scenarioId : undefined,
+    },
+  ) => {
+    if (!value) throw new Error("Сообщение не может быть пустым");
+    if (runOptions.mode !== "scenario" && !runOptions.modelId)
+      throw new Error("Модель не выбрана");
+    if (chatStore.activeRunId)
+      throw new Error("Дождитесь завершения текущего ответа");
+    await chatStore.start({
+      ...runOptions,
+      text: value,
+    });
+  };
   const send = () => {
     const value = text.trim();
-    if (!value || (mode !== "scenario" && !model) || chatStore.activeRunId)
-      return;
+    if (!value) return;
     setText("");
-    void chatStore
-      .start({
-        mode,
-        modelId: mode === "scenario" ? undefined : Number(model),
-        agentId: mode === "agent" ? agentId : undefined,
-        scenarioId: mode === "scenario" ? scenarioId : undefined,
-        text: value,
-      })
-      .catch((error: unknown) => {
-        setText(value);
-        toasts.danger({
-          title:
-            mode === "scenario"
-              ? "Не удалось запустить сценарий"
-              : "Не удалось отправить сообщение",
-          description: readableError(error),
-        });
+    void startMessage(value).catch((error: unknown) => {
+      setText(value);
+      toasts.danger({
+        title:
+          mode === "scenario"
+            ? "Не удалось запустить сценарий"
+            : "Не удалось отправить сообщение",
+        description: readableError(error),
       });
+    });
   };
   return (
     <section className="flex h-full min-h-0 overflow-hidden rounded-lg">
@@ -134,6 +145,43 @@ export const ChatPage = observer(function ChatPage() {
           hasMore={chatStore.hasMoreMessages}
           loadingEarlier={chatStore.loadingEarlier}
           onLoadEarlier={() => chatStore.loadEarlier()}
+          actionsDisabled={chatStore.activeRunId !== null}
+          onDeleteMessage={async (messageId) => {
+            await chatStore.truncateMessages(messageId);
+            toasts.success({ title: "Сообщение было успешно удалено" });
+          }}
+          onEditMessage={async (messageId, nextText) => {
+            try {
+              const messageIndex = chatStore.messages.findIndex((item) => item.id === messageId);
+              const nextAssistant = chatStore.messages
+                .slice(messageIndex + 1)
+                .find((item) => item.role === "assistant");
+              const editRunOptions: Omit<StartRunInput, "conversationId" | "text"> =
+                active?.mode === "scenario"
+                  ? {
+                      mode: "scenario",
+                      scenarioId: nextAssistant?.scenarioRunId
+                        ? chatStore.scenarioExecutions.get(nextAssistant.scenarioRunId)?.run.scenarioId
+                        : scenarioId,
+                    }
+                  : {
+                      mode: active?.mode ?? mode,
+                      modelId: active?.modelId ?? Number(model),
+                      agentId: active?.mode === "agent" ? active.agentId ?? undefined : undefined,
+                    };
+              if (editRunOptions.mode === "scenario" && !editRunOptions.scenarioId)
+                throw new Error("Не удалось определить сценарий исходного сообщения");
+              await chatStore.truncateMessages(messageId);
+              await startMessage(nextText, editRunOptions);
+              toasts.success({ title: "Сообщение изменено, ответ создаётся заново" });
+            } catch (error) {
+              toasts.danger({
+                title: "Не удалось изменить сообщение",
+                description: readableError(error),
+              });
+              throw error;
+            }
+          }}
           scenarioExecutions={new Map(chatStore.scenarioExecutions.entries())}
           scenarioNodeOutput={new Map(chatStore.scenarioNodeOutput.entries())}
         />
@@ -157,26 +205,32 @@ export const ChatPage = observer(function ChatPage() {
         />
       </div>
       <DangerModal
-          open={chatStore.pendingScenarioApproval !== null}
-          model={chatStore.pendingScenarioApproval}
-          title="Продолжить сценарий?"
-          description={(approval) => approval.prompt}
-          confirmLabel="Продолжить"
-          onCancel={() => void chatStore.approveScenario(false)}
-          onConfirm={() => chatStore.approveScenario(true)}
+        open={chatStore.pendingScenarioApproval !== null}
+        model={chatStore.pendingScenarioApproval}
+        title="Продолжить сценарий?"
+        description={(approval) => approval.prompt}
+        confirmLabel="Продолжить"
+        onCancel={() => void chatStore.approveScenario(false)}
+        onConfirm={() => chatStore.approveScenario(true)}
       />
       <DangerModal
-          open={dialogToDelete !== null}
-          model={dialogToDelete}
-          title="Удалить диалог?"
-          description={(dialog) => (
-            <>Диалог «<strong className="font-semibold text-main-50">{dialog.title}</strong>» и вся его история будут удалены.</>
-          )}
-          onCancel={() => setDialogToDelete(null)}
-          onConfirm={async (dialog) => {
-            await chatStore.deleteConversation(Number(dialog.id));
-            setDialogToDelete(null);
-          }}
+        open={dialogToDelete !== null}
+        model={dialogToDelete}
+        title="Удалить диалог?"
+        description={(dialog) => (
+          <>
+            Диалог «
+            <strong className="font-semibold text-main-50">
+              {dialog.title}
+            </strong>
+            » и вся его история будут удалены.
+          </>
+        )}
+        onCancel={() => setDialogToDelete(null)}
+        onConfirm={async (dialog) => {
+          await chatStore.deleteConversation(Number(dialog.id));
+          setDialogToDelete(null);
+        }}
       />
       {dialogToEdit ? (
         <Modal
