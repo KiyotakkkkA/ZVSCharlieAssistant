@@ -42,6 +42,8 @@ import {
   type UploadVectorDocumentInput,
   type VectorSearchInput,
   type VectorSearchResultItem,
+  TASKS_IPC_CHANNELS,
+  type AgentTaskRun,
 } from "../contracts";
 
 export const desktopApi: DesktopApi = {
@@ -52,6 +54,12 @@ export const desktopApi: DesktopApi = {
       IPC_CHANNELS.saveGeneratedArtifact,
       input,
     ) as Promise<boolean>,
+  tasks: {
+    listAgentRuns: (): Promise<AgentTaskRun[]> =>
+      ipcRenderer.invoke(TASKS_IPC_CHANNELS.listAgentRuns) as Promise<
+        AgentTaskRun[]
+      >,
+  },
   secrets: {
     getSnapshot: (): Promise<SecretStorageSnapshot> =>
       ipcRenderer.invoke(

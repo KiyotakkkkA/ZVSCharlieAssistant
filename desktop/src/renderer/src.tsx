@@ -19,6 +19,11 @@ import "./styles/global.css";
 const ChatPage = lazy(() =>
   import("./pages/chat").then(({ ChatPage }) => ({ default: ChatPage })),
 );
+const TaskListPage = lazy(() =>
+  import("./pages/tasks").then(({ TaskListPage }) => ({
+    default: TaskListPage,
+  })),
+);
 const AgentsListPage = lazy(() =>
   import("./pages/automation/agents").then(({ AgentsListPage }) => ({
     default: AgentsListPage,
@@ -74,6 +79,7 @@ function AppLayout() {
   const { pathname } = useLocation();
   const ownsContentScroll =
     pathname === APP_PATHS.chat ||
+    pathname === APP_PATHS.tasks ||
     pathname === APP_PATHS.automation.agents.index ||
     pathname === APP_PATHS.automation.tools ||
     pathname === APP_PATHS.automation.skills.index ||
@@ -123,10 +129,7 @@ createRoot(root).render(
           <Route element={<AppLayout />}>
             <Route index element={<RoutePage title="Главная" />} />
             <Route path={APP_PATHS.chat} element={<ChatPage />} />
-            <Route
-              path={APP_PATHS.tasks}
-              element={<RoutePage title="Задачи" />}
-            />
+            <Route path={APP_PATHS.tasks} element={<TaskListPage />} />
             <Route
               path={APP_PATHS.automation.index}
               element={

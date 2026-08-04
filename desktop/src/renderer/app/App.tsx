@@ -7,6 +7,7 @@ import {
   textProviderStore,
   chatStore,
   vectorStoreStore,
+  tasksStore,
 } from "../stores";
 
 export function App() {
@@ -16,6 +17,7 @@ export function App() {
     void textProviderStore.bootstrap().catch(() => undefined);
     void chatStore.bootstrap().catch(() => undefined);
     void vectorStoreStore.bootstrap().catch(() => undefined);
+    void tasksStore.bootstrap().catch(() => undefined);
   }, []);
 
   return (

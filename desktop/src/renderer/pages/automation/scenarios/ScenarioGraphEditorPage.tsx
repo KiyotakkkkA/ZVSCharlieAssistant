@@ -162,7 +162,7 @@ const scenarioStatusOptions = [
 
 export const ScenarioGraphEditorPage = observer(
   function ScenarioGraphEditorPage() {
-    const { goTo } = useHashRouter();
+    const { goTo, goBack } = useHashRouter();
     const toasts = useToasts();
     const { scenarioId } = useParams();
     const scenario = automationStore.getScenario(scenarioId);
@@ -455,7 +455,7 @@ export const ScenarioGraphEditorPage = observer(
               label="Назад"
               rounded="rounded-lg"
               className="size-7 shrink-0 p-0 text-main-400 hover:bg-main-600/50"
-              onClick={() => goTo(APP_PATHS.automation.scenarios.index)}
+              onClick={() => goBack(APP_PATHS.automation.scenarios.index)}
             >
               <ChevronLeftIcon className="size-4" />
             </Button>

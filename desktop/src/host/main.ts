@@ -49,6 +49,11 @@ import { ReportDocxService } from "./infrastructure/tools/report-docx.service";
 import { BuiltinSkillProvisioner } from "./application/services/builtin-skill-provisioner";
 import { DEFAULT_SKILLS } from "../default/skills";
 import { ElectronGeneratedArtifactExporter } from "./infrastructure/electron/generated-artifact.exporter";
+import {
+  registerTaskHandlers,
+  removeTaskHandlers,
+} from "../ipc/main/register-task-handlers";
+import { TaskHistoryDataSource } from "./infrastructure/database/task-history.data-source";
 
 let database: ReturnType<typeof createSqliteDatabase> | undefined;
 
@@ -84,6 +89,7 @@ app.whenReady().then(() => {
     new ProviderConnectionService(secretRepository, providerDataSource),
   );
   const chatDataSource = new ChatDataSource(database);
+  registerTaskHandlers(new TaskHistoryDataSource(database));
   const vectorDataSource = new VectorStoreDataSource(database);
   vectorDataSource.recoverInterruptedDocuments();
   const vectorService = new VectorStoreService(
@@ -145,6 +151,7 @@ app.on("before-quit", () => {
   removeTextProviderHandlers();
   removeChatHandlers();
   removeVectorStoreHandlers();
+  removeTaskHandlers();
   database?.close();
   database = undefined;
 });

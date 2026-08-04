@@ -18,6 +18,18 @@ export function useHashRouter() {
     [navigate],
   );
 
+  const goBack = useCallback(
+    (fallback: To = APP_PATHS.home) => {
+      const historyIndex = window.history.state?.idx;
+      if (typeof historyIndex === "number" && historyIndex > 0) {
+        void navigate(-1);
+        return;
+      }
+      void navigate(fallback, { replace: true });
+    },
+    [navigate],
+  );
+
   const isActive = useCallback(
     (path: AppPath) =>
       path === APP_PATHS.home
@@ -30,6 +42,7 @@ export function useHashRouter() {
     currentPath: location.pathname,
     routes: NAVIGATION_ROUTES,
     goTo,
+    goBack,
     isActive,
   } as const;
 }

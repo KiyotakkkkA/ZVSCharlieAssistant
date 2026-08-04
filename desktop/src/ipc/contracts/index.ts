@@ -5,6 +5,13 @@ export type {
 } from "./app.contract";
 export { IPC_CHANNELS } from "./app.contract";
 export type {
+  AgentTaskRun,
+  TaskRunKind,
+  TaskRunOrigin,
+  TaskRunStatus,
+} from "./tasks.contract";
+export { TASKS_IPC_CHANNELS } from "./tasks.contract";
+export type {
   AutomationAgent,
   AutomationScenario,
   AutomationScenarioEdge,
