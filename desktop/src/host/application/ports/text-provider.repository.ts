@@ -3,7 +3,7 @@ import type {
   TextProviderLimits,
   TextProviderSnapshot,
   UpsertTextProviderInput,
-} from "../../domain/models/text-provider";
+} from "../../../shared/models/text-provider";
 
 export interface TextProviderRepository {
   getSnapshot(): TextProviderSnapshot;

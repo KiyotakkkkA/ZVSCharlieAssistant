@@ -1,4 +1,4 @@
-import type { AutomationTool } from "../../domain/models/automation";
+import type { AutomationTool } from "../../../shared/models/automation";
 
 const ollamaApiKey = {
   key: "ollamaApiKey",

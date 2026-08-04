@@ -5,7 +5,7 @@ import type {
   SecretStorageSnapshot,
   UpsertSecretCategoryInput,
   UpsertSecretInput,
-} from "../../domain/models/secret-storage";
+} from "../../../shared/models/secret-storage";
 
 export interface SecretStorageRepository {
   getSnapshot(): SecretStorageSnapshot;

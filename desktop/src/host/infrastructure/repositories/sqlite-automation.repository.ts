@@ -11,7 +11,7 @@ import type {
   UpsertAutomationToolSecretBindingInput,
   AutomationSkill,
   UpsertAutomationSkillInput,
-} from "../../domain/models/automation";
+} from "../../../shared/models/automation";
 import type { AutomationRepository } from "../../application/ports/automation.repository";
 import { AutomationDataSource } from "../database/automation.data-source";
 import type { SkillContentStore } from "../../application/ports/automation-runtime.ports";

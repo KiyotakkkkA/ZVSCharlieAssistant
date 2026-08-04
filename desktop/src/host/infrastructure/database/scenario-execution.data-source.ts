@@ -6,7 +6,7 @@ import type {
   ScenarioRun,
   ScenarioRunOrigin,
   ScenarioRunStatus,
-} from "../../domain/models/automation";
+} from "../../../shared/models/automation";
 
 const parse = (value: string | null): unknown =>
   value ? JSON.parse(value) : null;

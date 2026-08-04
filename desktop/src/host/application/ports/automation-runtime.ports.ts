@@ -2,7 +2,7 @@ import type {
   AutomationSkill,
   AutomationStatus,
   UpsertAutomationSkillInput,
-} from "../../domain/models/automation";
+} from "../../../shared/models/automation";
 
 export interface SkillContentStore {
   read(slug: string): string;

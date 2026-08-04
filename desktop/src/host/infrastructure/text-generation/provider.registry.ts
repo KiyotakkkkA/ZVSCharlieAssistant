@@ -1,6 +1,6 @@
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import type { LanguageModel } from "ai";
-import type { TextProviderGenerationSettings } from "../../domain/models/text-provider";
+import type { TextProviderGenerationSettings } from "../../../shared/models/text-provider";
 import type { SecretStorageRepository } from "../../application/ports/secret-storage.repository";
 import { ChatDataSource } from "../database/chat.data-source";
 export class ProviderRegistry {

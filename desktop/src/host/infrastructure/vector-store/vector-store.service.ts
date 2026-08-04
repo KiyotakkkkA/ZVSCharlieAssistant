@@ -8,7 +8,7 @@ import type {
   UpsertVectorStoreInput,
   VectorSearchInput,
   VectorSearchResultItem,
-} from "../../domain/models/vector-store";
+} from "../../../shared/models/vector-store";
 import type { VectorStoreDataSource } from "../database/vector-store.data-source";
 import { EmbeddingService } from "./embedding.service";
 

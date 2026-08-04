@@ -3,7 +3,7 @@ import type {
   AutomationScenarioGraph,
   AutomationScenarioNode,
   ScenarioValidationResult,
-} from "../models/automation";
+} from "../../../shared/models/automation";
 import {
   getScenarioEdgeKind,
   isScenarioConnectionValid,

@@ -8,7 +8,7 @@ import type {
   TextProviderModelInfo,
   TextProviderSnapshot,
   UpsertTextProviderInput,
-} from "../../domain/models/text-provider";
+} from "../../../shared/models/text-provider";
 
 const API_KEYS_CATEGORY_ID = 1;
 

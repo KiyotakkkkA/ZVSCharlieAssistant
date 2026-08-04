@@ -1,6 +1,6 @@
 import { tool, type ToolSet } from "ai";
 import { z } from "zod";
-import type { RunEvent } from "../../domain/models/chat";
+import type { RunEvent } from "../../../shared/models/chat";
 import type {
   AutomationRuntimeCatalog,
   SkillContentStore,

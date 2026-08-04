@@ -8,7 +8,7 @@ import type {
   TextProviderGenerationSettings,
   TextProviderSnapshot,
   UpsertTextProviderInput,
-} from "../../domain/models/text-provider";
+} from "../../../shared/models/text-provider";
 interface ProviderRow {
   id: number;
   kind: TextProviderConfig["kind"];

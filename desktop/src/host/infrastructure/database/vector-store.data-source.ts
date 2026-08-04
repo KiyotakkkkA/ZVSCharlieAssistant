@@ -5,7 +5,7 @@ import type {
   VectorStoreDocument,
   VectorStoreSnapshot,
   VectorDocumentStatus,
-} from "../../domain/models/vector-store";
+} from "../../../shared/models/vector-store";
 
 export class VectorStoreDataSource {
   constructor(readonly db: Database.Database) {}

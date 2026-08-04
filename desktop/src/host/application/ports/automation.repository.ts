@@ -8,7 +8,7 @@ import type {
   UpsertAutomationScenarioInput,
   UpsertAutomationSkillInput,
   UpsertAutomationToolSecretBindingInput,
-} from "../../domain/models/automation";
+} from "../../../shared/models/automation";
 
 export interface AutomationRepository {
   getSnapshot(): AutomationSnapshot;

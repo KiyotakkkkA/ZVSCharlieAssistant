@@ -5,7 +5,7 @@ import type {
   SecretStorageSnapshot,
   UpsertSecretCategoryInput,
   UpsertSecretInput,
-} from "../../domain/models/secret-storage";
+} from "../../../shared/models/secret-storage";
 import type { SecretStorageRepository } from "../../application/ports/secret-storage.repository";
 import { SecretStorageDataSource } from "../database/secret-storage.data-source";
 

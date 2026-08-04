@@ -191,7 +191,7 @@ export const TaskListPage = observer(function TaskListPage() {
     <section className="flex h-full min-h-0 flex-col overflow-hidden p-4">
       <PageHeader
         title="Задачи"
-        description="История запусков сценариев из чата, вручную и в фоне."
+        description="История запусков фоновых задач."
         breadcrumbs={[{ label: "Задачи" }]}
         footer={
           <Tabs
@@ -238,7 +238,7 @@ export const TaskListPage = observer(function TaskListPage() {
                 tasksStore.error ??
                 (query
                   ? "Измените поисковый запрос."
-                  : "Здесь появится история запусков сценариев.")
+                  : "Здесь появится история запусков фоновых задач.")
               }
             />
           </div>

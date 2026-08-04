@@ -1,35 +1,12 @@
-export interface SecretCategory {
-  id: number;
-  label: string;
-  builtin: boolean;
-}
+import type {
+  SecretCategory,
+  SecretEntity,
+  SecretStorageSnapshot,
+  UpsertSecretCategoryInput,
+  UpsertSecretInput,
+} from "../../shared/models/secret-storage";
 
-export interface SecretEntity {
-  id: number;
-  categoryId: number;
-  label: string;
-  builtin: boolean;
-}
-export interface SecretRecord extends SecretEntity {
-  content: string;
-}
-
-export interface UpsertSecretCategoryInput {
-  id?: number;
-  label: string;
-}
-
-export interface UpsertSecretInput {
-  id?: number;
-  categoryId: number;
-  label: string;
-  content?: string;
-}
-
-export interface SecretStorageSnapshot {
-  categories: SecretCategory[];
-  secrets: SecretEntity[];
-}
+export type * from "../../shared/models/secret-storage";
 
 export interface SecretStorageApi {
   getSnapshot(): Promise<SecretStorageSnapshot>;

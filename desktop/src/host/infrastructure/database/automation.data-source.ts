@@ -8,7 +8,7 @@ import type {
   UpsertAutomationScenarioInput,
   AutomationSkill,
   UpsertAutomationSkillInput,
-} from "../../domain/models/automation";
+} from "../../../shared/models/automation";
 
 interface AgentRow {
   id: string;

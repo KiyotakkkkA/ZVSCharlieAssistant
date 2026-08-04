@@ -4,7 +4,7 @@ import type {
   TaskRunKind,
   TaskRunOrigin,
   TaskRunStatus,
-} from "../../domain/models/task";
+} from "../../../shared/models/task";
 
 interface TaskRunRow {
   id: string;

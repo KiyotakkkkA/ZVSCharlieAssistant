@@ -7,7 +7,7 @@ import type {
   ChatSnapshot,
   ChatToolCall,
   RunStatus,
-} from "../../domain/models/chat";
+} from "../../../shared/models/chat";
 interface ConversationRow {
   id: number;
   title: string;
