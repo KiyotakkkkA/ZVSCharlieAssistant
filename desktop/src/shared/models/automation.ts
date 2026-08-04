@@ -2,68 +2,160 @@ import type { RunOrigin, RunStatus } from "./run";
 import type { ScenarioEdgeKind, ScenarioNodeKind } from "../scenario-ports";
 
 export type AutomationStatus = "draft" | "active" | "disabled";
-export interface AutomationToolSecretRequirement { key: string; label: string; categoryId: number; required: boolean }
-export interface AutomationToolSecretBinding { key: string; secretId: number }
+export interface AutomationToolSecretRequirement {
+  key: string;
+  label: string;
+  categoryId: number;
+  required: boolean;
+}
+export interface AutomationToolSecretBinding {
+  key: string;
+  secretId: number;
+}
 export interface AutomationTool {
-  id: string; name: string; description: string; category: string; builtin: true;
-  enabled: boolean; requiresConfirmation: boolean;
-  inputSchema: Record<string, unknown>; outputSchema: Record<string, unknown>;
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  builtin: true;
+  enabled: boolean;
+  requiresConfirmation: boolean;
+  inputSchema: Record<string, unknown>;
+  outputSchema: Record<string, unknown>;
   secretRequirements: AutomationToolSecretRequirement[];
   secretBindings: AutomationToolSecretBinding[];
 }
 export interface AutomationAgent {
-  id: string; name: string; description: string; instructions: string;
-  textModelId: number | null; status: AutomationStatus;
-  allowedToolIds: string[]; allowedVectorStoreIds: number[]; allowedSkillIds: number[];
-  retrievalLimit: number; maxToolCalls: number; timeoutSeconds: number;
-  runs: number; updatedAt: string;
+  id: string;
+  name: string;
+  description: string;
+  instructions: string;
+  textModelId: number | null;
+  status: AutomationStatus;
+  allowedToolIds: string[];
+  allowedVectorStoreIds: number[];
+  allowedSkillIds: number[];
+  retrievalLimit: number;
+  maxToolCalls: number;
+  timeoutSeconds: number;
+  runs: number;
+  updatedAt: string;
 }
-export interface UpsertAutomationAgentInput extends Omit<AutomationAgent, "id" | "runs" | "updatedAt" | "textModelId"> {
-  id?: string; textModelId: number;
+export interface UpsertAutomationAgentInput extends Omit<
+  AutomationAgent,
+  "id" | "runs" | "updatedAt" | "textModelId"
+> {
+  id?: string;
+  textModelId: number;
 }
 export interface AutomationSkill {
-  id: number; slug: string; name: string; description: string; status: AutomationStatus;
-  version: string; author: string; instructions: string; requiredToolIds: string[];
-  assignedAgentsCount: number; builtin: boolean; updatedAt: string;
+  id: number;
+  slug: string;
+  name: string;
+  description: string;
+  status: AutomationStatus;
+  version: string;
+  author: string;
+  instructions: string;
+  requiredToolIds: string[];
+  assignedAgentsCount: number;
+  builtin: boolean;
+  updatedAt: string;
 }
-export interface UpsertAutomationSkillInput extends Omit<AutomationSkill, "id" | "assignedAgentsCount" | "builtin" | "updatedAt"> { id?: number }
+export interface UpsertAutomationSkillInput extends Omit<
+  AutomationSkill,
+  "id" | "assignedAgentsCount" | "builtin" | "updatedAt"
+> {
+  id?: number;
+}
 export type AutomationScenarioNodeKind = ScenarioNodeKind;
 export interface AutomationScenarioNode {
-  id: string; kind: AutomationScenarioNodeKind; title: string; description: string;
-  x: number; y: number; config?: Record<string, unknown>;
+  id: string;
+  kind: AutomationScenarioNodeKind;
+  title: string;
+  description: string;
+  x: number;
+  y: number;
+  config?: Record<string, unknown>;
 }
 export interface AutomationScenarioEdge {
-  id: string; kind: ScenarioEdgeKind; source: string; target: string;
-  sourcePort?: string; targetPort?: string; condition?: Record<string, unknown>;
+  id: string;
+  kind: ScenarioEdgeKind;
+  source: string;
+  target: string;
+  sourcePort?: string;
+  targetPort?: string;
+  condition?: Record<string, unknown>;
 }
 export interface AutomationScenarioGraph {
-  nodes: AutomationScenarioNode[]; edges: AutomationScenarioEdge[];
+  nodes: AutomationScenarioNode[];
+  edges: AutomationScenarioEdge[];
   viewport?: { x: number; y: number; zoom: number };
 }
-export interface AutomationScenarioToolSetting { toolId: string; settings: Record<string, unknown> }
+export interface AutomationScenarioToolSetting {
+  toolId: string;
+  settings: Record<string, unknown>;
+}
 export interface AutomationScenario {
-  id: string; name: string; description: string; status: AutomationStatus;
-  graph: AutomationScenarioGraph; toolSettings: AutomationScenarioToolSetting[];
-  revisionId: number; version: number; nodesCount: number;
-  lastRunAt: string | null; updatedAt: string;
+  id: string;
+  name: string;
+  description: string;
+  status: AutomationStatus;
+  graph: AutomationScenarioGraph;
+  toolSettings: AutomationScenarioToolSetting[];
+  revisionId: number;
+  version: number;
+  nodesCount: number;
+  lastRunAt: string | null;
+  updatedAt: string;
 }
 export interface UpsertAutomationScenarioInput {
-  id?: string; name: string; description: string; status: AutomationStatus;
-  graph: AutomationScenarioGraph; toolSettings: AutomationScenarioToolSetting[];
+  id?: string;
+  name: string;
+  description: string;
+  status: AutomationStatus;
+  graph: AutomationScenarioGraph;
+  toolSettings: AutomationScenarioToolSetting[];
 }
-export interface UpsertAutomationToolSecretBindingInput { toolId: string; key: string; secretId: number | null }
-export interface AutomationSnapshot { tools: AutomationTool[]; agents: AutomationAgent[]; scenarios: AutomationScenario[]; skills: AutomationSkill[] }
+export interface UpsertAutomationToolSecretBindingInput {
+  toolId: string;
+  key: string;
+  secretId: number | null;
+}
+export interface AutomationSnapshot {
+  tools: AutomationTool[];
+  agents: AutomationAgent[];
+  scenarios: AutomationScenario[];
+  skills: AutomationSkill[];
+}
 export type ScenarioRunStatus = RunStatus;
 export type ScenarioRunOrigin = RunOrigin;
 export interface ScenarioRun {
-  id: number; scenarioId: string; scenarioRevisionId: number; scenarioName: string;
-  origin: ScenarioRunOrigin; status: ScenarioRunStatus; input: unknown; output: unknown;
-  error: string | null; createdAt: string; startedAt: string | null; completedAt: string | null;
+  id: number;
+  scenarioId: string;
+  scenarioRevisionId: number;
+  scenarioName: string;
+  origin: ScenarioRunOrigin;
+  status: ScenarioRunStatus;
+  input: unknown;
+  output: unknown;
+  error: string | null;
+  createdAt: string;
+  startedAt: string | null;
+  completedAt: string | null;
 }
 export interface ScenarioNodeRun {
-  id: number; executionId: number; nodeId: string; nodeKind: AutomationScenarioNodeKind;
-  attempt: number; status: ScenarioRunStatus; input: unknown; output: unknown;
-  error: string | null; startedAt: string | null; completedAt: string | null;
+  id: number;
+  executionId: number;
+  nodeId: string;
+  nodeKind: AutomationScenarioNodeKind;
+  attempt: number;
+  status: ScenarioRunStatus;
+  input: unknown;
+  output: unknown;
+  error: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
 }
 export type ScenarioRunEvent =
   | { type: "run.started"; run: ScenarioRun }
@@ -74,4 +166,7 @@ export type ScenarioRunEvent =
   | { type: "run.completed"; run: ScenarioRun }
   | { type: "run.failed"; run: ScenarioRun }
   | { type: "run.cancelled"; run: ScenarioRun };
-export interface ScenarioValidationResult { valid: boolean; issues: Array<{ nodeId?: string; message: string }> }
+export interface ScenarioValidationResult {
+  valid: boolean;
+  issues: Array<{ nodeId?: string; message: string }>;
+}

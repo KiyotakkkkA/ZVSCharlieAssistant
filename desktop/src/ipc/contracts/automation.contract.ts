@@ -24,15 +24,29 @@ export interface AutomationApi {
   deleteAgent(id: string): Promise<void>;
   upsertSkill(input: UpsertAutomationSkillInput): Promise<AutomationSkill>;
   deleteSkill(id: number): Promise<void>;
-  upsertToolSecretBinding(input: UpsertAutomationToolSecretBindingInput): Promise<AutomationTool>;
-  upsertScenario(input: UpsertAutomationScenarioInput): Promise<AutomationScenario>;
+  upsertToolSecretBinding(
+    input: UpsertAutomationToolSecretBindingInput,
+  ): Promise<AutomationTool>;
+  upsertScenario(
+    input: UpsertAutomationScenarioInput,
+  ): Promise<AutomationScenario>;
   deleteScenario(id: string): Promise<void>;
-  validateScenario(graph: AutomationScenarioGraph): Promise<ScenarioValidationResult>;
-  startScenario(id: string, input: unknown, origin?: ScenarioRunOrigin): Promise<ScenarioRun>;
+  validateScenario(
+    graph: AutomationScenarioGraph,
+  ): Promise<ScenarioValidationResult>;
+  startScenario(
+    id: string,
+    input: unknown,
+    origin?: ScenarioRunOrigin,
+  ): Promise<ScenarioRun>;
   cancelScenarioRun(id: number): Promise<void>;
   approveScenarioRun(id: number, approved: boolean): Promise<void>;
-  getScenarioRun(id: number): Promise<{ run: ScenarioRun; nodes: ScenarioNodeRun[] }>;
-  subscribeScenarioRuns(listener: (event: ScenarioRunEvent) => void): () => void;
+  getScenarioRun(
+    id: number,
+  ): Promise<{ run: ScenarioRun; nodes: ScenarioNodeRun[] }>;
+  subscribeScenarioRuns(
+    listener: (event: ScenarioRunEvent) => void,
+  ): () => void;
 }
 
 export const AUTOMATION_IPC_CHANNELS = {

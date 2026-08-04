@@ -9,7 +9,9 @@ export type * from "../../shared/models/text-provider";
 
 export interface TextProviderApi {
   getSnapshot(): Promise<TextProviderSnapshot>;
-  testConnection(input: TestTextProviderConnectionInput): Promise<TestTextProviderConnectionResult>;
+  testConnection(
+    input: TestTextProviderConnectionInput,
+  ): Promise<TestTextProviderConnectionResult>;
   upsertProvider(input: UpsertTextProviderInput): Promise<TextProviderSnapshot>;
   deleteProvider(id: number): Promise<TextProviderSnapshot>;
 }

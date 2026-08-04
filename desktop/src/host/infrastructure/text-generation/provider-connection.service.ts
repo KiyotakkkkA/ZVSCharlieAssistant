@@ -44,10 +44,7 @@ interface OllamaTagsResponse {
 }
 
 class OllamaConnectionChecker implements ProviderConnectionChecker {
-  async test({
-    baseUrl,
-    apiKey,
-  }: ProviderConnectionRequest): Promise<{
+  async test({ baseUrl, apiKey }: ProviderConnectionRequest): Promise<{
     models: TextProviderModelInfo[];
     limits: null;
   }> {

@@ -14,7 +14,9 @@ export interface VectorStoreApi {
   getDocuments(ids: number[]): Promise<VectorStoreDocument[]>;
   upsertStore(input: UpsertVectorStoreInput): Promise<VectorStoreSnapshot>;
   deleteStore(id: number): Promise<VectorStoreSnapshot>;
-  uploadDocuments(input: UploadVectorDocumentInput[]): Promise<VectorStoreSnapshot>;
+  uploadDocuments(
+    input: UploadVectorDocumentInput[],
+  ): Promise<VectorStoreSnapshot>;
   deleteDocument(id: number): Promise<VectorStoreSnapshot>;
   search(input: VectorSearchInput): Promise<VectorSearchResultItem[]>;
 }

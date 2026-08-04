@@ -81,14 +81,15 @@ const PORTS_BY_ID = new Map<string, ScenarioPortDefinition>(
   Object.values(SCENARIO_PORTS).map((port) => [port.id, port]),
 );
 
-const COMPATIBLE_PORTS: Record<ScenarioPortKind, readonly ScenarioPortKind[]> = {
-  "control-input": [],
-  "control-output": ["control-input"],
-  "worker-input": [],
-  "worker-output": ["worker-input"],
-  "knowledge-input": [],
-  "knowledge-output": ["knowledge-input"],
-};
+const COMPATIBLE_PORTS: Record<ScenarioPortKind, readonly ScenarioPortKind[]> =
+  {
+    "control-input": [],
+    "control-output": ["control-input"],
+    "worker-input": [],
+    "worker-output": ["worker-input"],
+    "knowledge-input": [],
+    "knowledge-output": ["knowledge-input"],
+  };
 
 export interface ScenarioConnectionLike {
   source?: string | null;
