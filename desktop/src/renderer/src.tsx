@@ -24,6 +24,11 @@ const TaskListPage = lazy(() =>
     default: TaskListPage,
   })),
 );
+const ScenarioExecHistoryPage = lazy(() =>
+  import("./pages/tasks").then(({ ScenarioExecHistoryPage }) => ({
+    default: ScenarioExecHistoryPage,
+  })),
+);
 const AgentsListPage = lazy(() =>
   import("./pages/automation/agents").then(({ AgentsListPage }) => ({
     default: AgentsListPage,
@@ -79,7 +84,7 @@ function AppLayout() {
   const { pathname } = useLocation();
   const ownsContentScroll =
     pathname === APP_PATHS.chat ||
-    pathname === APP_PATHS.tasks ||
+    pathname.startsWith(APP_PATHS.tasks) ||
     pathname === APP_PATHS.automation.agents.index ||
     pathname === APP_PATHS.automation.tools ||
     pathname === APP_PATHS.automation.skills.index ||
@@ -171,6 +176,10 @@ createRoot(root).render(
             <Route
               path={APP_PATHS.automation.scenarios.create}
               element={<ScenarioGraphEditorPage />}
+            />
+            <Route
+              path={APP_PATHS.automation.scenarios.execution}
+              element={<ScenarioExecHistoryPage />}
             />
             <Route
               path={APP_PATHS.automation.scenarios.edit}

@@ -11,7 +11,7 @@ import {
 } from "@kiyotakkkka/zvs-uikit-lib";
 import type { AgentTaskRun } from "../../../ipc/contracts";
 import { APP_PATHS } from "../../app/routes";
-import { GraphIcon, TasksIcon } from "../../components/atoms";
+import { EyeIcon, GraphIcon, TasksIcon } from "../../components/atoms";
 import { PageHeader } from "../../components/organisms";
 import { useHashRouter } from "../../hooks";
 import { automationStore, tasksStore } from "../../stores";
@@ -101,10 +101,7 @@ export const TaskListPage = observer(function TaskListPage() {
       title: "Тип запуска",
       render: (run) => (
         <div>
-          <p className="text-main-200">{runKindLabels[run.kind]}</p>
-          <p className="mt-1 text-xs text-main-500">
-            {runOriginLabels[run.origin]}
-          </p>
+          <p className="text-main-200">{runOriginLabels[run.origin]}</p>
         </div>
       ),
     },
@@ -150,25 +147,42 @@ export const TaskListPage = observer(function TaskListPage() {
         const scenario = run.scenarioId
           ? automationStore.getScenario(run.scenarioId)
           : undefined;
-        return scenario ? (
-          <div className="flex justify-end">
+        return (
+          <div className="flex justify-end gap-2">
             <Button
               variant="ghost"
               className="h-8 gap-1.5 px-2 text-sm hover:bg-main-700/50"
               onClick={() =>
                 goTo(
-                  APP_PATHS.automation.scenarios.edit.replace(
-                    ":scenarioId",
-                    scenario.id,
+                  APP_PATHS.automation.scenarios.execution.replace(
+                    ":runId",
+                    String(run.runId),
                   ),
                 )
               }
             >
-              <GraphIcon className="size-3.5" />
-              Сценарий
+              <EyeIcon className="size-3.5" />
+              Подробнее
             </Button>
+            {scenario ? (
+              <Button
+                variant="ghost"
+                className="h-8 gap-1.5 px-2 text-sm hover:bg-main-700/50"
+                onClick={() =>
+                  goTo(
+                    APP_PATHS.automation.scenarios.edit.replace(
+                      ":scenarioId",
+                      scenario.id,
+                    ),
+                  )
+                }
+              >
+                <GraphIcon className="size-3.5" />
+                Сценарий
+              </Button>
+            ) : null}
           </div>
-        ) : null;
+        );
       },
     },
   ];

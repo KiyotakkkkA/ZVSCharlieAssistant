@@ -36,6 +36,7 @@ export const APP_PATHS = {
       index: "/automation/scenarios",
       create: "/automation/scenarios/new",
       edit: "/automation/scenarios/:scenarioId",
+      execution: "/automation/scenarios/runs/:runId",
     },
   },
   storage: {
