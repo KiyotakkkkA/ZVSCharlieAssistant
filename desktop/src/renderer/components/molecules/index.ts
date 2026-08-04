@@ -8,3 +8,8 @@ export { AppBreadcrumbs, type AppBreadcrumbItem } from "./AppBreadcrumbs";
 export { NavigationTreeItem } from "./NavigationTreeItem";
 export { SettingsProviderOllamaModelCard } from "./SettingsProviderOllamaModelCard";
 export { SettingsProviderOpenrouterModelCard } from "./SettingsProviderOpenrouterModelCard";
+export { ScenarioNodeCard } from "./ScenarioNodeCard";
+export {
+  scenarioNodeVariants,
+  type ScenarioNodeVariant,
+} from "./ScenarioNodeCard";

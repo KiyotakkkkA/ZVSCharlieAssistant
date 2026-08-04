@@ -3,6 +3,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import {
@@ -13,6 +14,7 @@ import {
 } from "@xyflow/react";
 import {
   Button,
+  InputCheckBox,
   InputBig,
   InputSmall,
   Select,
@@ -25,6 +27,7 @@ import {
   ChatIcon,
   ChevronLeftIcon,
   ClockIcon,
+  EditIcon,
   PlusIcon,
   RobotIcon,
   SaveIcon,
@@ -49,6 +52,7 @@ import type {
   AutomationScenarioNodeKind as NodeKind,
 } from "../../../../ipc/contracts";
 import { DangerModal } from "@renderer/components/organisms/modals";
+import { getScenarioEdgeKind } from "../../../../shared/scenario-ports";
 
 const nodeMeta: Record<
   NodeKind,
@@ -172,6 +176,13 @@ export const ScenarioGraphEditorPage = observer(
     const [status, setStatus] = useState<AutomationStatus>(
       scenario?.status ?? "draft",
     );
+    const [scenarioName, setScenarioName] = useState(
+      scenario?.name ?? "Новый сценарий",
+    );
+    const [isEditingName, setIsEditingName] = useState(false);
+    const nameBeforeEdit = useRef(scenarioName);
+    const cancelNameEdit = useRef(false);
+    const [showNodeDescriptions, setShowNodeDescriptions] = useState(true);
 
     useEffect(() => {
       if (!scenario) return;
@@ -179,6 +190,8 @@ export const ScenarioGraphEditorPage = observer(
       setEdges(toJS(scenario.graph.edges));
       setSelectedNodeId(scenario.graph.nodes[0]?.id ?? "");
       setStatus(scenario.status);
+      setScenarioName(scenario.name);
+      setIsEditingName(false);
     }, [scenario]);
 
     const nodesById = useMemo(
@@ -221,6 +234,7 @@ export const ScenarioGraphEditorPage = observer(
           position: { x: node.x, y: node.y },
           data: {
             node,
+            showDescription: showNodeDescriptions,
             runStatus: runStatusByNode.get(node.id),
             onDelete:
               node.kind === "trigger" || node.kind === "orchestrator"
@@ -229,11 +243,17 @@ export const ScenarioGraphEditorPage = observer(
           },
           selected: node.id === selectedNodeId,
           deletable: node.kind !== "trigger" && node.kind !== "orchestrator",
-          width: 210,
-          height: 98,
-          measured: { width: 210, height: 98 },
+          width: 176,
+          height: 60,
+          measured: { width: 176, height: 60 },
         })),
-      [nodes, selectedNodeId, runStatusByNode, deleteNode],
+      [
+        nodes,
+        selectedNodeId,
+        showNodeDescriptions,
+        runStatusByNode,
+        deleteNode,
+      ],
     );
     const flowEdges = useMemo<ScenarioFlowEdge[]>(
       () =>
@@ -243,7 +263,22 @@ export const ScenarioGraphEditorPage = observer(
           targetHandle: edge.targetPort,
           type: "scenario",
           animated: automationStore.activeScenarioRun?.status === "running",
-          style: { stroke: "rgb(139 173 77)", strokeWidth: 1.5 },
+          style: {
+            stroke:
+              edge.kind === "knowledge"
+                ? "rgb(70 160 175)"
+                : edge.kind === "worker"
+                  ? "rgb(139 128 190)"
+                  : "rgb(139 173 77)",
+            strokeWidth: 1.25,
+            strokeDasharray:
+              edge.kind === "knowledge"
+                ? "1 5"
+                : edge.kind === "worker"
+                  ? "4 4"
+                  : undefined,
+            strokeLinecap: edge.kind === "knowledge" ? "round" : undefined,
+          },
           data: {
             edgeId: edge.id,
             kind: edge.kind,
@@ -301,44 +336,33 @@ export const ScenarioGraphEditorPage = observer(
       },
       [flowEdges],
     );
-    const onConnect = useCallback(
-      (connection: Connection) => {
-        if (!connection.source || !connection.target) return;
-        const sourceKind = nodesById.get(connection.source)?.kind;
-        const targetKind = nodesById.get(connection.target)?.kind;
-        const kind =
-          connection.sourceHandle === "knowledge-out" &&
-          connection.targetHandle === "knowledge-in"
-            ? "knowledge"
-            : (sourceKind === "orchestrator" || sourceKind === "agent") &&
-                targetKind === "agent"
-              ? "worker"
-              : "control";
-        setEdges((current) => {
-          if (
-            current.some(
-              (edge) =>
-                edge.source === connection.source &&
-                edge.target === connection.target &&
-                edge.kind === kind,
-            )
+    const onConnect = useCallback((connection: Connection) => {
+      if (!connection.source || !connection.target) return;
+      const kind = getScenarioEdgeKind(connection.sourceHandle);
+      if (!kind) return;
+      setEdges((current) => {
+        if (
+          current.some(
+            (edge) =>
+              edge.source === connection.source &&
+              edge.target === connection.target &&
+              edge.kind === kind,
           )
-            return current;
-          return [
-            ...current,
-            {
-              id: `edge-${crypto.randomUUID()}`,
-              source: connection.source!,
-              target: connection.target!,
-              kind,
-              sourcePort: connection.sourceHandle ?? undefined,
-              targetPort: connection.targetHandle ?? undefined,
-            },
-          ];
-        });
-      },
-      [nodesById],
-    );
+        )
+          return current;
+        return [
+          ...current,
+          {
+            id: `edge-${crypto.randomUUID()}`,
+            source: connection.source!,
+            target: connection.target!,
+            kind,
+            sourcePort: connection.sourceHandle ?? undefined,
+            targetPort: connection.targetHandle ?? undefined,
+          },
+        ];
+      });
+    }, []);
 
     const addNode = (kind: NodeKind, title: string) => {
       const id = `${kind}-${crypto.randomUUID()}`;
@@ -368,7 +392,7 @@ export const ScenarioGraphEditorPage = observer(
       try {
         const saved = await automationStore.upsertScenario({
           id: scenario?.id,
-          name: scenario?.name ?? "Новый сценарий",
+          name: scenarioName.trim() || "Новый сценарий",
           description:
             scenario?.description ??
             "Новый сценарий автоматизации с вызовом агентов.",
@@ -428,8 +452,9 @@ export const ScenarioGraphEditorPage = observer(
           <div className="flex min-w-0 items-center gap-3">
             <Button
               variant="ghost"
-              label="Назад к агентам"
-              className="size-9 shrink-0 p-0 text-main-400"
+              label="Назад"
+              rounded="rounded-lg"
+              className="size-7 shrink-0 p-0 text-main-400 hover:bg-main-600/50"
               onClick={() => goTo(APP_PATHS.automation.scenarios.index)}
             >
               <ChevronLeftIcon className="size-4" />
@@ -438,11 +463,49 @@ export const ScenarioGraphEditorPage = observer(
               <RobotIcon className="size-4" />
             </span>
             <div className="min-w-0 flex gap-3">
-              <div className="flex items-center gap-2">
-                <h1 className="truncate text-sm font-semibold text-main-100">
-                  {scenario?.name ?? "Новый сценарий"}
-                </h1>
-              </div>
+              {isEditingName ? (
+                <InputSmall
+                  autoFocus
+                  aria-label="Название сценария"
+                  value={scenarioName}
+                  className="h-7 w-64"
+                  onChange={(event) => setScenarioName(event.target.value)}
+                  onBlur={() => {
+                    if (cancelNameEdit.current) {
+                      cancelNameEdit.current = false;
+                      setScenarioName(nameBeforeEdit.current);
+                      setIsEditingName(false);
+                      return;
+                    }
+                    setScenarioName(
+                      (value) => value.trim() || nameBeforeEdit.current,
+                    );
+                    setIsEditingName(false);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") event.currentTarget.blur();
+                    if (event.key === "Escape") {
+                      cancelNameEdit.current = true;
+                      event.currentTarget.blur();
+                    }
+                  }}
+                />
+              ) : (
+                <button
+                  type="button"
+                  className="group/name flex min-w-0 max-w-64 items-center gap-3 rounded-md border-0 bg-transparent px-1.5 py-1 text-left transition-colors hover:bg-main-800"
+                  aria-label="Изменить название сценария"
+                  onClick={() => {
+                    nameBeforeEdit.current = scenarioName;
+                    setIsEditingName(true);
+                  }}
+                >
+                  <span className="truncate text-sm font-semibold text-main-100">
+                    {scenarioName}
+                  </span>
+                  <EditIcon className="size-3.5 shrink-0 text-main-400 opacity-0 transition-opacity group-hover/name:opacity-100" />
+                </button>
+              )}
               <Select
                 className="w-30 shrink-0"
                 value={status}
@@ -493,6 +556,13 @@ export const ScenarioGraphEditorPage = observer(
 
         <div className="flex min-h-0 flex-1">
           <aside className="flex w-60 shrink-0 flex-col border-r border-main-800 bg-main-900/80 p-3">
+            <InputCheckBox
+              checked={showNodeDescriptions}
+              onChange={setShowNodeDescriptions}
+              className="mb-3 px-1 text-xs text-main-400"
+            >
+              Показывать описание при наведении
+            </InputCheckBox>
             <h2 className="px-1 text-xs font-semibold uppercase tracking-wider text-main-500 mb-3">
               Узлы
             </h2>
@@ -681,15 +751,6 @@ export const ScenarioGraphEditorPage = observer(
                     </Select>
                   </Field>
                 ) : null}
-                <div className="rounded-lg bg-main-800/40 p-3">
-                  <div className="flex items-center gap-2 text-xs font-medium text-main-300">
-                    <ClockIcon className="size-3.5" />
-                    Ограничение выполнения
-                  </div>
-                  <p className="mt-1.5 text-xs leading-5 text-main-500">
-                    Таймаут 60 секунд · 2 повторные попытки
-                  </p>
-                </div>
               </div>
             ) : (
               <div className="grid h-48 place-items-center px-6 text-center text-sm text-main-500">

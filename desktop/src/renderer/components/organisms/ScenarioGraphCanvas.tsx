@@ -1,10 +1,11 @@
-import { memo, useMemo, type SVGProps } from "react";
+import { memo, useMemo } from "react";
 import {
   Background,
   BaseEdge,
   Controls,
   EdgeLabelRenderer,
   Handle,
+  Panel,
   Position,
   ReactFlow,
   getBezierPath,
@@ -17,78 +18,22 @@ import {
   type Connection,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { Dropdown } from "@kiyotakkkka/zvs-uikit-lib";
-import {
-  ChatIcon,
-  MoreIcon,
-  RobotIcon,
-  SendIcon,
-  SettingsIcon,
-  TasksIcon,
-  StorageIcon,
-  TrashIcon,
-} from "../atoms";
+import { Dropdown, Tooltip } from "@kiyotakkkka/zvs-uikit-lib";
+import { TrashIcon } from "../atoms";
+import { ScenarioNodeCard, scenarioNodeVariants } from "../molecules";
 import type {
   AutomationScenarioEdge as GraphEdge,
   AutomationScenarioNode as GraphNode,
-  AutomationScenarioNodeKind as NodeKind,
 } from "../../../ipc/contracts";
-
-const nodeMeta: Record<
-  NodeKind,
-  {
-    label: string;
-    color: string;
-    dot: string;
-    icon: (props: SVGProps<SVGSVGElement>) => React.ReactNode;
-  }
-> = {
-  trigger: {
-    label: "Триггер",
-    color: "text-amber-200 bg-amber-400/10",
-    dot: "bg-amber-300",
-    icon: (props) => <ChatIcon {...props} />,
-  },
-  orchestrator: {
-    label: "Оркестратор",
-    color: "text-violet-200 bg-violet-400/10",
-    dot: "bg-violet-300",
-    icon: (props) => <RobotIcon {...props} />,
-  },
-  agent: {
-    label: "Агент",
-    color: "text-violet-200 bg-violet-400/10",
-    dot: "bg-violet-300",
-    icon: (props) => <RobotIcon {...props} />,
-  },
-  knowledge_store: {
-    label: "Хранилище",
-    color: "text-cyan-200 bg-cyan-400/10",
-    dot: "bg-cyan-300",
-    icon: (props) => <StorageIcon {...props} />,
-  },
-  condition: {
-    label: "Условие",
-    color: "text-sky-200 bg-sky-400/10",
-    dot: "bg-sky-300",
-    icon: (props) => <SettingsIcon {...props} />,
-  },
-  approval: {
-    label: "Подтверждение",
-    color: "text-lime-200 bg-lime-400/10",
-    dot: "bg-lime-300",
-    icon: (props) => <TasksIcon {...props} />,
-  },
-  output: {
-    label: "Результат",
-    color: "text-emerald-200 bg-emerald-400/10",
-    dot: "bg-emerald-300",
-    icon: (props) => <SendIcon {...props} />,
-  },
-};
+import {
+  SCENARIO_PORTS,
+  isScenarioConnectionValid,
+  type ScenarioPortDefinition,
+} from "../../../shared/scenario-ports";
 
 type ScenarioNodeData = {
   node: GraphNode;
+  showDescription: boolean;
   runStatus?: string;
   onDelete?: (nodeId: string) => void;
 } & Record<string, unknown>;
@@ -118,8 +63,8 @@ export function ScenarioGraphCanvas({
   onConnect,
   onNodeSelect,
 }: ScenarioGraphCanvasProps) {
-  const nodesById = useMemo(
-    () => new Map(nodes.map((node) => [node.id, node.data.node])),
+  const nodeKinds = useMemo(
+    () => new Map(nodes.map((node) => [node.id, node.data.node.kind])),
     [nodes],
   );
   return (
@@ -132,45 +77,9 @@ export function ScenarioGraphCanvas({
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
-        isValidConnection={(connection) => {
-          const source = connection.source
-            ? nodesById.get(connection.source)
-            : undefined;
-          const target = connection.target
-            ? nodesById.get(connection.target)
-            : undefined;
-          if (!source || !target || source.id === target.id) return false;
-          const touchesKnowledgePort =
-            connection.sourceHandle === "knowledge-out" ||
-            connection.targetHandle === "knowledge-in";
-          if (touchesKnowledgePort)
-            return (
-              connection.sourceHandle === "knowledge-out" &&
-              connection.targetHandle === "knowledge-in" &&
-              source.kind === "knowledge_store" &&
-              target.kind === "agent"
-            );
-          const touchesWorkerPort =
-            connection.sourceHandle === "workers" ||
-            connection.targetHandle === "worker-in";
-          if (touchesWorkerPort)
-            return (
-              connection.sourceHandle === "workers" &&
-              connection.targetHandle === "worker-in" &&
-              (source.kind === "orchestrator" || source.kind === "agent") &&
-              target.kind === "agent"
-            );
-          return (
-            connection.sourceHandle === "control-out" &&
-            connection.targetHandle === "control-in" &&
-            source.kind !== "agent" &&
-            source.kind !== "output" &&
-            source.kind !== "knowledge_store" &&
-            target.kind !== "agent" &&
-            target.kind !== "trigger" &&
-            target.kind !== "knowledge_store"
-          );
-        }}
+        isValidConnection={(connection) =>
+          isScenarioConnectionValid(connection, nodeKinds)
+        }
         onNodeClick={(_event, node) => onNodeSelect(node.id)}
         onInit={(instance) => {
           requestAnimationFrame(() => {
@@ -191,6 +100,22 @@ export function ScenarioGraphCanvas({
           showInteractive={false}
           className="overflow-hidden rounded-lg! border-0! bg-main-800! shadow-none! ring-1 ring-main-700"
         />
+        <Panel position="bottom-center">
+          <div className="flex items-center gap-3 rounded-md bg-main-800/90 px-2.5 py-1.5 text-[10px] text-main-500 ring-1 ring-main-700/80">
+            <PortLegend
+              shape="size-2.5 rounded-full bg-lime-300"
+              label="Управление"
+            />
+            <PortLegend
+              shape="h-2.5 w-4 rounded bg-violet-300"
+              label="Исполнители"
+            />
+            <PortLegend
+              shape="size-2.5 rounded-[2px] bg-cyan-300"
+              label="Хранилище"
+            />
+          </div>
+        </Panel>
       </ReactFlow>
     </div>
   );
@@ -227,17 +152,19 @@ const ScenarioFlowEdgeView = memo(function ScenarioFlowEdgeView({
         <div
           className="nodrag nopan pointer-events-auto absolute"
           style={{
-            transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
+            transform: `translate(-50%, -67%) translate(${labelX}px, ${labelY}px)`,
           }}
         >
           <Dropdown menuWidth={180} menuPlacement="bottom-left">
             <Dropdown.Trigger
               icon={
-                <span className="block size-2 rounded-full bg-accent-light transition-transform group-hover/edge:scale-125" />
+                <span
+                  className={`block size-1.5 rounded-full ${edgeDotClasses[data?.kind ?? "control"]}`}
+                />
               }
               aria-label="Настроить связь"
               rounded="rounded-full"
-              className="nodrag nopan group/edge size-6 justify-center gap-0 border-0! bg-main-800/90 px-0 py-0 shadow-none ring-1 ring-main-600/70 transition-colors hover:bg-main-600 hover:ring-main-400"
+              className="nodrag nopan size-4 justify-center gap-0 border-0! bg-main-900/90 px-0 py-0 shadow-none ring-1 ring-main-700/80 transition-colors hover:bg-main-700"
             >
               <span className="sr-only">Настроить связь</span>
             </Dropdown.Trigger>
@@ -265,127 +192,36 @@ const ScenarioFlowNodeView = memo(function ScenarioFlowNodeView({
   selected,
 }: NodeProps<ScenarioFlowNode>) {
   const node = data.node;
-  const meta = nodeMeta[node.kind];
   return (
-    <div
-      className={`h-24.5 w-52.5 select-none rounded-xl bg-main-800/95 ring-1 transition-colors ${
-        data.runStatus === "running" ||
-        data.runStatus === "waiting_for_approval"
-          ? "ring-accent-medium/90"
-          : data.runStatus === "completed"
-            ? "ring-success-medium/60"
-            : data.runStatus === "failed"
-              ? "ring-danger-medium/70"
-              : selected
-                ? "ring-accent-medium/80"
-                : "ring-main-700 hover:ring-main-500"
-      }`}
+    <ScenarioNodeCard
+      node={node}
+      variant={scenarioNodeVariants[node.kind]}
+      selected={selected}
+      showDescription={data.showDescription}
+      runStatus={data.runStatus}
+      onDelete={data.onDelete}
     >
       {node.kind === "agent" ? (
         <>
-          <Handle
-            id="worker-in"
-            type="target"
-            position={Position.Top}
-            className={`size-3! border-2! border-main-800! ${meta.dot}`}
-          />
-          <Handle
-            id="knowledge-in"
-            type="target"
-            position={Position.Left}
-            className="size-3! border-2! border-main-800! bg-cyan-300"
-          />
+          <ScenarioPort port={SCENARIO_PORTS.workerIn} />
+          <ScenarioPort port={SCENARIO_PORTS.knowledgeIn} />
         </>
       ) : node.kind !== "trigger" && node.kind !== "knowledge_store" ? (
-        <Handle
-          id="control-in"
-          type="target"
-          position={Position.Left}
-          className={`size-3! border-2! border-main-800! ${meta.dot}`}
-        />
+        <ScenarioPort port={SCENARIO_PORTS.controlIn} />
       ) : null}
       {node.kind === "orchestrator" ? (
         <>
-          <Handle
-            id="control-out"
-            type="source"
-            position={Position.Right}
-            className={`size-3! border-2! border-main-800! ${meta.dot}`}
-          />
-          <Handle
-            id="workers"
-            type="source"
-            position={Position.Bottom}
-            className="size-3! border-2! border-main-800! bg-violet-300"
-          />
+          <ScenarioPort port={SCENARIO_PORTS.controlOut} />
+          <ScenarioPort port={SCENARIO_PORTS.workerOut} />
         </>
       ) : node.kind === "agent" ? (
-        <Handle
-          id="workers"
-          type="source"
-          position={Position.Bottom}
-          className="size-3! border-2! border-main-800! bg-violet-300"
-        />
+        <ScenarioPort port={SCENARIO_PORTS.workerOut} />
       ) : node.kind === "knowledge_store" ? (
-        <Handle
-          id="knowledge-out"
-          type="source"
-          position={Position.Right}
-          className="size-3! border-2! border-main-800! bg-cyan-300"
-        />
+        <ScenarioPort port={SCENARIO_PORTS.knowledgeOut} />
       ) : node.kind !== "output" ? (
-        <Handle
-          id="control-out"
-          type="source"
-          position={Position.Right}
-          className={`size-3! border-2! border-main-800! ${meta.dot}`}
-        />
+        <ScenarioPort port={SCENARIO_PORTS.controlOut} />
       ) : null}
-      <div className="flex items-center gap-3 border-b border-main-700/60 p-3">
-        <span
-          className={`grid size-8 shrink-0 place-items-center rounded-lg ${meta.color}`}
-        >
-          {meta.icon({ className: "size-4" })}
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-main-100">
-            {node.title}
-          </p>
-          <p className="text-[10px] uppercase tracking-wider text-main-500">
-            {meta.label}
-          </p>
-        </div>
-        {data.onDelete ? (
-          <Dropdown menuWidth={170} menuPlacement="bottom-right">
-            <Dropdown.Trigger
-              icon={<MoreIcon className="size-4 text-main-500" />}
-              aria-label="Настроить узел"
-              rounded="rounded-lg"
-              className="nodrag nopan size-7 justify-center gap-0 border-0! bg-transparent px-0 py-0 shadow-none ring-0! hover:bg-main-600/70"
-            >
-              <span className="sr-only">Настроить узел</span>
-            </Dropdown.Trigger>
-            <Dropdown.Menu rounded="rounded-xl" className="p-1.5">
-              <Dropdown.Item
-                icon={<TrashIcon className="size-4" />}
-                className="rounded-lg text-danger-light"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  data.onDelete?.(node.id);
-                }}
-              >
-                Удалить узел
-              </Dropdown.Item>
-            </Dropdown.Menu>
-          </Dropdown>
-        ) : (
-          <MoreIcon className="size-4 text-main-700" />
-        )}
-      </div>
-      <p className="truncate px-3 py-2.5 text-xs text-main-400">
-        {node.description}
-      </p>
-    </div>
+    </ScenarioNodeCard>
   );
 }, areScenarioNodePropsEqual);
 
@@ -398,9 +234,58 @@ function areScenarioNodePropsEqual(
     previous.selected === next.selected &&
     previous.dragging === next.dragging &&
     previous.data.node === next.data.node &&
+    previous.data.showDescription === next.data.showDescription &&
     previous.data.runStatus === next.data.runStatus
   );
 }
 
 const scenarioNodeTypes = { scenario: ScenarioFlowNodeView };
 const scenarioEdgeTypes = { scenario: ScenarioFlowEdgeView };
+
+const edgeDotClasses: Record<GraphEdge["kind"], string> = {
+  control: "bg-lime-300",
+  worker: "bg-violet-300",
+  knowledge: "bg-cyan-300",
+};
+
+const portPositions = {
+  top: Position.Top,
+  right: Position.Right,
+  bottom: Position.Bottom,
+  left: Position.Left,
+} as const;
+
+const portClasses: Record<ScenarioPortDefinition["kind"], string> = {
+  "control-input": "size-2.5! rounded-full! bg-lime-300! ring-2 ring-main-900",
+  "control-output": "size-2.5! rounded-full! bg-lime-300! ring-2 ring-main-900",
+  "worker-input": "h-2! w-3.5! rounded-sm! bg-violet-300! ring-2 ring-main-900",
+  "worker-output":
+    "h-2! w-3.5! rounded-sm! bg-violet-300! ring-2 ring-main-900",
+  "knowledge-input":
+    "size-2.5! rounded-none! bg-cyan-300! ring-2 ring-main-900",
+  "knowledge-output":
+    "size-2.5! rounded-none! bg-cyan-300! ring-2 ring-main-900",
+};
+
+function ScenarioPort({ port }: { port: ScenarioPortDefinition }) {
+  return (
+    <Handle
+      id={port.id}
+      type={port.direction}
+      position={portPositions[port.side]}
+      aria-label={port.label}
+      className={`border-2! border-main-800! ${portClasses[port.kind]}`}
+    >
+      <span className="block size-full" />
+    </Handle>
+  );
+}
+
+function PortLegend({ shape, label }: { shape: string; label: string }) {
+  return (
+    <span className="flex items-center gap-2">
+      <span className={`block shrink-0 ${shape}`} />
+      {label}
+    </span>
+  );
+}

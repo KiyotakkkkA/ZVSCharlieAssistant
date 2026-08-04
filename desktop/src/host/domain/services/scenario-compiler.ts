@@ -4,6 +4,10 @@ import type {
   AutomationScenarioNode,
   ScenarioValidationResult,
 } from "../models/automation";
+import {
+  getScenarioEdgeKind,
+  isScenarioConnectionValid,
+} from "../../../shared/scenario-ports";
 
 export interface CompiledScenario {
   controlOrder: string[];
@@ -20,6 +24,7 @@ export class ScenarioCompiler {
     const nodes = graph?.nodes ?? [];
     const edges = graph?.edges ?? [];
     const byId = new Map(nodes.map((node) => [node.id, node]));
+    const nodeKinds = new Map(nodes.map((node) => [node.id, node.kind]));
     const triggers = nodes.filter((node) => node.kind === "trigger");
     const orchestrators = nodes.filter((node) => node.kind === "orchestrator");
     const outputs = nodes.filter((node) => node.kind === "output");
@@ -65,43 +70,17 @@ export class ScenarioCompiler {
           message: "Узел не может ссылаться сам на себя",
         });
       if (
-        edgeKind(edge) === "knowledge" &&
-        !(
-          source.kind === "knowledge_store" &&
-          target.kind === "agent" &&
-          edge.sourcePort === "knowledge-out" &&
-          edge.targetPort === "knowledge-in"
+        !isScenarioConnectionValid(
+          {
+            source: edge.source,
+            target: edge.target,
+            sourceHandle: edge.sourcePort,
+            targetHandle: edge.targetPort,
+          },
+          nodeKinds,
         )
       )
-        issues.push({
-          message: "Хранилище подключается только к knowledge-порту агента",
-        });
-      if (
-        edgeKind(edge) === "worker" &&
-        !(
-          (source.kind === "orchestrator" || source.kind === "agent") &&
-          target.kind === "agent" &&
-          edge.sourcePort === "workers" &&
-          edge.targetPort === "worker-in"
-        )
-      )
-        issues.push({
-          message:
-            "Исполнительная связь допустима от оркестратора или агента к агенту",
-        });
-      if (
-        edgeKind(edge) === "control" &&
-        (source.kind === "agent" ||
-          target.kind === "agent" ||
-          source.kind === "knowledge_store" ||
-          target.kind === "knowledge_store" ||
-          edge.sourcePort !== "control-out" ||
-          edge.targetPort !== "control-in")
-      )
-        issues.push({
-          message:
-            "Агент подключается только к исполнительному порту оркестратора",
-        });
+        issues.push({ message: "Связь соединяет несовместимые порты" });
     }
 
     for (const node of nodes) {
@@ -391,6 +370,8 @@ function resolveEdgeKind(
   edge: AutomationScenarioEdge,
   nodes: Map<string, AutomationScenarioNode>,
 ) {
+  const portKind = getScenarioEdgeKind(edge.sourcePort);
+  if (portKind) return portKind;
   const sourceKind = nodes.get(edge.source)?.kind;
   if (
     sourceKind === "knowledge_store" &&

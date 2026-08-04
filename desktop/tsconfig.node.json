@@ -8,6 +8,7 @@
     "electron.vite.config.ts",
     "src/host/**/*.ts",
     "src/ipc/**/*.ts",
-    "src/default/**/*.ts"
+    "src/default/**/*.ts",
+    "src/shared/**/*.ts"
   ]
 }

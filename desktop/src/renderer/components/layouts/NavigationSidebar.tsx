@@ -3,7 +3,11 @@ import { NavLink } from "react-router-dom";
 import { Button, Separator, Tooltip } from "@kiyotakkkka/zvs-uikit-lib";
 import { useHashRouter } from "../../hooks";
 import { NavigationTreeItem } from "../molecules";
-import { ArrowExpandRightIcon, ArrowExpandLeftIcon } from "../atoms";
+import {
+  ArrowExpandRightIcon,
+  ArrowExpandLeftIcon,
+  ZVSLogoIcon,
+} from "../atoms";
 import type { NavigationRoute } from "../../app/routes";
 
 function leafRoutes(routes: readonly NavigationRoute[]): NavigationRoute[] {
@@ -63,7 +67,9 @@ export const NavigationSidebar = () => {
             collapsed ? "w-0 opacity-0" : "w-auto opacity-100",
           ].join(" ")}
         >
-          Header Navigation
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent-medium/10 text-accent-light">
+            <ZVSLogoIcon className="size-8" />
+          </span>
         </div>
         <Tooltip
           label={collapsed ? "Развернуть меню" : "Свернуть меню"}

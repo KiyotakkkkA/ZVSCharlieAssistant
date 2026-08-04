@@ -9,6 +9,7 @@
   "include": [
     "src/renderer/**/*.ts",
     "src/renderer/**/*.tsx",
-    "src/ipc/contracts/**/*.ts"
+    "src/ipc/contracts/**/*.ts",
+    "src/shared/**/*.ts"
   ]
 }
