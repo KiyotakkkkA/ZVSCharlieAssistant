@@ -21,23 +21,31 @@ export class RunEngine {
     const text = input.text.trim();
     if (!text) throw new Error("Сообщение не может быть пустым");
     if (input.mode === "scenario") return this.startScenario(input, text, emit);
-    if (!input.modelId) throw new Error("Модель не выбрана");
     const agent =
       input.mode === "agent"
         ? this.data.resolveAgent(input.agentId)
         : undefined;
     if (input.mode === "agent" && !agent)
       throw new Error("Агент не найден или отключён");
-    this.providers.resolve(input.modelId);
+    const modelId =
+      input.mode === "agent" ? agent?.text_model_id : input.modelId;
+    if (!modelId)
+      throw new Error(
+        input.mode === "agent"
+          ? "Для агента не выбрана текстовая модель"
+          : "Модель не выбрана",
+      );
+    this.providers.resolve(modelId);
+    const executionInput: StartRunInput = { ...input, modelId };
     const conversationId =
       input.conversationId ??
-      this.data.createConversation(input.mode, input.agentId, input.modelId);
+      this.data.createConversation(input.mode, input.agentId, modelId);
     const maxSteps =
       input.mode === "agent" ? Math.min(agent?.max_tool_calls ?? 8, 20) : 1;
     const runId = this.data.createRun(
       conversationId,
       input.agentId,
-      input.modelId,
+      modelId,
       maxSteps,
     );
     const userMessage = this.data.addMessage(
@@ -68,7 +76,7 @@ export class RunEngine {
       runId,
       conversationId,
       assistantMessage.id,
-      input,
+      executionInput,
       agent?.instructions,
       maxSteps,
       controller,

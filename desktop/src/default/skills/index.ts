@@ -1,4 +1,5 @@
 import reportDocxInstructions from "./report-docx-gost/SKILL.md?raw";
+import managedPowerShellInstructions from "./managed-powershell/SKILL.md?raw";
 
 export interface DefaultSkillDefinition {
   slug: string;
@@ -10,7 +11,7 @@ export interface DefaultSkillDefinition {
   instructions: string;
 }
 
-const instructions = reportDocxInstructions.replace(
+const stripFrontmatter = (value: string) => value.replace(
   /^---\r?\n[\s\S]*?\r?\n---\r?\n/,
   "",
 );
@@ -24,6 +25,16 @@ export const DEFAULT_SKILLS: readonly DefaultSkillDefinition[] = [
     version: "1.1.0",
     author: "ZVS Assistant",
     requiredToolIds: ["reports_docx"],
-    instructions,
+    instructions: stripFrontmatter(reportDocxInstructions),
+  },
+  {
+    slug: "managed-powershell",
+    name: "Managed PowerShell execution",
+    description:
+      "Runs permitted PowerShell commands for local diagnostics, file operations, and managed background terminal sessions.",
+    version: "1.0.0",
+    author: "ZVS Assistant",
+    requiredToolIds: ["cmd_exec"],
+    instructions: stripFrontmatter(managedPowerShellInstructions),
   },
 ] as const;

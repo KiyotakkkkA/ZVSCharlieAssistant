@@ -334,11 +334,12 @@ export class ChatDataSource {
     if (!id) return undefined;
     const row = this.db
       .prepare(
-        "SELECT instructions,max_tool_calls,timeout_seconds,retrieval_limit,terminal_policy_json FROM automation_agents WHERE id=? AND status!='disabled'",
+        "SELECT instructions,text_model_id,max_tool_calls,timeout_seconds,retrieval_limit,terminal_policy_json FROM automation_agents WHERE id=? AND status!='disabled'",
       )
       .get(id) as
       | {
           instructions: string;
+          text_model_id: number | null;
           max_tool_calls: number;
           timeout_seconds: number;
           retrieval_limit: number;

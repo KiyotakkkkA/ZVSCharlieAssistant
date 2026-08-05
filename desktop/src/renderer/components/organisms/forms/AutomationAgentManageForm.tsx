@@ -30,6 +30,29 @@ interface AutomationAgentManageFormProps {
   submitting?: boolean;
 }
 
+type TerminalConfirmationMode = "always" | "risky" | "policy";
+
+const confirmationModeRank: Record<TerminalConfirmationMode, number> = {
+  policy: 0,
+  risky: 1,
+  always: 2,
+};
+
+const confirmationModeOptions: Array<{
+  value: TerminalConfirmationMode;
+  label: string;
+}> = [
+  { value: "always", label: "Подтверждать каждую команду" },
+  { value: "risky", label: "Подтверждать рискованные" },
+  { value: "policy", label: "Следовать глобальной политике" },
+];
+
+const stricterConfirmationMode = (
+  first: TerminalConfirmationMode,
+  second: TerminalConfirmationMode,
+): TerminalConfirmationMode =>
+  confirmationModeRank[first] >= confirmationModeRank[second] ? first : second;
+
 export const AutomationAgentManageForm = observer(
   function AutomationAgentManageForm({
     model,
@@ -47,9 +70,8 @@ export const AutomationAgentManageForm = observer(
       "basic" | "storage" | "skills" | "terminal"
     >("basic");
     const [terminalEnabled, setTerminalEnabled] = useState(false);
-    const [terminalConfirmationMode, setTerminalConfirmationMode] = useState<
-      "always" | "risky" | "policy"
-    >("always");
+    const [terminalConfirmationMode, setTerminalConfirmationMode] =
+      useState<TerminalConfirmationMode>("always");
     const [terminalTimeout, setTerminalTimeout] = useState("60");
     const [terminalCommands, setTerminalCommands] = useState<
       Record<string, boolean>
@@ -64,6 +86,13 @@ export const AutomationAgentManageForm = observer(
     const [retrievalLimit, setRetrievalLimit] = useState("5");
     const vectorSearchEnabled = Boolean(toolModel["vecdb_search"]);
     const terminalToolEnabled = Boolean(toolModel["cmd_exec"]);
+    const availableConfirmationModeOptions = useMemo(() => {
+      const globalMode = terminalPolicyStore.policy?.confirmationMode ?? "always";
+      return confirmationModeOptions.filter(
+        ({ value }) =>
+          confirmationModeRank[value] >= confirmationModeRank[globalMode],
+      );
+    }, [terminalPolicyStore.policy?.confirmationMode]);
     const vectorDocumentCounts = useMemo(() => {
       const counts = new Map<number, number>();
       for (const document of vectorStoreStore.documents)
@@ -113,8 +142,20 @@ export const AutomationAgentManageForm = observer(
       );
       const globalPolicy = terminalPolicyStore.policy;
       const terminalPolicy = model?.terminalPolicy;
-      setTerminalEnabled(terminalPolicy?.enabled ?? false);
-      setTerminalConfirmationMode(terminalPolicy?.confirmationMode ?? "always");
+      const isNewAgent = model === undefined;
+      setTerminalEnabled(
+        isNewAgent
+          ? (globalPolicy?.enabled ?? false)
+          : (terminalPolicy?.enabled ?? false),
+      );
+      setTerminalConfirmationMode(
+        isNewAgent
+          ? (globalPolicy?.confirmationMode ?? "always")
+          : stricterConfirmationMode(
+              globalPolicy?.confirmationMode ?? "always",
+              terminalPolicy?.confirmationMode ?? "always",
+            ),
+      );
       setTerminalTimeout(
         String(
           terminalPolicy?.timeoutSeconds ??
@@ -126,7 +167,9 @@ export const AutomationAgentManageForm = observer(
         Object.fromEntries(
           (globalPolicy?.allowedCommands ?? []).map((command) => [
             command,
-            terminalPolicy?.allowedCommands.includes(command) ?? true,
+            isNewAgent
+              ? true
+              : (terminalPolicy?.allowedCommands.includes(command) ?? false),
           ]),
         ),
       );
@@ -134,14 +177,16 @@ export const AutomationAgentManageForm = observer(
         Object.fromEntries(
           (globalPolicy?.directoryGrants ?? []).map((grant) => [
             grant.path,
-            terminalPolicy?.directoryGrants.some(
-              (item) => item.path === grant.path,
-            ) ?? true,
+            isNewAgent
+              ? true
+              : (terminalPolicy?.directoryGrants.some(
+                  (item) => item.path === grant.path,
+                ) ?? false),
           ]),
         ),
       );
     }, [
-      model,
+      model?.id,
       automationStore.initialized,
       textProviderStore.initialized,
       vectorStoreStore.initialized,
@@ -192,9 +237,13 @@ export const AutomationAgentManageForm = observer(
           allowedCommands: Object.entries(terminalCommands)
             .filter(([, selected]) => selected)
             .map(([id]) => id),
-          directoryGrants: (
-            terminalPolicyStore.policy?.directoryGrants ?? []
-          ).filter((grant) => terminalDirectories[grant.path]),
+          directoryGrants: (terminalPolicyStore.policy?.directoryGrants ?? [])
+            .filter((grant) => terminalDirectories[grant.path])
+            .map((grant) => ({
+              path: grant.path,
+              recursive: grant.recursive,
+              permissions: [...grant.permissions],
+            })),
         },
       });
     };
@@ -405,7 +454,7 @@ export const AutomationAgentManageForm = observer(
         ) : (
           <FormSection
             title="Работа с терминалом"
-            description="Уточняет глобальную политику для этого агента. Здесь нельзя добавить новые команды, пути или права."
+            description="Уточняет глобальную политику для этого агента."
           >
             {!terminalPolicyStore.policy?.enabled ? (
               <div className="rounded-lg border border-dashed border-main-700 p-6 text-center text-sm text-main-500">
@@ -424,32 +473,16 @@ export const AutomationAgentManageForm = observer(
                     value={terminalConfirmationMode}
                     onChange={(value) =>
                       setTerminalConfirmationMode(
-                        value as typeof terminalConfirmationMode,
+                        value as TerminalConfirmationMode,
                       )
                     }
-                    options={[
-                      { value: "always", label: "Подтверждать каждую команду" },
-                      { value: "risky", label: "Подтверждать рискованные" },
-                      {
-                        value: "policy",
-                        label: "Следовать глобальной политике",
-                      },
-                    ]}
+                    options={availableConfirmationModeOptions}
                   >
                     <Select.Trigger />
                     <Select.Menu>
-                      <Select.Option
-                        value="always"
-                        label="Подтверждать каждую команду"
-                      />
-                      <Select.Option
-                        value="risky"
-                        label="Подтверждать рискованные"
-                      />
-                      <Select.Option
-                        value="policy"
-                        label="Следовать глобальной политике"
-                      />
+                      {availableConfirmationModeOptions.map((option) => (
+                        <Select.Option key={option.value} {...option} />
+                      ))}
                     </Select.Menu>
                   </Select>
                 </Field>
@@ -501,6 +534,7 @@ export const AutomationAgentManageForm = observer(
           </Button>
           <PrimaryButton
             type="submit"
+            variant={model ? "save" : "create"}
             loading={submitting}
             disabled={
               submitting ||

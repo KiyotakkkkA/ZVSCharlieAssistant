@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { observer } from "mobx-react-lite";
+import { toJS } from "mobx";
 import {
   EmptyState,
   ScrollArea,
@@ -70,15 +71,21 @@ export const SettingsProvidersPage = observer(function SettingsProvidersPage() {
   useEffect(() => {
     if (!textProviderStore.initialized) return;
     const persisted = textProviderStore.providers.map(
-      (provider): SettingsProviderDraft => ({
-        ...provider,
-        apiKeySecretId: provider.apiKeySecretId?.toString() ?? "",
-        status: "connected",
-        models: textProviderStore.models
-          .filter((model) => model.providerId === provider.id)
-          .map((model) => ({ ...model, id: model.remoteId })),
-        limits: provider.limits,
-      }),
+      (provider): SettingsProviderDraft => {
+        const plainProvider = toJS(provider);
+        return {
+          ...plainProvider,
+          apiKeySecretId: plainProvider.apiKeySecretId?.toString() ?? "",
+          status: "connected",
+          models: textProviderStore.models
+            .filter((model) => model.providerId === plainProvider.id)
+            .map((model) => {
+              const plainModel = toJS(model);
+              return { ...plainModel, id: plainModel.remoteId };
+            }),
+          limits: plainProvider.limits,
+        };
+      },
     );
     setProviders((current) =>
       current.some((item) => item.id === null)

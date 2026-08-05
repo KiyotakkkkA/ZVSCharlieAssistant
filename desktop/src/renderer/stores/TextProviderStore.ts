@@ -32,7 +32,22 @@ class TextProviderStore {
     }
   }
   async upsert(input: UpsertTextProviderInput) {
-    const snapshot = await window.desktop.textProviders.upsertProvider(input);
+    const payload: UpsertTextProviderInput = {
+      id: input.id,
+      kind: input.kind,
+      providerType: input.providerType,
+      name: input.name,
+      baseUrl: input.baseUrl,
+      apiKeySecretId: input.apiKeySecretId,
+      enabled: input.enabled,
+      enabledModelIds: [...input.enabledModelIds],
+      generationSettings: {
+        maxOutputTokens: input.generationSettings.maxOutputTokens,
+        temperature: input.generationSettings.temperature,
+        topP: input.generationSettings.topP,
+      },
+    };
+    const snapshot = await window.desktop.textProviders.upsertProvider(payload);
     runInAction(() => this.apply(snapshot));
     return snapshot;
   }

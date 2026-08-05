@@ -41,6 +41,9 @@ export const ChatPage = observer(function ChatPage() {
   const nextAgentOptions = automationStore.agents.map((agent) => ({
     value: agent.id,
     label: agent.name,
+    description: agent.textModelId
+      ? textProviderStore.modelLabel(agent.textModelId)
+      : "Модель не настроена",
   }));
   const nextScenarioOptions = automationStore.scenarios
     .filter((scenario) => scenario.status === "active")
@@ -77,18 +80,30 @@ export const ChatPage = observer(function ChatPage() {
   const active = chatStore.conversations.find(
     (item) => item.id === chatStore.activeConversationId,
   );
+  const selectedAgent = automationStore.agents.find(
+    (agent) => agent.id === agentId,
+  );
   const startMessage = async (
     value: string,
     runOptions: Omit<StartRunInput, "conversationId" | "text"> = {
       mode,
-      modelId: mode === "scenario" ? undefined : Number(model),
+      modelId:
+        mode === "agent"
+          ? (selectedAgent?.textModelId ?? undefined)
+          : mode === "chat" || mode === "planner"
+            ? Number(model)
+            : undefined,
       agentId: mode === "agent" ? agentId : undefined,
       scenarioId: mode === "scenario" ? scenarioId : undefined,
     },
   ) => {
     if (!value) throw new Error("Сообщение не может быть пустым");
     if (runOptions.mode !== "scenario" && !runOptions.modelId)
-      throw new Error("Модель не выбрана");
+      throw new Error(
+        runOptions.mode === "agent"
+          ? "Для выбранного агента не настроена модель"
+          : "Модель не выбрана",
+      );
     if (chatStore.activeRunId)
       throw new Error("Дождитесь завершения текущего ответа");
     await chatStore.start({
@@ -174,7 +189,13 @@ export const ChatPage = observer(function ChatPage() {
                     }
                   : {
                       mode: active?.mode ?? mode,
-                      modelId: active?.modelId ?? Number(model),
+                      modelId:
+                        (active?.mode ?? mode) === "agent"
+                          ? (automationStore.agents.find(
+                              (agent) =>
+                                agent.id === (active?.agentId ?? agentId),
+                            )?.textModelId ?? undefined)
+                          : (active?.modelId ?? Number(model)),
                       agentId:
                         active?.mode === "agent"
                           ? (active.agentId ?? undefined)

@@ -8,6 +8,7 @@ import {
   InputSmall,
   Modal,
   Select,
+  useToasts,
 } from "@kiyotakkkka/zvs-uikit-lib";
 import type {
   TerminalDirectoryGrant,
@@ -28,6 +29,7 @@ const permissions: Array<{ value: TerminalPermission; label: string }> = [
 
 export const SettingsTerminalPolicyForm = observer(
   function SettingsTerminalPolicyForm() {
+    const toasts = useToasts();
     const policy = terminalPolicyStore.policy;
     const [model, setModel] = useState<UpsertTerminalPolicyInput | null>(null);
     const [command, setCommand] = useState("");
@@ -76,7 +78,8 @@ export const SettingsTerminalPolicyForm = observer(
           event.preventDefault();
           void terminalPolicyStore
             .save(model)
-            .then(() => automationStore.bootstrap(true));
+            .then(() => automationStore.bootstrap(true))
+            .then(() => toasts.success({ title: "Успешно сохранено" }));
         }}
       >
         <div className="flex justify-end">
