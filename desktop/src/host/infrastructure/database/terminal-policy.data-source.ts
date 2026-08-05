@@ -2,9 +2,14 @@ import type Database from "better-sqlite3";
 import { isAbsolute, normalize } from "node:path";
 import type {
   TerminalPolicy,
-  UpsertTerminalPolicyInput,
 } from "../../../shared/models/terminal";
 import type { TerminalApprovalRequest } from "../../../shared/models/terminal";
+import {
+  parseJsonDto,
+  stringArrayDtoSchema,
+  terminalDirectoryGrantDtoSchema,
+  type UpsertTerminalPolicyInput,
+} from "../../../shared/dto";
 
 interface PolicyRow {
   enabled: number;
@@ -18,14 +23,6 @@ interface PolicyRow {
   directory_grants_json: string;
   updated_at: string;
 }
-
-const parse = <T>(value: string, fallback: T): T => {
-  try {
-    return JSON.parse(value) as T;
-  } catch {
-    return fallback;
-  }
-};
 
 export class TerminalPolicyDataSource {
   constructor(private readonly database: Database.Database) {}
@@ -42,8 +39,14 @@ export class TerminalPolicyDataSource {
       maxTimeoutSeconds: row.max_timeout_seconds,
       maxOutputBytes: row.max_output_bytes,
       allowNetwork: Boolean(row.allow_network),
-      allowedCommands: parse(row.allowed_commands_json, []),
-      directoryGrants: parse(row.directory_grants_json, []),
+      allowedCommands: parseJsonDto(
+        stringArrayDtoSchema,
+        row.allowed_commands_json,
+      ),
+      directoryGrants: parseJsonDto(
+        terminalDirectoryGrantDtoSchema.array(),
+        row.directory_grants_json,
+      ),
       updatedAt: row.updated_at,
     };
   }
@@ -127,7 +130,7 @@ export class TerminalPolicyDataSource {
       script: row.script,
       cwd: row.cwd,
       risk: row.risk,
-      reasons: parse(row.decision_reasons_json, []),
+      reasons: parseJsonDto(stringArrayDtoSchema, row.decision_reasons_json),
       expiresAt: row.expires_at,
     }));
   }

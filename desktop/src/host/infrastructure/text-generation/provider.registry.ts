@@ -1,6 +1,11 @@
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import type { LanguageModel } from "ai";
-import type { TextProviderGenerationSettings } from "../../../shared/models/text-provider";
+import {
+  parseJsonDto,
+  textProviderGenerationSettingsDtoSchema,
+  textProviderModelDetailsDtoSchema,
+  type TextProviderGenerationSettings,
+} from "../../../shared/dto";
 import type { SecretStorageRepository } from "../../application/ports/secret-storage.repository";
 import { ChatDataSource } from "../database/chat.data-source";
 export class ProviderRegistry {
@@ -32,12 +37,13 @@ export class ProviderRegistry {
   generationSettings(modelId: number): TextProviderGenerationSettings {
     const row = this.data.resolveModel(modelId);
     if (!row) throw new Error("Модель отключена или не найдена");
-    const configured = JSON.parse(
-      row.generation_settings_json || "{}",
-    ) as Partial<TextProviderGenerationSettings>;
-    const details = JSON.parse(row.details_json || "{}") as {
-      maxCompletionTokens?: number;
-    };
+    const configured = textProviderGenerationSettingsDtoSchema.partial().parse(
+      JSON.parse(row.generation_settings_json || "{}") as unknown,
+    );
+    const details = parseJsonDto(
+      textProviderModelDetailsDtoSchema,
+      row.details_json || "{}",
+    );
     const requested = configured.maxOutputTokens ?? 2048;
     return {
       maxOutputTokens: details.maxCompletionTokens

@@ -3,11 +3,15 @@ import type {
   ChatConversation,
   ChatMessage,
   ChatMessagePage,
-  ChatMode,
   ChatSnapshot,
   ChatToolCall,
   RunStatus,
 } from "../../../shared/models/chat";
+import {
+  chatMessageContentDtoSchema,
+  parseJsonDto,
+} from "../../../shared/dto";
+import type { ChatMode } from "../../../shared/dto";
 interface ConversationRow {
   id: number;
   title: string;
@@ -141,10 +145,7 @@ export class ChatDataSource {
       .prepare("SELECT content_json FROM chat_messages WHERE id=?")
       .get(messageId) as { content_json: string };
 
-    const parts = JSON.parse(row.content_json) as Array<{
-      type: string;
-      text: string;
-    }>;
+    const parts = parseJsonDto(chatMessageContentDtoSchema, row.content_json);
     let part = parts.find((part) => part.type === "text");
     if (!part) {
       part = { type: "text", text: "" };
@@ -159,10 +160,7 @@ export class ChatDataSource {
     const row = this.db
       .prepare("SELECT content_json FROM chat_messages WHERE id=?")
       .get(messageId) as { content_json: string };
-    const parts = JSON.parse(row.content_json) as Array<{
-      type: string;
-      text: string;
-    }>;
+    const parts = parseJsonDto(chatMessageContentDtoSchema, row.content_json);
     let part = parts.find((item) => item.type === "reasoning");
     if (!part) {
       part = { type: "reasoning", text: "" };
@@ -413,10 +411,7 @@ const mapConversation = (r: ConversationRow): ChatConversation => ({
   updatedAt: r.updated_at,
 });
 const mapMessage = (r: MessageRow): ChatMessage => {
-  const parts = JSON.parse(r.content_json) as Array<{
-    type: string;
-    text?: string;
-  }>;
+  const parts = parseJsonDto(chatMessageContentDtoSchema, r.content_json);
   return {
     id: r.id,
     conversationId: r.conversation_id,
@@ -426,11 +421,11 @@ const mapMessage = (r: MessageRow): ChatMessage => {
     status: r.status,
     text: parts
       .filter((p) => p.type === "text")
-      .map((p) => p.text ?? "")
+      .map((p) => p.text)
       .join(""),
     reasoning: parts
       .filter((p) => p.type === "reasoning")
-      .map((p) => p.text ?? "")
+      .map((p) => p.text)
       .join(""),
     error: null,
     toolCalls: [],

@@ -11,12 +11,14 @@ import {
   useToasts,
 } from "@kiyotakkkka/zvs-uikit-lib";
 import type {
-  TextProviderKind,
-  TextProviderModelInfo,
   TextProviderLimits,
+} from "../../../../shared/dto";
+import type { TextProviderModelInfo } from "../../../../shared/models/text-provider";
+import type {
   TextProviderGenerationSettings,
+  TextProviderKind,
   TextProviderType,
-} from "../../../../ipc/contracts";
+} from "../../../../shared/dto";
 import {
   RefreshIcon,
   SecretOrientedSelect,

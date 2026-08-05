@@ -2,8 +2,8 @@ import type {
   ChatMessagePage,
   ChatSnapshot,
   RunEvent,
-  StartRunInput,
 } from "../../shared/models/chat";
+import type { StartRunInput } from "../../shared/dto";
 
 export type * from "../../shared/models/chat";
 

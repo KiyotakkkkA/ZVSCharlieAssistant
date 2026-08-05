@@ -2,9 +2,14 @@ import { ipcMain } from "electron";
 import type { ProviderConnectionService } from "../../host/infrastructure/text-generation/provider-connection.service";
 import {
   TEXT_PROVIDER_IPC_CHANNELS,
+} from "../contracts";
+import {
+  parseIpcDto,
+  testTextProviderConnectionDtoSchema,
+  upsertTextProviderDtoSchema,
   type TestTextProviderConnectionInput,
   type UpsertTextProviderInput,
-} from "../contracts";
+} from "../../shared/dto";
 
 export function registerTextProviderHandlers(
   service: ProviderConnectionService,
@@ -15,11 +20,14 @@ export function registerTextProviderHandlers(
   ipcMain.handle(
     TEXT_PROVIDER_IPC_CHANNELS.testConnection,
     (_event, input: TestTextProviderConnectionInput) =>
-      service.testConnection(input),
+      service.testConnection(
+        parseIpcDto(testTextProviderConnectionDtoSchema, input),
+      ),
   );
   ipcMain.handle(
     TEXT_PROVIDER_IPC_CHANNELS.upsertProvider,
-    (_event, input: UpsertTextProviderInput) => service.upsertProvider(input),
+    (_event, input: UpsertTextProviderInput) =>
+      service.upsertProvider(parseIpcDto(upsertTextProviderDtoSchema, input)),
   );
   ipcMain.handle(
     TEXT_PROVIDER_IPC_CHANNELS.deleteProvider,

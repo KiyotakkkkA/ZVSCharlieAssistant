@@ -1,8 +1,12 @@
 import { app, ipcMain } from "electron";
-import type { UpsertTerminalPolicyInput } from "../../shared/models/terminal";
+import type { UpsertTerminalPolicyInput } from "../../shared/dto";
 import type { TerminalPolicyDataSource } from "../../host/infrastructure/database/terminal-policy.data-source";
 import type { CommandExecutionService } from "../../host/infrastructure/tools/command-execution.service";
 import { TERMINAL_POLICY_IPC_CHANNELS } from "../contracts/terminal-policy.contract";
+import {
+  parseIpcDto,
+  upsertTerminalPolicyDtoSchema,
+} from "../../shared/dto";
 
 export function registerTerminalPolicyHandlers(
   data: TerminalPolicyDataSource,
@@ -11,7 +15,8 @@ export function registerTerminalPolicyHandlers(
   ipcMain.handle(TERMINAL_POLICY_IPC_CHANNELS.get, () => data.get());
   ipcMain.handle(
     TERMINAL_POLICY_IPC_CHANNELS.upsert,
-    (_event, input: UpsertTerminalPolicyInput) => data.upsert(input),
+    (_event, input: UpsertTerminalPolicyInput) =>
+      data.upsert(parseIpcDto(upsertTerminalPolicyDtoSchema, input)),
   );
   ipcMain.handle(
     TERMINAL_POLICY_IPC_CHANNELS.recommended,

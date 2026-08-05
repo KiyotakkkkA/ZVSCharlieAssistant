@@ -2,9 +2,14 @@ import { clipboard, ipcMain } from "electron";
 import type { SecretStorageRepository } from "../../host/application/ports/secret-storage.repository";
 import {
   SECRET_IPC_CHANNELS,
+} from "../contracts";
+import {
+  parseIpcDto,
+  upsertSecretCategoryDtoSchema,
+  upsertSecretDtoSchema,
   type UpsertSecretCategoryInput,
   type UpsertSecretInput,
-} from "../contracts";
+} from "../../shared/dto";
 
 export function registerSecretStorageHandlers(
   repository: SecretStorageRepository,
@@ -15,7 +20,9 @@ export function registerSecretStorageHandlers(
   ipcMain.handle(
     SECRET_IPC_CHANNELS.upsertCategory,
     (_event, input: UpsertSecretCategoryInput) =>
-      repository.upsertCategory(input),
+      repository.upsertCategory(
+        parseIpcDto(upsertSecretCategoryDtoSchema, input),
+      ),
   );
   ipcMain.handle(SECRET_IPC_CHANNELS.copySecret, (_event, id: number) => {
     const secret = repository.getSecret(id);
@@ -24,7 +31,8 @@ export function registerSecretStorageHandlers(
   });
   ipcMain.handle(
     SECRET_IPC_CHANNELS.upsertSecret,
-    (_event, input: UpsertSecretInput) => repository.upsertSecret(input),
+    (_event, input: UpsertSecretInput) =>
+      repository.upsertSecret(parseIpcDto(upsertSecretDtoSchema, input)),
   );
   ipcMain.handle(SECRET_IPC_CHANNELS.deleteCategory, (_event, id: number) =>
     repository.deleteCategory(id),

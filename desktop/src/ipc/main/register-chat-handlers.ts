@@ -1,7 +1,12 @@
 import { ipcMain } from "electron";
 import type { ChatDataSource } from "../../host/infrastructure/database/chat.data-source";
 import type { RunEngine } from "../../host/infrastructure/text-generation/run-engine";
-import { CHAT_IPC_CHANNELS, type StartRunInput } from "../contracts";
+import { CHAT_IPC_CHANNELS } from "../contracts";
+import {
+  parseIpcDto,
+  startRunDtoSchema,
+  type StartRunInput,
+} from "../../shared/dto";
 export function registerChatHandlers(data: ChatDataSource, engine: RunEngine) {
   ipcMain.handle(CHAT_IPC_CHANNELS.getSnapshot, (_event, id?: number) =>
     data.snapshot(id),
@@ -11,7 +16,7 @@ export function registerChatHandlers(data: ChatDataSource, engine: RunEngine) {
     (_event, id: number, beforeId?: number) => data.messagePage(id, beforeId),
   );
   ipcMain.handle(CHAT_IPC_CHANNELS.startRun, (event, input: StartRunInput) =>
-    engine.start(input, (payload) => {
+    engine.start(parseIpcDto(startRunDtoSchema, input), (payload) => {
       if (!event.sender.isDestroyed())
         event.sender.send(CHAT_IPC_CHANNELS.event, payload);
     }),

@@ -3,8 +3,12 @@ import type {
   TextProviderConfig,
   TextProviderModel,
   TextProviderSnapshot,
-  UpsertTextProviderInput,
-} from "../../ipc/contracts";
+} from "../../shared/models/text-provider";
+import {
+  parseIpcDto,
+  upsertTextProviderDtoSchema,
+  type UpsertTextProviderInput,
+} from "../../shared/dto";
 
 class TextProviderStore {
   providers: TextProviderConfig[] = [];
@@ -32,21 +36,7 @@ class TextProviderStore {
     }
   }
   async upsert(input: UpsertTextProviderInput) {
-    const payload: UpsertTextProviderInput = {
-      id: input.id,
-      kind: input.kind,
-      providerType: input.providerType,
-      name: input.name,
-      baseUrl: input.baseUrl,
-      apiKeySecretId: input.apiKeySecretId,
-      enabled: input.enabled,
-      enabledModelIds: [...input.enabledModelIds],
-      generationSettings: {
-        maxOutputTokens: input.generationSettings.maxOutputTokens,
-        temperature: input.generationSettings.temperature,
-        topP: input.generationSettings.topP,
-      },
-    };
+    const payload = parseIpcDto(upsertTextProviderDtoSchema, input);
     const snapshot = await window.desktop.textProviders.upsertProvider(payload);
     runInAction(() => this.apply(snapshot));
     return snapshot;

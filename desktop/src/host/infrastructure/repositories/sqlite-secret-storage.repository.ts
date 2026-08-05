@@ -3,9 +3,11 @@ import type {
   SecretEntity,
   SecretRecord,
   SecretStorageSnapshot,
+} from "../../../shared/models/secret-storage";
+import type {
   UpsertSecretCategoryInput,
   UpsertSecretInput,
-} from "../../../shared/models/secret-storage";
+} from "../../../shared/dto";
 import type { SecretStorageRepository } from "../../application/ports/secret-storage.repository";
 import { SecretStorageDataSource } from "../database/secret-storage.data-source";
 

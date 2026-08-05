@@ -7,6 +7,8 @@ import type {
   UploadVectorDocumentInput,
   UpsertVectorStoreInput,
   VectorSearchInput,
+} from "../../../shared/dto";
+import type {
   VectorSearchResultItem,
 } from "../../../shared/models/vector-store";
 import type { VectorStoreDataSource } from "../database/vector-store.data-source";

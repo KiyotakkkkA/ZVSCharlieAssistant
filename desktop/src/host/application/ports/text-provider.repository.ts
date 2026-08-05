@@ -1,9 +1,11 @@
 import type {
   TextProviderModelInfo,
-  TextProviderLimits,
   TextProviderSnapshot,
-  UpsertTextProviderInput,
 } from "../../../shared/models/text-provider";
+import type {
+  TextProviderLimits,
+  UpsertTextProviderInput,
+} from "../../../shared/dto";
 
 export interface TextProviderRepository {
   getSnapshot(): TextProviderSnapshot;

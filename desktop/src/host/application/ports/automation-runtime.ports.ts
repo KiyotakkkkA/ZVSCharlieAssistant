@@ -1,8 +1,10 @@
 import type {
   AutomationSkill,
+} from "../../../shared/models/automation";
+import type {
   AutomationStatus,
   UpsertAutomationSkillInput,
-} from "../../../shared/models/automation";
+} from "../../../shared/dto";
 
 export interface SkillContentStore {
   read(slug: string): string;

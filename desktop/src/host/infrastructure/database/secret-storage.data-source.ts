@@ -2,9 +2,11 @@ import type Database from "better-sqlite3";
 import type {
   SecretCategory,
   SecretRecord,
+} from "../../../shared/models/secret-storage";
+import type {
   UpsertSecretCategoryInput,
   UpsertSecretInput,
-} from "../../../shared/models/secret-storage";
+} from "../../../shared/dto";
 
 interface CategoryRow {
   id: number;

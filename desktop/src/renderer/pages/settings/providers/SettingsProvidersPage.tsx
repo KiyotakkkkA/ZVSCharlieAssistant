@@ -17,7 +17,7 @@ import {
   PrimaryButton,
 } from "../../../components/atoms/buttons";
 
-import type { TextProviderType } from "../../../../ipc/contracts";
+import type { TextProviderType } from "../../../../shared/dto";
 import { textProviderStore } from "../../../stores";
 import { PageHeader } from "@renderer/components/organisms";
 import {

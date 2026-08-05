@@ -1,5 +1,5 @@
 import { InputCheckSlided } from "@kiyotakkkka/zvs-uikit-lib";
-import type { TextProviderModelInfo } from "../../../ipc/contracts";
+import type { TextProviderModelInfo } from "../../../shared/models/text-provider";
 import { OpenrouterIcon } from "../atoms";
 
 interface Props {

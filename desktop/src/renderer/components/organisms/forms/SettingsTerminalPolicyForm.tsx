@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { observer } from "mobx-react-lite";
-import { toJS } from "mobx";
 import {
   Alert,
   Button,
@@ -14,10 +13,14 @@ import type {
   TerminalDirectoryGrant,
   TerminalPermission,
   UpsertTerminalPolicyInput,
-} from "../../../../ipc/contracts";
+} from "../../../../shared/dto";
 import { automationStore, terminalPolicyStore } from "../../../stores";
 import { Field, ParameterLabel, TrashIcon } from "../../atoms";
 import { ControlButton, PrimaryButton } from "../../atoms/buttons";
+import {
+  parseIpcDto,
+  upsertTerminalPolicyDtoSchema,
+} from "../../../../shared/dto";
 
 const permissions: Array<{ value: TerminalPermission; label: string }> = [
   { value: "read", label: "Чтение" },
@@ -40,7 +43,7 @@ export const SettingsTerminalPolicyForm = observer(
     useEffect(() => {
       if (policy) {
         const { updatedAt: _updatedAt, ...input } = policy;
-        setModel(toJS(input));
+        setModel(parseIpcDto(upsertTerminalPolicyDtoSchema, input));
       }
     }, [policy]);
 

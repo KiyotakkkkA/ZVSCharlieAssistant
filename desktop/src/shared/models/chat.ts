@@ -1,7 +1,7 @@
 import type { ScenarioNodeRun, ScenarioRun } from "./automation";
 import type { RunStatus as SharedRunStatus } from "./run";
+import type { ChatMode } from "../dto";
 
-export type ChatMode = "chat" | "planner" | "agent" | "scenario";
 export type RunStatus = SharedRunStatus;
 export interface ChatConversation {
   id: number;
@@ -40,14 +40,6 @@ export interface ChatSnapshot {
 export interface ChatMessagePage {
   messages: ChatMessage[];
   hasMore: boolean;
-}
-export interface StartRunInput {
-  conversationId?: number;
-  mode: ChatMode;
-  modelId?: number;
-  agentId?: string;
-  scenarioId?: string;
-  text: string;
 }
 export type RunEvent =
   | {

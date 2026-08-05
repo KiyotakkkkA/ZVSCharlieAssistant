@@ -10,9 +10,11 @@ import {
 } from "@kiyotakkkka/zvs-uikit-lib";
 import type {
   AutomationSkill,
+} from "../../../../ipc/contracts";
+import type {
   AutomationStatus,
   UpsertAutomationSkillInput,
-} from "../../../../ipc/contracts";
+} from "../../../../shared/dto";
 import { automationStore } from "../../../stores";
 import { Field, ParameterLabel } from "../../atoms";
 import { PrimaryButton } from "../../atoms/buttons";

@@ -2,9 +2,14 @@ import { makeAutoObservable, runInAction } from "mobx";
 import type {
   SecretCategory,
   SecretEntity,
-  UpsertSecretCategoryInput,
-  UpsertSecretInput,
 } from "../../ipc/contracts";
+import {
+  parseIpcDto,
+  upsertSecretCategoryDtoSchema,
+  upsertSecretDtoSchema,
+  type UpsertSecretCategoryInput,
+  type UpsertSecretInput,
+} from "../../shared/dto";
 
 const getErrorMessage = (error: unknown): string =>
   error instanceof Error ? error.message : "Неизвестная ошибка";
@@ -59,7 +64,9 @@ class SecretStorageStore {
   async upsertCategory(
     input: UpsertSecretCategoryInput,
   ): Promise<SecretCategory> {
-    const category = await window.desktop.secrets.upsertCategory(input);
+    const category = await window.desktop.secrets.upsertCategory(
+      parseIpcDto(upsertSecretCategoryDtoSchema, input),
+    );
     runInAction(() => {
       const index = this.categories.findIndex(
         (item) => item.id === category.id,
@@ -75,7 +82,9 @@ class SecretStorageStore {
   }
 
   async upsertSecret(input: UpsertSecretInput): Promise<SecretEntity> {
-    const secret = await window.desktop.secrets.upsertSecret(input);
+    const secret = await window.desktop.secrets.upsertSecret(
+      parseIpcDto(upsertSecretDtoSchema, input),
+    );
     runInAction(() => {
       const index = this.secrets.findIndex((item) => item.id === secret.id);
       if (index >= 0) this.secrets[index] = secret;

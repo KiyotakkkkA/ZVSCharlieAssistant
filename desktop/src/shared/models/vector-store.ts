@@ -1,7 +1,8 @@
+import type { VectorSearchMode } from "../dto";
+
 export type VectorStoreStatus = "ready" | "indexing" | "degraded" | "disabled";
 export type VectorDocumentStatus =
   "queued" | "extracting" | "embedding" | "ready" | "failed";
-export type VectorSearchMode = "vector" | "hybrid";
 export interface VectorStoreConfig {
   id: number;
   name: string;
@@ -30,27 +31,6 @@ export interface VectorStoreDocument {
 export interface VectorStoreSnapshot {
   stores: VectorStoreConfig[];
   documents: VectorStoreDocument[];
-}
-export interface UpsertVectorStoreInput {
-  id?: number;
-  name: string;
-  description: string;
-  embeddingModelId: number | null;
-  searchMode: VectorSearchMode;
-  chunkSizeTokens: number;
-  chunkOverlapTokens: number;
-}
-export interface UploadVectorDocumentInput {
-  vectorStoreId: number;
-  fileName: string;
-  mimeType: string;
-  data: ArrayBuffer;
-}
-export interface VectorSearchInput {
-  vectorStoreIds: number[];
-  query: string;
-  limit?: number;
-  scoreThreshold?: number;
 }
 export interface VectorSearchResultItem {
   documentId: number;

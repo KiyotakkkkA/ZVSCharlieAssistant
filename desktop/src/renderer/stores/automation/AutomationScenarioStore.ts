@@ -1,14 +1,18 @@
 import { makeAutoObservable, runInAction } from "mobx";
 import type {
   AutomationScenario,
-  AutomationScenarioGraph,
   ScenarioNodeRun,
   ScenarioRun,
   ScenarioRunEvent,
   ScenarioValidationResult,
-  UpsertAutomationScenarioInput,
 } from "../../../ipc/contracts";
-const payload = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
+import {
+  automationScenarioGraphDtoSchema,
+  parseIpcDto,
+  upsertAutomationScenarioDtoSchema,
+  type AutomationScenarioGraph,
+  type UpsertAutomationScenarioInput,
+} from "../../../shared/dto";
 export class AutomationScenarioStore {
   items: AutomationScenario[] = [];
   activeRun: ScenarioRun | null = null;
@@ -30,7 +34,9 @@ export class AutomationScenarioStore {
     return this.items.find((item) => item.id === id);
   }
   async upsert(input: UpsertAutomationScenarioInput) {
-    const item = await window.desktop.automation.upsertScenario(payload(input));
+    const item = await window.desktop.automation.upsertScenario(
+      parseIpcDto(upsertAutomationScenarioDtoSchema, input),
+    );
     runInAction(() => {
       const index = this.items.findIndex(({ id }) => id === item.id);
       if (index >= 0) this.items[index] = item;
@@ -45,7 +51,9 @@ export class AutomationScenarioStore {
     });
   }
   validate(graph: AutomationScenarioGraph): Promise<ScenarioValidationResult> {
-    return window.desktop.automation.validateScenario(payload(graph));
+    return window.desktop.automation.validateScenario(
+      parseIpcDto(automationScenarioGraphDtoSchema, graph),
+    );
   }
   async start(id: string, input: unknown) {
     const run = await window.desktop.automation.startScenario(

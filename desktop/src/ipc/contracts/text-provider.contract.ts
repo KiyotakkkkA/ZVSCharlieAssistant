@@ -1,11 +1,11 @@
 import type {
-  TestTextProviderConnectionInput,
   TestTextProviderConnectionResult,
   TextProviderSnapshot,
-  UpsertTextProviderInput,
 } from "../../shared/models/text-provider";
-
-export type * from "../../shared/models/text-provider";
+import type {
+  TestTextProviderConnectionInput,
+  UpsertTextProviderInput,
+} from "../../shared/dto";
 
 export interface TextProviderApi {
   getSnapshot(): Promise<TextProviderSnapshot>;

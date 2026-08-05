@@ -1,8 +1,12 @@
 import { makeAutoObservable, runInAction } from "mobx";
 import type {
   AutomationSkill,
-  UpsertAutomationSkillInput,
 } from "../../../ipc/contracts";
+import {
+  parseIpcDto,
+  upsertAutomationSkillDtoSchema,
+  type UpsertAutomationSkillInput,
+} from "../../../shared/dto";
 export class AutomationSkillStore {
   items: AutomationSkill[] = [];
   constructor() {
@@ -16,7 +20,7 @@ export class AutomationSkillStore {
   }
   async upsert(input: UpsertAutomationSkillInput) {
     const item = await window.desktop.automation.upsertSkill(
-      JSON.parse(JSON.stringify(input)),
+      parseIpcDto(upsertAutomationSkillDtoSchema, input),
     );
     runInAction(() => {
       const index = this.items.findIndex(({ id }) => id === item.id);

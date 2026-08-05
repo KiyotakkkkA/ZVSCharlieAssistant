@@ -2,9 +2,11 @@ import type {
   SecretCategory,
   SecretEntity,
   SecretStorageSnapshot,
+} from "../../shared/models/secret-storage";
+import type {
   UpsertSecretCategoryInput,
   UpsertSecretInput,
-} from "../../shared/models/secret-storage";
+} from "../../shared/dto";
 
 export type * from "../../shared/models/secret-storage";
 

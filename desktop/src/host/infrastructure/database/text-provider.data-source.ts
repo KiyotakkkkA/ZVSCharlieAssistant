@@ -2,13 +2,20 @@ import type Database from "better-sqlite3";
 import type {
   TextProviderConfig,
   TextProviderModel,
-  TextProviderModelDetails,
   TextProviderModelInfo,
-  TextProviderLimits,
-  TextProviderGenerationSettings,
   TextProviderSnapshot,
-  UpsertTextProviderInput,
 } from "../../../shared/models/text-provider";
+import {
+  parseJsonDto,
+  textProviderGenerationSettingsDtoSchema,
+  textProviderLimitsDtoSchema,
+  textProviderModelDetailsDtoSchema,
+  type TextProviderLimits,
+} from "../../../shared/dto";
+import type {
+  TextProviderGenerationSettings,
+  UpsertTextProviderInput,
+} from "../../../shared/dto";
 interface ProviderRow {
   id: number;
   kind: TextProviderConfig["kind"];
@@ -146,7 +153,7 @@ const mapProvider = (row: ProviderRow): TextProviderConfig => ({
   enabled: Boolean(row.enabled),
   checkedAt: row.checked_at,
   limits: row.limits_json
-    ? (JSON.parse(row.limits_json) as TextProviderLimits)
+    ? parseJsonDto(textProviderLimitsDtoSchema, row.limits_json)
     : null,
   generationSettings: parseGenerationSettings(row.generation_settings_json),
   createdAt: row.created_at,
@@ -156,9 +163,9 @@ const mapProvider = (row: ProviderRow): TextProviderConfig => ({
 const parseGenerationSettings = (
   value: string,
 ): TextProviderGenerationSettings => {
-  const parsed = JSON.parse(
-    value || "{}",
-  ) as Partial<TextProviderGenerationSettings>;
+  const parsed = textProviderGenerationSettingsDtoSchema.partial().parse(
+    JSON.parse(value || "{}") as unknown,
+  );
   return {
     maxOutputTokens: parsed.maxOutputTokens ?? 2048,
     temperature: parsed.temperature ?? 0.7,
@@ -173,6 +180,6 @@ const mapModel = (row: ModelRow): TextProviderModel => ({
   modifiedAt: row.modified_at,
   size: row.size,
   digest: row.digest,
-  details: JSON.parse(row.details_json) as TextProviderModelDetails,
+  details: parseJsonDto(textProviderModelDetailsDtoSchema, row.details_json),
   enabled: Boolean(row.enabled),
 });

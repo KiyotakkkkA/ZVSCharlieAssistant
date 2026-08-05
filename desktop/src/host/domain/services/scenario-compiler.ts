@@ -1,9 +1,9 @@
+import type { ScenarioValidationResult } from "../../../shared/models/automation";
 import type {
   AutomationScenarioEdge,
   AutomationScenarioGraph,
   AutomationScenarioNode,
-  ScenarioValidationResult,
-} from "../../../shared/models/automation";
+} from "../../../shared/dto";
 import {
   getScenarioEdgeKind,
   isScenarioConnectionValid,

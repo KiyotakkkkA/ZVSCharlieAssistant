@@ -13,6 +13,7 @@ import {
   StorageIcon,
   TasksIcon,
   ToolsIcon,
+  PolicyIcon,
 } from "../components/atoms";
 
 export const APP_PATHS = {
@@ -136,7 +137,7 @@ export const NAVIGATION_ROUTES: readonly NavigationRoute[] = [
         id: "settings-policies",
         label: "Политики",
         path: APP_PATHS.settings.policies,
-        icon: SettingsIcon,
+        icon: PolicyIcon,
       },
     ],
   },

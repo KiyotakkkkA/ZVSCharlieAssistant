@@ -2,11 +2,13 @@ import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import { isAbsolute, normalize, relative, resolve } from "node:path";
 import type {
-  AgentTerminalPolicy,
   CommandSessionStatus,
+} from "../../../shared/models/terminal";
+import type {
+  AgentTerminalPolicy,
   TerminalDirectoryGrant,
   TerminalPermission,
-} from "../../../shared/models/terminal";
+} from "../../../shared/dto";
 import type { TerminalPolicyDataSource } from "../database/terminal-policy.data-source";
 
 type StartInput = {

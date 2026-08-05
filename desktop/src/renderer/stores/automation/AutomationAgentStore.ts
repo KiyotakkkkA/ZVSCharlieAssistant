@@ -1,11 +1,12 @@
-import { makeAutoObservable, runInAction, toJS } from "mobx";
+import { makeAutoObservable, runInAction } from "mobx";
 import type {
   AutomationAgent,
-  UpsertAutomationAgentInput,
 } from "../../../ipc/contracts";
-
-const payload = <T>(value: T): T =>
-  JSON.parse(JSON.stringify(toJS(value))) as T;
+import {
+  parseIpcDto,
+  upsertAutomationAgentDtoSchema,
+  type UpsertAutomationAgentInput,
+} from "../../../shared/dto";
 
 export class AutomationAgentStore {
   items: AutomationAgent[] = [];
@@ -19,7 +20,9 @@ export class AutomationAgentStore {
     return this.items.find((item) => item.id === id);
   }
   async upsert(input: UpsertAutomationAgentInput) {
-    const item = await window.desktop.automation.upsertAgent(payload(input));
+    const item = await window.desktop.automation.upsertAgent(
+      parseIpcDto(upsertAutomationAgentDtoSchema, input),
+    );
     runInAction(() => {
       const index = this.items.findIndex(({ id }) => id === item.id);
       if (index >= 0) this.items[index] = item;

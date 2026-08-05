@@ -4,13 +4,21 @@ import type { ScenarioExecutionDataSource } from "../../host/infrastructure/data
 import type { ScenarioRunEngine } from "../../host/infrastructure/automation/scenario-run-engine";
 import {
   AUTOMATION_IPC_CHANNELS,
+  type ScenarioRunOrigin,
+} from "../contracts";
+import {
+  automationScenarioGraphDtoSchema,
+  parseIpcDto,
+  upsertAutomationAgentDtoSchema,
+  upsertAutomationScenarioDtoSchema,
+  upsertAutomationSkillDtoSchema,
+  upsertAutomationToolSecretBindingDtoSchema,
+  type AutomationScenarioGraph,
   type UpsertAutomationAgentInput,
   type UpsertAutomationScenarioInput,
-  type AutomationScenarioGraph,
-  type ScenarioRunOrigin,
-  type UpsertAutomationToolSecretBindingInput,
   type UpsertAutomationSkillInput,
-} from "../contracts";
+  type UpsertAutomationToolSecretBindingInput,
+} from "../../shared/dto";
 
 export function registerAutomationHandlers(
   repository: AutomationRepository,
@@ -23,7 +31,9 @@ export function registerAutomationHandlers(
   ipcMain.handle(
     AUTOMATION_IPC_CHANNELS.upsertAgent,
     (_event, input: UpsertAutomationAgentInput) =>
-      repository.upsertAgent(input),
+      repository.upsertAgent(
+        parseIpcDto(upsertAutomationAgentDtoSchema, input),
+      ),
   );
   ipcMain.handle(AUTOMATION_IPC_CHANNELS.deleteAgent, (_event, id: string) =>
     repository.deleteAgent(id),
@@ -31,7 +41,9 @@ export function registerAutomationHandlers(
   ipcMain.handle(
     AUTOMATION_IPC_CHANNELS.upsertSkill,
     (_event, input: UpsertAutomationSkillInput) =>
-      repository.upsertSkill(input),
+      repository.upsertSkill(
+        parseIpcDto(upsertAutomationSkillDtoSchema, input),
+      ),
   );
   ipcMain.handle(AUTOMATION_IPC_CHANNELS.deleteSkill, (_event, id: number) =>
     repository.deleteSkill(id),
@@ -39,13 +51,16 @@ export function registerAutomationHandlers(
   ipcMain.handle(
     AUTOMATION_IPC_CHANNELS.upsertToolSecretBinding,
     (_event, input: UpsertAutomationToolSecretBindingInput) =>
-      repository.upsertToolSecretBinding(input),
+      repository.upsertToolSecretBinding(
+        parseIpcDto(upsertAutomationToolSecretBindingDtoSchema, input),
+      ),
   );
   ipcMain.handle(
     AUTOMATION_IPC_CHANNELS.upsertScenario,
     (_event, input: UpsertAutomationScenarioInput) => {
-      if (input.status === "active") engine.compiler.compile(input.graph);
-      return repository.upsertScenario(input);
+      const dto = parseIpcDto(upsertAutomationScenarioDtoSchema, input);
+      if (dto.status === "active") engine.compiler.compile(dto.graph);
+      return repository.upsertScenario(dto);
     },
   );
   ipcMain.handle(AUTOMATION_IPC_CHANNELS.deleteScenario, (_event, id: string) =>
@@ -53,7 +68,10 @@ export function registerAutomationHandlers(
   );
   ipcMain.handle(
     AUTOMATION_IPC_CHANNELS.validateScenario,
-    (_event, graph: AutomationScenarioGraph) => engine.compiler.validate(graph),
+    (_event, graph: AutomationScenarioGraph) =>
+      engine.compiler.validate(
+        parseIpcDto(automationScenarioGraphDtoSchema, graph),
+      ),
   );
   ipcMain.handle(
     AUTOMATION_IPC_CHANNELS.startScenario,

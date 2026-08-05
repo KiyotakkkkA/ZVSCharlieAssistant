@@ -1,7 +1,6 @@
 import type {
   AutomationAgent,
   AutomationScenario,
-  AutomationScenarioGraph,
   AutomationSkill,
   AutomationSnapshot,
   AutomationTool,
@@ -10,11 +9,14 @@ import type {
   ScenarioRunEvent,
   ScenarioRunOrigin,
   ScenarioValidationResult,
+} from "../../shared/models/automation";
+import type {
+  AutomationScenarioGraph,
   UpsertAutomationAgentInput,
   UpsertAutomationScenarioInput,
   UpsertAutomationSkillInput,
   UpsertAutomationToolSecretBindingInput,
-} from "../../shared/models/automation";
+} from "../../shared/dto";
 
 export type * from "../../shared/models/automation";
 

@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 import { Dropdown, Floating } from "@kiyotakkkka/zvs-uikit-lib";
 import type {
-  AutomationScenarioNode,
   AutomationScenarioNodeKind,
 } from "../../../ipc/contracts";
+import type { AutomationScenarioNode } from "../../../shared/dto";
 import {
   ChatIcon,
   MoreIcon,

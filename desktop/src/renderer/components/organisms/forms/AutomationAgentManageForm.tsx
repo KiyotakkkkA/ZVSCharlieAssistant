@@ -10,9 +10,11 @@ import {
 } from "@kiyotakkkka/zvs-uikit-lib";
 import type {
   AutomationAgent,
+} from "../../../../ipc/contracts";
+import type {
   AutomationStatus,
   UpsertAutomationAgentInput,
-} from "../../../../ipc/contracts";
+} from "../../../../shared/dto";
 import {
   automationStore,
   textProviderStore,

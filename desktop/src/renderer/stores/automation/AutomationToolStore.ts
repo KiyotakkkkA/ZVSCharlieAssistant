@@ -1,8 +1,8 @@
 import { makeAutoObservable, runInAction } from "mobx";
 import type {
   AutomationTool,
-  UpsertAutomationToolSecretBindingInput,
 } from "../../../ipc/contracts";
+import type { UpsertAutomationToolSecretBindingInput } from "../../../shared/dto";
 export class AutomationToolStore {
   items: AutomationTool[] = [];
   constructor() {

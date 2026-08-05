@@ -1,11 +1,16 @@
 import { makeAutoObservable, runInAction } from "mobx";
 import type {
-  UpsertVectorStoreInput,
-  VectorSearchInput,
   VectorStoreConfig,
   VectorStoreDocument,
   VectorStoreSnapshot,
 } from "../../ipc/contracts";
+import {
+  parseIpcDto,
+  upsertVectorStoreDtoSchema,
+  vectorSearchDtoSchema,
+  type UpsertVectorStoreInput,
+  type VectorSearchInput,
+} from "../../shared/dto";
 
 export type VectorStoreModel = VectorStoreConfig;
 export type VectorDocument = VectorStoreDocument;
@@ -59,14 +64,14 @@ class VectorStoreStore {
   }
 
   async createStore() {
-    const snapshot = await window.desktop.vectorStores.upsertStore({
+    const snapshot = await window.desktop.vectorStores.upsertStore(parseIpcDto(upsertVectorStoreDtoSchema, {
       name: "Новое векторное хранилище",
       description: "",
       embeddingModelId: null,
       searchMode: "vector",
       chunkSizeTokens: 700,
       chunkOverlapTokens: 100,
-    });
+    }));
     runInAction(() => {
       const previous = new Set(this.stores.map((item) => item.id));
       this.apply(snapshot);
@@ -98,7 +103,9 @@ class VectorStoreStore {
       item.id === id ? { ...item, ...patch } : item,
     );
     try {
-      const snapshot = await window.desktop.vectorStores.upsertStore(input);
+      const snapshot = await window.desktop.vectorStores.upsertStore(
+        parseIpcDto(upsertVectorStoreDtoSchema, input),
+      );
       if (this.updateVersions.get(id) === version)
         runInAction(() => this.apply(snapshot));
     } catch (error) {
@@ -146,7 +153,9 @@ class VectorStoreStore {
   }
 
   search(input: VectorSearchInput) {
-    return window.desktop.vectorStores.search(input);
+    return window.desktop.vectorStores.search(
+      parseIpcDto(vectorSearchDtoSchema, input),
+    );
   }
 
   private async pollUntilSettled(documentIds: number[]) {

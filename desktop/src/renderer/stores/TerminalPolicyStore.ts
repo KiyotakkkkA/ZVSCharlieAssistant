@@ -1,8 +1,12 @@
-import { makeAutoObservable, runInAction, toJS } from "mobx";
+import { makeAutoObservable, runInAction } from "mobx";
 import type {
   TerminalPolicy,
-  UpsertTerminalPolicyInput,
 } from "../../ipc/contracts";
+import {
+  parseIpcDto,
+  upsertTerminalPolicyDtoSchema,
+  type UpsertTerminalPolicyInput,
+} from "../../shared/dto";
 
 export class TerminalPolicyStore {
   policy: TerminalPolicy | null = null;
@@ -32,7 +36,7 @@ export class TerminalPolicyStore {
     this.saving = true;
     try {
       const policy = await window.desktop.terminalPolicy.upsert(
-        JSON.parse(JSON.stringify(toJS(input))) as UpsertTerminalPolicyInput,
+        parseIpcDto(upsertTerminalPolicyDtoSchema, input),
       );
       runInAction(() => (this.policy = policy));
     } finally {

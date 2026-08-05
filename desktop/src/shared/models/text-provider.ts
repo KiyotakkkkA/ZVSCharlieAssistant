@@ -1,43 +1,10 @@
-export type TextProviderKind = "ollama" | "openrouter";
-export type TextProviderType = "text" | "embedding";
-export interface TextProviderModelDetails {
-  parentModel: string;
-  format: string;
-  family: string;
-  families: string[] | null;
-  parameterSize: string;
-  quantizationLevel: string;
-  contextLength?: number;
-  maxCompletionTokens?: number;
-  inputModalities?: string[];
-  outputModalities?: string[];
-  tokenizer?: string;
-  instructType?: string | null;
-  isModerated?: boolean;
-  doesNotTrain?: boolean;
-  zeroDataRetention?: boolean;
-  promptPrice?: string;
-  completionPrice?: string;
-  requestPrice?: string;
-  supportedParameters?: string[];
-  description?: string;
-}
-export interface TextProviderLimits {
-  limit: number | null;
-  limitRemaining: number | null;
-  limitReset: string | null;
-  usage: number;
-  usageDaily: number;
-  usageWeekly: number;
-  usageMonthly: number;
-  isFreeTier: boolean;
-  expiresAt: string | null;
-}
-export interface TextProviderGenerationSettings {
-  maxOutputTokens: number;
-  temperature: number;
-  topP: number;
-}
+import type {
+  TextProviderGenerationSettings,
+  TextProviderKind,
+  TextProviderLimits,
+  TextProviderModelDetails,
+  TextProviderType,
+} from "../dto";
 export interface TextProviderModelInfo {
   id: string;
   name: string;
@@ -69,19 +36,6 @@ export interface TextProviderModel extends Omit<TextProviderModelInfo, "id"> {
 export interface TextProviderSnapshot {
   providers: TextProviderConfig[];
   models: TextProviderModel[];
-}
-export interface TestTextProviderConnectionInput {
-  kind: TextProviderKind;
-  providerType: TextProviderType;
-  baseUrl: string;
-  apiKeySecretId?: number;
-}
-export interface UpsertTextProviderInput extends TestTextProviderConnectionInput {
-  id?: number;
-  name: string;
-  enabled: boolean;
-  enabledModelIds: string[];
-  generationSettings: TextProviderGenerationSettings;
 }
 export interface TestTextProviderConnectionResult {
   models: TextProviderModelInfo[];

@@ -2,13 +2,18 @@ import type Database from "better-sqlite3";
 import type {
   AutomationAgent,
   AutomationScenario,
-  AutomationScenarioGraph,
-  AutomationScenarioToolSetting,
-  UpsertAutomationAgentInput,
-  UpsertAutomationScenarioInput,
   AutomationSkill,
-  UpsertAutomationSkillInput,
 } from "../../../shared/models/automation";
+import {
+  agentTerminalPolicyDtoSchema,
+  automationScenarioGraphDtoSchema,
+  automationScenarioToolSettingDtoSchema,
+  parseJsonDto,
+  stringArrayDtoSchema,
+  type UpsertAutomationAgentInput,
+  type UpsertAutomationScenarioInput,
+  type UpsertAutomationSkillInput,
+} from "../../../shared/dto";
 
 interface AgentRow {
   id: string;
@@ -37,14 +42,6 @@ interface ScenarioRow {
   last_run_at: string | null;
   updated_at: string;
 }
-
-const parseJson = <T>(value: string, fallback: T): T => {
-  try {
-    return JSON.parse(value) as T;
-  } catch {
-    return fallback;
-  }
-};
 
 export class AutomationDataSource {
   constructor(private readonly database: Database.Database) {}
@@ -379,13 +376,10 @@ export class AutomationDataSource {
       retrievalLimit: row.retrieval_limit,
       maxToolCalls: row.max_tool_calls,
       timeoutSeconds: row.timeout_seconds,
-      terminalPolicy: parseJson(row.terminal_policy_json, {
-        enabled: false,
-        confirmationMode: "always",
-        timeoutSeconds: 60,
-        allowedCommands: [],
-        directoryGrants: [],
-      }),
+      terminalPolicy: parseJsonDto(
+        agentTerminalPolicyDtoSchema,
+        row.terminal_policy_json,
+      ),
       runs: row.runs,
       updatedAt: row.updated_at,
     };
@@ -412,7 +406,10 @@ export class AutomationDataSource {
       status: row.status as AutomationSkill["status"],
       version: String(row.version),
       author: String(row.author),
-      requiredToolIds: parseJson(String(row.required_tool_ids_json), []),
+      requiredToolIds: parseJsonDto(
+        stringArrayDtoSchema,
+        String(row.required_tool_ids_json),
+      ),
       assignedAgentsCount: Number(row.assigned_agents_count),
       updatedAt: String(row.updated_at),
       builtin: Boolean(row.builtin),
@@ -500,13 +497,13 @@ export class AutomationDataSource {
   }
 
   private mapScenario(row: ScenarioRow): AutomationScenario {
-    const graph = parseJson<AutomationScenarioGraph>(row.graph_json, {
-      nodes: [],
-      edges: [],
-    });
-    const toolSettings = parseJson<AutomationScenarioToolSetting[]>(
+    const graph = parseJsonDto(
+      automationScenarioGraphDtoSchema,
+      row.graph_json,
+    );
+    const toolSettings = parseJsonDto(
+      automationScenarioToolSettingDtoSchema.array(),
       row.tool_settings_json,
-      [],
     );
 
     return {

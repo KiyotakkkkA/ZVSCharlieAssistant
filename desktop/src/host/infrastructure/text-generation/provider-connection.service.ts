@@ -1,14 +1,16 @@
 import type { SecretStorageRepository } from "../../application/ports/secret-storage.repository";
 import type { TextProviderRepository } from "../../application/ports/text-provider.repository";
 import type {
-  TestTextProviderConnectionInput,
   TestTextProviderConnectionResult,
-  TextProviderKind,
-  TextProviderLimits,
   TextProviderModelInfo,
   TextProviderSnapshot,
-  UpsertTextProviderInput,
 } from "../../../shared/models/text-provider";
+import type {
+  TestTextProviderConnectionInput,
+  TextProviderKind,
+  TextProviderLimits,
+  UpsertTextProviderInput,
+} from "../../../shared/dto";
 
 const API_KEYS_CATEGORY_ID = 1;
 

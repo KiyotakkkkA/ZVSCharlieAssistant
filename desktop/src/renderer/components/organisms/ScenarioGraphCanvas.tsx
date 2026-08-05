@@ -24,7 +24,7 @@ import { ScenarioNodeCard, scenarioNodeVariants } from "../molecules";
 import type {
   AutomationScenarioEdge as GraphEdge,
   AutomationScenarioNode as GraphNode,
-} from "../../../ipc/contracts";
+} from "../../../shared/dto";
 import {
   SCENARIO_PORTS,
   isScenarioConnectionValid,

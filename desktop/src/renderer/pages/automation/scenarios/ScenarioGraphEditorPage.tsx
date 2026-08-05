@@ -22,7 +22,6 @@ import {
 } from "@kiyotakkkka/zvs-uikit-lib";
 import { useParams } from "react-router-dom";
 import { observer } from "mobx-react-lite";
-import { toJS } from "mobx";
 import {
   ChatIcon,
   ChevronLeftIcon,
@@ -46,13 +45,18 @@ import { APP_PATHS } from "../../../app/routes";
 import { useHashRouter } from "../../../hooks";
 import { automationStore, vectorStoreStore } from "../../../stores";
 import type {
-  AutomationStatus,
-  AutomationScenarioEdge as GraphEdge,
-  AutomationScenarioNode as GraphNode,
   AutomationScenarioNodeKind as NodeKind,
 } from "../../../../ipc/contracts";
 import { DangerModal } from "@renderer/components/organisms/modals";
 import { getScenarioEdgeKind } from "../../../../shared/scenario-ports";
+import {
+  automationScenarioEdgeDtoSchema,
+  automationScenarioNodeDtoSchema,
+  parseIpcDto,
+  type AutomationScenarioEdge as GraphEdge,
+  type AutomationScenarioNode as GraphNode,
+  type AutomationStatus,
+} from "../../../../shared/dto";
 
 const nodeMeta: Record<
   NodeKind,
@@ -167,10 +171,14 @@ export const ScenarioGraphEditorPage = observer(
     const { scenarioId } = useParams();
     const scenario = automationStore.getScenario(scenarioId);
     const [nodes, setNodes] = useState<GraphNode[]>(() =>
-      scenario?.graph.nodes.length ? toJS(scenario.graph.nodes) : initialNodes,
+      scenario?.graph.nodes.length
+        ? parseIpcDto(automationScenarioNodeDtoSchema.array(), scenario.graph.nodes)
+        : initialNodes,
     );
     const [edges, setEdges] = useState<GraphEdge[]>(() =>
-      scenario ? toJS(scenario.graph.edges) : [],
+      scenario
+        ? parseIpcDto(automationScenarioEdgeDtoSchema.array(), scenario.graph.edges)
+        : [],
     );
     const [selectedNodeId, setSelectedNodeId] = useState("orchestrator");
     const [status, setStatus] = useState<AutomationStatus>(
@@ -186,8 +194,12 @@ export const ScenarioGraphEditorPage = observer(
 
     useEffect(() => {
       if (!scenario) return;
-      setNodes(toJS(scenario.graph.nodes));
-      setEdges(toJS(scenario.graph.edges));
+      setNodes(
+        parseIpcDto(automationScenarioNodeDtoSchema.array(), scenario.graph.nodes),
+      );
+      setEdges(
+        parseIpcDto(automationScenarioEdgeDtoSchema.array(), scenario.graph.edges),
+      );
       setSelectedNodeId(scenario.graph.nodes[0]?.id ?? "");
       setStatus(scenario.status);
       setScenarioName(scenario.name);

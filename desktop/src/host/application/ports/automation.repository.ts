@@ -4,11 +4,13 @@ import type {
   AutomationSkill,
   AutomationSnapshot,
   AutomationTool,
+} from "../../../shared/models/automation";
+import type {
   UpsertAutomationAgentInput,
   UpsertAutomationScenarioInput,
   UpsertAutomationSkillInput,
   UpsertAutomationToolSecretBindingInput,
-} from "../../../shared/models/automation";
+} from "../../../shared/dto";
 
 export interface AutomationRepository {
   getSnapshot(): AutomationSnapshot;

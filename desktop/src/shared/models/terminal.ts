@@ -1,17 +1,7 @@
-export type TerminalConfirmationMode = "always" | "risky" | "policy";
-export type TerminalPermission =
-  | "read"
-  | "create"
-  | "modify"
-  | "delete"
-  | "execute";
-
-export interface TerminalDirectoryGrant {
-  id?: number;
-  path: string;
-  recursive: boolean;
-  permissions: TerminalPermission[];
-}
+import type {
+  TerminalConfirmationMode,
+  TerminalDirectoryGrant,
+} from "../dto/terminal.dto";
 
 export interface TerminalPolicy {
   enabled: boolean;
@@ -25,17 +15,6 @@ export interface TerminalPolicy {
   directoryGrants: TerminalDirectoryGrant[];
   updatedAt: string;
 }
-
-export interface AgentTerminalPolicy {
-  enabled: boolean;
-  confirmationMode: TerminalConfirmationMode;
-  timeoutSeconds: number;
-  allowedCommands: string[];
-  directoryGrants: TerminalDirectoryGrant[];
-}
-
-export interface UpsertTerminalPolicyInput
-  extends Omit<TerminalPolicy, "updatedAt"> {}
 
 export type CommandSessionStatus =
   | "pending_approval"

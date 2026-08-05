@@ -2,21 +2,23 @@ import { randomUUID } from "node:crypto";
 import type {
   AutomationAgent,
   AutomationScenario,
-  AutomationScenarioGraph,
   AutomationSnapshot,
-  AutomationStatus,
   AutomationTool,
+  AutomationSkill,
+} from "../../../shared/models/automation";
+import type {
+  AutomationScenarioGraph,
+  AutomationStatus,
+  TerminalConfirmationMode,
   UpsertAutomationAgentInput,
   UpsertAutomationScenarioInput,
-  UpsertAutomationToolSecretBindingInput,
-  AutomationSkill,
   UpsertAutomationSkillInput,
-} from "../../../shared/models/automation";
+  UpsertAutomationToolSecretBindingInput,
+} from "../../../shared/dto";
 import type { AutomationRepository } from "../../application/ports/automation.repository";
 import { AutomationDataSource } from "../database/automation.data-source";
 import type { SkillContentStore } from "../../application/ports/automation-runtime.ports";
 import type { TerminalPolicyDataSource } from "../database/terminal-policy.data-source";
-import type { TerminalConfirmationMode } from "../../../shared/models/terminal";
 
 const statuses = new Set<AutomationStatus>(["draft", "active", "disabled"]);
 
@@ -303,7 +305,12 @@ export class SqliteAutomationRepository implements AutomationRepository {
         secretId: binding.secret_id,
       }));
     return {
-      ...structuredClone(tool),
+      ...tool,
+      inputSchema: { ...tool.inputSchema },
+      outputSchema: { ...tool.outputSchema },
+      secretRequirements: tool.secretRequirements.map((requirement) => ({
+        ...requirement,
+      })),
       enabled:
         tool.enabled &&
         (tool.id !== "cmd_exec" || this.terminalPolicies.get().enabled) &&

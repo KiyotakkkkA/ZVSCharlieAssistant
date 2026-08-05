@@ -1,12 +1,13 @@
 import { makeAutoObservable, runInAction } from "mobx";
+import { parseIpcDto, startRunDtoSchema } from "../../shared/dto";
 import type {
   ChatConversation,
   ChatMessage,
   RunEvent,
-  StartRunInput,
   ScenarioNodeRun,
   ScenarioRun,
 } from "../../ipc/contracts";
+import type { StartRunInput } from "../../shared/dto";
 
 class ChatStore {
   conversations: ChatConversation[] = [];
@@ -72,10 +73,12 @@ class ChatStore {
   async start(input: Omit<StartRunInput, "conversationId">) {
     this.loading = true;
     try {
-      await window.desktop.chat.startRun({
-        ...input,
-        conversationId: this.activeConversationId ?? undefined,
-      });
+      await window.desktop.chat.startRun(
+        parseIpcDto(startRunDtoSchema, {
+          ...input,
+          conversationId: this.activeConversationId ?? undefined,
+        }),
+      );
     } finally {
       runInAction(() => {
         this.loading = false;

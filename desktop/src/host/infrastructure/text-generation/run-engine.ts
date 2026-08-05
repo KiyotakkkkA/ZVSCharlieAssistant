@@ -1,5 +1,6 @@
 import { streamText, stepCountIs, type ModelMessage } from "ai";
-import type { RunEvent, StartRunInput } from "../../../shared/models/chat";
+import type { RunEvent } from "../../../shared/models/chat";
+import type { StartRunInput } from "../../../shared/dto";
 import { ChatDataSource } from "../database/chat.data-source";
 import { ProviderRegistry } from "./provider.registry";
 import { ToolRegistry } from "../tools/tool.registry";

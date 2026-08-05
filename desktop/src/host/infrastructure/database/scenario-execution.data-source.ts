@@ -1,12 +1,15 @@
 import type Database from "better-sqlite3";
 import type {
-  AutomationScenarioGraph,
   AutomationScenarioNodeKind,
   ScenarioNodeRun,
   ScenarioRun,
   ScenarioRunOrigin,
   ScenarioRunStatus,
 } from "../../../shared/models/automation";
+import {
+  automationScenarioGraphDtoSchema,
+  parseJsonDto,
+} from "../../../shared/dto";
 
 const parse = (value: string | null): unknown =>
   value ? JSON.parse(value) : null;
@@ -32,7 +35,13 @@ export class ScenarioExecutionDataSource {
         }
       | undefined;
     return row
-      ? { ...row, graph: JSON.parse(row.graph_json) as AutomationScenarioGraph }
+      ? {
+          ...row,
+          graph: parseJsonDto(
+            automationScenarioGraphDtoSchema,
+            row.graph_json,
+          ),
+        }
       : undefined;
   }
 

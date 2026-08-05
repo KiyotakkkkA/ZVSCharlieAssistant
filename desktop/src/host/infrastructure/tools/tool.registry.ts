@@ -9,7 +9,7 @@ import type {
 import type { VectorStoreService } from "../vector-store/vector-store.service";
 import { OllamaWebService } from "./ollama-web.service";
 import type { ReportDocxService } from "./report-docx.service";
-import type { AgentTerminalPolicy } from "../../../shared/models/terminal";
+import type { AgentTerminalPolicy } from "../../../shared/dto";
 import type { CommandExecutionService } from "./command-execution.service";
 
 type Emit = (event: RunEvent) => void;
@@ -77,17 +77,18 @@ export class ToolRegistry {
             purpose: z.string().trim().min(1).max(500),
             cwd: z.string().trim().optional(),
             execution: z.enum(["foreground", "background"]).optional(),
-            timeoutSeconds: z.number().int().min(1).max(86_400).optional(),
+            timeoutSeconds: z.int().min(1).max(86_400).optional(),
           }),
           z.object({
             action: z.enum(["status", "output", "wait", "cancel"]),
             sessionId: z.string().uuid(),
-            timeoutSeconds: z.number().int().min(1).max(30).optional(),
+            timeoutSeconds: z.int().min(1).max(30).optional(),
           }),
         ]),
         execute: (input, { toolCallId }) =>
           this.execute(toolCallId, "cmd_exec", input, signal, observer, () => {
-            if (!terminalPolicy) throw new Error("Политика терминала агента не настроена");
+            if (!terminalPolicy)
+              throw new Error("Политика терминала агента не настроена");
             return this.commands.execute(input, terminalPolicy, signal);
           }),
       }),
@@ -114,8 +115,8 @@ export class ToolRegistry {
           "Ищет релевантные фрагменты в разрешённых агенту векторных базах знаний.",
         inputSchema: z.object({
           query: z.string().trim().min(1).max(2000),
-          storeIds: z.array(z.number().int().positive()).optional(),
-          limit: z.number().int().min(1).max(20).optional(),
+          storeIds: z.array(z.int().positive()).optional(),
+          limit: z.int().min(1).max(20).optional(),
           scoreThreshold: z.number().min(0).max(1).optional(),
         }),
         execute: (input, { toolCallId }) =>
@@ -148,7 +149,7 @@ export class ToolRegistry {
       "skills.load": tool({
         description:
           "Загружает полные инструкции назначенного агенту навыка. Используй перед применением навыка.",
-        inputSchema: z.object({ skillId: z.number().int().positive() }),
+        inputSchema: z.object({ skillId: z.int().positive() }),
         execute: ({ skillId }) => {
           if (!allowedSkillIds.includes(skillId))
             throw new Error("Навык не назначен агенту");

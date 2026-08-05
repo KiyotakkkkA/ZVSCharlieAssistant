@@ -1,10 +1,10 @@
 import { stepCountIs, streamText, type ToolSet } from "ai";
 import type {
-  AutomationScenarioNode,
   ScenarioRun,
   ScenarioRunEvent,
   ScenarioRunOrigin,
 } from "../../../shared/models/automation";
+import type { AutomationScenarioNode } from "../../../shared/dto";
 import { ScenarioExecutionDataSource } from "../database/scenario-execution.data-source";
 import { ProviderRegistry } from "../text-generation/provider.registry";
 import { ScenarioCompiler } from "../../domain/services/scenario-compiler";

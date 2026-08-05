@@ -1,11 +1,11 @@
 import type Database from "better-sqlite3";
 import type {
-  UpsertVectorStoreInput,
   VectorStoreConfig,
   VectorStoreDocument,
   VectorStoreSnapshot,
   VectorDocumentStatus,
 } from "../../../shared/models/vector-store";
+import type { UpsertVectorStoreInput } from "../../../shared/dto";
 
 export class VectorStoreDataSource {
   constructor(readonly db: Database.Database) {}

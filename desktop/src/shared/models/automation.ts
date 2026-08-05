@@ -1,8 +1,12 @@
 import type { RunOrigin, RunStatus } from "./run";
-import type { ScenarioEdgeKind, ScenarioNodeKind } from "../scenario-ports";
-import type { AgentTerminalPolicy } from "./terminal";
+import type { ScenarioNodeKind } from "../scenario-ports";
+import type {
+  AgentTerminalPolicy,
+  AutomationScenarioGraph,
+  AutomationScenarioToolSetting,
+  AutomationStatus,
+} from "../dto";
 
-export type AutomationStatus = "draft" | "active" | "disabled";
 export interface AutomationToolSecretRequirement {
   key: string;
   label: string;
@@ -43,13 +47,6 @@ export interface AutomationAgent {
   runs: number;
   updatedAt: string;
 }
-export interface UpsertAutomationAgentInput extends Omit<
-  AutomationAgent,
-  "id" | "runs" | "updatedAt" | "textModelId"
-> {
-  id?: string;
-  textModelId: number;
-}
 export interface AutomationSkill {
   id: number;
   slug: string;
@@ -64,40 +61,7 @@ export interface AutomationSkill {
   builtin: boolean;
   updatedAt: string;
 }
-export interface UpsertAutomationSkillInput extends Omit<
-  AutomationSkill,
-  "id" | "assignedAgentsCount" | "builtin" | "updatedAt"
-> {
-  id?: number;
-}
 export type AutomationScenarioNodeKind = ScenarioNodeKind;
-export interface AutomationScenarioNode {
-  id: string;
-  kind: AutomationScenarioNodeKind;
-  title: string;
-  description: string;
-  x: number;
-  y: number;
-  config?: Record<string, unknown>;
-}
-export interface AutomationScenarioEdge {
-  id: string;
-  kind: ScenarioEdgeKind;
-  source: string;
-  target: string;
-  sourcePort?: string;
-  targetPort?: string;
-  condition?: Record<string, unknown>;
-}
-export interface AutomationScenarioGraph {
-  nodes: AutomationScenarioNode[];
-  edges: AutomationScenarioEdge[];
-  viewport?: { x: number; y: number; zoom: number };
-}
-export interface AutomationScenarioToolSetting {
-  toolId: string;
-  settings: Record<string, unknown>;
-}
 export interface AutomationScenario {
   id: string;
   name: string;
@@ -110,19 +74,6 @@ export interface AutomationScenario {
   nodesCount: number;
   lastRunAt: string | null;
   updatedAt: string;
-}
-export interface UpsertAutomationScenarioInput {
-  id?: string;
-  name: string;
-  description: string;
-  status: AutomationStatus;
-  graph: AutomationScenarioGraph;
-  toolSettings: AutomationScenarioToolSetting[];
-}
-export interface UpsertAutomationToolSecretBindingInput {
-  toolId: string;
-  key: string;
-  secretId: number | null;
 }
 export interface AutomationSnapshot {
   tools: AutomationTool[];

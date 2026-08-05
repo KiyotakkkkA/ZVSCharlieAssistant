@@ -1,8 +1,8 @@
 import type {
   TerminalPolicy,
-  UpsertTerminalPolicyInput,
   TerminalApprovalRequest,
 } from "../../shared/models/terminal";
+import type { UpsertTerminalPolicyInput } from "../../shared/dto";
 
 export type * from "../../shared/models/terminal";
 

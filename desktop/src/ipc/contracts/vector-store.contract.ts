@@ -1,11 +1,13 @@
 import type {
-  UpsertVectorStoreInput,
-  UploadVectorDocumentInput,
-  VectorSearchInput,
   VectorSearchResultItem,
   VectorStoreDocument,
   VectorStoreSnapshot,
 } from "../../shared/models/vector-store";
+import type {
+  UpsertVectorStoreInput,
+  UploadVectorDocumentInput,
+  VectorSearchInput,
+} from "../../shared/dto";
 
 export type * from "../../shared/models/vector-store";
 

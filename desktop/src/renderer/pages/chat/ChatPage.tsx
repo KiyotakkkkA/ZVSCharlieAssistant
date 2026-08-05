@@ -17,7 +17,7 @@ import {
 import { automationStore, chatStore, textProviderStore } from "../../stores";
 import { PrimaryButton } from "@renderer/components/atoms/buttons";
 import { DangerModal } from "@renderer/components/organisms/modals";
-import type { StartRunInput } from "../../../ipc/contracts";
+import type { StartRunInput } from "../../../shared/dto";
 
 export const ChatPage = observer(function ChatPage() {
   const toasts = useToasts();
