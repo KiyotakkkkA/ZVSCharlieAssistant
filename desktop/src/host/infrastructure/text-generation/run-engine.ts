@@ -235,6 +235,7 @@ export class RunEngine {
                   agentRuntime?.allowedVectorStoreIds ?? [],
                 retrievalLimit: agentRuntime?.retrieval_limit ?? 5,
                 allowedSkillIds: agentRuntime?.allowedSkillIds ?? [],
+                terminalPolicy: agentRuntime?.terminalPolicy,
               })
             : undefined,
         stopWhen: stepCountIs(maxSteps),

@@ -334,7 +334,7 @@ export class ChatDataSource {
     if (!id) return undefined;
     const row = this.db
       .prepare(
-        "SELECT instructions,max_tool_calls,timeout_seconds,retrieval_limit FROM automation_agents WHERE id=? AND status!='disabled'",
+        "SELECT instructions,max_tool_calls,timeout_seconds,retrieval_limit,terminal_policy_json FROM automation_agents WHERE id=? AND status!='disabled'",
       )
       .get(id) as
       | {
@@ -342,6 +342,7 @@ export class ChatDataSource {
           max_tool_calls: number;
           timeout_seconds: number;
           retrieval_limit: number;
+          terminal_policy_json: string;
         }
       | undefined;
     if (!row) return undefined;
@@ -364,7 +365,13 @@ export class ChatDataSource {
         )
         .all(id) as Array<{ skill_id: number }>
     ).map((item) => item.skill_id);
-    return { ...row, allowedToolIds, allowedVectorStoreIds, allowedSkillIds };
+    return {
+      ...row,
+      terminalPolicy: JSON.parse(row.terminal_policy_json),
+      allowedToolIds,
+      allowedVectorStoreIds,
+      allowedSkillIds,
+    };
   }
   private mapMessage(row: MessageRow): ChatMessage {
     const message = mapMessage(row);

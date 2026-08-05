@@ -15,6 +15,8 @@ import type {
 import type { AutomationRepository } from "../../application/ports/automation.repository";
 import { AutomationDataSource } from "../database/automation.data-source";
 import type { SkillContentStore } from "../../application/ports/automation-runtime.ports";
+import type { TerminalPolicyDataSource } from "../database/terminal-policy.data-source";
+import type { TerminalConfirmationMode } from "../../../shared/models/terminal";
 
 const statuses = new Set<AutomationStatus>(["draft", "active", "disabled"]);
 
@@ -39,6 +41,18 @@ const assertPositiveInteger = (value: number, label: string, max: number) => {
     throw new Error(`${label} имеет недопустимое значение`);
 };
 
+const stricterConfirmationMode = (
+  first: TerminalConfirmationMode,
+  second: TerminalConfirmationMode,
+): TerminalConfirmationMode => {
+  const rank: Record<TerminalConfirmationMode, number> = {
+    policy: 0,
+    risky: 1,
+    always: 2,
+  };
+  return rank[first] >= rank[second] ? first : second;
+};
+
 export class SqliteAutomationRepository implements AutomationRepository {
   private readonly toolsById: ReadonlyMap<string, AutomationTool>;
 
@@ -46,6 +60,7 @@ export class SqliteAutomationRepository implements AutomationRepository {
     private readonly dataSource: AutomationDataSource,
     private readonly tools: readonly AutomationTool[],
     private readonly skillContent: SkillContentStore,
+    private readonly terminalPolicies: TerminalPolicyDataSource,
   ) {
     this.toolsById = new Map(tools.map((tool) => [tool.id, tool]));
   }
@@ -105,6 +120,43 @@ export class SqliteAutomationRepository implements AutomationRepository {
     if (input.id && !this.dataSource.findAgent(input.id))
       throw new Error("Агент не найден");
 
+    const globalTerminal = this.terminalPolicies.get();
+    const requestedTerminal = input.terminalPolicy;
+    const globalCommands = new Set(
+      globalTerminal.allowedCommands.map((item) => item.toLowerCase()),
+    );
+    const globalGrants = new Map(
+      globalTerminal.directoryGrants.map((item) => [item.path.toLowerCase(), item]),
+    );
+    const terminalPolicy = {
+      enabled:
+        globalTerminal.enabled &&
+        allowedToolIds.includes("cmd_exec") &&
+        requestedTerminal.enabled,
+      confirmationMode: stricterConfirmationMode(
+        globalTerminal.confirmationMode,
+        requestedTerminal.confirmationMode,
+      ),
+      timeoutSeconds: Math.min(
+        Math.max(requestedTerminal.timeoutSeconds, 1),
+        globalTerminal.maxTimeoutSeconds,
+      ),
+      allowedCommands: requestedTerminal.allowedCommands.filter((item) =>
+        globalCommands.has(item.toLowerCase()),
+      ),
+      directoryGrants: requestedTerminal.directoryGrants.flatMap((requested) => {
+        const global = globalGrants.get(requested.path.toLowerCase());
+        if (!global) return [];
+        return [{
+          path: global.path,
+          recursive: global.recursive && requested.recursive,
+          permissions: requested.permissions.filter((permission) =>
+            global.permissions.includes(permission),
+          ),
+        }];
+      }),
+    };
+
     return this.dataSource.upsertAgent(id, {
       ...input,
       name: normalizeText(input.name, "Название", 120),
@@ -115,6 +167,7 @@ export class SqliteAutomationRepository implements AutomationRepository {
       allowedVectorStoreIds,
       retrievalLimit: input.retrievalLimit,
       allowedSkillIds,
+      terminalPolicy,
     });
   }
 
@@ -253,6 +306,7 @@ export class SqliteAutomationRepository implements AutomationRepository {
       ...structuredClone(tool),
       enabled:
         tool.enabled &&
+        (tool.id !== "cmd_exec" || this.terminalPolicies.get().enabled) &&
         tool.secretRequirements
           .filter((requirement) => requirement.required)
           .every((requirement) =>

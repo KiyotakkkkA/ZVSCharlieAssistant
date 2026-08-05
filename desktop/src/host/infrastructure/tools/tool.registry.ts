@@ -9,6 +9,8 @@ import type {
 import type { VectorStoreService } from "../vector-store/vector-store.service";
 import { OllamaWebService } from "./ollama-web.service";
 import type { ReportDocxService } from "./report-docx.service";
+import type { AgentTerminalPolicy } from "../../../shared/models/terminal";
+import type { CommandExecutionService } from "./command-execution.service";
 
 type Emit = (event: RunEvent) => void;
 
@@ -39,6 +41,7 @@ interface ToolRegistryOptions {
   allowedVectorStoreIds?: number[];
   retrievalLimit?: number;
   allowedSkillIds?: number[];
+  terminalPolicy?: AgentTerminalPolicy;
   observer?: ToolExecutionObserver;
 }
 
@@ -50,6 +53,7 @@ export class ToolRegistry {
     private readonly vectorStores: VectorStoreService,
     private readonly skillContent: SkillContentStore,
     private readonly reports: ReportDocxService,
+    private readonly commands: CommandExecutionService,
   ) {}
 
   create(options: ToolRegistryOptions): ToolSet | undefined {
@@ -60,8 +64,33 @@ export class ToolRegistry {
       retrievalLimit = 5,
       observer,
       allowedSkillIds = [],
+      terminalPolicy,
     } = options;
     const tools: ToolSet = {
+      cmd_exec: tool({
+        description:
+          "Выполняет разрешённые PowerShell-команды. Для долгих задач используй background, затем status, output или wait по sessionId.",
+        inputSchema: z.discriminatedUnion("action", [
+          z.object({
+            action: z.literal("start"),
+            script: z.string().trim().min(1).max(20_000),
+            purpose: z.string().trim().min(1).max(500),
+            cwd: z.string().trim().optional(),
+            execution: z.enum(["foreground", "background"]).optional(),
+            timeoutSeconds: z.number().int().min(1).max(86_400).optional(),
+          }),
+          z.object({
+            action: z.enum(["status", "output", "wait", "cancel"]),
+            sessionId: z.string().uuid(),
+            timeoutSeconds: z.number().int().min(1).max(30).optional(),
+          }),
+        ]),
+        execute: (input, { toolCallId }) =>
+          this.execute(toolCallId, "cmd_exec", input, signal, observer, () => {
+            if (!terminalPolicy) throw new Error("Политика терминала агента не настроена");
+            return this.commands.execute(input, terminalPolicy, signal);
+          }),
+      }),
       web_search: tool({
         description:
           "Ищет актуальную информацию в интернете и возвращает источники с заголовком, URL и фрагментом содержимого.",
@@ -203,7 +232,8 @@ export class ToolRegistry {
         ([id]) =>
           (allowedToolIds.includes(id) ||
             (id === "skills.load" && allowedSkillIds.length > 0)) &&
-          (id === "vecdb_search" ||
+          (id === "cmd_exec" ||
+            id === "vecdb_search" ||
             id === "skills.load" ||
             id === "reports_docx" ||
             this.automationCatalog.toolSecretId(id, "ollamaApiKey") !==

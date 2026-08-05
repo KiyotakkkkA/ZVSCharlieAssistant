@@ -44,6 +44,10 @@ import {
   type VectorSearchResultItem,
   TASKS_IPC_CHANNELS,
   type AgentTaskRun,
+  TERMINAL_POLICY_IPC_CHANNELS,
+  type TerminalPolicy,
+  type UpsertTerminalPolicyInput,
+  type TerminalApprovalRequest,
 } from "../contracts";
 
 export const desktopApi: DesktopApi = {
@@ -59,6 +63,18 @@ export const desktopApi: DesktopApi = {
       ipcRenderer.invoke(TASKS_IPC_CHANNELS.listAgentRuns) as Promise<
         AgentTaskRun[]
       >,
+  },
+  terminalPolicy: {
+    get: (): Promise<TerminalPolicy> =>
+      ipcRenderer.invoke(TERMINAL_POLICY_IPC_CHANNELS.get) as Promise<TerminalPolicy>,
+    upsert: (input: UpsertTerminalPolicyInput): Promise<TerminalPolicy> =>
+      ipcRenderer.invoke(TERMINAL_POLICY_IPC_CHANNELS.upsert, input) as Promise<TerminalPolicy>,
+    recommended: (): Promise<UpsertTerminalPolicyInput> =>
+      ipcRenderer.invoke(TERMINAL_POLICY_IPC_CHANNELS.recommended) as Promise<UpsertTerminalPolicyInput>,
+    pendingApprovals: (): Promise<TerminalApprovalRequest[]> =>
+      ipcRenderer.invoke(TERMINAL_POLICY_IPC_CHANNELS.pendingApprovals) as Promise<TerminalApprovalRequest[]>,
+    decideApproval: (id: string, approved: boolean): Promise<void> =>
+      ipcRenderer.invoke(TERMINAL_POLICY_IPC_CHANNELS.decideApproval, id, approved) as Promise<void>,
   },
   secrets: {
     getSnapshot: (): Promise<SecretStorageSnapshot> =>

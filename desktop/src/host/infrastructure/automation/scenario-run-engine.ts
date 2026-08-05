@@ -386,6 +386,7 @@ ${JSON.stringify(scenarioAgents, null, 2)}
           allowedVectorStoreIds: agent.allowedVectorStoreIds,
           retrievalLimit: agent.retrieval_limit,
           allowedSkillIds: agent.allowedSkillIds,
+          terminalPolicy: agent.terminalPolicy,
           observer: {
             requested: () => undefined,
             completed: (event, _reference, result) => {

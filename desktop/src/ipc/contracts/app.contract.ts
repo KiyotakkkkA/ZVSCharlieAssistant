@@ -18,6 +18,7 @@ export interface DesktopApi {
   vectorStores: import("./vector-store.contract").VectorStoreApi;
   chat: import("./chat.contract").ChatApi;
   tasks: import("./tasks.contract").TasksApi;
+  terminalPolicy: import("./terminal-policy.contract").TerminalPolicyApi;
 }
 
 export interface GeneratedArtifactInput {

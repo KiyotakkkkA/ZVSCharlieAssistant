@@ -434,6 +434,78 @@ const migrations: readonly Migration[] = [
       `);
     },
   },
+  {
+    version: 12,
+    up(database) {
+      database.exec(`
+        ALTER TABLE automation_agents
+          ADD COLUMN terminal_policy_json TEXT NOT NULL
+          DEFAULT '{"enabled":false,"confirmationMode":"always","timeoutSeconds":60,"allowedCommands":[],"directoryGrants":[]}';
+
+        CREATE TABLE terminal_policy (
+          id INTEGER PRIMARY KEY CHECK(id = 1),
+          enabled INTEGER NOT NULL DEFAULT 0 CHECK(enabled IN (0,1)),
+          confirmation_mode TEXT NOT NULL DEFAULT 'always'
+            CHECK(confirmation_mode IN ('always','risky','policy')),
+          max_concurrent_sessions INTEGER NOT NULL DEFAULT 2
+            CHECK(max_concurrent_sessions BETWEEN 1 AND 16),
+          default_timeout_seconds INTEGER NOT NULL DEFAULT 60
+            CHECK(default_timeout_seconds BETWEEN 1 AND 3600),
+          max_timeout_seconds INTEGER NOT NULL DEFAULT 300
+            CHECK(max_timeout_seconds BETWEEN 1 AND 86400),
+          max_output_bytes INTEGER NOT NULL DEFAULT 1048576
+            CHECK(max_output_bytes BETWEEN 4096 AND 16777216),
+          allow_network INTEGER NOT NULL DEFAULT 0 CHECK(allow_network IN (0,1)),
+          allowed_commands_json TEXT NOT NULL DEFAULT '[]',
+          directory_grants_json TEXT NOT NULL DEFAULT '[]',
+          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+
+        INSERT INTO terminal_policy(id) VALUES(1);
+
+        CREATE TABLE command_sessions (
+          id TEXT PRIMARY KEY,
+          agent_id TEXT,
+          chat_run_id INTEGER,
+          scenario_run_id INTEGER,
+          tool_call_id TEXT,
+          purpose TEXT NOT NULL,
+          script TEXT NOT NULL,
+          cwd TEXT NOT NULL,
+          status TEXT NOT NULL CHECK(status IN (
+            'pending_approval','queued','running','completed','failed',
+            'cancelled','timed_out'
+          )),
+          policy_snapshot_json TEXT NOT NULL,
+          risk TEXT NOT NULL CHECK(risk IN ('low','medium','high','critical')),
+          decision_reasons_json TEXT NOT NULL DEFAULT '[]',
+          exit_code INTEGER,
+          stdout_text TEXT NOT NULL DEFAULT '',
+          stderr_text TEXT NOT NULL DEFAULT '',
+          error_message TEXT,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          started_at TEXT,
+          completed_at TEXT,
+          FOREIGN KEY(agent_id) REFERENCES automation_agents(id) ON DELETE SET NULL
+        );
+        CREATE INDEX idx_command_sessions_status ON command_sessions(status, created_at);
+
+        CREATE TABLE command_approval_requests (
+          id TEXT PRIMARY KEY,
+          command_session_id TEXT NOT NULL UNIQUE,
+          payload_hash TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'pending'
+            CHECK(status IN ('pending','approved','rejected','expired')),
+          expires_at TEXT NOT NULL,
+          decided_at TEXT,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY(command_session_id) REFERENCES command_sessions(id) ON DELETE CASCADE
+        );
+        CREATE INDEX idx_command_approvals_status
+          ON command_approval_requests(status, expires_at);
+      `);
+    },
+  },
 ];
 
 export function runMigrations(database: Database.Database): void {

@@ -201,13 +201,22 @@ export const SettingsProvidersPage = observer(function SettingsProvidersPage() {
         }
         breadcrumbs={[{ label: "Настройки" }, { label: "Провайдеры" }]}
         footer={
-          <ProviderTabs
+          <Tabs
             value={activeType}
-            providers={providers}
-            onChange={(value) => {
-              setActiveType(value);
+            onChange={(next) => {
+              setActiveType(next as TextProviderType);
               setSelectedId(null);
             }}
+            options={[
+              {
+                value: "text",
+                label: `Текстовые · ${providers.filter((item) => item.providerType === "text").length}`,
+              },
+              {
+                value: "embedding",
+                label: `Эмбеддинги · ${providers.filter((item) => item.providerType === "embedding").length}`,
+              },
+            ]}
           />
         }
       >
@@ -306,30 +315,3 @@ export const SettingsProvidersPage = observer(function SettingsProvidersPage() {
     </section>
   );
 });
-
-function ProviderTabs({
-  value,
-  providers,
-  onChange,
-}: {
-  value: TextProviderType;
-  providers: SettingsProviderDraft[];
-  onChange: (value: TextProviderType) => void;
-}) {
-  return (
-    <Tabs
-      value={value}
-      onChange={(next) => onChange(next as TextProviderType)}
-      options={[
-        {
-          value: "text",
-          label: `Текстовые · ${providers.filter((item) => item.providerType === "text").length}`,
-        },
-        {
-          value: "embedding",
-          label: `Эмбеддинги · ${providers.filter((item) => item.providerType === "embedding").length}`,
-        },
-      ]}
-    />
-  );
-}

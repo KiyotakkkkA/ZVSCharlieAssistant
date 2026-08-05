@@ -4,6 +4,7 @@ export type {
   GeneratedArtifactInput,
 } from "./app.contract";
 export { IPC_CHANNELS } from "./app.contract";
+
 export type {
   AgentTaskRun,
   TaskRunKind,
@@ -11,6 +12,7 @@ export type {
   TaskRunStatus,
 } from "./tasks.contract";
 export { TASKS_IPC_CHANNELS } from "./tasks.contract";
+
 export type {
   AutomationAgent,
   AutomationScenario,
@@ -33,6 +35,7 @@ export type {
   UpsertAutomationScenarioInput,
 } from "./automation.contract";
 export { AUTOMATION_IPC_CHANNELS } from "./automation.contract";
+
 export type {
   SecretCategory,
   SecretEntity,
@@ -41,6 +44,7 @@ export type {
   UpsertSecretInput,
 } from "./secrets.contract";
 export { SECRET_IPC_CHANNELS } from "./secrets.contract";
+
 export type {
   TestTextProviderConnectionInput,
   TestTextProviderConnectionResult,
@@ -55,6 +59,7 @@ export type {
   UpsertTextProviderInput,
 } from "./text-provider.contract";
 export { TEXT_PROVIDER_IPC_CHANNELS } from "./text-provider.contract";
+
 export type {
   ChatConversation,
   ChatMessage,
@@ -65,6 +70,7 @@ export type {
   StartRunInput,
 } from "./chat.contract";
 export { CHAT_IPC_CHANNELS } from "./chat.contract";
+
 export type {
   VectorStoreConfig,
   VectorStoreDocument,
@@ -75,3 +81,14 @@ export type {
   VectorSearchResultItem,
 } from "./vector-store.contract";
 export { VECTOR_STORE_IPC_CHANNELS } from "./vector-store.contract";
+
+export type {
+  TerminalPolicyApi,
+  TerminalPolicy,
+  UpsertTerminalPolicyInput,
+  AgentTerminalPolicy,
+  TerminalDirectoryGrant,
+  TerminalPermission,
+  TerminalApprovalRequest,
+} from "./terminal-policy.contract";
+export { TERMINAL_POLICY_IPC_CHANNELS } from "./terminal-policy.contract";

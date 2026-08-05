@@ -22,6 +22,7 @@ interface AgentRow {
   runs: number;
   updated_at: string;
   retrieval_limit: number;
+  terminal_policy_json: string;
 }
 
 interface ScenarioRow {
@@ -102,7 +103,7 @@ export class AutomationDataSource {
       .prepare(
         `SELECT id, name, description, instructions, text_model_id, status,
                 max_tool_calls,
-                timeout_seconds, runs, updated_at, retrieval_limit
+                timeout_seconds, runs, updated_at, retrieval_limit, terminal_policy_json
          FROM automation_agents
          ORDER BY updated_at DESC, name ASC`,
       )
@@ -152,7 +153,7 @@ export class AutomationDataSource {
       .prepare(
         `SELECT id, name, description, instructions, text_model_id, status,
                 max_tool_calls,
-                timeout_seconds, runs, updated_at, retrieval_limit
+                timeout_seconds, runs, updated_at, retrieval_limit, terminal_policy_json
          FROM automation_agents WHERE id = ?`,
       )
       .get(id) as AgentRow | undefined;
@@ -186,8 +187,8 @@ export class AutomationDataSource {
           `INSERT INTO automation_agents (
              id, name, description, instructions, text_model_id, status,
              max_tool_calls,
-             timeout_seconds, retrieval_limit
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+             timeout_seconds, retrieval_limit, terminal_policy_json
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(id) DO UPDATE SET
              name = excluded.name,
              description = excluded.description,
@@ -197,6 +198,7 @@ export class AutomationDataSource {
              max_tool_calls = excluded.max_tool_calls,
              timeout_seconds = excluded.timeout_seconds,
              retrieval_limit = excluded.retrieval_limit,
+             terminal_policy_json = excluded.terminal_policy_json,
              updated_at = CURRENT_TIMESTAMP`,
         )
         .run(
@@ -209,6 +211,7 @@ export class AutomationDataSource {
           input.maxToolCalls,
           input.timeoutSeconds,
           input.retrievalLimit,
+          JSON.stringify(input.terminalPolicy),
         );
 
       this.database
@@ -376,6 +379,13 @@ export class AutomationDataSource {
       retrievalLimit: row.retrieval_limit,
       maxToolCalls: row.max_tool_calls,
       timeoutSeconds: row.timeout_seconds,
+      terminalPolicy: parseJson(row.terminal_policy_json, {
+        enabled: false,
+        confirmationMode: "always",
+        timeoutSeconds: 60,
+        allowedCommands: [],
+        directoryGrants: [],
+      }),
       runs: row.runs,
       updatedAt: row.updated_at,
     };

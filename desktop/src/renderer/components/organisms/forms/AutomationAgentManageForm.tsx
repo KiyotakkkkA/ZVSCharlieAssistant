@@ -3,6 +3,7 @@ import { observer } from "mobx-react-lite";
 import {
   Button,
   InputBig,
+  InputCheckBox,
   InputSmall,
   Select,
   Tabs,
@@ -16,6 +17,7 @@ import {
   automationStore,
   textProviderStore,
   vectorStoreStore,
+  terminalPolicyStore,
 } from "../../../stores";
 import { Field } from "../../atoms";
 import { PrimaryButton } from "../../atoms/buttons";
@@ -41,15 +43,27 @@ export const AutomationAgentManageForm = observer(
     const [status, setStatus] = useState<AutomationStatus>("draft");
     const [textModelId, setTextModelId] = useState("");
     const [toolModel, setToolModel] = useState<Record<string, boolean>>({});
-    const [activeTab, setActiveTab] = useState<"basic" | "storage" | "skills">(
-      "basic",
-    );
+    const [activeTab, setActiveTab] = useState<
+      "basic" | "storage" | "skills" | "terminal"
+    >("basic");
+    const [terminalEnabled, setTerminalEnabled] = useState(false);
+    const [terminalConfirmationMode, setTerminalConfirmationMode] = useState<
+      "always" | "risky" | "policy"
+    >("always");
+    const [terminalTimeout, setTerminalTimeout] = useState("60");
+    const [terminalCommands, setTerminalCommands] = useState<
+      Record<string, boolean>
+    >({});
+    const [terminalDirectories, setTerminalDirectories] = useState<
+      Record<string, boolean>
+    >({});
     const [skillModel, setSkillModel] = useState<Record<string, boolean>>({});
     const [vectorStoreModel, setVectorStoreModel] = useState<
       Record<string, boolean>
     >({});
     const [retrievalLimit, setRetrievalLimit] = useState("5");
     const vectorSearchEnabled = Boolean(toolModel["vecdb_search"]);
+    const terminalToolEnabled = Boolean(toolModel["cmd_exec"]);
     const vectorDocumentCounts = useMemo(() => {
       const counts = new Map<number, number>();
       for (const document of vectorStoreStore.documents)
@@ -97,17 +111,49 @@ export const AutomationAgentManageForm = observer(
           ]),
         ),
       );
+      const globalPolicy = terminalPolicyStore.policy;
+      const terminalPolicy = model?.terminalPolicy;
+      setTerminalEnabled(terminalPolicy?.enabled ?? false);
+      setTerminalConfirmationMode(terminalPolicy?.confirmationMode ?? "always");
+      setTerminalTimeout(
+        String(
+          terminalPolicy?.timeoutSeconds ??
+            globalPolicy?.defaultTimeoutSeconds ??
+            60,
+        ),
+      );
+      setTerminalCommands(
+        Object.fromEntries(
+          (globalPolicy?.allowedCommands ?? []).map((command) => [
+            command,
+            terminalPolicy?.allowedCommands.includes(command) ?? true,
+          ]),
+        ),
+      );
+      setTerminalDirectories(
+        Object.fromEntries(
+          (globalPolicy?.directoryGrants ?? []).map((grant) => [
+            grant.path,
+            terminalPolicy?.directoryGrants.some(
+              (item) => item.path === grant.path,
+            ) ?? true,
+          ]),
+        ),
+      );
     }, [
       model,
       automationStore.initialized,
       textProviderStore.initialized,
       vectorStoreStore.initialized,
+      terminalPolicyStore.initialized,
     ]);
 
     useEffect(() => {
       if (!vectorSearchEnabled && activeTab === "storage")
         setActiveTab("basic");
-    }, [activeTab, vectorSearchEnabled]);
+      if (!terminalToolEnabled && activeTab === "terminal")
+        setActiveTab("basic");
+    }, [activeTab, vectorSearchEnabled, terminalToolEnabled]);
 
     const selectedToolIds = useMemo(
       () =>
@@ -136,6 +182,20 @@ export const AutomationAgentManageForm = observer(
         retrievalLimit: Math.min(Math.max(Number(retrievalLimit) || 5, 1), 20),
         maxToolCalls: model?.maxToolCalls ?? 20,
         timeoutSeconds: model?.timeoutSeconds ?? 120,
+        terminalPolicy: {
+          enabled: terminalToolEnabled && terminalEnabled,
+          confirmationMode: terminalConfirmationMode,
+          timeoutSeconds: Math.min(
+            Math.max(Number(terminalTimeout) || 60, 1),
+            terminalPolicyStore.policy?.maxTimeoutSeconds ?? 300,
+          ),
+          allowedCommands: Object.entries(terminalCommands)
+            .filter(([, selected]) => selected)
+            .map(([id]) => id),
+          directoryGrants: (
+            terminalPolicyStore.policy?.directoryGrants ?? []
+          ).filter((grant) => terminalDirectories[grant.path]),
+        },
       });
     };
 
@@ -151,7 +211,7 @@ export const AutomationAgentManageForm = observer(
           <Tabs
             value={activeTab}
             onChange={(value) =>
-              setActiveTab(value as "basic" | "storage" | "skills")
+              setActiveTab(value as "basic" | "storage" | "skills" | "terminal")
             }
             options={[
               { value: "basic", label: "Базовые настройки" },
@@ -161,6 +221,11 @@ export const AutomationAgentManageForm = observer(
                 disabled: !vectorSearchEnabled,
               },
               { value: "skills", label: "Навыки" },
+              {
+                value: "terminal",
+                label: "Работа с терминалом",
+                disabled: !terminalToolEnabled,
+              },
             ]}
           />
         </div>
@@ -313,7 +378,7 @@ export const AutomationAgentManageForm = observer(
               </div>
             )}
           </FormSection>
-        ) : (
+        ) : activeTab === "skills" ? (
           <FormSection
             title="Навыки"
             description="Назначьте агенту переиспользуемые инструкции. Они загружаются по необходимости и не раздувают каждый запрос."
@@ -335,6 +400,97 @@ export const AutomationAgentManageForm = observer(
               <div className="rounded-lg border border-dashed border-main-700 p-6 text-center text-sm text-main-500">
                 Сначала создайте навык в разделе «Автоматизация → Навыки».
               </div>
+            )}
+          </FormSection>
+        ) : (
+          <FormSection
+            title="Работа с терминалом"
+            description="Уточняет глобальную политику для этого агента. Здесь нельзя добавить новые команды, пути или права."
+          >
+            {!terminalPolicyStore.policy?.enabled ? (
+              <div className="rounded-lg border border-dashed border-main-700 p-6 text-center text-sm text-main-500">
+                Терминал отключён глобально в разделе «Настройки → Политики».
+              </div>
+            ) : (
+              <>
+                <InputCheckBox
+                  checked={terminalEnabled}
+                  onChange={(state) => setTerminalEnabled(state)}
+                >
+                  Разрешить этому агенту использовать терминал
+                </InputCheckBox>
+                <Field label="Подтверждение" className="max-w-md">
+                  <Select
+                    value={terminalConfirmationMode}
+                    onChange={(value) =>
+                      setTerminalConfirmationMode(
+                        value as typeof terminalConfirmationMode,
+                      )
+                    }
+                    options={[
+                      { value: "always", label: "Подтверждать каждую команду" },
+                      { value: "risky", label: "Подтверждать рискованные" },
+                      {
+                        value: "policy",
+                        label: "Следовать глобальной политике",
+                      },
+                    ]}
+                  >
+                    <Select.Trigger />
+                    <Select.Menu>
+                      <Select.Option
+                        value="always"
+                        label="Подтверждать каждую команду"
+                      />
+                      <Select.Option
+                        value="risky"
+                        label="Подтверждать рискованные"
+                      />
+                      <Select.Option
+                        value="policy"
+                        label="Следовать глобальной политике"
+                      />
+                    </Select.Menu>
+                  </Select>
+                </Field>
+                <Field label="Таймаут команды, сек." className="max-w-xs">
+                  <InputSmall
+                    type="number"
+                    min={1}
+                    max={terminalPolicyStore.policy.maxTimeoutSeconds}
+                    value={terminalTimeout}
+                    onChange={(event) => setTerminalTimeout(event.target.value)}
+                  />
+                </Field>
+                <CompactEntitySelector
+                  model={terminalCommands}
+                  onModelChange={setTerminalCommands}
+                  searchPlaceholder="Найти разрешённую команду"
+                  items={terminalPolicyStore.policy.allowedCommands.map(
+                    (command) => ({
+                      id: command,
+                      title: command,
+                      description: "Разрешено глобальной политикой",
+                      group: "PowerShell",
+                    }),
+                  )}
+                />
+                <CompactEntitySelector
+                  model={terminalDirectories}
+                  onModelChange={setTerminalDirectories}
+                  searchPlaceholder="Найти разрешённую директорию"
+                  items={terminalPolicyStore.policy.directoryGrants.map(
+                    (grant) => ({
+                      id: grant.path,
+                      title: grant.path,
+                      description: grant.permissions.join(", "),
+                      group: grant.recursive
+                        ? "С вложенными"
+                        : "Только директория",
+                    }),
+                  )}
+                />
+              </>
             )}
           </FormSection>
         )}

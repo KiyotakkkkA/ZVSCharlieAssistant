@@ -27,6 +27,7 @@ export const PrimaryButton = ({
   label = "Добавить",
   loading = false,
   variant = "create",
+  form,
   onClick,
 }: {
   disabled?: boolean;
@@ -35,6 +36,7 @@ export const PrimaryButton = ({
   icon?: boolean;
   label?: string;
   loading?: boolean;
+  form?: string;
   onClick?: () => void;
 }) => (
   <Button
@@ -44,6 +46,7 @@ export const PrimaryButton = ({
     onClick={onClick}
     disabled={disabled}
     type={type}
+    form={form}
     loading={loading}
     classNames={{ loaderIcon: "border-t-main-900" }}
     loadingText={`${VARIANTS[variant].loadingText}`}

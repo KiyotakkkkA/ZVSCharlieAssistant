@@ -1,4 +1,5 @@
 export { AutomationAgentManageForm } from "./AutomationAgentManageForm";
+export { SettingsTerminalPolicyForm } from "./SettingsTerminalPolicyForm";
 export { AutomationSkillManageForm } from "./AutomationSkillManageForm";
 export { StorageSecretCategoryManageForm } from "./StorageSecretCategoryManageForm";
 export { StorageSecretManageForm } from "./StorageSecretManageForm";

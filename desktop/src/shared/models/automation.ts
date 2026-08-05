@@ -1,5 +1,6 @@
 import type { RunOrigin, RunStatus } from "./run";
 import type { ScenarioEdgeKind, ScenarioNodeKind } from "../scenario-ports";
+import type { AgentTerminalPolicy } from "./terminal";
 
 export type AutomationStatus = "draft" | "active" | "disabled";
 export interface AutomationToolSecretRequirement {
@@ -38,6 +39,7 @@ export interface AutomationAgent {
   retrievalLimit: number;
   maxToolCalls: number;
   timeoutSeconds: number;
+  terminalPolicy: AgentTerminalPolicy;
   runs: number;
   updatedAt: string;
 }

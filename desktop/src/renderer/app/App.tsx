@@ -8,7 +8,9 @@ import {
   chatStore,
   vectorStoreStore,
   tasksStore,
+  terminalPolicyStore,
 } from "../stores";
+import { TerminalApprovalModal } from "../components/organisms/modals/TerminalApprovalModal";
 
 export function App() {
   useEffect(() => {
@@ -18,11 +20,13 @@ export function App() {
     void chatStore.bootstrap().catch(() => undefined);
     void vectorStoreStore.bootstrap().catch(() => undefined);
     void tasksStore.bootstrap().catch(() => undefined);
+    void terminalPolicyStore.bootstrap().catch(() => undefined);
   }, []);
 
   return (
     <ToastProvider>
       <Outlet />
+      <TerminalApprovalModal />
     </ToastProvider>
   );
 }

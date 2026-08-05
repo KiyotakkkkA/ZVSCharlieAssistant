@@ -74,13 +74,13 @@ export function CompactEntitySelector({
             className="space-y-0 p-1.5"
           >
             {groups.map(([group, entries]) => (
-              <div key={group} className="mb-1 last:mb-0">
+              <div key={group} className="mb-1 last:mb-0 w-full">
                 {groups.length > 1 || group !== "Все" ? (
                   <div className="sticky top-0 z-10 bg-main-900/95 px-2.5 py-1.5 text-[10px] font-medium uppercase tracking-wide text-main-500 backdrop-blur">
                     {group} · {entries.length}
                   </div>
                 ) : null}
-                <div className="space-y-0.5">
+                <div className="pt-2 space-y-1.5 w-full">
                   {entries.map((item) => (
                     <InputCheckBox
                       key={item.id}

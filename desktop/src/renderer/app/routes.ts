@@ -47,6 +47,7 @@ export const APP_PATHS = {
   settings: {
     index: "/settings",
     providers: "/settings/providers",
+    policies: "/settings/policies",
   },
 } as const;
 
@@ -130,6 +131,12 @@ export const NAVIGATION_ROUTES: readonly NavigationRoute[] = [
         label: "Провайдеры",
         path: APP_PATHS.settings.providers,
         icon: RobotIcon,
+      },
+      {
+        id: "settings-policies",
+        label: "Политики",
+        path: APP_PATHS.settings.policies,
+        icon: SettingsIcon,
       },
     ],
   },

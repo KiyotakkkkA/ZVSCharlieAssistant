@@ -9,6 +9,31 @@ const ollamaApiKey = {
 
 export const BUILTIN_AUTOMATION_TOOLS: readonly AutomationTool[] = [
   {
+    id: "cmd_exec",
+    name: "PowerShell",
+    description:
+      "Выполняет PowerShell-команды в управляемой сессии согласно глобальной политике и ограничениям агента.",
+    category: "Система",
+    builtin: true,
+    enabled: true,
+    requiresConfirmation: true,
+    inputSchema: {
+      type: "object",
+      required: ["action"],
+      properties: {
+        action: { enum: ["start", "status", "output", "wait", "cancel"] },
+        script: { type: "string" },
+        purpose: { type: "string" },
+        cwd: { type: "string" },
+        execution: { enum: ["foreground", "background"] },
+        sessionId: { type: "string" },
+      },
+    },
+    outputSchema: { type: "object" },
+    secretRequirements: [],
+    secretBindings: [],
+  },
+  {
     id: "web_search",
     name: "Поиск в интернете",
     description: "Ищет информацию и возвращает список источников.",

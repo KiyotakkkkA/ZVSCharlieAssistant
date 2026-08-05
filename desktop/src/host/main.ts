@@ -54,6 +54,12 @@ import {
   removeTaskHandlers,
 } from "../ipc/main/register-task-handlers";
 import { TaskHistoryDataSource } from "./infrastructure/database/task-history.data-source";
+import { TerminalPolicyDataSource } from "./infrastructure/database/terminal-policy.data-source";
+import { CommandExecutionService } from "./infrastructure/tools/command-execution.service";
+import {
+  registerTerminalPolicyHandlers,
+  removeTerminalPolicyHandlers,
+} from "../ipc/main/register-terminal-policy-handlers";
 
 let database: ReturnType<typeof createSqliteDatabase> | undefined;
 
@@ -63,6 +69,7 @@ app.whenReady().then(() => {
     new SecretStorageDataSource(database),
   );
   const automationDataSource = new AutomationDataSource(database);
+  const terminalPolicyDataSource = new TerminalPolicyDataSource(database);
   const skillContent = new FileSystemSkillContentStore(
     join(app.getPath("userData"), "skills"),
   );
@@ -75,6 +82,7 @@ app.whenReady().then(() => {
     automationDataSource,
     BUILTIN_AUTOMATION_TOOLS,
     skillContent,
+    terminalPolicyDataSource,
   );
 
   const reportsRoot = join(
@@ -108,6 +116,9 @@ app.whenReady().then(() => {
     automationDataSource,
     secretRepository,
   );
+  const commandExecutionService = new CommandExecutionService(
+    terminalPolicyDataSource,
+  );
   const toolRegistry = new ToolRegistry(
     chatDataSource,
     automationDataSource,
@@ -115,6 +126,11 @@ app.whenReady().then(() => {
     vectorService,
     skillContent,
     new ReportDocxService(reportsRoot),
+    commandExecutionService,
+  );
+  registerTerminalPolicyHandlers(
+    terminalPolicyDataSource,
+    commandExecutionService,
   );
   const scenarioEngine = new ScenarioRunEngine(
     scenarioExecutions,
@@ -152,6 +168,7 @@ app.on("before-quit", () => {
   removeChatHandlers();
   removeVectorStoreHandlers();
   removeTaskHandlers();
+  removeTerminalPolicyHandlers();
   database?.close();
   database = undefined;
 });

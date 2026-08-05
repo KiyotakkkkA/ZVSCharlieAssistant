@@ -79,6 +79,11 @@ const SettingsProvidersPage = lazy(() =>
     default: SettingsProvidersPage,
   })),
 );
+const SettingsPoliciesPage = lazy(() =>
+  import("./pages/settings/policies").then(({ SettingsPoliciesPage }) => ({
+    default: SettingsPoliciesPage,
+  })),
+);
 
 function AppLayout() {
   const { pathname } = useLocation();
@@ -91,7 +96,8 @@ function AppLayout() {
     pathname === APP_PATHS.automation.scenarios.index ||
     pathname.startsWith(`${APP_PATHS.automation.scenarios.index}/`) ||
     pathname === APP_PATHS.storage.secrets ||
-    pathname === APP_PATHS.storage.vectorDb;
+    pathname === APP_PATHS.storage.vectorDb ||
+    pathname === APP_PATHS.settings.policies;
 
   const content = (
     <Suspense
@@ -196,6 +202,10 @@ createRoot(root).render(
             <Route
               path={APP_PATHS.settings.providers}
               element={<SettingsProvidersPage />}
+            />
+            <Route
+              path={APP_PATHS.settings.policies}
+              element={<SettingsPoliciesPage />}
             />
             <Route
               path={APP_PATHS.storage.secrets}

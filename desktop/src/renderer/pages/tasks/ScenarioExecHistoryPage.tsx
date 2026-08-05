@@ -122,7 +122,7 @@ export function ScenarioExecHistoryPage() {
 
   if (!execution) {
     return (
-      <div className="grid h-full place-items-center p-6">
+      <div className="grid h-full place-items-center p-4">
         {error ? (
           <EmptyState
             icon={<TasksIcon className="size-6" />}
