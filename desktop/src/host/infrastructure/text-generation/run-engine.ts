@@ -33,7 +33,7 @@ export class RunEngine {
       input.conversationId ??
       this.data.createConversation(input.mode, input.agentId, input.modelId);
     const maxSteps =
-      input.mode === "chat" ? 3 : Math.min(agent?.max_tool_calls ?? 8, 20);
+      input.mode === "agent" ? Math.min(agent?.max_tool_calls ?? 8, 20) : 1;
     const runId = this.data.createRun(
       conversationId,
       input.agentId,
@@ -217,10 +217,6 @@ export class RunEngine {
         input.mode === "agent"
           ? this.data.resolveAgent(input.agentId)
           : undefined;
-      const allowedTools =
-        input.mode === "agent"
-          ? (agentRuntime?.allowedToolIds ?? [])
-          : ["web_search", "web_fetch"];
       const system = `${baseSystem}${this.tools.skillCatalog(agentRuntime?.allowedSkillIds ?? [])}`;
       const generationSettings = this.providers.generationSettings(
         input.modelId,
@@ -230,13 +226,17 @@ export class RunEngine {
         ...generationSettings,
         system,
         messages: history,
-        tools: this.tools.createForChat(runId, emit, {
-          signal: controller.signal,
-          allowedToolIds: allowedTools,
-          allowedVectorStoreIds: agentRuntime?.allowedVectorStoreIds ?? [],
-          retrievalLimit: agentRuntime?.retrieval_limit ?? 5,
-          allowedSkillIds: agentRuntime?.allowedSkillIds ?? [],
-        }),
+        tools:
+          input.mode === "agent"
+            ? this.tools.createForChat(runId, emit, {
+                signal: controller.signal,
+                allowedToolIds: agentRuntime?.allowedToolIds ?? [],
+                allowedVectorStoreIds:
+                  agentRuntime?.allowedVectorStoreIds ?? [],
+                retrievalLimit: agentRuntime?.retrieval_limit ?? 5,
+                allowedSkillIds: agentRuntime?.allowedSkillIds ?? [],
+              })
+            : undefined,
         stopWhen: stepCountIs(maxSteps),
         abortSignal: controller.signal,
         onStepFinish: ({ finishReason, toolCalls, toolResults }) => {

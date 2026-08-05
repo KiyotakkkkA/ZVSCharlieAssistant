@@ -147,9 +147,6 @@ export function ChatFeed({
         </span>
         <div>
           <h1 className="text-sm font-semibold text-main-100">{title}</h1>
-          <p className="text-[11px] text-main-500">
-            Сообщения сохраняются локально
-          </p>
         </div>
       </header>
       <ScrollArea
@@ -225,9 +222,9 @@ export function ChatFeed({
                       message.scenarioRunId &&
                       scenarioExecutions.get(message.scenarioRunId) ? (
                         <ScenarioExecutionHistory
-                          execution={scenarioExecutions.get(
-                            message.scenarioRunId,
-                          )!}
+                          execution={
+                            scenarioExecutions.get(message.scenarioRunId)!
+                          }
                           liveOutput={scenarioNodeOutput}
                         />
                       ) : null
