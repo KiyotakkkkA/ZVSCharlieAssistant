@@ -5,26 +5,18 @@ import {
   InputSmall,
   ScrollArea,
   Switcher,
-  Table,
   useToasts,
-  type TableColumn,
 } from "@kiyotakkkka/zvs-uikit-lib";
 import type { AutomationSkill } from "../../../../ipc/contracts";
 import { APP_PATHS } from "../../../app/routes";
 import { SkillIcon } from "../../../components/atoms";
 import { AutomationSkillCard } from "../../../components/molecules";
-import {
-  ControlButton,
-  PrimaryButton,
-} from "../../../components/atoms/buttons";
+import { PrimaryButton } from "../../../components/atoms/buttons";
 import { PageHeader } from "../../../components/organisms";
 import { DangerModal } from "../../../components/organisms/modals";
 import { useHashRouter } from "../../../hooks";
 import { automationStore } from "../../../stores";
-
-interface Row extends AutomationSkill {
-  [key: string]: unknown;
-}
+import { AutomationSkillsListTable } from "@renderer/components/organisms/tables";
 
 export const SkillsListPage = observer(function SkillsListPage() {
   const { goTo } = useHashRouter();
@@ -41,69 +33,6 @@ export const SkillsListPage = observer(function SkillsListPage() {
       : automationStore.skills;
   }, [query, automationStore.skills]);
 
-  const cols: Array<TableColumn<Row>> = [
-    {
-      key: "name",
-      title: "Навык",
-      render: (x) => (
-        <div>
-          <p className="font-medium">{x.name}</p>
-          <p className="font-mono text-xs text-main-500">{x.slug}</p>
-        </div>
-      ),
-    },
-    {
-      key: "status",
-      title: "Статус",
-      render: (x) => (
-        <span className="rounded-full bg-main-700/60 px-2 py-1 text-xs text-main-300">
-          {x.status === "active"
-            ? "Активен"
-            : x.status === "draft"
-              ? "Черновик"
-              : "Отключён"}
-        </span>
-      ),
-    },
-    {
-      key: "type",
-      title: "Тип",
-      render: (x) => (
-        <span className="inline-flex rounded-full bg-main-700/60 px-2 py-1 text-xs text-main-300">
-          {x.builtin ? "Системная" : "Пользовательская"}
-        </span>
-      ),
-    },
-    { key: "agents", title: "Агенты", render: (x) => x.assignedAgentsCount },
-    {
-      key: "actions",
-      title: "",
-      render: (x) => (
-        <div className="flex justify-end">
-          <ControlButton
-            icon="edit"
-            title="Изменить"
-            onClick={() =>
-              goTo(
-                APP_PATHS.automation.skills.edit.replace(
-                  ":skillId",
-                  String(x.id),
-                ),
-              )
-            }
-          />
-          {!x.builtin ? (
-            <ControlButton
-              icon="trash"
-              title="Удалить"
-              variant="delete"
-              onClick={() => setRemoving(x)}
-            />
-          ) : null}
-        </div>
-      ),
-    },
-  ];
   return (
     <section className="flex h-full min-h-0 flex-col overflow-hidden p-4">
       <PageHeader
@@ -136,10 +65,17 @@ export const SkillsListPage = observer(function SkillsListPage() {
       <ScrollArea className="min-h-0 flex-1 p-1">
         {items.length ? (
           mode === "table" ? (
-            <Table<Row>
-              data={items.map((x) => ({ ...x }))}
-              columns={cols}
-              rowKey="id"
+            <AutomationSkillsListTable
+              skills={items}
+              onEdit={(skill) =>
+                goTo(
+                  APP_PATHS.automation.skills.edit.replace(
+                    ":skillId",
+                    String(skill.id),
+                  ),
+                )
+              }
+              onDelete={setRemoving}
             />
           ) : (
             <div className="grid gap-3 xl:grid-cols-3">

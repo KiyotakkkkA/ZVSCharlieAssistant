@@ -45,7 +45,7 @@ export const VectorStoresPage = observer(function VectorStoresPage() {
         />
       </PageHeader>
       <div className="flex min-h-0 flex-1 gap-3">
-        <aside className="flex w-80 shrink-0 flex-col overflow-hidden rounded-xl bg-main-800/30">
+        <aside className="flex w-80 shrink-0 flex-col overflow-hidden rounded-xl bg-main-800/40">
           <div className="border-b border-main-700/35 px-4 py-3 text-xs font-semibold uppercase tracking-wider text-main-500">
             Хранилища · {store.stores.length}
           </div>
@@ -77,7 +77,7 @@ export const VectorStoresPage = observer(function VectorStoresPage() {
             </div>
           </ScrollArea>
         </aside>
-        <div className="min-h-0 min-w-0 flex-1 overflow-hidden rounded-xl bg-main-800/35">
+        <div className="min-h-0 min-w-0 flex-1 overflow-hidden rounded-xl bg-main-800/40">
           {selected ? (
             <StorageVecdbManageForm
               key={selected.id}

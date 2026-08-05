@@ -10,6 +10,10 @@ export { SettingsProviderOllamaModelCard } from "./SettingsProviderOllamaModelCa
 export { SettingsProviderOpenrouterModelCard } from "./SettingsProviderOpenrouterModelCard";
 export { ScenarioNodeCard } from "./ScenarioNodeCard";
 export {
+  CompactEntitySelector,
+  type CompactEntitySelectorItem,
+} from "./CompactEntitySelector";
+export {
   scenarioNodeVariants,
   type ScenarioNodeVariant,
 } from "./ScenarioNodeCard";

@@ -4,9 +4,7 @@ import {
   InputSmall,
   ScrollArea,
   Switcher,
-  Table,
   useToasts,
-  type TableColumn,
 } from "@kiyotakkkka/zvs-uikit-lib";
 import { APP_PATHS } from "../../../app/routes";
 import { TasksIcon } from "../../../components/atoms";
@@ -15,16 +13,10 @@ import { PageHeader } from "../../../components/organisms";
 import type { AutomationScenario } from "../../../../ipc/contracts";
 import { useHashRouter } from "../../../hooks";
 import { automationStore } from "../../../stores";
-import {
-  ControlButton,
-  PrimaryButton,
-} from "@renderer/components/atoms/buttons";
+import { PrimaryButton } from "@renderer/components/atoms/buttons";
 import { useMemo, useState } from "react";
 import { DangerModal } from "@renderer/components/organisms/modals";
-
-interface ScenarioRow extends AutomationScenario {
-  [key: string]: unknown;
-}
+import { AutomationScenariosListTable } from "@renderer/components/organisms/tables";
 
 export const ScenariosListPage = observer(function ScenariosListPage() {
   const { goTo } = useHashRouter();
@@ -46,77 +38,6 @@ export const ScenariosListPage = observer(function ScenariosListPage() {
     goTo(
       APP_PATHS.automation.scenarios.edit.replace(":scenarioId", scenario.id),
     );
-  const columns: Array<TableColumn<ScenarioRow>> = [
-    {
-      key: "name",
-      title: "Сценарий",
-      render: (scenario) => (
-        <div>
-          <p className="font-medium text-main-100">{scenario.name}</p>
-          <p className="mt-1 max-w-xl truncate text-xs text-main-500">
-            {scenario.description}
-          </p>
-        </div>
-      ),
-    },
-    {
-      key: "status",
-      title: "Статус",
-      render: (scenario) => (
-        <span className="rounded-full bg-main-700/60 px-2 py-1 text-xs text-main-300">
-          {scenario.status === "active"
-            ? "Активен"
-            : scenario.status === "draft"
-              ? "Черновик"
-              : "Отключён"}
-        </span>
-      ),
-    },
-    {
-      key: "nodes",
-      title: "Узлов",
-      render: (scenario) => (
-        <span className="text-main-300">{scenario.nodesCount}</span>
-      ),
-    },
-    {
-      key: "lastRun",
-      title: "Последний запуск",
-      render: (scenario) => (
-        <span className="text-main-400">
-          {scenario.lastRunAt ?? "Ещё не запускался"}
-        </span>
-      ),
-    },
-    {
-      key: "updated",
-      title: "Обновлён",
-      render: (scenario) => (
-        <span className="text-main-400">{scenario.updatedAt}</span>
-      ),
-    },
-    {
-      key: "actions",
-      title: <span className="sr-only">Действия</span>,
-      headerClassName: "text-right",
-      cellClassName: "text-right",
-      render: (scenario) => (
-        <div className="flex justify-end gap-1">
-          <ControlButton
-            title="Открыть редактор"
-            onClick={() => editScenario(scenario)}
-          />
-          <ControlButton
-            title="Удалить сценарий"
-            icon="trash"
-            variant="delete"
-            onClick={() => setScenarioToDelete(scenario)}
-          />
-        </div>
-      ),
-    },
-  ];
-
   return (
     <section className="flex h-full min-h-0 flex-col overflow-hidden p-4">
       <PageHeader
@@ -162,16 +83,10 @@ export const ScenariosListPage = observer(function ScenariosListPage() {
           </div>
         ) : scenarios.length ? (
           <div className="overflow-hidden">
-            <Table<ScenarioRow>
-              data={scenarios.map((scenario) => ({
-                ...scenario,
-              }))}
-              columns={columns}
-              rowKey="id"
-              classNames={{
-                root: "w-full",
-                row: "transition-colors hover:bg-main-800/45",
-              }}
+            <AutomationScenariosListTable
+              scenarios={scenarios}
+              onEdit={editScenario}
+              onDelete={setScenarioToDelete}
             />
           </div>
         ) : (

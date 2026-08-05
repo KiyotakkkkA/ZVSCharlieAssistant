@@ -3,8 +3,6 @@ import { observer } from "mobx-react-lite";
 import {
   Button,
   InputBig,
-  InputCheckBox,
-  InputCheckBoxGroup,
   InputSmall,
   Select,
   Tabs,
@@ -21,6 +19,7 @@ import {
 } from "../../../stores";
 import { Field } from "../../atoms";
 import { PrimaryButton } from "../../atoms/buttons";
+import { CompactEntitySelector } from "../../molecules";
 
 interface AutomationAgentManageFormProps {
   model?: AutomationAgent;
@@ -257,31 +256,19 @@ export const AutomationAgentManageForm = observer(
               title="Инструменты"
               description="Только выбранные возможности будут доступны агенту во время выполнения."
             >
-              <InputCheckBoxGroup
+              <CompactEntitySelector
                 model={toolModel}
                 onModelChange={setToolModel}
-                multiple
-                orientation="vertical"
-                className="grid gap-2 lg:grid-cols-2"
-              >
-                {automationStore.tools.map((tool) => (
-                  <InputCheckBox
-                    key={tool.id}
-                    modelValue={tool.id}
-                    disabled={!tool.enabled}
-                    className="rounded-lg bg-main-800/40 p-3 ring-1 ring-main-700/45"
-                  >
-                    <span className="block">
-                      <span className="block text-sm font-medium text-main-100">
-                        {tool.name}
-                      </span>
-                      <span className="mt-1 block text-xs text-main-500">
-                        {tool.category}
-                      </span>
-                    </span>
-                  </InputCheckBox>
-                ))}
-              </InputCheckBoxGroup>
+                searchPlaceholder="Найти инструмент"
+                items={automationStore.tools.map((tool) => ({
+                  id: tool.id,
+                  title: tool.name,
+                  description: tool.description,
+                  group: tool.category,
+                  meta: tool.enabled ? undefined : "Недоступен",
+                  disabled: !tool.enabled,
+                }))}
+              />
             </FormSection>
           </>
         ) : activeTab === "storage" ? (
@@ -291,32 +278,21 @@ export const AutomationAgentManageForm = observer(
           >
             {vectorStoreStore.stores.length ? (
               <>
-                <InputCheckBoxGroup
+                <CompactEntitySelector
                   model={vectorStoreModel}
                   onModelChange={setVectorStoreModel}
-                  multiple
-                  orientation="vertical"
-                  className="grid gap-2 lg:grid-cols-2"
-                >
-                  {vectorStoreStore.stores.map((store) => (
-                    <InputCheckBox
-                      key={store.id}
-                      modelValue={String(store.id)}
-                      disabled={store.status !== "ready"}
-                      className="rounded-lg bg-main-800/40 p-3 ring-1 ring-main-700/45"
-                    >
-                      <span className="block text-sm font-medium text-main-100">
-                        {store.name}
-                      </span>
-                      <span className="mt-1 block text-xs text-main-500">
-                        {vectorDocumentCounts.get(store.id) ?? 0} документов ·{" "}
-                        {store.searchMode === "hybrid"
-                          ? "гибридный поиск"
-                          : "векторный поиск"}
-                      </span>
-                    </InputCheckBox>
-                  ))}
-                </InputCheckBoxGroup>
+                  searchPlaceholder="Найти хранилище"
+                  items={vectorStoreStore.stores.map((store) => ({
+                    id: String(store.id),
+                    title: store.name,
+                    description:
+                      store.searchMode === "hybrid"
+                        ? "Гибридный поиск"
+                        : "Векторный поиск",
+                    meta: `${vectorDocumentCounts.get(store.id) ?? 0} док.`,
+                    disabled: store.status !== "ready",
+                  }))}
+                />
                 <Field label="Количество результатов" className="max-w-xs">
                   <InputSmall
                     min={1}
@@ -343,31 +319,18 @@ export const AutomationAgentManageForm = observer(
             description="Назначьте агенту переиспользуемые инструкции. Они загружаются по необходимости и не раздувают каждый запрос."
           >
             {automationStore.skills.length ? (
-              <InputCheckBoxGroup
+              <CompactEntitySelector
                 model={skillModel}
                 onModelChange={setSkillModel}
-                multiple
-                orientation="vertical"
-                className="grid gap-2 lg:grid-cols-2"
-              >
-                {automationStore.skills.map((skill) => (
-                  <InputCheckBox
-                    key={skill.id}
-                    modelValue={String(skill.id)}
-                    disabled={skill.status !== "active"}
-                    className="rounded-lg bg-main-800/40 p-3 ring-1 ring-main-700/45"
-                  >
-                    <span>
-                      <span className="block text-sm font-medium text-main-100">
-                        {skill.name}
-                      </span>
-                      <span className="mt-1 block text-xs text-main-500">
-                        {skill.description}
-                      </span>
-                    </span>
-                  </InputCheckBox>
-                ))}
-              </InputCheckBoxGroup>
+                searchPlaceholder="Найти навык"
+                items={automationStore.skills.map((skill) => ({
+                  id: String(skill.id),
+                  title: skill.name,
+                  description: skill.description,
+                  meta: skill.builtin ? "Системный" : skill.version,
+                  disabled: skill.status !== "active",
+                }))}
+              />
             ) : (
               <div className="rounded-lg border border-dashed border-main-700 p-6 text-center text-sm text-main-500">
                 Сначала создайте навык в разделе «Автоматизация → Навыки».

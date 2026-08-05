@@ -6,10 +6,8 @@ import {
   InputSmall,
   ScrollArea,
   Switcher,
-  Table,
   Tabs,
   useToasts,
-  type TableColumn,
 } from "@kiyotakkkka/zvs-uikit-lib";
 import type { SecretCategory, SecretEntity } from "../../../../ipc/contracts";
 import { FolderIcon, KeyIcon, RefreshIcon } from "../../../components/atoms";
@@ -23,28 +21,18 @@ import {
   StorageSecretCategoryCard,
 } from "../../../components/molecules";
 import { secretStorageStore } from "../../../stores";
-import {
-  ControlButton,
-  PrimaryButton,
-} from "@renderer/components/atoms/buttons";
+import { PrimaryButton } from "@renderer/components/atoms/buttons";
 import { FormModal, DangerModal } from "@renderer/components/organisms/modals";
+import {
+  StorageSecretCategoriesListTable,
+  StorageSecretsListTable,
+} from "@renderer/components/organisms/tables";
 
 type ActiveSection = "secrets" | "categories";
 type ManageDialog =
   | { kind: "secret"; model?: SecretEntity; action?: "upsert" | "delete" }
   | { kind: "category"; model?: SecretCategory; action?: "upsert" | "delete" }
   | null;
-
-interface SecretTableRow extends SecretEntity {
-  [key: string]: unknown;
-}
-
-interface CategoryTableRow extends SecretCategory {
-  [key: string]: unknown;
-}
-
-const badgeClassName =
-  "inline-flex rounded-full bg-main-700/60 px-2 py-1 text-xs text-main-300";
 
 const modalNameResolver = (dialog: ManageDialog) => {
   if (!dialog) return "";
@@ -120,151 +108,6 @@ export const StorageSecretsPage = observer(function StorageSecretsPage() {
       });
     }
   };
-
-  const secretColumns: Array<TableColumn<SecretTableRow>> = [
-    {
-      key: "label",
-      title: "Название",
-      render: (secret) => (
-        <div className="flex items-center gap-3">
-          <span className="grid size-9 place-items-center rounded-lg bg-main-800 text-main-300">
-            <KeyIcon className="size-4" />
-          </span>
-          <span className="font-medium text-main-100">{secret.label}</span>
-        </div>
-      ),
-    },
-    {
-      key: "category",
-      title: "Категория",
-      render: (secret) => (
-        <span className="text-main-300">
-          {store.categoryLabel(secret.categoryId)}
-        </span>
-      ),
-    },
-    {
-      key: "content",
-      title: "Значение",
-      render: () => (
-        <span className="font-mono text-sm tracking-widest text-main-500">
-          ••••••••••••
-        </span>
-      ),
-    },
-    {
-      key: "type",
-      title: "Тип",
-      render: (secret) => (
-        <span className={badgeClassName}>
-          {secret.builtin ? "Системный" : "Пользовательский"}
-        </span>
-      ),
-    },
-    {
-      key: "actions",
-      title: <span className="sr-only">Действия</span>,
-      headerClassName: "text-right",
-      cellClassName: "text-right",
-      render: (secret) => (
-        <div className="flex justify-end gap-1">
-          <ControlButton
-            icon="copy"
-            title="Скопировать"
-            onClick={() => void copySecret(secret)}
-          />
-          <ControlButton
-            icon="edit"
-            title="Изменить"
-            onClick={() =>
-              setDialog({ kind: "secret", model: secret, action: "upsert" })
-            }
-          />
-          <ControlButton
-            icon="trash"
-            variant="delete"
-            title="Удалить"
-            onClick={() =>
-              setDialog({ kind: "secret", model: secret, action: "delete" })
-            }
-          />
-        </div>
-      ),
-    },
-  ];
-
-  const categoryColumns: Array<TableColumn<CategoryTableRow>> = [
-    {
-      key: "label",
-      title: "Название",
-      render: (category) => (
-        <div className="flex items-center gap-3">
-          <span className="grid size-9 place-items-center rounded-lg bg-main-800 text-main-300">
-            <FolderIcon className="size-4" />
-          </span>
-          <span className="font-medium text-main-100">{category.label}</span>
-        </div>
-      ),
-    },
-    {
-      key: "count",
-      title: "Секретов",
-      render: (category) => (
-        <span className="text-main-300">
-          {
-            store.secrets.filter((secret) => secret.categoryId === category.id)
-              .length
-          }
-        </span>
-      ),
-    },
-    {
-      key: "type",
-      title: "Тип",
-      render: (category) => (
-        <span className={badgeClassName}>
-          {category.builtin ? "Системная" : "Пользовательская"}
-        </span>
-      ),
-    },
-    {
-      key: "actions",
-      title: <span className="sr-only">Действия</span>,
-      headerClassName: "text-right",
-      cellClassName: "text-right",
-      render: (category) => (
-        <div className="flex justify-end">
-          {category.builtin ? null : (
-            <>
-              <ControlButton
-                icon="edit"
-                title="Изменить"
-                onClick={() =>
-                  setDialog({
-                    kind: "category",
-                    model: category,
-                    action: "upsert",
-                  })
-                }
-              />
-              <ControlButton
-                icon="trash"
-                variant="delete"
-                title="Удалить"
-                onClick={() =>
-                  setDialog({
-                    kind: "category",
-                    model: category,
-                    action: "delete",
-                  })
-                }
-              />
-            </>
-          )}
-        </div>
-      ),
-    },
-  ];
 
   const renderEmptyState = () => {
     if (store.error) {
@@ -432,24 +275,29 @@ export const StorageSecretsPage = observer(function StorageSecretsPage() {
             ))}
           </div>
         ) : activeSection === "secrets" ? (
-          <Table<SecretTableRow>
-            data={filteredSecrets.map((secret) => ({ ...secret }))}
-            columns={secretColumns}
-            rowKey="id"
-            classNames={{
-              root: "w-full",
-              row: "transition-colors hover:bg-main-800/45",
-            }}
+          <StorageSecretsListTable
+            secrets={filteredSecrets}
+            categoryLabel={store.categoryLabel}
+            onCopy={(secret) => void copySecret(secret)}
+            onEdit={(secret) =>
+              setDialog({ kind: "secret", model: secret, action: "upsert" })
+            }
+            onDelete={(secret) =>
+              setDialog({ kind: "secret", model: secret, action: "delete" })
+            }
           />
         ) : (
-          <Table<CategoryTableRow>
-            data={filteredCategories.map((category) => ({ ...category }))}
-            columns={categoryColumns}
-            rowKey="id"
-            classNames={{
-              root: "w-full",
-              row: "transition-colors hover:bg-main-800/45",
-            }}
+          <StorageSecretCategoriesListTable
+            categories={filteredCategories}
+            secretsCount={(id) =>
+              store.secrets.filter((secret) => secret.categoryId === id).length
+            }
+            onEdit={(category) =>
+              setDialog({ kind: "category", model: category, action: "upsert" })
+            }
+            onDelete={(category) =>
+              setDialog({ kind: "category", model: category, action: "delete" })
+            }
           />
         )}
       </ScrollArea>

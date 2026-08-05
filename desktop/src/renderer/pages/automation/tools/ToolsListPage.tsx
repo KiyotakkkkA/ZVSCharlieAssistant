@@ -8,20 +8,14 @@ import {
   Modal,
   ScrollArea,
   Switcher,
-  Table,
   useToasts,
-  type TableColumn,
 } from "@kiyotakkkka/zvs-uikit-lib";
 import { SecretOrientedSelect, SettingsIcon } from "../../../components/atoms";
 import { PageHeader } from "../../../components/organisms";
 import { AutomationToolCard } from "../../../components/molecules";
 import type { AutomationTool } from "../../../../ipc/contracts";
 import { automationStore } from "../../../stores";
-import { ControlButton } from "@renderer/components/atoms/buttons";
-
-interface ToolRow extends AutomationTool {
-  [key: string]: unknown;
-}
+import { AutomationToolsListTable } from "@renderer/components/organisms/tables";
 
 export const ToolsListPage = observer(function ToolsListPage() {
   const toasts = useToasts();
@@ -36,66 +30,6 @@ export const ToolsListPage = observer(function ToolsListPage() {
         )
       : automationStore.tools;
   }, [query, automationStore.tools]);
-
-  const columns: Array<TableColumn<ToolRow>> = [
-    {
-      key: "name",
-      title: "Инструмент",
-      render: (tool) => (
-        <div>
-          <p className="font-medium text-main-100">{tool.name}</p>
-          <p className="mt-1 font-mono text-xs text-main-500">{tool.id}</p>
-        </div>
-      ),
-    },
-    {
-      key: "category",
-      title: "Категория",
-      render: (tool) => <span className="text-main-300">{tool.category}</span>,
-    },
-    {
-      key: "source",
-      title: "Источник",
-      render: () => (
-        <span className="rounded-full bg-main-700/60 px-2 py-1 text-xs text-main-300">
-          Встроенный
-        </span>
-      ),
-    },
-    {
-      key: "confirmation",
-      title: "Подтверждение",
-      render: (tool) => (
-        <span className="text-main-400">
-          {tool.requiresConfirmation ? "Требуется" : "Не требуется"}
-        </span>
-      ),
-    },
-    {
-      key: "state",
-      title: "Состояние",
-      render: (tool) => (
-        <span className={tool.enabled ? "text-success-light" : "text-main-500"}>
-          {tool.enabled ? "Доступен" : "Отключён"}
-        </span>
-      ),
-    },
-    {
-      key: "actions",
-      title: <span className="sr-only">Действия</span>,
-      headerClassName: "text-right",
-      cellClassName: "text-right",
-      render: (tool) => (
-        <div className="flex justify-end">
-          <ControlButton
-            icon="eye"
-            title="Подробнее"
-            onClick={() => setSelectedTool(tool)}
-          />
-        </div>
-      ),
-    },
-  ];
 
   return (
     <section className="flex h-full min-h-0 flex-col overflow-hidden p-4">
@@ -137,15 +71,7 @@ export const ToolsListPage = observer(function ToolsListPage() {
           </div>
         ) : tools.length ? (
           <div className="overflow-hidden">
-            <Table<ToolRow>
-              data={tools.map((tool) => ({ ...tool }))}
-              columns={columns}
-              rowKey="id"
-              classNames={{
-                root: "w-full",
-                row: "transition-colors hover:bg-main-800/45",
-              }}
-            />
+            <AutomationToolsListTable tools={tools} onOpen={setSelectedTool} />
           </div>
         ) : (
           <div className="grid min-h-80 place-items-center">
