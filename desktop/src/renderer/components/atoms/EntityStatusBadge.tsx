@@ -18,15 +18,22 @@ const STATUSES = {
   },
 } as const;
 
-export const CardStatusBadge = ({
+const CLASSES = {
+  card: "rounded-br-xl rounded-tl-xl absolute bottom-0 right-0",
+  base: "w-fit rounded-full",
+} as const;
+
+export const EntityStatusBadge = ({
+  variant = "card",
   status,
 }: {
+  variant?: "card" | "base";
   status: keyof typeof STATUSES;
 }) => {
   return (
     <div
-      className={`absolute bottom-0 right-0 flex gap-2 items-center px-3 py-1.5 text-xs text-main-50
-          ${STATUSES[status].styling} rounded-br-xl rounded-tl-xl`}
+      className={`flex gap-2 items-center px-3 py-1.5 text-xs text-main-50
+          ${STATUSES[status].styling} ${CLASSES[variant]}`}
     >
       {STATUSES[status].icon}
       <span>{STATUSES[status].label || "Нет данных"}</span>

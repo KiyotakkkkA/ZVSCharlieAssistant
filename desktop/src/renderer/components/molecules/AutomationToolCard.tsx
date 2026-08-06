@@ -1,5 +1,5 @@
 import type { AutomationTool } from "../../../ipc/contracts";
-import { CardStatusBadge, ToolsIcon } from "../atoms";
+import { EntityStatusBadge, ToolsIcon } from "../atoms";
 import { ControlButton } from "../atoms/buttons";
 
 interface AutomationToolCardProps {
@@ -42,7 +42,7 @@ export function AutomationToolCard({ tool, onOpen }: AutomationToolCardProps) {
             : "Без подтверждения"}
         </span>
       </div>
-      <CardStatusBadge status={tool.enabled ? "active" : "disabled"} />
+      <EntityStatusBadge status={tool.enabled ? "active" : "disabled"} />
     </article>
   );
 }

@@ -1,7 +1,7 @@
 import type { AutomationScenario } from "../../../ipc/contracts";
 import {
   BlockIcon,
-  CardStatusBadge,
+  EntityStatusBadge,
   CheckIcon,
   FileClockIcon,
   ScriptIcon,
@@ -58,7 +58,7 @@ export function AutomationScenarioCard({
         </span>
         <span>{scenario.updatedAt}</span>
       </div>
-      <CardStatusBadge status={scenario.status} />
+      <EntityStatusBadge status={scenario.status} />
     </article>
   );
 }

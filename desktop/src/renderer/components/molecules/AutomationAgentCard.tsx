@@ -1,6 +1,6 @@
 import {
   BlockIcon,
-  CardStatusBadge,
+  EntityStatusBadge,
   CheckIcon,
   ClockIcon,
   FileClockIcon,
@@ -64,7 +64,7 @@ export const AutomationAgentCard = ({
           </span>
         </div>
       </div>
-      <CardStatusBadge status={agent.status} />
+      <EntityStatusBadge status={agent.status} />
     </article>
   );
 };

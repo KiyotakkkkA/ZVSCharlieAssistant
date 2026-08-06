@@ -1,5 +1,5 @@
 import type { AutomationSkill } from "../../../ipc/contracts";
-import { CardStatusBadge, SkillIcon } from "../atoms";
+import { EntityStatusBadge, SkillIcon } from "../atoms";
 import { ControlButton } from "../atoms/buttons";
 
 interface AutomationSkillCardProps {
@@ -63,7 +63,7 @@ export function AutomationSkillCard({
         <span>·</span>
         <span>v{skill.version}</span>
       </div>
-      <CardStatusBadge status={skill.status} />
+      <EntityStatusBadge status={skill.status} />
     </article>
   );
 }

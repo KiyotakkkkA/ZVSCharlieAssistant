@@ -1,6 +1,7 @@
 import { Table, type TableColumn } from "@kiyotakkkka/zvs-uikit-lib";
 import type { AutomationTool } from "../../../../ipc/contracts";
 import { ControlButton } from "../../atoms/buttons";
+import { EntityStatusBadge } from "@renderer/components/atoms";
 
 interface Row extends AutomationTool {
   [key: string]: unknown;
@@ -51,9 +52,10 @@ export function AutomationToolsListTable({
       key: "state",
       title: "Состояние",
       render: (x) => (
-        <span className={x.enabled ? "text-success-light" : "text-main-500"}>
-          {x.enabled ? "Доступен" : "Отключён"}
-        </span>
+        <EntityStatusBadge
+          status={x.enabled ? "active" : "disabled"}
+          variant="base"
+        />
       ),
     },
     {

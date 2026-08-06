@@ -8,9 +8,7 @@ import {
   Select,
   Tabs,
 } from "@kiyotakkkka/zvs-uikit-lib";
-import type {
-  AutomationAgent,
-} from "../../../../ipc/contracts";
+import type { AutomationAgent } from "../../../../ipc/contracts";
 import type {
   AutomationStatus,
   UpsertAutomationAgentInput,
@@ -89,7 +87,8 @@ export const AutomationAgentManageForm = observer(
     const vectorSearchEnabled = Boolean(toolModel["vecdb_search"]);
     const terminalToolEnabled = Boolean(toolModel["cmd_exec"]);
     const availableConfirmationModeOptions = useMemo(() => {
-      const globalMode = terminalPolicyStore.policy?.confirmationMode ?? "always";
+      const globalMode =
+        terminalPolicyStore.policy?.confirmationMode ?? "always";
       return confirmationModeOptions.filter(
         ({ value }) =>
           confirmationModeRank[value] >= confirmationModeRank[globalMode],
@@ -411,6 +410,7 @@ export const AutomationAgentManageForm = observer(
                 />
                 <Field label="Количество результатов" className="max-w-xs">
                   <InputSmall
+                    type="number"
                     min={1}
                     max={20}
                     value={retrievalLimit}

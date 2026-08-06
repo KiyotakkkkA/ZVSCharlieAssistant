@@ -1,6 +1,7 @@
 import { Table, type TableColumn } from "@kiyotakkkka/zvs-uikit-lib";
 import type { AutomationAgent } from "../../../../ipc/contracts";
 import { ControlButton } from "../../atoms/buttons";
+import { EntityStatusBadge } from "@renderer/components/atoms";
 
 interface Row extends AutomationAgent {
   [key: string]: unknown;
@@ -41,11 +42,7 @@ export function AutomationAgentsListTable({
     {
       key: "status",
       title: "Статус",
-      render: (x) => (
-        <span className="rounded-full bg-main-700/60 px-2 py-1 text-xs text-main-300">
-          {labels[x.status]}
-        </span>
-      ),
+      render: (x) => <EntityStatusBadge status={x.status} variant="base" />,
     },
     {
       key: "model",

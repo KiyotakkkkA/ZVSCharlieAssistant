@@ -1,6 +1,7 @@
 import { Table, type TableColumn } from "@kiyotakkkka/zvs-uikit-lib";
 import type { AutomationScenario } from "../../../../ipc/contracts";
 import { ControlButton } from "../../atoms/buttons";
+import { EntityStatusBadge } from "@renderer/components/atoms";
 
 interface Row extends AutomationScenario {
   [key: string]: unknown;
@@ -31,15 +32,7 @@ export function AutomationScenariosListTable({
     {
       key: "status",
       title: "Статус",
-      render: (x) => (
-        <span className="rounded-full bg-main-700/60 px-2 py-1 text-xs text-main-300">
-          {x.status === "active"
-            ? "Активен"
-            : x.status === "draft"
-              ? "Черновик"
-              : "Отключён"}
-        </span>
-      ),
+      render: (x) => <EntityStatusBadge status={x.status} variant="base" />,
     },
     {
       key: "nodes",
