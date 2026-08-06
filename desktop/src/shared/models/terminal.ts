@@ -1,7 +1,4 @@
-import type {
-  TerminalConfirmationMode,
-  TerminalDirectoryGrant,
-} from "../dto/terminal.dto";
+import type { TerminalConfirmationMode } from "../dto/terminal.dto";
 
 export interface TerminalPolicy {
   enabled: boolean;
@@ -12,7 +9,6 @@ export interface TerminalPolicy {
   maxOutputBytes: number;
   allowNetwork: boolean;
   allowedCommands: string[];
-  directoryGrants: TerminalDirectoryGrant[];
   updatedAt: string;
 }
 

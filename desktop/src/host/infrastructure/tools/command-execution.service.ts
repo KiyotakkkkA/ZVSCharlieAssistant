@@ -6,10 +6,12 @@ import type {
 } from "../../../shared/models/terminal";
 import type {
   AgentTerminalPolicy,
-  TerminalDirectoryGrant,
-  TerminalPermission,
+  AgentDirectoryPolicy,
+  DirectoryGrant,
+  DirectoryPermission,
 } from "../../../shared/dto";
 import type { TerminalPolicyDataSource } from "../database/terminal-policy.data-source";
+import type { DirectoryPolicyDataSource } from "../database/directory-policy.data-source";
 import { getTerminalCommandDefinition } from "../../../shared/terminal-capabilities";
 
 type StartInput = {
@@ -38,7 +40,7 @@ interface Session {
   finished?: Promise<void>;
 }
 
-const permissionByCommand = (command: string): TerminalPermission => {
+const permissionByCommand = (command: string): DirectoryPermission => {
   const definition = getTerminalCommandDefinition(command);
   if (definition) return definition.permission;
   const value = command.toLowerCase();
@@ -64,13 +66,17 @@ export class CommandExecutionService {
   private readonly sessions = new Map<string, Session>();
   private readonly approvals = new Map<string, (approved: boolean) => void>();
 
-  constructor(private readonly policies: TerminalPolicyDataSource) {
+  constructor(
+    private readonly policies: TerminalPolicyDataSource,
+    private readonly directories: DirectoryPolicyDataSource,
+  ) {
     this.policies.recoverInterruptedSessions();
   }
 
   async execute(
     input: CommandExecutionInput,
     agent: AgentTerminalPolicy,
+    agentDirectories: AgentDirectoryPolicy,
     signal?: AbortSignal,
   ) {
     if (input.action !== "start") return this.sessionAction(input);
@@ -108,13 +114,13 @@ export class CommandExecutionService {
       throw new Error("Сетевой доступ отключён глобальной политикой");
 
     const grants = this.intersectGrants(
-      global.directoryGrants,
-      agent.directoryGrants,
+      this.directories.get().grants,
+      agentDirectories.grants,
     );
-    const requiredPermission = commands.reduce<TerminalPermission>(
+    const requiredPermission = commands.reduce<DirectoryPermission>(
       (current, command) => {
         const next = permissionByCommand(command);
-        const rank: TerminalPermission[] = [
+        const rank: DirectoryPermission[] = [
           "read",
           "create",
           "modify",
@@ -158,7 +164,7 @@ export class CommandExecutionService {
       session.status = "pending_approval";
       const approvalId = randomUUID();
       const payloadHash = createHash("sha256")
-        .update(JSON.stringify({ script, cwd, agent, global }))
+        .update(JSON.stringify({ script, cwd, agent, agentDirectories, global }))
         .digest("hex");
       this.policies.createPendingSession({
         sessionId: session.id,
@@ -166,7 +172,7 @@ export class CommandExecutionService {
         purpose: input.purpose,
         script,
         cwd,
-        policy: { global, agent },
+        policy: { global, agent, directories: grants },
         risk: commands.some((command) => permissionByCommand(command) === "delete") ? "high" : "medium",
         reasons: ["Команда требует подтверждения согласно эффективной политике"],
         payloadHash,
@@ -252,8 +258,8 @@ export class CommandExecutionService {
   }
 
   private intersectGrants(
-    global: TerminalDirectoryGrant[],
-    agent: TerminalDirectoryGrant[],
+    global: DirectoryGrant[],
+    agent: DirectoryGrant[],
   ) {
     const byPath = new Map(
       global.map((item) => [normalize(item.path).toLowerCase(), item]),
@@ -275,8 +281,8 @@ export class CommandExecutionService {
 
   private assertPath(
     path: string,
-    grants: TerminalDirectoryGrant[],
-    permission: TerminalPermission,
+    grants: DirectoryGrant[],
+    permission: DirectoryPermission,
   ) {
     if (!path || !isAbsolute(path))
       throw new Error(

@@ -18,6 +18,7 @@ import {
   textProviderStore,
   vectorStoreStore,
   terminalPolicyStore,
+  directoryPolicyStore,
 } from "../../../stores";
 import { Field } from "../../atoms";
 import { PrimaryButton } from "../../atoms/buttons";
@@ -67,7 +68,7 @@ export const AutomationAgentManageForm = observer(
     const [textModelId, setTextModelId] = useState("");
     const [toolModel, setToolModel] = useState<Record<string, boolean>>({});
     const [activeTab, setActiveTab] = useState<
-      "basic" | "storage" | "skills" | "terminal"
+      "basic" | "storage" | "skills" | "directories" | "terminal"
     >("basic");
     const [terminalEnabled, setTerminalEnabled] = useState(false);
     const [terminalConfirmationMode, setTerminalConfirmationMode] =
@@ -76,7 +77,7 @@ export const AutomationAgentManageForm = observer(
     const [terminalCommands, setTerminalCommands] = useState<
       Record<string, boolean>
     >({});
-    const [terminalDirectories, setTerminalDirectories] = useState<
+    const [agentDirectories, setAgentDirectories] = useState<
       Record<string, boolean>
     >({});
     const [skillModel, setSkillModel] = useState<Record<string, boolean>>({});
@@ -142,7 +143,9 @@ export const AutomationAgentManageForm = observer(
         ),
       );
       const globalPolicy = terminalPolicyStore.policy;
+      const globalDirectories = directoryPolicyStore.policy;
       const terminalPolicy = model?.terminalPolicy;
+      const directoryPolicy = model?.directoryPolicy;
       const isNewAgent = model === undefined;
       setTerminalEnabled(
         isNewAgent
@@ -174,13 +177,13 @@ export const AutomationAgentManageForm = observer(
           ]),
         ),
       );
-      setTerminalDirectories(
+      setAgentDirectories(
         Object.fromEntries(
-          (globalPolicy?.directoryGrants ?? []).map((grant) => [
+          (globalDirectories?.grants ?? []).map((grant) => [
             grant.path,
             isNewAgent
               ? true
-              : (terminalPolicy?.directoryGrants.some(
+              : (directoryPolicy?.grants.some(
                   (item) => item.path === grant.path,
                 ) ?? false),
           ]),
@@ -192,6 +195,7 @@ export const AutomationAgentManageForm = observer(
       textProviderStore.initialized,
       vectorStoreStore.initialized,
       terminalPolicyStore.initialized,
+      directoryPolicyStore.initialized,
     ]);
 
     useEffect(() => {
@@ -238,8 +242,10 @@ export const AutomationAgentManageForm = observer(
           allowedCommands: Object.entries(terminalCommands)
             .filter(([, selected]) => selected)
             .map(([id]) => id),
-          directoryGrants: (terminalPolicyStore.policy?.directoryGrants ?? [])
-            .filter((grant) => terminalDirectories[grant.path])
+        },
+        directoryPolicy: {
+          grants: (directoryPolicyStore.policy?.grants ?? [])
+            .filter((grant) => agentDirectories[grant.path])
             .map((grant) => ({
               path: grant.path,
               recursive: grant.recursive,
@@ -261,16 +267,28 @@ export const AutomationAgentManageForm = observer(
           <Tabs
             value={activeTab}
             onChange={(value) =>
-              setActiveTab(value as "basic" | "storage" | "skills" | "terminal")
+              setActiveTab(
+                value as
+                  | "basic"
+                  | "storage"
+                  | "skills"
+                  | "directories"
+                  | "terminal",
+              )
             }
             options={[
               { value: "basic", label: "Базовые настройки" },
+
+              { value: "skills", label: "Навыки" },
+              {
+                value: "directories",
+                label: "Разрешённые директории",
+              },
               {
                 value: "storage",
                 label: "Работа с хранилищем",
                 disabled: !vectorSearchEnabled,
               },
-              { value: "skills", label: "Навыки" },
               {
                 value: "terminal",
                 label: "Работа с терминалом",
@@ -453,6 +471,30 @@ export const AutomationAgentManageForm = observer(
               </div>
             )}
           </FormSection>
+        ) : activeTab === "directories" ? (
+          <FormSection
+            title="Разрешённые директории"
+            description="Уточняет глобальную политику файлового доступа для этого агента."
+          >
+            {directoryPolicyStore.policy?.grants.length ? (
+              <CompactEntitySelector
+                model={agentDirectories}
+                onModelChange={setAgentDirectories}
+                searchPlaceholder="Найти разрешённую директорию"
+                items={directoryPolicyStore.policy.grants.map((grant) => ({
+                  id: grant.path,
+                  title: grant.path,
+                  description: grant.permissions.join(", "),
+                  group: grant.recursive ? "С вложенными" : "Только директория",
+                }))}
+              />
+            ) : (
+              <div className="rounded-lg border border-dashed border-main-700 p-6 text-center text-sm text-main-500">
+                Сначала добавьте пути в разделе «Настройки → Политики →
+                Разрешённые директории».
+              </div>
+            )}
+          </FormSection>
         ) : (
           <FormSection
             title="Работа с терминалом"
@@ -507,21 +549,6 @@ export const AutomationAgentManageForm = observer(
                       title: command,
                       description: "Разрешено глобальной политикой",
                       group: "PowerShell",
-                    }),
-                  )}
-                />
-                <CompactEntitySelector
-                  model={terminalDirectories}
-                  onModelChange={setTerminalDirectories}
-                  searchPlaceholder="Найти разрешённую директорию"
-                  items={terminalPolicyStore.policy.directoryGrants.map(
-                    (grant) => ({
-                      id: grant.path,
-                      title: grant.path,
-                      description: grant.permissions.join(", "),
-                      group: grant.recursive
-                        ? "С вложенными"
-                        : "Только директория",
                     }),
                   )}
                 />

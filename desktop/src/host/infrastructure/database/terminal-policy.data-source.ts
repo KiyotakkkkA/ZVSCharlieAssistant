@@ -1,5 +1,4 @@
 import type Database from "better-sqlite3";
-import { isAbsolute, normalize } from "node:path";
 import type {
   TerminalPolicy,
 } from "../../../shared/models/terminal";
@@ -7,7 +6,6 @@ import type { TerminalApprovalRequest } from "../../../shared/models/terminal";
 import {
   parseJsonDto,
   stringArrayDtoSchema,
-  terminalDirectoryGrantDtoSchema,
   type UpsertTerminalPolicyInput,
 } from "../../../shared/dto";
 
@@ -20,7 +18,6 @@ interface PolicyRow {
   max_output_bytes: number;
   allow_network: number;
   allowed_commands_json: string;
-  directory_grants_json: string;
   updated_at: string;
 }
 
@@ -43,10 +40,6 @@ export class TerminalPolicyDataSource {
         stringArrayDtoSchema,
         row.allowed_commands_json,
       ),
-      directoryGrants: parseJsonDto(
-        terminalDirectoryGrantDtoSchema.array(),
-        row.directory_grants_json,
-      ),
       updatedAt: row.updated_at,
     };
   }
@@ -63,16 +56,12 @@ export class TerminalPolicyDataSource {
     for (const command of allowedCommands)
       if (!/^[A-Za-z]+-[A-Za-z]+$/.test(command) || forbidden.has(command.toLowerCase()))
         throw new Error(`Команда ${command} не может быть добавлена в политику`);
-    const directoryGrants = input.directoryGrants.map((grant) => {
-      if (!isAbsolute(grant.path)) throw new Error("Разрешённая директория должна иметь абсолютный путь");
-      return { ...grant, path: normalize(grant.path), permissions: [...new Set(grant.permissions)] };
-    });
     this.database
       .prepare(
         `UPDATE terminal_policy SET
           enabled=?, confirmation_mode=?, max_concurrent_sessions=?,
           default_timeout_seconds=?, max_timeout_seconds=?, max_output_bytes=?,
-          allow_network=?, allowed_commands_json=?, directory_grants_json=?,
+          allow_network=?, allowed_commands_json=?,
           updated_at=CURRENT_TIMESTAMP
          WHERE id=1`,
       )
@@ -85,7 +74,6 @@ export class TerminalPolicyDataSource {
         input.maxOutputBytes,
         Number(input.allowNetwork),
         JSON.stringify(allowedCommands),
-        JSON.stringify(directoryGrants),
       );
     return this.get();
   }

@@ -10,14 +10,10 @@ import {
   Switcher,
   useToasts,
 } from "@kiyotakkkka/zvs-uikit-lib";
-import type {
-  TerminalDirectoryGrant,
-  TerminalPermission,
-  UpsertTerminalPolicyInput,
-} from "../../../../shared/dto";
+import type { UpsertTerminalPolicyInput } from "../../../../shared/dto";
 import { automationStore, terminalPolicyStore } from "../../../stores";
-import { Field, ParameterLabel, TrashIcon } from "../../atoms";
-import { ControlButton, PrimaryButton } from "../../atoms/buttons";
+import { Field, ParameterLabel } from "../../atoms";
+import { PrimaryButton } from "../../atoms/buttons";
 import { CompactEntitySelector } from "../../molecules";
 import {
   parseIpcDto,
@@ -27,14 +23,6 @@ import {
   KNOWN_TERMINAL_COMMANDS,
   TERMINAL_CAPABILITIES,
 } from "../../../../shared/terminal-capabilities";
-
-const permissions: Array<{ value: TerminalPermission; label: string }> = [
-  { value: "read", label: "Чтение" },
-  { value: "create", label: "Создание" },
-  { value: "modify", label: "Изменение" },
-  { value: "delete", label: "Удаление" },
-  { value: "execute", label: "Запуск" },
-];
 
 const knownCommands = new Set(
   KNOWN_TERMINAL_COMMANDS.map((command) => command.toLowerCase()),
@@ -66,24 +54,6 @@ export const SettingsTerminalPolicyForm = observer(
       value: UpsertTerminalPolicyInput[K],
     ) =>
       setModel((current) => (current ? { ...current, [key]: value } : current));
-
-    const addDirectory = async () => {
-      const path = await window.desktop.selectDirectory();
-      if (!path || model.directoryGrants.some((item) => item.path === path))
-        return;
-      update("directoryGrants", [
-        ...model.directoryGrants,
-        { path, recursive: true, permissions: ["read"] },
-      ]);
-    };
-
-    const updateGrant = (index: number, grant: TerminalDirectoryGrant) =>
-      update(
-        "directoryGrants",
-        model.directoryGrants.map((item, itemIndex) =>
-          itemIndex === index ? grant : item,
-        ),
-      );
 
     const customCommands = model.allowedCommands.filter(
       (item) => !knownCommands.has(item.toLowerCase()),
@@ -425,94 +395,6 @@ export const SettingsTerminalPolicyForm = observer(
               </div>
             </section>
 
-            <section className="grid gap-5 rounded-xl bg-main-800/20 p-5 ring-1 ring-main-700/35 xl:grid-cols-[220px_1fr]">
-              <div>
-                <h2 className="text-sm font-semibold text-main-100">
-                  Директории
-                </h2>
-                <p className="mt-1 text-xs leading-5 text-main-500">
-                  Выберите по каким маршрутам сможет действовать агент
-                </p>
-              </div>
-              <div className="space-y-3">
-                <div>
-                  <div className="mt-2">
-                    <PrimaryButton
-                      type="button"
-                      variant="create"
-                      label="Выбрать директорию"
-                      onClick={() => void addDirectory()}
-                    />
-                  </div>
-                </div>
-                {model.directoryGrants.map((grant, index) => (
-                  <div
-                    key={`${grant.path}-${index}`}
-                    className="rounded-lg bg-main-800/35 p-4 ring-1 ring-main-700/35"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="truncate text-sm font-medium text-main-100">
-                        {grant.path}
-                      </span>
-                      <ControlButton
-                        icon="trash"
-                        variant="delete"
-                        onClick={() =>
-                          update(
-                            "directoryGrants",
-                            model.directoryGrants.filter((_, i) => i !== index),
-                          )
-                        }
-                      />
-                    </div>
-                    <div className="mt-3 flex flex-wrap gap-4">
-                      {permissions.map((permission) => (
-                        <InputCheckBox
-                          key={permission.value}
-                          checked={grant.permissions.includes(permission.value)}
-                          onChange={(state) =>
-                            updateGrant(index, {
-                              ...grant,
-                              permissions: state
-                                ? [...grant.permissions, permission.value]
-                                : grant.permissions.filter(
-                                    (item) => item !== permission.value,
-                                  ),
-                            })
-                          }
-                        >
-                          <ParameterLabel
-                            description={`Разрешает операциям терминала использовать право «${permission.label.toLowerCase()}» внутри этой директории.`}
-                          >
-                            {permission.label}
-                          </ParameterLabel>
-                        </InputCheckBox>
-                      ))}
-                      <InputCheckBox
-                        checked={grant.recursive}
-                        onChange={(state) =>
-                          updateGrant(index, {
-                            ...grant,
-                            recursive: state,
-                          })
-                        }
-                      >
-                        <ParameterLabel description="Распространяет выбранные права на все вложенные директории и файлы.">
-                          Включая вложенные
-                        </ParameterLabel>
-                      </InputCheckBox>
-                    </div>
-                  </div>
-                ))}
-                <Alert
-                  variant="warning"
-                  title="Политика действует как верхняя граница"
-                >
-                  Настройки конкретного агента смогут только исключать команды,
-                  директории и права из этого списка.
-                </Alert>
-              </div>
-            </section>
           </>
         )}
         <Modal
@@ -539,10 +421,6 @@ export const SettingsTerminalPolicyForm = observer(
                   <li>не более двух параллельных сессий;</li>
                   <li>сетевой доступ и удаление отключены;</li>
                   <li>разрешены базовые cmdlet чтения, поиска и записи;</li>
-                  <li>
-                    «Документы» доступны для чтения и записи, «Загрузки» —
-                    только для чтения.
-                  </li>
                 </ul>
                 <p className="text-main-500">
                   Изменения попадут в форму. Для применения потребуется нажать

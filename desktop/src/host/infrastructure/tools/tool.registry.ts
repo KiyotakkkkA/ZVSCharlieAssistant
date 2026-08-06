@@ -9,8 +9,12 @@ import type {
 import type { VectorStoreService } from "../vector-store/vector-store.service";
 import { OllamaWebService } from "./ollama-web.service";
 import type { ReportDocxService } from "./report-docx.service";
-import type { AgentTerminalPolicy } from "../../../shared/dto";
+import type {
+  AgentDirectoryPolicy,
+  AgentTerminalPolicy,
+} from "../../../shared/dto";
 import type { CommandExecutionService } from "./command-execution.service";
+import type { NativeSearchService } from "./native-search.service";
 
 type Emit = (event: RunEvent) => void;
 
@@ -42,6 +46,7 @@ interface ToolRegistryOptions {
   retrievalLimit?: number;
   allowedSkillIds?: number[];
   terminalPolicy?: AgentTerminalPolicy;
+  directoryPolicy?: AgentDirectoryPolicy;
   observer?: ToolExecutionObserver;
 }
 
@@ -54,6 +59,7 @@ export class ToolRegistry {
     private readonly skillContent: SkillContentStore,
     private readonly reports: ReportDocxService,
     private readonly commands: CommandExecutionService,
+    private readonly search: NativeSearchService,
   ) {}
 
   create(options: ToolRegistryOptions): ToolSet | undefined {
@@ -65,6 +71,7 @@ export class ToolRegistry {
       observer,
       allowedSkillIds = [],
       terminalPolicy,
+      directoryPolicy,
     } = options;
     const tools: ToolSet = {
       cmd_exec: tool({
@@ -89,7 +96,56 @@ export class ToolRegistry {
           this.execute(toolCallId, "cmd_exec", input, signal, observer, () => {
             if (!terminalPolicy)
               throw new Error("Политика терминала агента не настроена");
-            return this.commands.execute(input, terminalPolicy, signal);
+            if (!directoryPolicy)
+              throw new Error("Политика доступа агента к директориям не настроена");
+            return this.commands.execute(
+              input,
+              terminalPolicy,
+              directoryPolicy,
+              signal,
+            );
+          }),
+      }),
+      grep_search: tool({
+        description:
+          "Ищет файлы и директории по имени внутри разрешённой директории. Возвращает относительные пути и типы найденных сущностей.",
+        inputSchema: z.object({
+          base: z.string().trim().min(1).max(4096),
+          query: z.string().trim().min(1).max(500),
+          entityTypes: z.array(z.enum(["file", "directory"])).max(2).optional(),
+          matchMode: z.enum(["exact", "contains", "glob"]).optional(),
+          includeHidden: z.boolean().optional(),
+          maxDepth: z.int().min(1).max(100).optional(),
+          limit: z.int().min(1).max(1000).optional(),
+        }),
+        execute: (input, { toolCallId }) =>
+          this.execute(toolCallId, "grep_search", input, signal, observer, () => {
+            if (!directoryPolicy)
+              throw new Error("Политика доступа агента к директориям не настроена");
+            return this.search.entitySearch(input, directoryPolicy);
+          }),
+      }),
+      regexp_search: tool({
+        description:
+          "Ищет текст или регулярное выражение в конкретном файле либо рекурсивно в директории. Используй include/exclude для ограничения типов файлов.",
+        inputSchema: z.object({
+          base: z.string().trim().min(1).max(4096),
+          target: z.string().trim().max(4096).optional(),
+          pattern: z.string().trim().min(1).max(2000),
+          mode: z.enum(["regex", "literal"]).optional(),
+          caseSensitive: z.boolean().optional(),
+          wholeWord: z.boolean().optional(),
+          include: z.array(z.string().trim().min(1).max(500)).max(50).optional(),
+          exclude: z.array(z.string().trim().min(1).max(500)).max(50).optional(),
+          includeHidden: z.boolean().optional(),
+          maxFileBytes: z.int().min(1).max(50 * 1024 * 1024).optional(),
+          limit: z.int().min(1).max(1000).optional(),
+        }),
+        execute: (input, { toolCallId }) =>
+          this.execute(toolCallId, "regexp_search", input, signal, observer, () => {
+            if (!directoryPolicy)
+              throw new Error("Политика доступа агента к директориям не настроена");
+            return this.search.regexpSearch(input, directoryPolicy);
           }),
       }),
       web_search: tool({
@@ -234,6 +290,8 @@ export class ToolRegistry {
           (allowedToolIds.includes(id) ||
             (id === "skills.load" && allowedSkillIds.length > 0)) &&
           (id === "cmd_exec" ||
+            id === "grep_search" ||
+            id === "regexp_search" ||
             id === "vecdb_search" ||
             id === "skills.load" ||
             id === "reports_docx" ||

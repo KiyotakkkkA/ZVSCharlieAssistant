@@ -2,6 +2,7 @@ import type { RunOrigin, RunStatus } from "./run";
 import type { ScenarioNodeKind } from "../scenario-ports";
 import type {
   AgentTerminalPolicy,
+  AgentDirectoryPolicy,
   AutomationScenarioGraph,
   AutomationScenarioToolSetting,
   AutomationStatus,
@@ -44,6 +45,7 @@ export interface AutomationAgent {
   maxToolCalls: number;
   timeoutSeconds: number;
   terminalPolicy: AgentTerminalPolicy;
+  directoryPolicy: AgentDirectoryPolicy;
   runs: number;
   updatedAt: string;
 }

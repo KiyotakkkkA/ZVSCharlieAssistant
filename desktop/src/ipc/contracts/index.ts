@@ -61,3 +61,8 @@ export type {
   TerminalApprovalRequest,
 } from "./terminal-policy.contract";
 export { TERMINAL_POLICY_IPC_CHANNELS } from "./terminal-policy.contract";
+export type {
+  DirectoryPolicyApi,
+  DirectoryPolicy,
+} from "./directory-policy.contract";
+export { DIRECTORY_POLICY_IPC_CHANNELS } from "./directory-policy.contract";

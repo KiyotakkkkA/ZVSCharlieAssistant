@@ -30,7 +30,9 @@ import {
   TASKS_IPC_CHANNELS,
   type AgentTaskRun,
   TERMINAL_POLICY_IPC_CHANNELS,
+  DIRECTORY_POLICY_IPC_CHANNELS,
   type TerminalPolicy,
+  type DirectoryPolicy,
   type TerminalApprovalRequest,
 } from "../contracts";
 import type {
@@ -48,6 +50,7 @@ import type {
   UpsertSecretCategoryInput,
   UpsertSecretInput,
   UpsertTerminalPolicyInput,
+  UpsertDirectoryPolicyInput,
   UpsertTextProviderInput,
   UpsertVectorStoreInput,
   UploadVectorDocumentInput,
@@ -81,6 +84,14 @@ export const desktopApi: DesktopApi = {
       ipcRenderer.invoke(TERMINAL_POLICY_IPC_CHANNELS.pendingApprovals) as Promise<TerminalApprovalRequest[]>,
     decideApproval: (id: string, approved: boolean): Promise<void> =>
       ipcRenderer.invoke(TERMINAL_POLICY_IPC_CHANNELS.decideApproval, id, approved) as Promise<void>,
+  },
+  directoryPolicy: {
+    get: (): Promise<DirectoryPolicy> =>
+      ipcRenderer.invoke(DIRECTORY_POLICY_IPC_CHANNELS.get) as Promise<DirectoryPolicy>,
+    upsert: (input: UpsertDirectoryPolicyInput): Promise<DirectoryPolicy> =>
+      ipcRenderer.invoke(DIRECTORY_POLICY_IPC_CHANNELS.upsert, input) as Promise<DirectoryPolicy>,
+    recommended: (): Promise<UpsertDirectoryPolicyInput> =>
+      ipcRenderer.invoke(DIRECTORY_POLICY_IPC_CHANNELS.recommended) as Promise<UpsertDirectoryPolicyInput>,
   },
   secrets: {
     getSnapshot: (): Promise<SecretStorageSnapshot> =>

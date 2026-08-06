@@ -332,7 +332,7 @@ export class ChatDataSource {
     if (!id) return undefined;
     const row = this.db
       .prepare(
-        "SELECT instructions,text_model_id,max_tool_calls,timeout_seconds,retrieval_limit,terminal_policy_json FROM automation_agents WHERE id=? AND status!='disabled'",
+        "SELECT instructions,text_model_id,max_tool_calls,timeout_seconds,retrieval_limit,terminal_policy_json,directory_policy_json FROM automation_agents WHERE id=? AND status!='disabled'",
       )
       .get(id) as
       | {
@@ -342,6 +342,7 @@ export class ChatDataSource {
           timeout_seconds: number;
           retrieval_limit: number;
           terminal_policy_json: string;
+          directory_policy_json: string;
         }
       | undefined;
     if (!row) return undefined;
@@ -367,6 +368,7 @@ export class ChatDataSource {
     return {
       ...row,
       terminalPolicy: JSON.parse(row.terminal_policy_json),
+      directoryPolicy: JSON.parse(row.directory_policy_json),
       allowedToolIds,
       allowedVectorStoreIds,
       allowedSkillIds,

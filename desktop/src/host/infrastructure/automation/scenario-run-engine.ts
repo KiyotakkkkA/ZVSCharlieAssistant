@@ -387,6 +387,7 @@ ${JSON.stringify(scenarioAgents, null, 2)}
           retrievalLimit: agent.retrieval_limit,
           allowedSkillIds: agent.allowedSkillIds,
           terminalPolicy: agent.terminalPolicy,
+          directoryPolicy: agent.directoryPolicy,
           observer: {
             requested: () => undefined,
             completed: (event, _reference, result) => {

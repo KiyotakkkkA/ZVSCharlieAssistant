@@ -1,5 +1,6 @@
 export * from "./ipc-dto";
 export * from "./terminal.dto";
+export * from "./directory-policy.dto";
 export * from "./automation.dto";
 export * from "./text-provider.dto";
 export * from "./secret-storage.dto";

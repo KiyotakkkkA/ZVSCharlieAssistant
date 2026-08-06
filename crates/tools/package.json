@@ -1,0 +1,13 @@
+{
+  "name": "@zvs/native-tools",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "cargo build --release --offline && node scripts/copy-native.mjs",
+    "build:debug": "cargo build --offline && node scripts/copy-native.mjs debug"
+  },
+  "napi": {
+    "name": "zvs_tools",
+    "triples": { "defaults": true }
+  }
+}

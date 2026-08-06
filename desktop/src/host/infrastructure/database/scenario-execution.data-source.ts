@@ -164,7 +164,7 @@ export class ScenarioExecutionDataSource {
   agent(id: string) {
     const agent = this.db
       .prepare(
-        `SELECT id,name,description,instructions,text_model_id,retrieval_limit,terminal_policy_json FROM automation_agents
+        `SELECT id,name,description,instructions,text_model_id,retrieval_limit,terminal_policy_json,directory_policy_json FROM automation_agents
        WHERE id=? AND status!='disabled'`,
       )
       .get(id) as
@@ -176,6 +176,7 @@ export class ScenarioExecutionDataSource {
           text_model_id: number;
           retrieval_limit: number;
           terminal_policy_json: string;
+          directory_policy_json: string;
         }
       | undefined;
     if (!agent) return undefined;
@@ -201,6 +202,7 @@ export class ScenarioExecutionDataSource {
     return {
       ...agent,
       terminalPolicy: JSON.parse(agent.terminal_policy_json),
+      directoryPolicy: JSON.parse(agent.directory_policy_json),
       allowedToolIds,
       allowedVectorStoreIds,
       allowedSkillIds,

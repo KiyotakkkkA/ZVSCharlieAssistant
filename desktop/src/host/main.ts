@@ -60,6 +60,12 @@ import {
   registerTerminalPolicyHandlers,
   removeTerminalPolicyHandlers,
 } from "../ipc/main/register-terminal-policy-handlers";
+import { NativeSearchService } from "./infrastructure/tools/native-search.service";
+import { DirectoryPolicyDataSource } from "./infrastructure/database/directory-policy.data-source";
+import {
+  registerDirectoryPolicyHandlers,
+  removeDirectoryPolicyHandlers,
+} from "../ipc/main/register-directory-policy-handlers";
 
 let database: ReturnType<typeof createSqliteDatabase> | undefined;
 
@@ -70,6 +76,7 @@ app.whenReady().then(() => {
   );
   const automationDataSource = new AutomationDataSource(database);
   const terminalPolicyDataSource = new TerminalPolicyDataSource(database);
+  const directoryPolicyDataSource = new DirectoryPolicyDataSource(database);
   const skillContent = new FileSystemSkillContentStore(
     join(app.getPath("userData"), "skills"),
   );
@@ -83,6 +90,7 @@ app.whenReady().then(() => {
     BUILTIN_AUTOMATION_TOOLS,
     skillContent,
     terminalPolicyDataSource,
+    directoryPolicyDataSource,
   );
 
   const reportsRoot = join(
@@ -118,6 +126,7 @@ app.whenReady().then(() => {
   );
   const commandExecutionService = new CommandExecutionService(
     terminalPolicyDataSource,
+    directoryPolicyDataSource,
   );
   const toolRegistry = new ToolRegistry(
     chatDataSource,
@@ -127,11 +136,16 @@ app.whenReady().then(() => {
     skillContent,
     new ReportDocxService(reportsRoot),
     commandExecutionService,
+    new NativeSearchService(
+      join(app.getAppPath(), "native"),
+      directoryPolicyDataSource,
+    ),
   );
   registerTerminalPolicyHandlers(
     terminalPolicyDataSource,
     commandExecutionService,
   );
+  registerDirectoryPolicyHandlers(directoryPolicyDataSource);
   const scenarioEngine = new ScenarioRunEngine(
     scenarioExecutions,
     providerRegistry,
@@ -169,6 +183,7 @@ app.on("before-quit", () => {
   removeVectorStoreHandlers();
   removeTaskHandlers();
   removeTerminalPolicyHandlers();
+  removeDirectoryPolicyHandlers();
   database?.close();
   database = undefined;
 });

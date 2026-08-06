@@ -1,4 +1,4 @@
-import { app, ipcMain } from "electron";
+import { ipcMain } from "electron";
 import type { UpsertTerminalPolicyInput } from "../../shared/dto";
 import type { TerminalPolicyDataSource } from "../../host/infrastructure/database/terminal-policy.data-source";
 import type { CommandExecutionService } from "../../host/infrastructure/tools/command-execution.service";
@@ -42,18 +42,6 @@ export function registerTerminalPolicyHandlers(
       ).flatMap((capability) =>
         capability.commands.map((command) => command.name),
       ),
-      directoryGrants: [
-        {
-          path: app.getPath("documents"),
-          recursive: true,
-          permissions: ["read", "create", "modify"],
-        },
-        {
-          path: app.getPath("downloads"),
-          recursive: true,
-          permissions: ["read"],
-        },
-      ],
     }),
   );
   ipcMain.handle(TERMINAL_POLICY_IPC_CHANNELS.pendingApprovals, () =>

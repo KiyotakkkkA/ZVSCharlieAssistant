@@ -440,7 +440,11 @@ const migrations: readonly Migration[] = [
       database.exec(`
         ALTER TABLE automation_agents
           ADD COLUMN terminal_policy_json TEXT NOT NULL
-          DEFAULT '{"enabled":false,"confirmationMode":"always","timeoutSeconds":60,"allowedCommands":[],"directoryGrants":[]}';
+          DEFAULT '{"enabled":false,"confirmationMode":"always","timeoutSeconds":60,"allowedCommands":[]}';
+
+        ALTER TABLE automation_agents
+          ADD COLUMN directory_policy_json TEXT NOT NULL
+          DEFAULT '{"grants":[]}';
 
         CREATE TABLE terminal_policy (
           id INTEGER PRIMARY KEY CHECK(id = 1),
@@ -457,11 +461,18 @@ const migrations: readonly Migration[] = [
             CHECK(max_output_bytes BETWEEN 4096 AND 16777216),
           allow_network INTEGER NOT NULL DEFAULT 0 CHECK(allow_network IN (0,1)),
           allowed_commands_json TEXT NOT NULL DEFAULT '[]',
-          directory_grants_json TEXT NOT NULL DEFAULT '[]',
           updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
 
         INSERT INTO terminal_policy(id) VALUES(1);
+
+        CREATE TABLE directory_policy (
+          id INTEGER PRIMARY KEY CHECK(id = 1),
+          grants_json TEXT NOT NULL DEFAULT '[]',
+          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+
+        INSERT INTO directory_policy(id) VALUES(1);
 
         CREATE TABLE command_sessions (
           id TEXT PRIMARY KEY,

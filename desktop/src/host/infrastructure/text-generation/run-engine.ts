@@ -245,6 +245,7 @@ export class RunEngine {
                 retrievalLimit: agentRuntime?.retrieval_limit ?? 5,
                 allowedSkillIds: agentRuntime?.allowedSkillIds ?? [],
                 terminalPolicy: agentRuntime?.terminalPolicy,
+                directoryPolicy: agentRuntime?.directoryPolicy,
               })
             : undefined,
         stopWhen: stepCountIs(maxSteps),

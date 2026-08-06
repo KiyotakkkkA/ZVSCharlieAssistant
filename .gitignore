@@ -1,1 +1,4 @@
 TODO.md
+desktop/native/*.node
+crates/tools/target
+crates/tools/node_modules

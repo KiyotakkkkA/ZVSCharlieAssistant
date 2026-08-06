@@ -10,6 +10,7 @@ import type {
   AutomationScenarioGraph,
   AutomationStatus,
   TerminalConfirmationMode,
+  DirectoryGrant,
   UpsertAutomationAgentInput,
   UpsertAutomationScenarioInput,
   UpsertAutomationSkillInput,
@@ -19,6 +20,7 @@ import type { AutomationRepository } from "../../application/ports/automation.re
 import { AutomationDataSource } from "../database/automation.data-source";
 import type { SkillContentStore } from "../../application/ports/automation-runtime.ports";
 import type { TerminalPolicyDataSource } from "../database/terminal-policy.data-source";
+import type { DirectoryPolicyDataSource } from "../database/directory-policy.data-source";
 
 const statuses = new Set<AutomationStatus>(["draft", "active", "disabled"]);
 
@@ -63,6 +65,7 @@ export class SqliteAutomationRepository implements AutomationRepository {
     private readonly tools: readonly AutomationTool[],
     private readonly skillContent: SkillContentStore,
     private readonly terminalPolicies: TerminalPolicyDataSource,
+    private readonly directoryPolicies: DirectoryPolicyDataSource,
   ) {
     this.toolsById = new Map(tools.map((tool) => [tool.id, tool]));
   }
@@ -127,9 +130,6 @@ export class SqliteAutomationRepository implements AutomationRepository {
     const globalCommands = new Set(
       globalTerminal.allowedCommands.map((item) => item.toLowerCase()),
     );
-    const globalGrants = new Map(
-      globalTerminal.directoryGrants.map((item) => [item.path.toLowerCase(), item]),
-    );
     const terminalPolicy = {
       enabled:
         globalTerminal.enabled &&
@@ -146,16 +146,25 @@ export class SqliteAutomationRepository implements AutomationRepository {
       allowedCommands: requestedTerminal.allowedCommands.filter((item) =>
         globalCommands.has(item.toLowerCase()),
       ),
-      directoryGrants: requestedTerminal.directoryGrants.flatMap((requested) => {
-        const global = globalGrants.get(requested.path.toLowerCase());
+    };
+    const globalDirectories = new Map(
+      this.directoryPolicies
+        .get()
+        .grants.map((grant) => [grant.path.toLowerCase(), grant]),
+    );
+    const directoryPolicy = {
+      grants: input.directoryPolicy.grants.flatMap((requested) => {
+        const global = globalDirectories.get(requested.path.toLowerCase());
         if (!global) return [];
-        return [{
-          path: global.path,
-          recursive: global.recursive && requested.recursive,
-          permissions: requested.permissions.filter((permission) =>
-            global.permissions.includes(permission),
-          ),
-        }];
+        return [
+          {
+            path: global.path,
+            recursive: global.recursive && requested.recursive,
+            permissions: requested.permissions.filter((permission) =>
+              global.permissions.includes(permission),
+            ),
+          } satisfies DirectoryGrant,
+        ];
       }),
     };
 
@@ -170,6 +179,7 @@ export class SqliteAutomationRepository implements AutomationRepository {
       retrievalLimit: input.retrievalLimit,
       allowedSkillIds,
       terminalPolicy,
+      directoryPolicy,
     });
   }
 

@@ -21,6 +21,7 @@ export interface DesktopApi {
   chat: import("./chat.contract").ChatApi;
   tasks: import("./tasks.contract").TasksApi;
   terminalPolicy: import("./terminal-policy.contract").TerminalPolicyApi;
+  directoryPolicy: import("./directory-policy.contract").DirectoryPolicyApi;
 }
 
 export interface GeneratedArtifactInput {

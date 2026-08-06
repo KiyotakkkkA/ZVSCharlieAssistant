@@ -3,10 +3,16 @@ import { observer } from "mobx-react-lite";
 import { APP_PATHS } from "../../../app/routes";
 import { PrimaryButton } from "../../../components/atoms/buttons";
 import { PageHeader } from "../../../components/organisms";
-import { SettingsTerminalPolicyForm } from "../../../components/organisms/forms/SettingsTerminalPolicyForm";
-import { terminalPolicyStore } from "../../../stores";
+import { directoryPolicyStore, terminalPolicyStore } from "@renderer/stores";
+import { useState } from "react";
+import {
+  SettingsDirectoryPolicyForm,
+  SettingsTerminalPolicyForm,
+} from "@renderer/components/organisms/forms";
 
 export const SettingsPoliciesPage = observer(function SettingsPoliciesPage() {
+  const [currentTab, setCurrentTab] = useState("terminal");
+
   return (
     <div className="flex h-full min-h-0 flex-col p-4">
       <PageHeader
@@ -18,23 +24,35 @@ export const SettingsPoliciesPage = observer(function SettingsPoliciesPage() {
         ]}
         footer={
           <Tabs
-            value="terminal"
-            onChange={() => undefined}
-            options={[{ value: "terminal", label: "Работа с терминалом" }]}
+            value={currentTab}
+            onChange={setCurrentTab}
+            options={[
+              { value: "terminal", label: "Работа с терминалом" },
+              { value: "directories", label: "Разрешённые директории" },
+            ]}
           />
         }
       >
         <PrimaryButton
           type="submit"
-          form="settings-terminal-policy-form"
+          form={
+            currentTab === "terminal"
+              ? "settings-terminal-policy-form"
+              : "settings-directory-policy-form"
+          }
           variant="save"
-          loading={terminalPolicyStore.saving}
+          loading={
+            currentTab === "terminal"
+              ? terminalPolicyStore.saving
+              : directoryPolicyStore.saving
+          }
           label="Сохранить политику"
         />
       </PageHeader>
       <ScrollArea className="min-h-0 flex-1">
         <div className="p-1 pb-5">
-          <SettingsTerminalPolicyForm />
+          {currentTab === "terminal" && <SettingsTerminalPolicyForm />}
+          {currentTab === "directories" && <SettingsDirectoryPolicyForm />}
         </div>
       </ScrollArea>
     </div>

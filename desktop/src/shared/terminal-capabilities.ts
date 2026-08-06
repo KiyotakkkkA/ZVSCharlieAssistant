@@ -1,4 +1,4 @@
-import type { TerminalPermission } from "./dto/terminal.dto";
+import type { DirectoryPermission } from "./dto/directory-policy.dto";
 
 export type TerminalCapabilityId =
   | "filesystem.browse"
@@ -14,7 +14,7 @@ export type TerminalCapabilityId =
 export interface TerminalCommandDefinition {
   name: string;
   description: string;
-  permission: TerminalPermission;
+  permission: DirectoryPermission;
   network?: boolean;
 }
 

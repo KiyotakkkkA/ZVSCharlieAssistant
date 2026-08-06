@@ -1,0 +1,22 @@
+[package]
+name = "zvs-tools"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+globset = "0.4"
+ignore = "0.4"
+napi = { version = "3", features = ["napi8"] }
+napi-derive = "3"
+regex = "1"
+
+[build-dependencies]
+napi-build = "2"
+
+[profile.release]
+lto = true
+strip = "symbols"
+

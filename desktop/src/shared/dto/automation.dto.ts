@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { agentTerminalPolicyDtoSchema } from "./terminal.dto";
+import { agentDirectoryPolicyDtoSchema } from "./directory-policy.dto";
 import { jsonValueSchema } from "./ipc-dto";
 
 export const automationStatusSchema = z.enum(["draft", "active", "disabled"]);
@@ -61,6 +62,7 @@ export const upsertAutomationAgentDtoSchema = z.object({
   maxToolCalls: z.int().positive(),
   timeoutSeconds: z.int().positive(),
   terminalPolicy: agentTerminalPolicyDtoSchema,
+  directoryPolicy: agentDirectoryPolicyDtoSchema,
 });
 export const upsertAutomationSkillDtoSchema = z.object({
   id: z.int().positive().optional(),

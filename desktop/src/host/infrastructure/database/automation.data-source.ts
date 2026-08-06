@@ -6,6 +6,7 @@ import type {
 } from "../../../shared/models/automation";
 import {
   agentTerminalPolicyDtoSchema,
+  agentDirectoryPolicyDtoSchema,
   automationScenarioGraphDtoSchema,
   automationScenarioToolSettingDtoSchema,
   parseJsonDto,
@@ -28,6 +29,7 @@ interface AgentRow {
   updated_at: string;
   retrieval_limit: number;
   terminal_policy_json: string;
+  directory_policy_json: string;
 }
 
 interface ScenarioRow {
@@ -100,7 +102,8 @@ export class AutomationDataSource {
       .prepare(
         `SELECT id, name, description, instructions, text_model_id, status,
                 max_tool_calls,
-                timeout_seconds, runs, updated_at, retrieval_limit, terminal_policy_json
+                timeout_seconds, runs, updated_at, retrieval_limit, terminal_policy_json,
+                directory_policy_json
          FROM automation_agents
          ORDER BY updated_at DESC, name ASC`,
       )
@@ -150,7 +153,8 @@ export class AutomationDataSource {
       .prepare(
         `SELECT id, name, description, instructions, text_model_id, status,
                 max_tool_calls,
-                timeout_seconds, runs, updated_at, retrieval_limit, terminal_policy_json
+                timeout_seconds, runs, updated_at, retrieval_limit, terminal_policy_json,
+                directory_policy_json
          FROM automation_agents WHERE id = ?`,
       )
       .get(id) as AgentRow | undefined;
@@ -184,8 +188,9 @@ export class AutomationDataSource {
           `INSERT INTO automation_agents (
              id, name, description, instructions, text_model_id, status,
              max_tool_calls,
-             timeout_seconds, retrieval_limit, terminal_policy_json
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             timeout_seconds, retrieval_limit, terminal_policy_json,
+             directory_policy_json
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(id) DO UPDATE SET
              name = excluded.name,
              description = excluded.description,
@@ -196,6 +201,7 @@ export class AutomationDataSource {
              timeout_seconds = excluded.timeout_seconds,
              retrieval_limit = excluded.retrieval_limit,
              terminal_policy_json = excluded.terminal_policy_json,
+             directory_policy_json = excluded.directory_policy_json,
              updated_at = CURRENT_TIMESTAMP`,
         )
         .run(
@@ -209,6 +215,7 @@ export class AutomationDataSource {
           input.timeoutSeconds,
           input.retrievalLimit,
           JSON.stringify(input.terminalPolicy),
+          JSON.stringify(input.directoryPolicy),
         );
 
       this.database
@@ -379,6 +386,10 @@ export class AutomationDataSource {
       terminalPolicy: parseJsonDto(
         agentTerminalPolicyDtoSchema,
         row.terminal_policy_json,
+      ),
+      directoryPolicy: parseJsonDto(
+        agentDirectoryPolicyDtoSchema,
+        row.directory_policy_json,
       ),
       runs: row.runs,
       updatedAt: row.updated_at,

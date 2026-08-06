@@ -8,8 +8,10 @@
     "node": ">=26"
   },
   "scripts": {
+    "build:native": "npm --prefix ../crates/tools run build",
+    "predev": "npm run build:native",
     "dev": "electron-vite dev",
-    "build": "tsc -b && electron-vite build",
+    "build": "npm run build:native && tsc -b && electron-vite build",
     "preview": "electron-vite preview",
     "typecheck": "tsc -b --pretty false",
     "rebuild:native": "electron-rebuild -f -w better-sqlite3"

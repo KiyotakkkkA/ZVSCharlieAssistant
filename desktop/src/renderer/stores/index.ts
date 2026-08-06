@@ -5,4 +5,5 @@ export { chatStore } from "./ChatStore";
 export { tasksStore } from "./TasksStore";
 export { vectorStoreStore } from "./VectorStoreStore";
 export { terminalPolicyStore } from "./TerminalPolicyStore";
+export { directoryPolicyStore } from "./DirectoryPolicyStore";
 export type { VectorDocument, VectorStoreModel } from "./VectorStoreStore";

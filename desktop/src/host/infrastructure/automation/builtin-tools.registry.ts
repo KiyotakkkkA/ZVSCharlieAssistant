@@ -9,6 +9,56 @@ const ollamaApiKey = {
 
 export const BUILTIN_AUTOMATION_TOOLS: readonly AutomationTool[] = [
   {
+    id: "grep_search",
+    name: "Поиск файлов и папок",
+    description:
+      "Ищет файлы и директории по имени внутри разрешённых агенту путей.",
+    category: "Файловая система",
+    builtin: true,
+    enabled: true,
+    requiresConfirmation: false,
+    inputSchema: {
+      type: "object",
+      required: ["base", "query"],
+      properties: {
+        base: { type: "string", description: "Разрешённая базовая директория" },
+        query: { type: "string", description: "Имя или шаблон сущности" },
+        entityTypes: { type: "array", items: { type: "string" } },
+        matchMode: { enum: ["exact", "contains", "glob"] },
+        limit: { type: "integer", minimum: 1, maximum: 1000 },
+      },
+    },
+    outputSchema: { type: "object" },
+    secretRequirements: [],
+    secretBindings: [],
+  },
+  {
+    id: "regexp_search",
+    name: "Поиск по содержимому файлов",
+    description:
+      "Ищет текст или регулярное выражение в файле либо директории.",
+    category: "Файловая система",
+    builtin: true,
+    enabled: true,
+    requiresConfirmation: false,
+    inputSchema: {
+      type: "object",
+      required: ["base", "pattern"],
+      properties: {
+        base: { type: "string", description: "Разрешённая базовая директория" },
+        target: { type: "string", description: "Относительный файл или директория" },
+        pattern: { type: "string", description: "Текст или регулярное выражение" },
+        mode: { enum: ["regex", "literal"] },
+        include: { type: "array", items: { type: "string" } },
+        exclude: { type: "array", items: { type: "string" } },
+        limit: { type: "integer", minimum: 1, maximum: 1000 },
+      },
+    },
+    outputSchema: { type: "object" },
+    secretRequirements: [],
+    secretBindings: [],
+  },
+  {
     id: "cmd_exec",
     name: "PowerShell",
     description:
