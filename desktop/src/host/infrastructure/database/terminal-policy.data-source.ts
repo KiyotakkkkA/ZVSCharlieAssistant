@@ -58,7 +58,7 @@ export class TerminalPolicyDataSource {
       throw new Error("Некорректный таймаут по умолчанию");
     if (!Number.isInteger(input.maxTimeoutSeconds) || input.maxTimeoutSeconds < input.defaultTimeoutSeconds || input.maxTimeoutSeconds > 86400)
       throw new Error("Максимальный таймаут должен быть не меньше таймаута по умолчанию");
-    const forbidden = new Set(["invoke-expression", "start-process", "add-type", "new-object", "set-executionpolicy"]);
+    const forbidden = new Set(["invoke-expression", "add-type", "new-object", "set-executionpolicy"]);
     const allowedCommands = [...new Set(input.allowedCommands.map((item) => item.trim()).filter(Boolean))];
     for (const command of allowedCommands)
       if (!/^[A-Za-z]+-[A-Za-z]+$/.test(command) || forbidden.has(command.toLowerCase()))

@@ -1,5 +1,5 @@
 import type { AutomationTool } from "../../../ipc/contracts";
-import { ToolsIcon } from "../atoms";
+import { CardStatusBadge, ToolsIcon } from "../atoms";
 import { ControlButton } from "../atoms/buttons";
 
 interface AutomationToolCardProps {
@@ -9,7 +9,7 @@ interface AutomationToolCardProps {
 
 export function AutomationToolCard({ tool, onOpen }: AutomationToolCardProps) {
   return (
-    <article className="rounded-xl bg-main-800/30 p-5 ring-1 ring-main-700/40 transition-colors hover:bg-main-800/50 hover:ring-main-600">
+    <article className="relative rounded-xl bg-main-800/30 p-5 ring-1 ring-main-700/40 transition-colors hover:bg-main-800/50 hover:ring-main-600">
       <div className="flex items-start gap-4">
         <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-main-700/50 text-main-200">
           <ToolsIcon className="size-5" />
@@ -19,15 +19,6 @@ export function AutomationToolCard({ tool, onOpen }: AutomationToolCardProps) {
             <h2 className="truncate font-semibold text-main-100">
               {tool.name}
             </h2>
-            <span
-              className={
-                tool.enabled
-                  ? "text-xs text-success-light"
-                  : "text-xs text-main-500"
-              }
-            >
-              {tool.enabled ? "Доступен" : "Отключён"}
-            </span>
           </div>
           <p className="mt-1 truncate font-mono text-xs text-main-500">
             {tool.id}
@@ -51,6 +42,7 @@ export function AutomationToolCard({ tool, onOpen }: AutomationToolCardProps) {
             : "Без подтверждения"}
         </span>
       </div>
+      <CardStatusBadge status={tool.enabled ? "active" : "disabled"} />
     </article>
   );
 }

@@ -1,5 +1,11 @@
 import type { AutomationScenario } from "../../../ipc/contracts";
-import { ScriptIcon } from "../atoms";
+import {
+  BlockIcon,
+  CardStatusBadge,
+  CheckIcon,
+  FileClockIcon,
+  ScriptIcon,
+} from "../atoms";
 import { ControlButton } from "../atoms/buttons";
 
 interface AutomationScenarioCardProps {
@@ -8,19 +14,13 @@ interface AutomationScenarioCardProps {
   onDelete: (scenario: AutomationScenario) => void;
 }
 
-const statusLabels: Record<AutomationScenario["status"], string> = {
-  active: "Активен",
-  draft: "Черновик",
-  disabled: "Отключён",
-};
-
 export function AutomationScenarioCard({
   scenario,
   onEdit,
   onDelete,
 }: AutomationScenarioCardProps) {
   return (
-    <article className="rounded-xl bg-main-800/30 p-5 ring-1 ring-main-700/40 transition-colors hover:bg-main-800/50 hover:ring-main-600">
+    <article className="relative rounded-xl bg-main-800/30 p-5 ring-1 ring-main-700/40 transition-colors hover:bg-main-800/50 hover:ring-main-600">
       <div className="flex items-start gap-4">
         <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-main-700/50 text-main-200">
           <ScriptIcon className="size-5" />
@@ -30,9 +30,6 @@ export function AutomationScenarioCard({
             <h2 className="truncate font-semibold text-main-100">
               {scenario.name}
             </h2>
-            <span className="rounded-full bg-main-700/60 px-2 py-1 text-[10px] text-main-300">
-              {statusLabels[scenario.status]}
-            </span>
           </div>
           <p className="mt-2 line-clamp-2 text-sm leading-6 text-main-400">
             {scenario.description}
@@ -61,6 +58,7 @@ export function AutomationScenarioCard({
         </span>
         <span>{scenario.updatedAt}</span>
       </div>
+      <CardStatusBadge status={scenario.status} />
     </article>
   );
 }

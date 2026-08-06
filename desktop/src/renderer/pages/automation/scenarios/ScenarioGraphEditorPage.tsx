@@ -44,9 +44,7 @@ import {
 import { APP_PATHS } from "../../../app/routes";
 import { useHashRouter } from "../../../hooks";
 import { automationStore, vectorStoreStore } from "../../../stores";
-import type {
-  AutomationScenarioNodeKind as NodeKind,
-} from "../../../../ipc/contracts";
+import type { AutomationScenarioNodeKind as NodeKind } from "../../../../ipc/contracts";
 import { DangerModal } from "@renderer/components/organisms/modals";
 import { getScenarioEdgeKind } from "../../../../shared/scenario-ports";
 import {
@@ -172,12 +170,18 @@ export const ScenarioGraphEditorPage = observer(
     const scenario = automationStore.getScenario(scenarioId);
     const [nodes, setNodes] = useState<GraphNode[]>(() =>
       scenario?.graph.nodes.length
-        ? parseIpcDto(automationScenarioNodeDtoSchema.array(), scenario.graph.nodes)
+        ? parseIpcDto(
+            automationScenarioNodeDtoSchema.array(),
+            scenario.graph.nodes,
+          )
         : initialNodes,
     );
     const [edges, setEdges] = useState<GraphEdge[]>(() =>
       scenario
-        ? parseIpcDto(automationScenarioEdgeDtoSchema.array(), scenario.graph.edges)
+        ? parseIpcDto(
+            automationScenarioEdgeDtoSchema.array(),
+            scenario.graph.edges,
+          )
         : [],
     );
     const [selectedNodeId, setSelectedNodeId] = useState("orchestrator");
@@ -195,10 +199,16 @@ export const ScenarioGraphEditorPage = observer(
     useEffect(() => {
       if (!scenario) return;
       setNodes(
-        parseIpcDto(automationScenarioNodeDtoSchema.array(), scenario.graph.nodes),
+        parseIpcDto(
+          automationScenarioNodeDtoSchema.array(),
+          scenario.graph.nodes,
+        ),
       );
       setEdges(
-        parseIpcDto(automationScenarioEdgeDtoSchema.array(), scenario.graph.edges),
+        parseIpcDto(
+          automationScenarioEdgeDtoSchema.array(),
+          scenario.graph.edges,
+        ),
       );
       setSelectedNodeId(scenario.graph.nodes[0]?.id ?? "");
       setStatus(scenario.status);
@@ -528,7 +538,7 @@ export const ScenarioGraphEditorPage = observer(
                   rounded="rounded-full"
                   className="h-7 w-full border-0! bg-main-800/80 px-2.5 text-[11px] shadow-none ring-0! hover:bg-main-700"
                 />
-                <Select.Menu rounded="rounded-xl">
+                <Select.Menu rounded="rounded-3xl">
                   {scenarioStatusOptions.map((option) => (
                     <Select.Option key={option.value} {...option} />
                   ))}

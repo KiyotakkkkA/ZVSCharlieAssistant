@@ -1,3 +1,4 @@
 export * from "./icons";
-export { SecretOrientedSelect } from "./SecretOrientedSelect";
 export * from "./forms";
+export { SecretOrientedSelect } from "./SecretOrientedSelect";
+export { CardStatusBadge } from "./CardStatusBadge";

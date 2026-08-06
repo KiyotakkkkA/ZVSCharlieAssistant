@@ -1,5 +1,5 @@
 import type { AutomationSkill } from "../../../ipc/contracts";
-import { SkillIcon } from "../atoms";
+import { CardStatusBadge, SkillIcon } from "../atoms";
 import { ControlButton } from "../atoms/buttons";
 
 interface AutomationSkillCardProps {
@@ -8,19 +8,13 @@ interface AutomationSkillCardProps {
   onDelete?: (skill: AutomationSkill) => void;
 }
 
-const statusLabels: Record<AutomationSkill["status"], string> = {
-  active: "Активен",
-  draft: "Черновик",
-  disabled: "Отключён",
-};
-
 export function AutomationSkillCard({
   skill,
   onEdit,
   onDelete,
 }: AutomationSkillCardProps) {
   return (
-    <article className="rounded-xl bg-main-800/30 p-5 ring-1 ring-main-700/40 transition-colors hover:bg-main-800/50 hover:ring-main-600">
+    <article className="relative rounded-xl bg-main-800/30 p-5 ring-1 ring-main-700/40 transition-colors hover:bg-main-800/50 hover:ring-main-600">
       <div className="flex items-start gap-4">
         <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-main-700/50 text-main-200">
           <SkillIcon className="size-5" />
@@ -31,9 +25,6 @@ export function AutomationSkillCard({
             <h2 className="truncate font-semibold text-main-100">
               {skill.name}
             </h2>
-            <span className="shrink-0 rounded-full bg-main-700/60 px-2 py-1 text-[10px] text-main-300">
-              {statusLabels[skill.status]}
-            </span>
           </div>
           <p className="mt-1 truncate font-mono text-xs text-main-500">
             {skill.slug}
@@ -72,6 +63,7 @@ export function AutomationSkillCard({
         <span>·</span>
         <span>v{skill.version}</span>
       </div>
+      <CardStatusBadge status={skill.status} />
     </article>
   );
 }

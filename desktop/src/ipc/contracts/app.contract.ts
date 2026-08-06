@@ -1,6 +1,7 @@
 export const IPC_CHANNELS = {
   getAppInfo: "app:get-info",
   saveGeneratedArtifact: "app:save-generated-artifact",
+  selectDirectory: "app:select-directory",
 } as const;
 
 export interface AppInfo {
@@ -12,6 +13,7 @@ export interface AppInfo {
 export interface DesktopApi {
   getAppInfo(): Promise<AppInfo>;
   saveGeneratedArtifact(input: GeneratedArtifactInput): Promise<boolean>;
+  selectDirectory(): Promise<string | null>;
   secrets: import("./secrets.contract").SecretStorageApi;
   automation: import("./automation.contract").AutomationApi;
   textProviders: import("./text-provider.contract").TextProviderApi;

@@ -7,6 +7,15 @@ import {
   parseIpcDto,
   upsertTerminalPolicyDtoSchema,
 } from "../../shared/dto";
+import { TERMINAL_CAPABILITIES } from "../../shared/terminal-capabilities";
+
+const recommendedCapabilityIds = new Set([
+  "filesystem.browse",
+  "document.read",
+  "filesystem.create",
+  "filesystem.modify",
+  "system.inspect",
+]);
 
 export function registerTerminalPolicyHandlers(
   data: TerminalPolicyDataSource,
@@ -28,19 +37,11 @@ export function registerTerminalPolicyHandlers(
       maxTimeoutSeconds: 300,
       maxOutputBytes: 1_048_576,
       allowNetwork: false,
-      allowedCommands: [
-        "Get-ChildItem",
-        "Get-Content",
-        "Get-Item",
-        "Test-Path",
-        "Select-String",
-        "Measure-Object",
-        "Select-Object",
-        "Sort-Object",
-        "New-Item",
-        "Set-Content",
-        "Add-Content",
-      ],
+      allowedCommands: TERMINAL_CAPABILITIES.filter((capability) =>
+        recommendedCapabilityIds.has(capability.id),
+      ).flatMap((capability) =>
+        capability.commands.map((command) => command.name),
+      ),
       directoryGrants: [
         {
           path: app.getPath("documents"),

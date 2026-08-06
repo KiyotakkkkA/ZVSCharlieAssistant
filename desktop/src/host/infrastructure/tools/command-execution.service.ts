@@ -10,6 +10,7 @@ import type {
   TerminalPermission,
 } from "../../../shared/dto";
 import type { TerminalPolicyDataSource } from "../database/terminal-policy.data-source";
+import { getTerminalCommandDefinition } from "../../../shared/terminal-capabilities";
 
 type StartInput = {
   action: "start";
@@ -38,6 +39,8 @@ interface Session {
 }
 
 const permissionByCommand = (command: string): TerminalPermission => {
+  const definition = getTerminalCommandDefinition(command);
+  if (definition) return definition.permission;
   const value = command.toLowerCase();
   if (
     value.startsWith("get-") ||
@@ -98,6 +101,11 @@ export class CommandExecutionService {
     for (const command of commands)
       if (!effectiveCommands.has(command.toLowerCase()))
         throw new Error(`Команда ${command} не разрешена политикой`);
+    if (
+      !global.allowNetwork &&
+      commands.some((command) => getTerminalCommandDefinition(command)?.network)
+    )
+      throw new Error("Сетевой доступ отключён глобальной политикой");
 
     const grants = this.intersectGrants(
       global.directoryGrants,
@@ -122,7 +130,17 @@ export class CommandExecutionService {
       grants,
       requiredPermission,
     );
-    for (const path of this.absolutePaths(script)) {
+    const absolutePaths = this.absolutePaths(script);
+    if (
+      commands.some((command) =>
+        ["start-process", "invoke-item"].includes(command.toLowerCase()),
+      ) &&
+      absolutePaths.length === 0
+    )
+      throw new Error(
+        "Для запуска приложения или открытия документа требуется абсолютный разрешённый путь",
+      );
+    for (const path of absolutePaths) {
       this.assertPath(path, grants, requiredPermission);
     }
     const session: Session = {
@@ -214,7 +232,7 @@ export class CommandExecutionService {
 
   private parseCommands(script: string): string[] {
     if (
-      /\b(Invoke-Expression|Start-Process|Add-Type|New-Object|Set-ExecutionPolicy)\b|\$|::|--%|-EncodedCommand|\.\.|[{}<>]|\b(RunAs|Registry::|HKLM:|HKCU:|Cert:|WSMan:)\b/i.test(
+      /\b(Invoke-Expression|Add-Type|New-Object|Set-ExecutionPolicy)\b|\$|::|--%|-EncodedCommand|\.\.|[{}<>]|\b(RunAs|Registry::|HKLM:|HKCU:|Cert:|WSMan:)\b/i.test(
         script,
       )
     )

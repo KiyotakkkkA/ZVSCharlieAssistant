@@ -7,6 +7,7 @@ import {
   InputSmall,
   Modal,
   Select,
+  Switcher,
   useToasts,
 } from "@kiyotakkkka/zvs-uikit-lib";
 import type {
@@ -17,10 +18,15 @@ import type {
 import { automationStore, terminalPolicyStore } from "../../../stores";
 import { Field, ParameterLabel, TrashIcon } from "../../atoms";
 import { ControlButton, PrimaryButton } from "../../atoms/buttons";
+import { CompactEntitySelector } from "../../molecules";
 import {
   parseIpcDto,
   upsertTerminalPolicyDtoSchema,
 } from "../../../../shared/dto";
+import {
+  KNOWN_TERMINAL_COMMANDS,
+  TERMINAL_CAPABILITIES,
+} from "../../../../shared/terminal-capabilities";
 
 const permissions: Array<{ value: TerminalPermission; label: string }> = [
   { value: "read", label: "Чтение" },
@@ -30,15 +36,22 @@ const permissions: Array<{ value: TerminalPermission; label: string }> = [
   { value: "execute", label: "Запуск" },
 ];
 
+const knownCommands = new Set(
+  KNOWN_TERMINAL_COMMANDS.map((command) => command.toLowerCase()),
+);
+
 export const SettingsTerminalPolicyForm = observer(
   function SettingsTerminalPolicyForm() {
     const toasts = useToasts();
     const policy = terminalPolicyStore.policy;
     const [model, setModel] = useState<UpsertTerminalPolicyInput | null>(null);
     const [command, setCommand] = useState("");
-    const [directory, setDirectory] = useState("");
     const [recommendOpen, setRecommendOpen] = useState(false);
     const [recommendLoading, setRecommendLoading] = useState(false);
+    const [activeSection, setActiveSection] = useState<
+      "settings" | "permissions"
+    >("settings");
+    const [customCommandsEnabled, setCustomCommandsEnabled] = useState(false);
 
     useEffect(() => {
       if (policy) {
@@ -54,15 +67,14 @@ export const SettingsTerminalPolicyForm = observer(
     ) =>
       setModel((current) => (current ? { ...current, [key]: value } : current));
 
-    const addDirectory = () => {
-      const path = directory.trim();
+    const addDirectory = async () => {
+      const path = await window.desktop.selectDirectory();
       if (!path || model.directoryGrants.some((item) => item.path === path))
         return;
       update("directoryGrants", [
         ...model.directoryGrants,
         { path, recursive: true, permissions: ["read"] },
       ]);
-      setDirectory("");
     };
 
     const updateGrant = (index: number, grant: TerminalDirectoryGrant) =>
@@ -72,6 +84,52 @@ export const SettingsTerminalPolicyForm = observer(
           itemIndex === index ? grant : item,
         ),
       );
+
+    const customCommands = model.allowedCommands.filter(
+      (item) => !knownCommands.has(item.toLowerCase()),
+    );
+    const capabilityModel = Object.fromEntries(
+      TERMINAL_CAPABILITIES.map((capability) => [
+        capability.id,
+        capability.id === "powershell.custom"
+          ? customCommandsEnabled || customCommands.length > 0
+          : (capability.id !== "network.access" || model.allowNetwork) &&
+            capability.commands.every((command) =>
+              model.allowedCommands.some(
+                (allowed) =>
+                  allowed.toLowerCase() === command.name.toLowerCase(),
+              ),
+            ),
+      ]),
+    );
+    const applyCapabilityModel = (next: Record<string, boolean>) => {
+      const selectedCommands = TERMINAL_CAPABILITIES.filter(
+        (capability) =>
+          capability.id !== "powershell.custom" && next[capability.id],
+      ).flatMap((capability) =>
+        capability.commands.map((command) => command.name),
+      );
+      const customEnabled = Boolean(next["powershell.custom"]);
+      setCustomCommandsEnabled(customEnabled);
+      setModel((current) =>
+        current
+          ? {
+              ...current,
+              allowNetwork: Boolean(next["network.access"]),
+              allowedCommands: [
+                ...new Set([
+                  ...selectedCommands,
+                  ...(customEnabled ? customCommands : []),
+                ]),
+              ],
+            }
+          : current,
+      );
+    };
+    const selectedCapabilities = TERMINAL_CAPABILITIES.filter(
+      (capability) =>
+        capability.id !== "powershell.custom" && capabilityModel[capability.id],
+    );
 
     return (
       <form
@@ -85,7 +143,17 @@ export const SettingsTerminalPolicyForm = observer(
             .then(() => toasts.success({ title: "Успешно сохранено" }));
         }}
       >
-        <div className="flex justify-end">
+        <div className="flex items-center justify-between gap-3">
+          <Switcher
+            value={activeSection}
+            onChange={(value) =>
+              setActiveSection(value as "settings" | "permissions")
+            }
+            options={[
+              { value: "settings", label: "Настройка терминала" },
+              { value: "permissions", label: "Группы разрешений" },
+            ]}
+          />
           <Button
             type="button"
             variant="ghost"
@@ -96,292 +164,357 @@ export const SettingsTerminalPolicyForm = observer(
             Установить рекомендуемое
           </Button>
         </div>
-        <section className="grid gap-5 rounded-xl bg-main-800/20 p-5 ring-1 ring-main-700/35 xl:grid-cols-[220px_1fr]">
-          <div>
-            <h2 className="text-sm font-semibold text-main-100">Выполнение</h2>
-            <p className="mt-1 text-xs leading-5 text-main-500">
-              Базовые ограничения обязательны для всех агентов и сценариев.
-            </p>
-          </div>
-          <div className="space-y-4">
-            <InputCheckBox
-              checked={model.enabled}
-              onChange={(state) => update("enabled", state)}
-            >
-              <ParameterLabel description="Глобально включает cmd_exec. Пока параметр выключен, инструмент нельзя назначить агентам.">
-                Разрешить управляемое выполнение PowerShell
-              </ParameterLabel>
-            </InputCheckBox>
-            <Field
-              label={
-                <ParameterLabel description="Агент может потребовать больше подтверждений, но не меньше глобальной политики.">
-                  Режим подтверждения
-                </ParameterLabel>
-              }
-            >
-              <Select
-                value={model.confirmationMode}
-                onChange={(value) =>
-                  update(
-                    "confirmationMode",
-                    value as typeof model.confirmationMode,
-                  )
-                }
-                options={[
-                  { value: "always", label: "Подтверждать каждую команду" },
-                  { value: "risky", label: "Подтверждать рискованные" },
-                  { value: "policy", label: "По правилам политики" },
-                ]}
-              >
-                <Select.Trigger />
-                <Select.Menu>
-                  <Select.Option
-                    value="always"
-                    label="Подтверждать каждую команду"
-                  />
-                  <Select.Option
-                    value="risky"
-                    label="Подтверждать рискованные"
-                  />
-                  <Select.Option value="policy" label="По правилам политики" />
-                </Select.Menu>
-              </Select>
-            </Field>
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <Field
-                label={
-                  <ParameterLabel description="Максимальное количество одновременно работающих процессов PowerShell для всего приложения.">
-                    Параллельных сессий
-                  </ParameterLabel>
-                }
-              >
-                <InputSmall
-                  type="number"
-                  min={1}
-                  max={16}
-                  value={model.maxConcurrentSessions}
-                  onChange={(e) =>
-                    update("maxConcurrentSessions", Number(e.target.value))
-                  }
-                />
-              </Field>
-              <Field
-                label={
-                  <ParameterLabel description="Применяется, если агент не указал собственный таймаут команды.">
-                    Таймаут по умолчанию, сек.
-                  </ParameterLabel>
-                }
-              >
-                <InputSmall
-                  type="number"
-                  min={1}
-                  max={3600}
-                  value={model.defaultTimeoutSeconds}
-                  onChange={(e) =>
-                    update("defaultTimeoutSeconds", Number(e.target.value))
-                  }
-                />
-              </Field>
-              <Field
-                label={
-                  <ParameterLabel description="Верхняя граница таймаута, которую не сможет превысить настройка агента или аргумент инструмента.">
-                    Максимальный таймаут, сек.
-                  </ParameterLabel>
-                }
-              >
-                <InputSmall
-                  type="number"
-                  min={1}
-                  max={86400}
-                  value={model.maxTimeoutSeconds}
-                  onChange={(e) =>
-                    update("maxTimeoutSeconds", Number(e.target.value))
-                  }
-                />
-              </Field>
-              <Field
-                label={
-                  <ParameterLabel description="Максимальный объём stdout и stderr одной сессии. Более ранний вывод отбрасывается при превышении лимита.">
-                    Лимит вывода, байт
-                  </ParameterLabel>
-                }
-              >
-                <InputSmall
-                  type="number"
-                  min={4096}
-                  max={16777216}
-                  value={model.maxOutputBytes}
-                  onChange={(e) =>
-                    update("maxOutputBytes", Number(e.target.value))
-                  }
-                />
-              </Field>
-            </div>
-            <InputCheckBox
-              checked={model.allowNetwork}
-              onChange={(state) => update("allowNetwork", state)}
-            >
-              <ParameterLabel description="Резервирует возможность сетевого доступа для будущих разрешённых команд. Сам по себе параметр не разрешает сетевые cmdlet.">
-                Разрешить сетевой доступ
-              </ParameterLabel>
-            </InputCheckBox>
-          </div>
-        </section>
-
-        <section className="grid gap-5 rounded-xl bg-main-800/20 p-5 ring-1 ring-main-700/35 xl:grid-cols-[220px_1fr]">
-          <div>
-            <h2 className="text-sm font-semibold text-main-100">Команды</h2>
-            <p className="mt-1 text-xs leading-5 text-main-500">
-              Разрешаются канонические имена cmdlet. Всё остальное блокируется.
-            </p>
-          </div>
-          <div className="space-y-3">
-            <Field
-              label={
-                <ParameterLabel description="Укажите полное каноническое имя PowerShell cmdlet в формате Verb-Noun. Алиасы и исполняемые файлы не принимаются.">
-                  Разрешённая команда
-                </ParameterLabel>
-              }
-            >
-              <div className="flex gap-2">
-                <InputSmall
-                  value={command}
-                  onChange={(e) => setCommand(e.target.value)}
-                  placeholder="Например, Get-ChildItem"
-                />
-                <PrimaryButton
-                  type="button"
-                  variant="create"
-                  label="Добавить"
-                  onClick={() => {
-                    const value = command.trim();
-                    if (value && !model.allowedCommands.includes(value))
-                      update("allowedCommands", [
-                        ...model.allowedCommands,
-                        value,
-                      ]);
-                    setCommand("");
-                  }}
-                />
+        {activeSection === "settings" ? (
+          <>
+            <section className="grid gap-5 rounded-xl bg-main-800/20 p-5 ring-1 ring-main-700/35 xl:grid-cols-[220px_1fr]">
+              <div>
+                <h2 className="text-sm font-semibold text-main-100">
+                  Выполнение
+                </h2>
+                <p className="mt-1 text-xs leading-5 text-main-500">
+                  Базовые ограничения обязательны для всех агентов и сценариев.
+                </p>
               </div>
-            </Field>
-            <div className="flex flex-wrap gap-2">
-              {model.allowedCommands.map((item) => (
-                <button
-                  key={item}
-                  type="button"
-                  className="rounded-lg bg-main-700/45 px-3 py-2 text-xs text-main-200 hover:bg-main-700"
-                  onClick={() =>
-                    update(
-                      "allowedCommands",
-                      model.allowedCommands.filter((value) => value !== item),
-                    )
+              <div className="space-y-4">
+                <InputCheckBox
+                  checked={model.enabled}
+                  onChange={(state) => update("enabled", state)}
+                >
+                  <ParameterLabel description="Глобально включает cmd_exec. Пока параметр выключен, инструмент нельзя назначить агентам.">
+                    Разрешить управляемое выполнение PowerShell
+                  </ParameterLabel>
+                </InputCheckBox>
+                <Field
+                  label={
+                    <ParameterLabel description="Агент может потребовать больше подтверждений, но не меньше глобальной политики.">
+                      Режим подтверждения
+                    </ParameterLabel>
                   }
                 >
-                  {item} ×
-                </button>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="grid gap-5 rounded-xl bg-main-800/20 p-5 ring-1 ring-main-700/35 xl:grid-cols-[220px_1fr]">
-          <div>
-            <h2 className="text-sm font-semibold text-main-100">Директории</h2>
-            <p className="mt-1 text-xs leading-5 text-main-500">
-              Путь и разрешённые операции проверяются после нормализации.
-            </p>
-          </div>
-          <div className="space-y-3">
-            <Field
-              label={
-                <ParameterLabel description="Абсолютный путь Windows, внутри которого разрешено выполнение выбранных операций.">
-                  Разрешённая директория
-                </ParameterLabel>
-              }
-            >
-              <div className="flex gap-2">
-                <InputSmall
-                  value={directory}
-                  onChange={(e) => setDirectory(e.target.value)}
-                  placeholder="C:\\Projects"
-                />
-                <PrimaryButton
-                  type="button"
-                  variant="create"
-                  label="Добавить"
-                  onClick={addDirectory}
-                />
-              </div>
-            </Field>
-            {model.directoryGrants.map((grant, index) => (
-              <div
-                key={`${grant.path}-${index}`}
-                className="rounded-lg bg-main-800/35 p-4 ring-1 ring-main-700/35"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <span className="truncate text-sm font-medium text-main-100">
-                    {grant.path}
-                  </span>
-                  <ControlButton
-                    icon="trash"
-                    variant="delete"
-                    onClick={() =>
+                  <Select
+                    value={model.confirmationMode}
+                    onChange={(value) =>
                       update(
-                        "directoryGrants",
-                        model.directoryGrants.filter((_, i) => i !== index),
+                        "confirmationMode",
+                        value as typeof model.confirmationMode,
                       )
                     }
-                  />
-                </div>
-                <div className="mt-3 flex flex-wrap gap-4">
-                  {permissions.map((permission) => (
-                    <InputCheckBox
-                      key={permission.value}
-                      checked={grant.permissions.includes(permission.value)}
-                      onChange={(state) =>
-                        updateGrant(index, {
-                          ...grant,
-                          permissions: state
-                            ? [...grant.permissions, permission.value]
-                            : grant.permissions.filter(
-                                (item) => item !== permission.value,
-                              ),
-                        })
-                      }
-                    >
-                      <ParameterLabel
-                        description={`Разрешает операциям терминала использовать право «${permission.label.toLowerCase()}» внутри этой директории.`}
-                      >
-                        {permission.label}
+                    options={[
+                      { value: "always", label: "Подтверждать каждую команду" },
+                      { value: "risky", label: "Подтверждать рискованные" },
+                      { value: "policy", label: "По правилам политики" },
+                    ]}
+                  >
+                    <Select.Trigger />
+                    <Select.Menu>
+                      <Select.Option
+                        value="always"
+                        label="Подтверждать каждую команду"
+                      />
+                      <Select.Option
+                        value="risky"
+                        label="Подтверждать рискованные"
+                      />
+                      <Select.Option
+                        value="policy"
+                        label="По правилам политики"
+                      />
+                    </Select.Menu>
+                  </Select>
+                </Field>
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                  <Field
+                    label={
+                      <ParameterLabel description="Максимальное количество одновременно работающих процессов PowerShell для всего приложения.">
+                        Параллельных сессий
                       </ParameterLabel>
-                    </InputCheckBox>
-                  ))}
-                  <InputCheckBox
-                    checked={grant.recursive}
-                    onChange={(state) =>
-                      updateGrant(index, {
-                        ...grant,
-                        recursive: state,
-                      })
                     }
                   >
-                    <ParameterLabel description="Распространяет выбранные права на все вложенные директории и файлы.">
-                      Включая вложенные
-                    </ParameterLabel>
-                  </InputCheckBox>
+                    <InputSmall
+                      type="number"
+                      min={1}
+                      max={16}
+                      value={model.maxConcurrentSessions}
+                      onChange={(e) =>
+                        update("maxConcurrentSessions", Number(e.target.value))
+                      }
+                    />
+                  </Field>
+                  <Field
+                    label={
+                      <ParameterLabel description="Применяется, если агент не указал собственный таймаут команды.">
+                        Таймаут по умолчанию, сек.
+                      </ParameterLabel>
+                    }
+                  >
+                    <InputSmall
+                      type="number"
+                      min={1}
+                      max={3600}
+                      value={model.defaultTimeoutSeconds}
+                      onChange={(e) =>
+                        update("defaultTimeoutSeconds", Number(e.target.value))
+                      }
+                    />
+                  </Field>
+                  <Field
+                    label={
+                      <ParameterLabel description="Верхняя граница таймаута, которую не сможет превысить настройка агента или аргумент инструмента.">
+                        Максимальный таймаут, сек.
+                      </ParameterLabel>
+                    }
+                  >
+                    <InputSmall
+                      type="number"
+                      min={1}
+                      max={86400}
+                      value={model.maxTimeoutSeconds}
+                      onChange={(e) =>
+                        update("maxTimeoutSeconds", Number(e.target.value))
+                      }
+                    />
+                  </Field>
+                  <Field
+                    label={
+                      <ParameterLabel description="Максимальный объём stdout и stderr одной сессии. Более ранний вывод отбрасывается при превышении лимита.">
+                        Лимит вывода, байт
+                      </ParameterLabel>
+                    }
+                  >
+                    <InputSmall
+                      type="number"
+                      min={4096}
+                      max={16777216}
+                      value={model.maxOutputBytes}
+                      onChange={(e) =>
+                        update("maxOutputBytes", Number(e.target.value))
+                      }
+                    />
+                  </Field>
                 </div>
+                <InputCheckBox
+                  checked={model.allowNetwork}
+                  onChange={(state) => update("allowNetwork", state)}
+                >
+                  <ParameterLabel description="Резервирует возможность сетевого доступа для будущих разрешённых команд. Сам по себе параметр не разрешает сетевые cmdlet.">
+                    Разрешить сетевой доступ
+                  </ParameterLabel>
+                </InputCheckBox>
               </div>
-            ))}
-            <Alert
-              variant="warning"
-              title="Политика действует как верхняя граница"
-            >
-              Настройки конкретного агента смогут только исключать команды,
-              директории и права из этого списка.
-            </Alert>
-          </div>
-        </section>
+            </section>
+          </>
+        ) : (
+          <>
+            <section className="grid gap-5 rounded-xl bg-main-800/20 p-5 ring-1 ring-main-700/35 xl:grid-cols-[220px_1fr]">
+              <div>
+                <h2 className="text-sm font-semibold text-main-100">
+                  Разрешённые действия
+                </h2>
+                <p className="mt-1 text-xs leading-5 text-main-500">
+                  Выберите необходимые группы разрешений, а приложение само
+                  ограничит агенту доступ
+                </p>
+              </div>
+              <div className="space-y-3">
+                <CompactEntitySelector
+                  model={capabilityModel}
+                  onModelChange={applyCapabilityModel}
+                  searchPlaceholder="Найти разрешённое действие"
+                  items={TERMINAL_CAPABILITIES.map((capability) => ({
+                    id: capability.id,
+                    title: capability.title,
+                    description: capability.description,
+                    meta: capability.commands.length
+                      ? `${capability.commands.length} команд`
+                      : "Экспертный режим",
+                    group:
+                      capability.risk === "safe"
+                        ? "Безопасные действия"
+                        : capability.risk === "attention"
+                          ? "Требуют внимания"
+                          : "Опасные действия",
+                  }))}
+                />
+                {selectedCapabilities.length ? (
+                  <div className="space-y-2">
+                    {selectedCapabilities.map((capability) => (
+                      <details
+                        key={capability.id}
+                        className="rounded-lg bg-main-800/30 px-4 py-3 ring-1 ring-main-700/35"
+                      >
+                        <summary className="cursor-pointer select-none text-xs font-medium text-main-300 hover:text-main-100">
+                          {capability.title} · {capability.commands.length}{" "}
+                          команд
+                        </summary>
+                        <div className="mt-3 space-y-2 border-t border-main-700/35 pt-3">
+                          {capability.commands.map((item) => (
+                            <div
+                              key={item.name}
+                              className="grid gap-1 sm:grid-cols-[150px_1fr]"
+                            >
+                              <code className="text-xs text-primary-light">
+                                {item.name}
+                              </code>
+                              <span className="text-xs leading-5 text-main-500">
+                                {item.description}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </details>
+                    ))}
+                  </div>
+                ) : null}
+                {capabilityModel["powershell.custom"] ? (
+                  <div className="space-y-3 rounded-xl bg-danger-dark/10 p-4 ring-1 ring-danger-light/25">
+                    <Alert variant="warning" title="Экспертный режим">
+                      Произвольное выполнение не обходит защиту: укажите каждую
+                      команду отдельно. Запрещённые конструкции, пути и права
+                      продолжат проверяться перед запуском.
+                    </Alert>
+                    <Field
+                      label={
+                        <ParameterLabel description="Укажите полное каноническое имя PowerShell cmdlet в формате Verb-Noun. Алиасы и исполняемые файлы не принимаются.">
+                          Разрешённая команда
+                        </ParameterLabel>
+                      }
+                    >
+                      <div className="flex gap-2">
+                        <InputSmall
+                          value={command}
+                          onChange={(e) => setCommand(e.target.value)}
+                          placeholder="Например, Get-ChildItem"
+                        />
+                        <PrimaryButton
+                          type="button"
+                          variant="create"
+                          label="Добавить"
+                          onClick={() => {
+                            const value = command.trim();
+                            if (value && !model.allowedCommands.includes(value))
+                              update("allowedCommands", [
+                                ...model.allowedCommands,
+                                value,
+                              ]);
+                            setCommand("");
+                          }}
+                        />
+                      </div>
+                    </Field>
+                    <div className="flex flex-wrap gap-2">
+                      {customCommands.map((item) => (
+                        <button
+                          key={item}
+                          type="button"
+                          className="rounded-lg bg-main-700/45 px-3 py-2 text-xs text-main-200 hover:bg-main-700"
+                          onClick={() =>
+                            update(
+                              "allowedCommands",
+                              model.allowedCommands.filter(
+                                (value) => value !== item,
+                              ),
+                            )
+                          }
+                        >
+                          {item} ×
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            </section>
+
+            <section className="grid gap-5 rounded-xl bg-main-800/20 p-5 ring-1 ring-main-700/35 xl:grid-cols-[220px_1fr]">
+              <div>
+                <h2 className="text-sm font-semibold text-main-100">
+                  Директории
+                </h2>
+                <p className="mt-1 text-xs leading-5 text-main-500">
+                  Выберите по каким маршрутам сможет действовать агент
+                </p>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <div className="mt-2">
+                    <PrimaryButton
+                      type="button"
+                      variant="create"
+                      label="Выбрать директорию"
+                      onClick={() => void addDirectory()}
+                    />
+                  </div>
+                </div>
+                {model.directoryGrants.map((grant, index) => (
+                  <div
+                    key={`${grant.path}-${index}`}
+                    className="rounded-lg bg-main-800/35 p-4 ring-1 ring-main-700/35"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="truncate text-sm font-medium text-main-100">
+                        {grant.path}
+                      </span>
+                      <ControlButton
+                        icon="trash"
+                        variant="delete"
+                        onClick={() =>
+                          update(
+                            "directoryGrants",
+                            model.directoryGrants.filter((_, i) => i !== index),
+                          )
+                        }
+                      />
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-4">
+                      {permissions.map((permission) => (
+                        <InputCheckBox
+                          key={permission.value}
+                          checked={grant.permissions.includes(permission.value)}
+                          onChange={(state) =>
+                            updateGrant(index, {
+                              ...grant,
+                              permissions: state
+                                ? [...grant.permissions, permission.value]
+                                : grant.permissions.filter(
+                                    (item) => item !== permission.value,
+                                  ),
+                            })
+                          }
+                        >
+                          <ParameterLabel
+                            description={`Разрешает операциям терминала использовать право «${permission.label.toLowerCase()}» внутри этой директории.`}
+                          >
+                            {permission.label}
+                          </ParameterLabel>
+                        </InputCheckBox>
+                      ))}
+                      <InputCheckBox
+                        checked={grant.recursive}
+                        onChange={(state) =>
+                          updateGrant(index, {
+                            ...grant,
+                            recursive: state,
+                          })
+                        }
+                      >
+                        <ParameterLabel description="Распространяет выбранные права на все вложенные директории и файлы.">
+                          Включая вложенные
+                        </ParameterLabel>
+                      </InputCheckBox>
+                    </div>
+                  </div>
+                ))}
+                <Alert
+                  variant="warning"
+                  title="Политика действует как верхняя граница"
+                >
+                  Настройки конкретного агента смогут только исключать команды,
+                  директории и права из этого списка.
+                </Alert>
+              </div>
+            </section>
+          </>
+        )}
         <Modal
           open={recommendOpen}
           onClose={() => setRecommendOpen(false)}

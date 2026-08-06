@@ -62,6 +62,8 @@ export const desktopApi: DesktopApi = {
       IPC_CHANNELS.saveGeneratedArtifact,
       input,
     ) as Promise<boolean>,
+  selectDirectory: (): Promise<string | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.selectDirectory) as Promise<string | null>,
   tasks: {
     listAgentRuns: (): Promise<AgentTaskRun[]> =>
       ipcRenderer.invoke(TASKS_IPC_CHANNELS.listAgentRuns) as Promise<

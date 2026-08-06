@@ -1,4 +1,11 @@
-import { ClockIcon, GraphIcon } from "../atoms";
+import {
+  BlockIcon,
+  CardStatusBadge,
+  CheckIcon,
+  ClockIcon,
+  FileClockIcon,
+  GraphIcon,
+} from "../atoms";
 import { APP_PATHS } from "../../app/routes";
 import type { AutomationAgent } from "../../../ipc/contracts";
 import { useHashRouter } from "../../hooks";
@@ -16,7 +23,7 @@ export const AutomationAgentCard = ({
   const { goTo } = useHashRouter();
 
   return (
-    <article className="rounded-xl bg-main-800/30 p-5 ring-1 ring-main-700/40 transition-colors hover:bg-main-800/50 hover:ring-main-600">
+    <article className="relative rounded-xl bg-main-800/30 p-5 ring-1 ring-main-700/40 transition-colors hover:bg-main-800/50 hover:ring-main-600">
       <div className="flex items-start gap-4">
         <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-main-700/50 text-main-200">
           <GraphIcon className="size-5" />
@@ -24,7 +31,6 @@ export const AutomationAgentCard = ({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <h2 className="font-semibold text-main-100">{agent.name}</h2>
-            <StatusBadge status={agent.status} />
           </div>
           <p className="mt-2 text-sm leading-6 text-main-400">
             {agent.description}
@@ -58,21 +64,7 @@ export const AutomationAgentCard = ({
           </span>
         </div>
       </div>
+      <CardStatusBadge status={agent.status} />
     </article>
   );
 };
-
-function StatusBadge({ status }: { status: AutomationAgent["status"] }) {
-  const label =
-    status === "active"
-      ? "Активен"
-      : status === "draft"
-        ? "Черновик"
-        : "Отключён";
-
-  return (
-    <span className="rounded-full bg-main-700/60 px-2 py-1 text-[10px] text-main-300">
-      {label}
-    </span>
-  );
-}
