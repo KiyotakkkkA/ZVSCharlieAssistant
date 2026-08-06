@@ -6,12 +6,11 @@ import {
   Tabs,
   useToasts,
 } from "@kiyotakkkka/zvs-uikit-lib";
-import { APP_PATHS } from "../../../app/routes";
-import { MailIcon, TelegramIcon } from "../../../components/atoms";
+import { PrimaryButton } from "../../../components/atoms/buttons";
 import {
-  ControlButton,
-  PrimaryButton,
-} from "../../../components/atoms/buttons";
+  ProvidedEntityManageHeader,
+  ProvidedEntitySidebarCard,
+} from "../../../components/molecules";
 import { PageHeader } from "../../../components/organisms";
 import {
   SettingsIntegrationsBotsForm,
@@ -23,9 +22,9 @@ import type {
   IntegrationConnectionMetadata,
   IntegrationKind,
   IntegrationProfile,
-  IntegrationStatus,
 } from "../../../../shared/models/integration";
 import type { UpsertIntegrationProfileInput } from "../../../../shared/dto";
+import { ProvidedEntityStatus } from "src/shared/dto/shared";
 
 const emptyInput = (kind: IntegrationKind): UpsertIntegrationProfileInput => ({
   kind,
@@ -51,7 +50,7 @@ export const SettingsIntegrationsPage = observer(
     const [checking, setChecking] = useState(false);
     const [saving, setSaving] = useState(false);
     const [draftStatus, setDraftStatus] =
-      useState<IntegrationStatus>("unchecked");
+      useState<ProvidedEntityStatus>("unchecked");
     const [draftConnectionMetadata, setDraftConnectionMetadata] =
       useState<IntegrationConnectionMetadata>({});
     const [profileToDelete, setProfileToDelete] =
@@ -154,11 +153,8 @@ export const SettingsIntegrationsPage = observer(
       <section className="flex h-full min-h-0 flex-col p-4">
         <PageHeader
           title="Интеграции"
-          description="Переиспользуемые подключения для автоматических запусков сценариев. Секреты хранятся отдельно."
-          breadcrumbs={[
-            { label: "Настройки", to: APP_PATHS.settings.providers },
-            { label: "Интеграции" },
-          ]}
+          description="Переиспользуемые подключения для автоматических запусков сценариев."
+          breadcrumbs={[{ label: "Настройки" }, { label: "Интеграции" }]}
           footer={
             <Tabs
               value={tab}
@@ -182,31 +178,46 @@ export const SettingsIntegrationsPage = observer(
             onClick={createProfile}
           />
         </PageHeader>
-        <div className="grid min-h-0 flex-1 grid-cols-[280px_minmax(0,1fr)] gap-3 pt-4">
-          <aside className="min-h-0 rounded-xl bg-main-800/35 p-3">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-main-500">
+        <div className="flex min-h-0 flex-1 gap-3">
+          <aside className="flex w-80 shrink-0 flex-col overflow-hidden rounded-xl bg-main-800/25">
+            <div className="border-b border-main-700/35 px-4 py-3 text-xs font-semibold uppercase tracking-wider text-main-500">
               Подключения · {profiles.length + (selectedId === "draft" ? 1 : 0)}
-            </p>
-            <ScrollArea className="h-[calc(100%-2rem)]">
-              <div className="space-y-2">
-                {selectedId === "draft" ? (
-                  <ProfileButton
-                    profile={{
-                      kind: draft.kind,
-                      name: draft.name,
-                      status: draftStatus,
-                    }}
-                    active
-                    onClick={() => setSelectedId("draft")}
-                  />
-                ) : null}
+            </div>
+            <ScrollArea className="min-h-0 flex-1 p-2">
+              <div className="space-y-1.5">
+                <ProvidedEntitySidebarCard
+                  model={
+                    selectedId === "draft"
+                      ? {
+                          id: null,
+                          kind: draft.kind,
+                          name: draft.name,
+                          status: draftStatus,
+                        }
+                      : null
+                  }
+                  description={
+                    draft.kind === "telegram_bot"
+                      ? "Telegram · Bot API"
+                      : "Почта · IMAP"
+                  }
+                  active={selectedId === "draft"}
+                  onClick={() => setSelectedId("draft")}
+                  deleteTitle="Удалить интеграцию"
+                />
                 {profiles.map((profile) => (
-                  <ProfileButton
+                  <ProvidedEntitySidebarCard
                     key={profile.id}
-                    profile={profile}
+                    model={profile}
+                    description={
+                      profile.kind === "telegram_bot"
+                        ? "Telegram · Bot API"
+                        : "Почта · IMAP"
+                    }
                     active={profile.id === selectedId}
                     onClick={() => setSelectedId(profile.id)}
                     onDelete={() => setProfileToDelete(profile)}
+                    deleteTitle="Удалить интеграцию"
                   />
                 ))}
                 {!profiles.length && selectedId !== "draft" ? (
@@ -217,52 +228,27 @@ export const SettingsIntegrationsPage = observer(
               </div>
             </ScrollArea>
           </aside>
-          <ScrollArea className="min-h-0 rounded-xl bg-main-800/25">
-            <div className="space-y-5 p-5">
-              <div className="flex items-center justify-between border-b border-main-700 pb-4">
-                <div>
-                  <h2 className="font-semibold text-main-100">{draft.name}</h2>
-                  <p className="text-xs text-main-500">
-                    {draft.kind === "telegram_bot"
-                      ? "Telegram Bot API"
-                      : "Входящая почта по IMAP"}
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="secondary"
-                    rounded="rounded-full"
-                    className="px-2"
-                    loading={checking}
-                    loadingText="Проверка…"
-                    disabled={checking}
-                    onClick={() => void test()}
-                  >
-                    Проверить подключение
-                  </Button>
-                  <PrimaryButton
-                    variant="save"
-                    label="Сохранить"
-                    loading={saving}
-                    disabled={saving}
-                    onClick={() => void save()}
-                  />
-                </div>
-              </div>
-              {draft.kind === "telegram_bot" ? (
-                <SettingsIntegrationsBotsForm
-                  value={draft}
-                  onChange={updateDraft}
-                  connectionMetadata={draftConnectionMetadata}
-                />
-              ) : (
-                <SettingsIntegrationsMailForm
-                  value={draft}
-                  onChange={updateDraft}
-                />
-              )}
-            </div>
-          </ScrollArea>
+          <div className="space-y-5 p-5 bg-main-800/40 rounded-xl w-full">
+            <ProvidedEntityManageHeader
+              model={draft}
+              onTest={test}
+              onSave={save}
+              saving={saving}
+              checking={checking}
+            />
+            {draft.kind === "telegram_bot" ? (
+              <SettingsIntegrationsBotsForm
+                value={draft}
+                onChange={updateDraft}
+                connectionMetadata={draftConnectionMetadata}
+              />
+            ) : (
+              <SettingsIntegrationsMailForm
+                value={draft}
+                onChange={updateDraft}
+              />
+            )}
+          </div>
         </div>
         <DangerModal
           open={profileToDelete !== null}
@@ -289,66 +275,3 @@ export const SettingsIntegrationsPage = observer(
     );
   },
 );
-
-function ProfileButton({
-  profile,
-  active,
-  onClick,
-  onDelete,
-}: {
-  profile: Pick<IntegrationProfile, "kind" | "name" | "status">;
-  active: boolean;
-  onClick(): void;
-  onDelete?(): void;
-}) {
-  const isTelegram = profile.kind === "telegram_bot";
-  const status =
-    profile.status === "connected"
-      ? { label: "Подключено", className: "text-success-light" }
-      : profile.status === "error"
-        ? { label: "Ошибка подключения", className: "text-danger-light" }
-        : profile.status === "disabled"
-          ? { label: "Отключено", className: "text-main-500" }
-          : { label: "Не проверено", className: "text-main-500" };
-
-  return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={onClick}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") onClick();
-      }}
-      className={`flex w-full items-start gap-3 rounded-xl p-3 text-left transition-colors ${active ? "bg-main-700/65" : "hover:bg-main-700/35"}`}
-    >
-      <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent-medium/10 text-accent-light">
-        {isTelegram ? (
-          <TelegramIcon className="size-5" />
-        ) : (
-          <MailIcon className="size-5" />
-        )}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-medium text-main-100">
-          {profile.name}
-        </span>
-        <span className="mt-1 block text-xs text-main-500">
-          {isTelegram ? "Telegram · Bot API" : "Почта · IMAP"}
-        </span>
-        <span className={`mt-2 block text-[10px] ${status.className}`}>
-          {status.label}
-        </span>
-      </span>
-      {onDelete ? (
-        <span onClick={(event) => event.stopPropagation()}>
-          <ControlButton
-            icon="trash"
-            variant="delete"
-            title="Удалить интеграцию"
-            onClick={onDelete}
-          />
-        </span>
-      ) : null}
-    </div>
-  );
-}

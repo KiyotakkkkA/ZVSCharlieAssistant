@@ -14,6 +14,7 @@ import {
   TasksIcon,
   ToolsIcon,
   PolicyIcon,
+  TransitConnectionIcon,
 } from "../components/atoms";
 
 export const APP_PATHS = {
@@ -144,7 +145,7 @@ export const NAVIGATION_ROUTES: readonly NavigationRoute[] = [
         id: "settings-integrations",
         label: "Интеграции",
         path: APP_PATHS.settings.integrations,
-        icon: ToolsIcon,
+        icon: TransitConnectionIcon,
       },
     ],
   },

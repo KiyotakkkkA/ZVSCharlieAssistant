@@ -1,12 +1,6 @@
 import { z } from "zod";
 
 export const integrationKindSchema = z.enum(["telegram_bot", "email_imap"]);
-export const integrationStatusSchema = z.enum([
-  "unchecked",
-  "connected",
-  "error",
-  "disabled",
-]);
 
 export const upsertIntegrationProfileDtoSchema = z.object({
   id: z.int().positive().optional(),
@@ -25,7 +19,6 @@ export const upsertIntegrationProfileDtoSchema = z.object({
 });
 
 export type IntegrationKind = z.infer<typeof integrationKindSchema>;
-export type IntegrationStatus = z.infer<typeof integrationStatusSchema>;
 export type UpsertIntegrationProfileInput = z.infer<
   typeof upsertIntegrationProfileDtoSchema
 >;

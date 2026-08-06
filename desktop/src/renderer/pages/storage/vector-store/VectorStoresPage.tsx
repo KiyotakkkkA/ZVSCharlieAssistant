@@ -7,6 +7,7 @@ import { PageHeader } from "../../../components/organisms";
 import { vectorStoreStore, type VectorStoreModel } from "../../../stores";
 import { StorageVecdbManageForm } from "@renderer/components/organisms/forms";
 import { DangerModal } from "@renderer/components/organisms/modals";
+import { ProvidedEntitySidebarCard } from "@renderer/components/molecules";
 
 export const VectorStoresPage = observer(function VectorStoresPage() {
   const store = vectorStoreStore;
@@ -52,38 +53,24 @@ export const VectorStoresPage = observer(function VectorStoresPage() {
           <ScrollArea className="min-h-0 flex-1 p-2">
             <div className="space-y-1.5">
               {store.stores.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
+                <ProvidedEntitySidebarCard
+                  model={{ ...item, kind: "vecstore" }}
+                  description={`
+                      ${documentCounts.get(item.id) ?? 0} документов
+                    `}
+                  active={item.id === store.selectedStoreId}
                   onClick={() => {
                     store.selectedStoreId = item.id;
                   }}
-                  className={`flex w-full items-start gap-3 rounded-xl p-3 text-left transition-colors ${item.id === store.selectedStoreId ? "bg-main-700/65" : "hover:bg-main-700/35"}`}
-                >
-                  <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent-medium/10 text-accent-light">
-                    <StorageIcon className="size-5" />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium text-main-100">
-                      {item.name}
-                    </span>
-                    <span className="mt-1 block text-xs text-main-500">
-                      {documentCounts.get(item.id) ?? 0} документов
-                    </span>
-                    <Status status={item.status} />
-                  </span>
-                </button>
+                  onDelete={() => setStoreToDelete(item)}
+                />
               ))}
             </div>
           </ScrollArea>
         </aside>
         <div className="min-h-0 min-w-0 flex-1 overflow-hidden rounded-xl bg-main-800/40">
           {selected ? (
-            <StorageVecdbManageForm
-              key={selected.id}
-              model={selected}
-              onDelete={() => setStoreToDelete(selected)}
-            />
+            <StorageVecdbManageForm key={selected.id} model={selected} />
           ) : (
             <div className="grid h-full place-items-center">
               <EmptyState

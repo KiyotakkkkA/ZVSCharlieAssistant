@@ -17,3 +17,5 @@ export {
   scenarioNodeVariants,
   type ScenarioNodeVariant,
 } from "./ScenarioNodeCard";
+export { ProvidedEntitySidebarCard } from "./ProvidedEntitySidebarCard";
+export { ProvidedEntityManageHeader } from "./ProvidedEntityManageHeader";

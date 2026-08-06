@@ -7,47 +7,21 @@ import {
   Tabs,
   useToasts,
 } from "@kiyotakkkka/zvs-uikit-lib";
-import {
-  OllamaIcon,
-  OpenrouterIcon,
-  RobotIcon,
-} from "../../../components/atoms";
-import {
-  ControlButton,
-  PrimaryButton,
-} from "../../../components/atoms/buttons";
+import { RobotIcon } from "../../../components/atoms";
+import { PrimaryButton } from "../../../components/atoms/buttons";
 
 import type { TextProviderType } from "../../../../shared/dto";
 import { textProviderStore } from "../../../stores";
 import { PageHeader } from "@renderer/components/organisms";
-import {
-  ProviderStatus,
-  SettingsProviderDraft,
-  SettingsProviderManageForm,
-} from "@renderer/components/organisms/forms";
+import { SettingsProviderManageForm } from "@renderer/components/organisms/forms";
 import { DangerModal } from "@renderer/components/organisms/modals";
-
-const ICONS = {
-  ollama: OllamaIcon,
-  openrouter: OpenrouterIcon,
-} as const;
+import { SettingsProviderDraft } from "@renderer/components/organisms/forms/settings/SettingsProviderManageForm";
+import { ProvidedEntitySidebarCard } from "@renderer/components/molecules";
 
 const PROVIDER_LABELS = {
   ollama: "Ollama",
   openrouter: "OpenRouter",
 } as const;
-
-const statusMeta: Record<ProviderStatus, { label: string; className: string }> =
-  {
-    connected: { label: "Проверен", className: "text-success-light" },
-    unchecked: { label: "Не проверен", className: "text-main-500" },
-    error: { label: "Ошибка", className: "text-danger-light" },
-  };
-
-const IconResolver = (icon: keyof typeof ICONS) => {
-  const IconComponent = ICONS[icon];
-  return <IconComponent className="size-5" />;
-};
 
 export const SettingsProvidersPage = observer(function SettingsProvidersPage() {
   const toasts = useToasts();
@@ -237,39 +211,16 @@ export const SettingsProvidersPage = observer(function SettingsProvidersPage() {
           <ScrollArea className="min-h-0 flex-1 p-2">
             <div className="space-y-1.5">
               {visible.map((provider) => (
-                <div
+                <ProvidedEntitySidebarCard
                   key={provider.id ?? "draft"}
-                  role="button"
-                  tabIndex={0}
+                  model={provider}
+                  description={provider.models.length + " моделей"}
+                  active={
+                    provider.id === (selectedId === "draft" ? null : selectedId)
+                  }
                   onClick={() => setSelectedId(provider.id ?? "draft")}
-                  className={`flex items-start gap-3 rounded-xl p-3 transition-colors ${provider.id === (selectedId === "draft" ? null : selectedId) ? "bg-main-700/65" : "hover:bg-main-700/35"}`}
-                >
-                  <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent-medium/10 text-accent-light">
-                    {IconResolver(provider.kind)}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium text-main-100">
-                      {provider.name}
-                    </span>
-                    <span className="mt-1 block text-xs text-main-500">
-                      {PROVIDER_LABELS[provider.kind]} ·{" "}
-                      {provider.models.length} моделей
-                    </span>
-                    <span
-                      className={`mt-2 block text-[10px] ${statusMeta[provider.status].className}`}
-                    >
-                      {statusMeta[provider.status].label}
-                    </span>
-                  </span>
-                  {provider.id !== null ? (
-                    <ControlButton
-                      icon="trash"
-                      variant="delete"
-                      title="Удалить провайдера"
-                      onClick={() => setProviderToDelete(provider)}
-                    />
-                  ) : null}
-                </div>
+                  onDelete={() => setProviderToDelete(provider)}
+                />
               ))}
             </div>
           </ScrollArea>

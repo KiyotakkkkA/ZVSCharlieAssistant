@@ -1,6 +1,6 @@
 import { InputCheckSlided, InputSmall } from "@kiyotakkkka/zvs-uikit-lib";
-import type { UpsertIntegrationProfileInput } from "../../../../shared/dto";
-import { Field, ParameterLabel, SecretOrientedSelect } from "../../atoms";
+import type { UpsertIntegrationProfileInput } from "../../../../../shared/dto";
+import { Field, ParameterLabel, SecretOrientedSelect } from "../../../atoms";
 
 interface SettingsIntegrationsMailFormProps {
   value: UpsertIntegrationProfileInput;
@@ -18,7 +18,7 @@ export function SettingsIntegrationsMailForm({
   ) => patch({ config: { ...value.config, ...changes } });
 
   return (
-    <div className="grid grid-cols-2 gap-4 rounded-xl bg-main-800/35 p-4">
+    <div className="grid grid-cols-2 gap-4 rounded-xl bg-main-800/40 p-4">
       <Field
         label={
           <ParameterLabel description="Название подключения в списке интеграций и настройках триггеров сценария.">

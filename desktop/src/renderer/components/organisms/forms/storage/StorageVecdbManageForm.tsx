@@ -19,26 +19,25 @@ import {
   ParameterLabel,
   SearchIcon,
   StorageIcon,
-} from "../../atoms";
-import { ControlButton } from "../../atoms/buttons";
-import { DangerModal } from "../modals";
+} from "../../../atoms";
+import { ControlButton } from "../../../atoms/buttons";
+import { DangerModal } from "../../modals";
 import {
   textProviderStore,
   vectorStoreStore,
   type VectorDocument,
   type VectorStoreModel,
-} from "../../../stores";
-import type { VectorSearchResultItem } from "../../../../ipc/contracts";
+} from "../../../../stores";
+import type { VectorSearchResultItem } from "../../../../../ipc/contracts";
+import { ProvidedEntityManageHeader } from "@renderer/components/molecules";
 
 type DetailTab = "documents" | "settings" | "search";
 interface StorageVecdbManageFormProps {
   model: VectorStoreModel;
-  onDelete: () => void;
 }
 
 export const StorageVecdbManageForm = observer(function StorageVecdbManageForm({
   model,
-  onDelete,
 }: StorageVecdbManageFormProps) {
   const toasts = useToasts();
   const [tab, setTab] = useState<DetailTab>("documents");
@@ -78,28 +77,11 @@ export const StorageVecdbManageForm = observer(function StorageVecdbManageForm({
   };
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <header className="shrink-0 border-b border-main-700/35 px-5 pt-5">
-        <div className="flex items-start justify-between gap-4 pb-4">
-          <div className="flex min-w-0 items-center gap-3">
-            <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-accent-medium/10 text-accent-light">
-              <StorageIcon className="size-5" />
-            </span>
-            <div className="min-w-0">
-              <h2 className="truncate text-lg font-semibold text-main-50">
-                {model.name}
-              </h2>
-              <p className="mt-1 truncate text-xs text-main-500">
-                {model.description || "Описание не задано"}
-              </p>
-            </div>
-          </div>
-          <ControlButton
-            icon="trash"
-            variant="delete"
-            title="Удалить хранилище"
-            onClick={onDelete}
-          />
-        </div>
+      <header className="shrink-0 px-5 pt-5">
+        <ProvidedEntityManageHeader
+          model={{ ...model, kind: "vecstore" }}
+          description={model.description || "Описание не задано"}
+        />
         <Tabs
           value={tab}
           onChange={(value) => setTab(value as DetailTab)}

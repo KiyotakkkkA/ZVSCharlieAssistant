@@ -1,13 +1,15 @@
 import type {
   IntegrationKind,
-  IntegrationStatus,
   UpsertIntegrationProfileInput,
 } from "../dto/integration.dto";
+import { ProvidedEntityStatus } from "../dto/shared";
 
-export interface IntegrationProfile
-  extends Omit<UpsertIntegrationProfileInput, "id"> {
+export interface IntegrationProfile extends Omit<
+  UpsertIntegrationProfileInput,
+  "id"
+> {
   id: number;
-  status: IntegrationStatus;
+  status: ProvidedEntityStatus;
   checkedAt: string | null;
   lastError: string | null;
   connectionMetadata: IntegrationConnectionMetadata;
@@ -36,4 +38,4 @@ export interface IntegrationConnectionMetadata {
   };
 }
 
-export type { IntegrationKind, IntegrationStatus };
+export type { IntegrationKind };

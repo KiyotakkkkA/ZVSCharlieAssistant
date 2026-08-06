@@ -1,22 +1,18 @@
 import { useEffect, useState } from "react";
 import { observer } from "mobx-react-lite";
-import {
-  Alert,
-  InputCheckBox,
-  useToasts,
-} from "@kiyotakkkka/zvs-uikit-lib";
+import { Alert, InputCheckBox, useToasts } from "@kiyotakkkka/zvs-uikit-lib";
 import type {
   DirectoryGrant,
   DirectoryPermission,
   UpsertDirectoryPolicyInput,
-} from "../../../../shared/dto";
-import { automationStore, directoryPolicyStore } from "../../../stores";
-import { ParameterLabel } from "../../atoms";
-import { ControlButton, PrimaryButton } from "../../atoms/buttons";
+} from "../../../../../shared/dto";
+import { automationStore, directoryPolicyStore } from "../../../../stores";
+import { ParameterLabel } from "../../../atoms";
+import { ControlButton, PrimaryButton } from "../../../atoms/buttons";
 import {
   parseIpcDto,
   upsertDirectoryPolicyDtoSchema,
-} from "../../../../shared/dto";
+} from "../../../../../shared/dto";
 
 const permissions: Array<{ value: DirectoryPermission; label: string }> = [
   { value: "read", label: "Чтение" },
@@ -48,8 +44,7 @@ export const SettingsDirectoryPolicyForm = observer(
 
     const addDirectory = async () => {
       const path = await window.desktop.selectDirectory();
-      if (!path || model.grants.some((item) => item.path === path))
-        return;
+      if (!path || model.grants.some((item) => item.path === path)) return;
       update("grants", [
         ...model.grants,
         { path, recursive: true, permissions: ["read"] },
@@ -157,8 +152,8 @@ export const SettingsDirectoryPolicyForm = observer(
               variant="warning"
               title="Политика действует как верхняя граница"
             >
-              Настройки конкретного агента смогут только исключать директории
-              и права из этого списка.
+              Настройки конкретного агента смогут только исключать директории и
+              права из этого списка.
             </Alert>
           </div>
         </section>

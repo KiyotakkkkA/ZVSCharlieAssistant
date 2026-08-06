@@ -8,21 +8,21 @@ import {
   Select,
   Tabs,
 } from "@kiyotakkkka/zvs-uikit-lib";
-import type { AutomationAgent } from "../../../../ipc/contracts";
+import type { AutomationAgent } from "../../../../../ipc/contracts";
 import type {
   AutomationStatus,
   UpsertAutomationAgentInput,
-} from "../../../../shared/dto";
+} from "../../../../../shared/dto";
 import {
   automationStore,
   textProviderStore,
   vectorStoreStore,
   terminalPolicyStore,
   directoryPolicyStore,
-} from "../../../stores";
-import { Field } from "../../atoms";
-import { PrimaryButton } from "../../atoms/buttons";
-import { CompactEntitySelector } from "../../molecules";
+} from "../../../../stores";
+import { Field } from "../../../atoms";
+import { PrimaryButton } from "../../../atoms/buttons";
+import { CompactEntitySelector } from "../../../molecules";
 
 interface AutomationAgentManageFormProps {
   model?: AutomationAgent;

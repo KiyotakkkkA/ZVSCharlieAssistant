@@ -8,8 +8,8 @@ import {
 import type {
   SecretCategory,
   SecretEntity,
-} from "../../../../ipc/contracts";
-import type { UpsertSecretInput } from "../../../../shared/dto";
+} from "../../../../../ipc/contracts";
+import type { UpsertSecretInput } from "../../../../../shared/dto";
 import { PrimaryButton } from "@renderer/components/atoms/buttons";
 
 interface StorageSecretManageFormProps {

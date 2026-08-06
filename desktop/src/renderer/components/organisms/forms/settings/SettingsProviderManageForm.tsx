@@ -10,15 +10,13 @@ import {
   Select,
   useToasts,
 } from "@kiyotakkkka/zvs-uikit-lib";
-import type {
-  TextProviderLimits,
-} from "../../../../shared/dto";
-import type { TextProviderModelInfo } from "../../../../shared/models/text-provider";
+import type { TextProviderLimits } from "../../../../../shared/dto";
+import type { TextProviderModelInfo } from "../../../../../shared/models/text-provider";
 import type {
   TextProviderGenerationSettings,
   TextProviderKind,
   TextProviderType,
-} from "../../../../shared/dto";
+} from "../../../../../shared/dto";
 import {
   RefreshIcon,
   SecretOrientedSelect,
@@ -27,12 +25,13 @@ import {
   OllamaIcon,
   OpenrouterIcon,
   ParameterLabel,
-} from "../../atoms";
+} from "../../../atoms";
 import {
+  ProvidedEntityManageHeader,
   SettingsProviderOllamaModelCard,
   SettingsProviderOpenrouterModelCard,
-} from "../../molecules";
-import { textProviderStore } from "../../../stores";
+} from "../../../molecules";
+import { textProviderStore } from "../../../../stores";
 import { PrimaryButton } from "@renderer/components/atoms/buttons";
 
 const API_KEYS_CATEGORY_ID = 1;
@@ -152,55 +151,20 @@ export function SettingsProviderManageForm({
   return (
     <ScrollArea className="min-h-0 min-w-0 flex-1 rounded-xl bg-main-800/40">
       <div className="p-5">
-        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-main-700/35 pb-5">
-          <div className="flex items-center gap-3">
-            <span className="grid size-11 place-items-center rounded-xl bg-accent-medium/10 text-accent-light">
-              {IconResolver(model.kind)}
-            </span>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg font-semibold text-main-50">
-                  {model.name}
-                </h2>
-                <Badge
-                  rounded="rounded-full"
-                  className="bg-main-700/60 text-main-300"
-                >
-                  {PROVIDER_LABELS[model.kind]}
-                </Badge>
-              </div>
-              <p className="mt-1 text-xs text-main-500">
-                {model.checkedAt
-                  ? `Проверен ${new Date(model.checkedAt).toLocaleTimeString("ru-RU")}`
-                  : "Подключение ещё не проверено"}
-              </p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              variant="secondary"
-              rounded="rounded-full"
-              className="px-4"
-              loading={checking}
-              loadingText="Проверка…"
-              disabled={
-                !model.baseUrl.trim() ||
-                (model.kind === "openrouter" && !model.apiKeySecretId) ||
-                checking
-              }
-              onClick={() => void onTestConnection()}
-            >
-              Проверить подключение
-            </Button>
-            <PrimaryButton
-              variant="save"
-              loading={saving}
-              label="Сохранить"
-              disabled={!canSave || saving}
-              onClick={() => void save()}
-            />
-          </div>
-        </div>
+        <ProvidedEntityManageHeader
+          model={model}
+          description={
+            model.checkedAt
+              ? `Проверен ${new Date(model.checkedAt).toLocaleTimeString("ru-RU")}`
+              : "Подключение ещё не проверено"
+          }
+          canTest={!!model.baseUrl.trim()}
+          canSave={canSave}
+          onTest={onTestConnection}
+          onSave={save}
+          saving={saving}
+          checking={checking}
+        />
         <div className="mt-5 grid gap-5 xl:grid-cols-[220px_minmax(0,1fr)]">
           <Lead
             title="Подключение"
@@ -268,7 +232,6 @@ export function SettingsProviderManageForm({
                 searchable
                 searchPlaceholder="Найти ключ"
                 className="w-full"
-                triggerClassName="w-full"
                 menuWidth="auto"
               />
             </Field>
@@ -490,19 +453,19 @@ function OpenRouterLimits({ limits }: { limits: TextProviderLimits }) {
   return (
     <div className="md:col-span-2 grid gap-3 rounded-xl bg-main-700/20 p-4 sm:grid-cols-3">
       <div>
-        <p className="text-[11px] text-main-500">Остаток лимита</p>
+        <p className="text-[14px] text-main-500">Остаток лимита</p>
         <p className="mt-1 text-base font-semibold text-accent-light">
           {money(limits.limitRemaining)}
         </p>
       </div>
       <div>
-        <p className="text-[11px] text-main-500">Использовано</p>
+        <p className="text-[14px] text-main-500">Использовано</p>
         <p className="mt-1 text-base font-semibold text-main-100">
           {money(limits.usage)}
         </p>
       </div>
       <div>
-        <p className="text-[11px] text-main-500">Период сброса</p>
+        <p className="text-[14px] text-main-500">Период сброса</p>
         <p className="mt-1 text-sm font-medium text-main-200">
           {limits.limitReset ?? "Не задан"}
         </p>

@@ -18,10 +18,7 @@ export const SettingsPoliciesPage = observer(function SettingsPoliciesPage() {
       <PageHeader
         title="Политики"
         description="Глобальные границы доступа для агентов, сценариев и системных инструментов."
-        breadcrumbs={[
-          { label: "Настройки", to: APP_PATHS.settings.providers },
-          { label: "Политики" },
-        ]}
+        breadcrumbs={[{ label: "Настройки" }, { label: "Политики" }]}
         footer={
           <Tabs
             value={currentTab}

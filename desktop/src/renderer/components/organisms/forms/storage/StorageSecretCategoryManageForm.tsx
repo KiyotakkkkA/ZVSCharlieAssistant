@@ -1,9 +1,7 @@
 import { useEffect, useState, type SubmitEvent } from "react";
 import { Button, InputSmall, useToasts } from "@kiyotakkkka/zvs-uikit-lib";
-import type {
-  SecretCategory,
-} from "../../../../ipc/contracts";
-import type { UpsertSecretCategoryInput } from "../../../../shared/dto";
+import type { SecretCategory } from "../../../../../ipc/contracts";
+import type { UpsertSecretCategoryInput } from "../../../../../shared/dto";
 import { PrimaryButton } from "@renderer/components/atoms/buttons";
 
 interface StorageSecretCategoryManageFormProps {
