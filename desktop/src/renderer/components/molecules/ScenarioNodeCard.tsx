@@ -1,12 +1,10 @@
 import type { ReactNode } from "react";
 import { Dropdown, Floating } from "@kiyotakkkka/zvs-uikit-lib";
-import type {
-  AutomationScenarioNodeKind,
-} from "../../../ipc/contracts";
+import type { AutomationScenarioNodeKind } from "../../../ipc/contracts";
 import type { AutomationScenarioNode } from "../../../shared/dto";
 import {
-  ChatIcon,
   MoreIcon,
+  PlayCircleIcon,
   RobotIcon,
   SendIcon,
   SettingsIcon,
@@ -38,7 +36,7 @@ export const scenarioNodeVariants: Record<
 > = {
   trigger: {
     label: "Триггер",
-    icon: ChatIcon,
+    icon: PlayCircleIcon,
     iconClassName: "bg-amber-400/10 text-amber-200",
   },
   orchestrator: {
@@ -83,14 +81,15 @@ export function ScenarioNodeCard({
   children,
 }: ScenarioNodeCardProps) {
   const Icon = variant.icon;
+  const isTrigger = node.kind === "trigger";
   const card = (
     <div
-      className={`group/node relative h-full w-full select-none rounded-lg bg-main-800 ring-1 transition-[box-shadow,background-color] ${nodeRingClassName(runStatus, selected)}`}
+      className={`group/node relative h-full w-full select-none bg-main-800 ring-1 transition-[box-shadow,background-color] ${isTrigger ? "rounded-l-full rounded-r-lg" : "rounded-lg"} ${nodeRingClassName(runStatus, selected)}`}
     >
       {children}
       <div className="flex h-full items-center gap-2.5 px-2.5 py-2">
         <span
-          className={`grid size-7 shrink-0 place-items-center rounded-md ${variant.iconClassName}`}
+          className={`grid size-7 shrink-0 place-items-center ${isTrigger ? "rounded-full" : "rounded-md"} ${variant.iconClassName}`}
         >
           <Icon className="size-3.5" />
         </span>

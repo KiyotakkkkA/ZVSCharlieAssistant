@@ -25,9 +25,11 @@ const TaskListPage = lazy(() =>
   })),
 );
 const ScenarioExecHistoryPage = lazy(() =>
-  import("./pages/tasks").then(({ ScenarioExecHistoryPage }) => ({
-    default: ScenarioExecHistoryPage,
-  })),
+  import("./pages/automation/scenarios").then(
+    ({ ScenarioExecHistoryPage }) => ({
+      default: ScenarioExecHistoryPage,
+    }),
+  ),
 );
 const AgentsListPage = lazy(() =>
   import("./pages/automation/agents").then(({ AgentsListPage }) => ({
@@ -84,6 +86,11 @@ const SettingsPoliciesPage = lazy(() =>
     default: SettingsPoliciesPage,
   })),
 );
+const SettingsIntegrationsPage = lazy(() =>
+  import("./pages/settings/integrations").then(
+    ({ SettingsIntegrationsPage }) => ({ default: SettingsIntegrationsPage }),
+  ),
+);
 
 function AppLayout() {
   const { pathname } = useLocation();
@@ -97,7 +104,8 @@ function AppLayout() {
     pathname.startsWith(`${APP_PATHS.automation.scenarios.index}/`) ||
     pathname === APP_PATHS.storage.secrets ||
     pathname === APP_PATHS.storage.vectorDb ||
-    pathname === APP_PATHS.settings.policies;
+    pathname === APP_PATHS.settings.policies ||
+    pathname === APP_PATHS.settings.integrations;
 
   const content = (
     <Suspense
@@ -206,6 +214,10 @@ createRoot(root).render(
             <Route
               path={APP_PATHS.settings.policies}
               element={<SettingsPoliciesPage />}
+            />
+            <Route
+              path={APP_PATHS.settings.integrations}
+              element={<SettingsIntegrationsPage />}
             />
             <Route
               path={APP_PATHS.storage.secrets}

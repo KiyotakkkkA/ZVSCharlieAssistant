@@ -19,6 +19,50 @@ export const scenarioEdgeKindSchema = z.enum([
   "worker",
   "knowledge",
 ]);
+export const scenarioMisfirePolicySchema = z.enum([
+  "skip",
+  "run_once",
+  "catch_up",
+]);
+export const scenarioTriggerConfigDtoSchema = z.object({
+  manual: z.object({
+    chatEnabled: z.boolean(),
+    editorEnabled: z.boolean(),
+  }),
+  automatic: z.array(
+    z.discriminatedUnion("kind", [
+      z.object({
+        id: z.string(),
+        kind: z.literal("telegram"),
+        enabled: z.boolean(),
+        integrationProfileId: z.int().positive(),
+        allowedChatIds: z.array(z.string()),
+        command: z.string(),
+        includeAttachments: z.boolean(),
+      }),
+      z.object({
+        id: z.string(),
+        kind: z.literal("email"),
+        enabled: z.boolean(),
+        integrationProfileId: z.int().positive(),
+        mailbox: z.string(),
+        from: z.string(),
+        subjectContains: z.string(),
+        unreadOnly: z.boolean(),
+        includeAttachments: z.boolean(),
+      }),
+      z.object({
+        id: z.string(),
+        kind: z.literal("interval"),
+        enabled: z.boolean(),
+        intervalSeconds: z.int().min(60),
+        timezone: z.string(),
+        misfirePolicy: scenarioMisfirePolicySchema,
+        preventOverlap: z.boolean(),
+      }),
+    ]),
+  ),
+});
 export const automationScenarioNodeDtoSchema = z.object({
   id: z.string(),
   kind: scenarioNodeKindSchema,
@@ -102,6 +146,9 @@ export type AutomationScenarioEdge = z.infer<
 >;
 export type AutomationScenarioGraph = z.infer<
   typeof automationScenarioGraphDtoSchema
+>;
+export type ScenarioTriggerConfig = z.infer<
+  typeof scenarioTriggerConfigDtoSchema
 >;
 export type AutomationScenarioToolSetting = z.infer<
   typeof automationScenarioToolSettingDtoSchema

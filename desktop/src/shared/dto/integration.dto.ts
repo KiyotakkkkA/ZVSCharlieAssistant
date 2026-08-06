@@ -1,0 +1,31 @@
+import { z } from "zod";
+
+export const integrationKindSchema = z.enum(["telegram_bot", "email_imap"]);
+export const integrationStatusSchema = z.enum([
+  "unchecked",
+  "connected",
+  "error",
+  "disabled",
+]);
+
+export const upsertIntegrationProfileDtoSchema = z.object({
+  id: z.int().positive().optional(),
+  kind: integrationKindSchema,
+  name: z.string().trim().min(1).max(120),
+  enabled: z.boolean(),
+  config: z.object({
+    botProvider: z.literal("telegram").optional(),
+    host: z.string().trim().max(500).optional(),
+    port: z.int().positive().max(65535).optional(),
+    secure: z.boolean().optional(),
+    username: z.string().trim().max(320).optional(),
+    mailbox: z.string().trim().max(255).optional(),
+  }),
+  secretBindings: z.record(z.string(), z.int().positive()),
+});
+
+export type IntegrationKind = z.infer<typeof integrationKindSchema>;
+export type IntegrationStatus = z.infer<typeof integrationStatusSchema>;
+export type UpsertIntegrationProfileInput = z.infer<
+  typeof upsertIntegrationProfileDtoSchema
+>;

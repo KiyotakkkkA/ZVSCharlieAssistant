@@ -66,8 +66,16 @@ import {
   registerDirectoryPolicyHandlers,
   removeDirectoryPolicyHandlers,
 } from "../ipc/main/register-directory-policy-handlers";
+import { IntegrationDataSource } from "./infrastructure/database/integration.data-source";
+import { AutomationJobDataSource } from "./infrastructure/database/automation-job.data-source";
+import { IntegrationProfileService } from "./application/services/integration-profile.service";
+import { registerIntegrationHandlers, removeIntegrationHandlers } from "../ipc/main/register-integration-handlers";
+import { AutomationWorker } from "./infrastructure/automation/automation-worker";
+import { TelegramTriggerPoller } from "./infrastructure/automation/telegram-trigger-poller";
+import { EmailTriggerPoller } from "./infrastructure/automation/email-trigger-poller";
 
 let database: ReturnType<typeof createSqliteDatabase> | undefined;
+let automationWorker: AutomationWorker | undefined;
 
 app.whenReady().then(() => {
   database = createSqliteDatabase(join(app.getPath("userData"), "storage.db"));
@@ -120,6 +128,9 @@ app.whenReady().then(() => {
     secretRepository,
   );
   const scenarioExecutions = new ScenarioExecutionDataSource(database);
+  scenarioExecutions.recoverInterruptedRuns();
+  const integrationDataSource = new IntegrationDataSource(database);
+  registerIntegrationHandlers(new IntegrationProfileService(integrationDataSource, secretRepository));
   const ollamaWebService = new OllamaWebService(
     automationDataSource,
     secretRepository,
@@ -152,11 +163,13 @@ app.whenReady().then(() => {
     new ScenarioCompiler(),
     vectorService,
     toolRegistry,
+    integrationDataSource,
   );
   registerAutomationHandlers(
     automationRepository,
     scenarioExecutions,
     scenarioEngine,
+    integrationDataSource,
   );
   registerChatHandlers(
     chatDataSource,
@@ -168,6 +181,15 @@ app.whenReady().then(() => {
     ),
   );
   createMainWindow();
+  const automationJobs = new AutomationJobDataSource(database);
+  automationWorker = new AutomationWorker(
+    automationJobs,
+    integrationDataSource,
+    scenarioEngine,
+    new TelegramTriggerPoller(integrationDataSource, automationJobs, secretRepository),
+    new EmailTriggerPoller(integrationDataSource, automationJobs, secretRepository),
+  );
+  automationWorker.start();
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
@@ -175,6 +197,8 @@ app.whenReady().then(() => {
 });
 
 app.on("before-quit", () => {
+  automationWorker?.stop();
+  automationWorker = undefined;
   removeAppHandlers();
   removeSecretStorageHandlers();
   removeAutomationHandlers();
@@ -184,6 +208,7 @@ app.on("before-quit", () => {
   removeTaskHandlers();
   removeTerminalPolicyHandlers();
   removeDirectoryPolicyHandlers();
+  removeIntegrationHandlers();
   database?.close();
   database = undefined;
 });

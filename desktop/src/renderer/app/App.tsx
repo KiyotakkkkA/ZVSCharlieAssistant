@@ -10,6 +10,7 @@ import {
   tasksStore,
   terminalPolicyStore,
   directoryPolicyStore,
+  integrationStore,
 } from "../stores";
 import { TerminalApprovalModal } from "../components/organisms/modals/TerminalApprovalModal";
 
@@ -23,6 +24,7 @@ export function App() {
     void tasksStore.bootstrap().catch(() => undefined);
     void terminalPolicyStore.bootstrap().catch(() => undefined);
     void directoryPolicyStore.bootstrap().catch(() => undefined);
+    void integrationStore.bootstrap().catch(() => undefined);
   }, []);
 
   return (

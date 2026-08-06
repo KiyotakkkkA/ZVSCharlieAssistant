@@ -49,6 +49,7 @@ export const APP_PATHS = {
     index: "/settings",
     providers: "/settings/providers",
     policies: "/settings/policies",
+    integrations: "/settings/integrations",
   },
 } as const;
 
@@ -138,6 +139,12 @@ export const NAVIGATION_ROUTES: readonly NavigationRoute[] = [
         label: "Политики",
         path: APP_PATHS.settings.policies,
         icon: PolicyIcon,
+      },
+      {
+        id: "settings-integrations",
+        label: "Интеграции",
+        path: APP_PATHS.settings.integrations,
+        icon: ToolsIcon,
       },
     ],
   },

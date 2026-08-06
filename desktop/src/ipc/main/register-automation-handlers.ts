@@ -2,6 +2,7 @@ import { ipcMain } from "electron";
 import type { AutomationRepository } from "../../host/application/ports/automation.repository";
 import type { ScenarioExecutionDataSource } from "../../host/infrastructure/database/scenario-execution.data-source";
 import type { ScenarioRunEngine } from "../../host/infrastructure/automation/scenario-run-engine";
+import type { IntegrationDataSource } from "../../host/infrastructure/database/integration.data-source";
 import {
   AUTOMATION_IPC_CHANNELS,
   type ScenarioRunOrigin,
@@ -13,6 +14,7 @@ import {
   upsertAutomationScenarioDtoSchema,
   upsertAutomationSkillDtoSchema,
   upsertAutomationToolSecretBindingDtoSchema,
+  scenarioTriggerConfigDtoSchema,
   type AutomationScenarioGraph,
   type UpsertAutomationAgentInput,
   type UpsertAutomationScenarioInput,
@@ -24,6 +26,7 @@ export function registerAutomationHandlers(
   repository: AutomationRepository,
   executions: ScenarioExecutionDataSource,
   engine: ScenarioRunEngine,
+  integrations: IntegrationDataSource,
 ): void {
   ipcMain.handle(AUTOMATION_IPC_CHANNELS.getSnapshot, () =>
     repository.getSnapshot(),
@@ -60,7 +63,23 @@ export function registerAutomationHandlers(
     (_event, input: UpsertAutomationScenarioInput) => {
       const dto = parseIpcDto(upsertAutomationScenarioDtoSchema, input);
       if (dto.status === "active") engine.compiler.compile(dto.graph);
-      return repository.upsertScenario(dto);
+      const scenario = repository.upsertScenario(dto);
+      const trigger = dto.graph.nodes.find((node) => node.kind === "trigger");
+      if (trigger) {
+        const config = scenarioTriggerConfigDtoSchema.parse(
+          trigger.config?.trigger ?? {
+            manual: { chatEnabled: true, editorEnabled: true },
+            automatic: [],
+          },
+        );
+        integrations.syncScenarioBindings(
+          scenario.id,
+          scenario.revisionId,
+          trigger.id,
+          config,
+        );
+      }
+      return scenario;
     },
   );
   ipcMain.handle(AUTOMATION_IPC_CHANNELS.deleteScenario, (_event, id: string) =>
@@ -75,11 +94,12 @@ export function registerAutomationHandlers(
   );
   ipcMain.handle(
     AUTOMATION_IPC_CHANNELS.startScenario,
-    (event, id: string, input: unknown, origin: ScenarioRunOrigin = "manual") =>
-      engine.start(id, input, origin, (payload) => {
+    (event, id: string, input: unknown, origin: ScenarioRunOrigin = "manual") => {
+      return engine.start(id, input, origin, (payload) => {
         if (!event.sender.isDestroyed())
           event.sender.send(AUTOMATION_IPC_CHANNELS.scenarioRunEvent, payload);
-      }),
+      });
+    },
   );
   ipcMain.handle(
     AUTOMATION_IPC_CHANNELS.cancelScenarioRun,

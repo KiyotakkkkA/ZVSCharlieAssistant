@@ -34,7 +34,9 @@ import {
   type TerminalPolicy,
   type DirectoryPolicy,
   type TerminalApprovalRequest,
+  INTEGRATION_IPC_CHANNELS,
 } from "../contracts";
+import type { IntegrationProfile, IntegrationSnapshot, IntegrationConnectionResult } from "../../shared/models/integration";
 import type {
   TestTextProviderConnectionResult,
   TextProviderSnapshot,
@@ -55,6 +57,7 @@ import type {
   UpsertVectorStoreInput,
   UploadVectorDocumentInput,
   VectorSearchInput,
+  UpsertIntegrationProfileInput,
 } from "../../shared/dto";
 
 export const desktopApi: DesktopApi = {
@@ -67,6 +70,16 @@ export const desktopApi: DesktopApi = {
     ) as Promise<boolean>,
   selectDirectory: (): Promise<string | null> =>
     ipcRenderer.invoke(IPC_CHANNELS.selectDirectory) as Promise<string | null>,
+  integrations: {
+    getSnapshot: (): Promise<IntegrationSnapshot> =>
+      ipcRenderer.invoke(INTEGRATION_IPC_CHANNELS.getSnapshot) as Promise<IntegrationSnapshot>,
+    upsert: (input: UpsertIntegrationProfileInput): Promise<IntegrationProfile> =>
+      ipcRenderer.invoke(INTEGRATION_IPC_CHANNELS.upsert, input) as Promise<IntegrationProfile>,
+    delete: (id: number): Promise<void> =>
+      ipcRenderer.invoke(INTEGRATION_IPC_CHANNELS.delete, id) as Promise<void>,
+    test: (input: UpsertIntegrationProfileInput): Promise<IntegrationConnectionResult> =>
+      ipcRenderer.invoke(INTEGRATION_IPC_CHANNELS.test, input) as Promise<IntegrationConnectionResult>,
+  },
   tasks: {
     listAgentRuns: (): Promise<AgentTaskRun[]> =>
       ipcRenderer.invoke(TASKS_IPC_CHANNELS.listAgentRuns) as Promise<

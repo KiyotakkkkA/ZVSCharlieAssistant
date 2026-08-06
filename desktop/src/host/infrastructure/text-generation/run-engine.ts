@@ -96,7 +96,7 @@ export class RunEngine {
   ): { runId: number; conversationId: number } {
     if (!this.scenarios) throw new Error("Движок сценариев недоступен");
     if (!input.scenarioId) throw new Error("Сценарий не выбран");
-    this.scenarios.assertRunnable(input.scenarioId);
+    this.scenarios.assertRunnable(input.scenarioId, "chat");
     const conversationId =
       input.conversationId ??
       this.data.createConversation("scenario", undefined, undefined);

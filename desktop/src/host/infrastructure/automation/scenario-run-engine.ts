@@ -10,6 +10,7 @@ import { ProviderRegistry } from "../text-generation/provider.registry";
 import { ScenarioCompiler } from "../../domain/services/scenario-compiler";
 import type { VectorStoreService } from "../vector-store/vector-store.service";
 import type { ToolRegistry } from "../tools/tool.registry";
+import type { IntegrationDataSource } from "../database/integration.data-source";
 
 type Emit = (event: ScenarioRunEvent) => void;
 type ScenarioAgent = NonNullable<
@@ -26,12 +27,17 @@ export class ScenarioRunEngine {
     readonly compiler: ScenarioCompiler,
     private readonly vectorStores: VectorStoreService,
     private readonly tools: ToolRegistry,
+    private readonly integrations: IntegrationDataSource,
   ) {}
 
-  assertRunnable(scenarioId: string) {
+  assertRunnable(scenarioId: string, origin?: ScenarioRunOrigin) {
     const definition = this.data.definition(scenarioId);
     if (!definition) throw new Error("Сценарий не найден");
     if (definition.status === "disabled") throw new Error("Сценарий отключён");
+    if (origin === "manual" && !this.integrations.hasManualBinding(scenarioId, "manual_editor"))
+      throw new Error("Запуск из окна сценария отключён в настройках триггера");
+    if (origin === "chat" && !this.integrations.hasManualBinding(scenarioId, "manual_chat"))
+      throw new Error("Запуск этого сценария из чата отключён");
     this.compiler.compile(definition.graph);
   }
 
@@ -41,9 +47,11 @@ export class ScenarioRunEngine {
     origin: ScenarioRunOrigin,
     emit: Emit,
     conversationId?: number,
+    revisionId?: number,
   ): ScenarioRun {
-    const definition = this.data.definition(scenarioId);
-    if (!definition) throw new Error("Сценарий не найден");
+    if (origin !== "background") this.assertRunnable(scenarioId, origin);
+    const definition = this.data.definition(scenarioId, revisionId);
+    if (!definition) throw new Error("Сценарий или его сохранённая ревизия не найдены");
     if (definition.status === "disabled") throw new Error("Сценарий отключён");
     const compiled = this.compiler.compile(definition.graph);
     const run = this.data.createRun(
@@ -68,6 +76,33 @@ export class ScenarioRunEngine {
       input,
       controller,
       emit,
+      new Map(),
+    );
+    return run;
+  }
+
+  resume(runId: number, emit: Emit): ScenarioRun {
+    const run = this.data.run(runId);
+    if (!run) throw new Error("Запуск сценария не найден");
+    const definition = this.data.definition(run.scenarioId, run.scenarioRevisionId);
+    if (!definition) throw new Error("Сохранённая ревизия сценария не найдена");
+    const compiled = this.compiler.compile(definition.graph);
+    const controller = new AbortController();
+    this.controllers.set(run.id, controller);
+    emit({ type: "run.started", run });
+    void this.execute(
+      run.id,
+      compiled.controlOrder,
+      compiled.controlIncoming,
+      compiled.workerLevelsByOrchestrator,
+      compiled.workerIncoming,
+      compiled.workerTerminalIdsByOrchestrator,
+      compiled.knowledgeStoreIdsByAgent,
+      definition.graph.nodes,
+      run.input,
+      controller,
+      emit,
+      this.data.completedOutputs(run.id),
     );
     return run;
   }
@@ -82,6 +117,7 @@ export class ScenarioRunEngine {
     const resolve = this.approvals.get(id);
     if (!resolve) throw new Error("Запуск не ожидает подтверждения");
     this.approvals.delete(id);
+    this.data.resolveApproval(id, approved);
     resolve(approved);
   }
 
@@ -97,12 +133,13 @@ export class ScenarioRunEngine {
     input: unknown,
     controller: AbortController,
     emit: Emit,
+    outputs: Map<string, unknown>,
   ) {
-    const outputs = new Map<string, unknown>();
     const nodesById = new Map(nodes.map((node) => [node.id, node]));
     try {
       this.data.setRunStatus(runId, "running");
       for (const nodeId of order) {
+        if (outputs.has(nodeId)) continue;
         if (controller.signal.aborted)
           throw new DOMException("Cancelled", "AbortError");
         const node = nodesById.get(nodeId)!;
@@ -211,6 +248,7 @@ export class ScenarioRunEngine {
           node.description ??
           "Продолжить выполнение сценария?",
       );
+      this.data.requestApproval(runId, nodeRunId, prompt);
       emit({ type: "approval.required", runId, nodeId: node.id, prompt });
       const approved = await new Promise<boolean>((resolve) =>
         this.approvals.set(runId, resolve),

@@ -517,6 +517,113 @@ const migrations: readonly Migration[] = [
       `);
     },
   },
+  {
+    version: 13,
+    up(database) {
+      database.exec(`
+        CREATE TABLE integration_profiles (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          kind TEXT NOT NULL CHECK(kind IN ('telegram_bot','email_imap')),
+          name TEXT NOT NULL,
+          enabled INTEGER NOT NULL DEFAULT 1 CHECK(enabled IN (0,1)),
+          config_json TEXT NOT NULL DEFAULT '{}',
+          status TEXT NOT NULL DEFAULT 'unchecked'
+            CHECK(status IN ('unchecked','connected','error','disabled')),
+          checked_at TEXT,
+          last_error TEXT,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE integration_secret_bindings (
+          profile_id INTEGER NOT NULL,
+          binding_key TEXT NOT NULL,
+          secret_id INTEGER NOT NULL,
+          PRIMARY KEY(profile_id, binding_key),
+          FOREIGN KEY(profile_id) REFERENCES integration_profiles(id) ON DELETE CASCADE,
+          FOREIGN KEY(secret_id) REFERENCES secret_entities(id) ON DELETE RESTRICT
+        );
+
+        CREATE TABLE scenario_trigger_bindings (
+          id TEXT PRIMARY KEY,
+          scenario_id TEXT NOT NULL,
+          scenario_revision_id INTEGER NOT NULL,
+          trigger_node_id TEXT NOT NULL,
+          kind TEXT NOT NULL CHECK(kind IN (
+            'manual_chat','manual_editor','telegram','email','interval'
+          )),
+          integration_profile_id INTEGER,
+          enabled INTEGER NOT NULL DEFAULT 1 CHECK(enabled IN (0,1)),
+          config_json TEXT NOT NULL DEFAULT '{}',
+          next_run_at TEXT,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY(scenario_id) REFERENCES automation_scenarios(id) ON DELETE CASCADE,
+          FOREIGN KEY(scenario_revision_id) REFERENCES automation_scenario_revisions(id) ON DELETE CASCADE,
+          FOREIGN KEY(integration_profile_id) REFERENCES integration_profiles(id) ON DELETE RESTRICT
+        );
+        CREATE INDEX idx_trigger_bindings_due
+          ON scenario_trigger_bindings(kind, enabled, next_run_at);
+        CREATE INDEX idx_trigger_bindings_scenario
+          ON scenario_trigger_bindings(scenario_id, scenario_revision_id);
+
+        CREATE TABLE trigger_cursors (
+          binding_id TEXT PRIMARY KEY,
+          cursor_json TEXT NOT NULL DEFAULT '{}',
+          polled_at TEXT,
+          last_event_at TEXT,
+          last_error TEXT,
+          FOREIGN KEY(binding_id) REFERENCES scenario_trigger_bindings(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE automation_jobs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          kind TEXT NOT NULL CHECK(kind IN ('scenario_run','poll_integration')),
+          deduplication_key TEXT NOT NULL UNIQUE,
+          status TEXT NOT NULL DEFAULT 'queued' CHECK(status IN (
+            'queued','leased','waiting','completed','failed','cancelled'
+          )),
+          payload_json TEXT NOT NULL,
+          available_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          lease_owner TEXT,
+          lease_expires_at TEXT,
+          attempt INTEGER NOT NULL DEFAULT 0,
+          max_attempts INTEGER NOT NULL DEFAULT 3,
+          priority INTEGER NOT NULL DEFAULT 0,
+          last_error TEXT,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX idx_automation_jobs_ready
+          ON automation_jobs(status, available_at, priority DESC, id);
+
+        CREATE TABLE execution_approvals (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          execution_id INTEGER NOT NULL,
+          node_run_id INTEGER NOT NULL,
+          status TEXT NOT NULL DEFAULT 'pending'
+            CHECK(status IN ('pending','approved','denied','expired')),
+          prompt TEXT NOT NULL,
+          payload_json TEXT NOT NULL DEFAULT '{}',
+          requested_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          resolved_at TEXT,
+          FOREIGN KEY(execution_id) REFERENCES execution_runs(id) ON DELETE CASCADE,
+          FOREIGN KEY(node_run_id) REFERENCES scenario_node_runs(id) ON DELETE CASCADE
+        );
+        CREATE INDEX idx_execution_approvals_pending
+          ON execution_approvals(status, execution_id);
+      `);
+    },
+  },
+  {
+    version: 14,
+    up(database) {
+      database.exec(`
+        ALTER TABLE integration_profiles
+          ADD COLUMN connection_metadata_json TEXT NOT NULL DEFAULT '{}';
+      `);
+    },
+  },
 ];
 
 export function runMigrations(database: Database.Database): void {

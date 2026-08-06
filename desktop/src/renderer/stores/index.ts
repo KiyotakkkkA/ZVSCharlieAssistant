@@ -6,4 +6,5 @@ export { tasksStore } from "./TasksStore";
 export { vectorStoreStore } from "./VectorStoreStore";
 export { terminalPolicyStore } from "./TerminalPolicyStore";
 export { directoryPolicyStore } from "./DirectoryPolicyStore";
+export { integrationStore } from "./IntegrationStore";
 export type { VectorDocument, VectorStoreModel } from "./VectorStoreStore";

@@ -23,9 +23,7 @@ import {
 import { useParams } from "react-router-dom";
 import { observer } from "mobx-react-lite";
 import {
-  ChatIcon,
   ChevronLeftIcon,
-  ClockIcon,
   EditIcon,
   PlusIcon,
   RobotIcon,
@@ -35,26 +33,63 @@ import {
   TasksIcon,
   StorageIcon,
   Field,
+  PlayCircleIcon,
 } from "../../../components/atoms";
 import {
   ScenarioGraphCanvas,
   type ScenarioFlowEdge,
   type ScenarioFlowNode,
 } from "../../../components/organisms";
+import {
+  ScenarioChatTriggerSetupForm,
+  ScenarioEditorTriggerSetupForm,
+  ScenarioEmailTriggerSetupForm,
+  ScenarioIntervalTriggerSetupForm,
+  ScenarioTelegramTriggerSetupForm,
+} from "../../../components/organisms/forms";
 import { APP_PATHS } from "../../../app/routes";
 import { useHashRouter } from "../../../hooks";
-import { automationStore, vectorStoreStore } from "../../../stores";
+import {
+  automationStore,
+  integrationStore,
+  vectorStoreStore,
+} from "../../../stores";
 import type { AutomationScenarioNodeKind as NodeKind } from "../../../../ipc/contracts";
-import { DangerModal } from "@renderer/components/organisms/modals";
+import { DangerModal, FormModal } from "@renderer/components/organisms/modals";
 import { getScenarioEdgeKind } from "../../../../shared/scenario-ports";
 import {
   automationScenarioEdgeDtoSchema,
   automationScenarioNodeDtoSchema,
+  scenarioTriggerConfigDtoSchema,
   parseIpcDto,
   type AutomationScenarioEdge as GraphEdge,
   type AutomationScenarioNode as GraphNode,
   type AutomationStatus,
+  type ScenarioTriggerConfig,
 } from "../../../../shared/dto";
+
+const defaultTriggerConfig: ScenarioTriggerConfig = {
+  manual: { chatEnabled: true, editorEnabled: true },
+  automatic: [],
+};
+
+const triggerConfigOf = (node?: GraphNode): ScenarioTriggerConfig => {
+  const parsed = scenarioTriggerConfigDtoSchema.safeParse(
+    node?.config?.trigger,
+  );
+  return parsed.success ? parsed.data : defaultTriggerConfig;
+};
+
+type AutomaticTrigger = ScenarioTriggerConfig["automatic"][number];
+type TelegramTrigger = Extract<AutomaticTrigger, { kind: "telegram" }>;
+type EmailTrigger = Extract<AutomaticTrigger, { kind: "email" }>;
+type IntervalTrigger = Extract<AutomaticTrigger, { kind: "interval" }>;
+type TriggerSetupModal =
+  | { kind: "chat" }
+  | { kind: "editor" }
+  | { kind: "telegram" }
+  | { kind: "email" }
+  | { kind: "interval" };
 
 const nodeMeta: Record<
   NodeKind,
@@ -69,7 +104,7 @@ const nodeMeta: Record<
     label: "Триггер",
     color: "text-amber-200 bg-amber-400/10",
     dot: "bg-amber-300",
-    icon: (props) => <ChatIcon {...props} />,
+    icon: (props) => <PlayCircleIcon {...props} />,
   },
   orchestrator: {
     label: "Оркестратор",
@@ -111,12 +146,13 @@ const nodeMeta: Record<
 
 const initialNodes: GraphNode[] = [
   {
-    id: "chat-trigger",
+    id: "trigger",
     kind: "trigger",
-    title: "Новое сообщение",
-    description: "Запуск из чата",
+    title: "Начало",
+    description: "Вход в сценарий",
     x: 70,
     y: 250,
+    config: { trigger: defaultTriggerConfig },
   },
   {
     id: "orchestrator",
@@ -195,6 +231,8 @@ export const ScenarioGraphEditorPage = observer(
     const nameBeforeEdit = useRef(scenarioName);
     const cancelNameEdit = useRef(false);
     const [showNodeDescriptions, setShowNodeDescriptions] = useState(true);
+    const [triggerSetupModal, setTriggerSetupModal] =
+      useState<TriggerSetupModal | null>(null);
 
     useEffect(() => {
       if (!scenario) return;
@@ -221,6 +259,7 @@ export const ScenarioGraphEditorPage = observer(
       [nodes],
     );
     const selectedNode = nodesById.get(selectedNodeId);
+    const selectedTriggerConfig = triggerConfigOf(selectedNode);
     const runStatusVersion = automationStore.scenarioNodeRuns
       .map((run) => `${run.nodeId}:${run.status}`)
       .join("|");
@@ -409,6 +448,30 @@ export const ScenarioGraphEditorPage = observer(
         ),
       );
     };
+    const updateTriggerConfig = (next: ScenarioTriggerConfig) =>
+      updateSelectedNode({
+        config: { ...selectedNode?.config, trigger: next },
+      });
+    const saveAutomaticTriggers = (
+      kind: AutomaticTrigger["kind"],
+      bindings: AutomaticTrigger[],
+    ) => {
+      updateTriggerConfig({
+        ...selectedTriggerConfig,
+        automatic: [
+          ...selectedTriggerConfig.automatic.filter(
+            (item) => item.kind !== kind,
+          ),
+          ...bindings,
+        ],
+      });
+    };
+    const editorLaunchEnabled = Boolean(
+      scenario &&
+      status !== "disabled" &&
+      triggerConfigOf(nodes.find((node) => node.kind === "trigger")).manual
+        .editorEnabled,
+    );
 
     const saveScenario = async () => {
       try {
@@ -564,14 +627,15 @@ export const ScenarioGraphEditorPage = observer(
               >
                 Проверить
               </Button>
-              <Button
-                variant="primary"
-                className="px-2"
-                onClick={() => void runScenario()}
-              >
-                <SendIcon className="size-4" />
-                Запустить
-              </Button>
+              {editorLaunchEnabled ? (
+                <Button
+                  variant="primary"
+                  className="px-2"
+                  onClick={() => void runScenario()}
+                >
+                  <SendIcon className="size-4" /> Запустить
+                </Button>
+              ) : null}
             </div>
           </div>
         </header>
@@ -639,7 +703,7 @@ export const ScenarioGraphEditorPage = observer(
             onNodeSelect={setSelectedNodeId}
           />
 
-          <aside className="w-72 shrink-0 overflow-auto border-l border-main-800 bg-main-900/90">
+          <aside className="w-96 shrink-0 overflow-auto border-l border-main-800 bg-main-900/90">
             <div className="flex h-12 items-center justify-between border-b border-main-800 px-4">
               <h2 className="text-sm font-semibold text-main-200">Настройки</h2>
               <SettingsIcon className="size-4 text-main-500" />
@@ -660,25 +724,104 @@ export const ScenarioGraphEditorPage = observer(
                   </div>
                 </div>
 
-                <Field label="Название">
-                  <InputSmall
-                    value={selectedNode.title}
-                    onChange={(event) =>
-                      updateSelectedNode({ title: event.target.value })
-                    }
-                  />
-                </Field>
-                <Field label="Описание">
-                  <InputBig
-                    value={selectedNode.description}
-                    onChange={(event) =>
-                      updateSelectedNode({ description: event.target.value })
-                    }
-                    minRows={3}
-                    maxRows={6}
-                    autoResize
-                  />
-                </Field>
+                {selectedNode.kind !== "trigger" ? (
+                  <>
+                    <Field label="Название">
+                      <InputSmall
+                        value={selectedNode.title}
+                        onChange={(event) =>
+                          updateSelectedNode({ title: event.target.value })
+                        }
+                      />
+                    </Field>
+                    <Field label="Описание">
+                      <InputBig
+                        value={selectedNode.description}
+                        onChange={(event) =>
+                          updateSelectedNode({
+                            description: event.target.value,
+                          })
+                        }
+                        minRows={3}
+                        maxRows={6}
+                        autoResize
+                      />
+                    </Field>
+                  </>
+                ) : null}
+                {selectedNode.kind === "trigger" ? (
+                  <div className="space-y-5">
+                    <section className="space-y-3 rounded-xl bg-main-800/45 p-3">
+                      <div>
+                        <h3 className="text-sm font-semibold text-main-100">
+                          Ручной вызов
+                        </h3>
+                        <p className="text-xs text-main-500">
+                          Выберите доступные пользователю способы запуска.
+                        </p>
+                      </div>
+                      <TriggerSetupCard
+                        title="Из чата"
+                        description="Сценарий доступен в меню поля сообщения"
+                        enabled={selectedTriggerConfig.manual.chatEnabled}
+                        onClick={() => setTriggerSetupModal({ kind: "chat" })}
+                      />
+                      <TriggerSetupCard
+                        title="Из окна сценария"
+                        description="Ручной запуск из редактора сценария"
+                        enabled={selectedTriggerConfig.manual.editorEnabled}
+                        onClick={() => setTriggerSetupModal({ kind: "editor" })}
+                      />
+                    </section>
+                    <section className="space-y-3 rounded-xl bg-main-800/45 p-3">
+                      <div>
+                        <h3 className="text-sm font-semibold text-main-100">
+                          Автоматический вызов
+                        </h3>
+                        <p className="text-xs text-main-500">
+                          События активной сохранённой ревизии.
+                        </p>
+                      </div>
+                      <TriggerSetupCard
+                        title="Сообщение в Telegram"
+                        description={triggerGroupDescription(
+                          selectedTriggerConfig.automatic,
+                          "telegram",
+                        )}
+                        enabled={selectedTriggerConfig.automatic.some(
+                          (item) => item.kind === "telegram" && item.enabled,
+                        )}
+                        onClick={() =>
+                          setTriggerSetupModal({ kind: "telegram" })
+                        }
+                      />
+                      <TriggerSetupCard
+                        title="Сообщение на почту"
+                        description={triggerGroupDescription(
+                          selectedTriggerConfig.automatic,
+                          "email",
+                        )}
+                        enabled={selectedTriggerConfig.automatic.some(
+                          (item) => item.kind === "email" && item.enabled,
+                        )}
+                        onClick={() => setTriggerSetupModal({ kind: "email" })}
+                      />
+                      <TriggerSetupCard
+                        title="Временной промежуток"
+                        description={triggerGroupDescription(
+                          selectedTriggerConfig.automatic,
+                          "interval",
+                        )}
+                        enabled={selectedTriggerConfig.automatic.some(
+                          (item) => item.kind === "interval" && item.enabled,
+                        )}
+                        onClick={() =>
+                          setTriggerSetupModal({ kind: "interval" })
+                        }
+                      />
+                    </section>
+                  </div>
+                ) : null}
                 {selectedNode.kind === "agent" ? (
                   <>
                     <Field label="Агент">
@@ -801,6 +944,97 @@ export const ScenarioGraphEditorPage = observer(
             ) : null}
           </aside>
         </div>
+        <FormModal
+          open={triggerSetupModal?.kind === "chat"}
+          model={selectedTriggerConfig.manual.chatEnabled}
+          form={{
+            component: ScenarioChatTriggerSetupForm,
+            title: "Запуск из чата",
+            props: {
+              onSubmit: (chatEnabled: boolean) =>
+                updateTriggerConfig({
+                  ...selectedTriggerConfig,
+                  manual: { ...selectedTriggerConfig.manual, chatEnabled },
+                }),
+            },
+          }}
+          onConfirm={() => setTriggerSetupModal(null)}
+          onCancel={() => setTriggerSetupModal(null)}
+        />
+        <FormModal
+          open={triggerSetupModal?.kind === "editor"}
+          model={selectedTriggerConfig.manual.editorEnabled}
+          form={{
+            component: ScenarioEditorTriggerSetupForm,
+            title: "Запуск из окна сценария",
+            props: {
+              onSubmit: (editorEnabled: boolean) =>
+                updateTriggerConfig({
+                  ...selectedTriggerConfig,
+                  manual: { ...selectedTriggerConfig.manual, editorEnabled },
+                }),
+            },
+          }}
+          onConfirm={() => setTriggerSetupModal(null)}
+          onCancel={() => setTriggerSetupModal(null)}
+        />
+        <FormModal
+          open={triggerSetupModal?.kind === "telegram"}
+          model={selectedTriggerConfig.automatic.filter(
+            (item): item is TelegramTrigger => item.kind === "telegram",
+          )}
+          form={{
+            component: ScenarioTelegramTriggerSetupForm,
+            title: "Сообщение в Telegram",
+            className: "max-w-3xl",
+            props: {
+              profiles: integrationStore.profiles.filter(
+                (item) => item.kind === "telegram_bot",
+              ),
+              onSubmit: (items: TelegramTrigger[]) =>
+                saveAutomaticTriggers("telegram", items),
+            },
+          }}
+          onConfirm={() => setTriggerSetupModal(null)}
+          onCancel={() => setTriggerSetupModal(null)}
+        />
+        <FormModal
+          open={triggerSetupModal?.kind === "email"}
+          model={selectedTriggerConfig.automatic.filter(
+            (item): item is EmailTrigger => item.kind === "email",
+          )}
+          form={{
+            component: ScenarioEmailTriggerSetupForm,
+            title: "Сообщение на почту",
+            className: "max-w-3xl",
+            props: {
+              profiles: integrationStore.profiles.filter(
+                (item) => item.kind === "email_imap",
+              ),
+              onSubmit: (items: EmailTrigger[]) =>
+                saveAutomaticTriggers("email", items),
+            },
+          }}
+          onConfirm={() => setTriggerSetupModal(null)}
+          onCancel={() => setTriggerSetupModal(null)}
+        />
+        <FormModal
+          open={triggerSetupModal?.kind === "interval"}
+          model={selectedTriggerConfig.automatic.filter(
+            (item): item is IntervalTrigger => item.kind === "interval",
+          )}
+          form={{
+            component: ScenarioIntervalTriggerSetupForm,
+            title: "Запуск по интервалу",
+            className: "max-w-3xl",
+            props: {
+              onSubmit: (items: IntervalTrigger[]) =>
+                saveAutomaticTriggers("interval", items),
+            },
+          }}
+          onConfirm={() => setTriggerSetupModal(null)}
+          onCancel={() => setTriggerSetupModal(null)}
+        />
         <DangerModal
           open={automationStore.pendingScenarioApproval !== null}
           model={automationStore.pendingScenarioApproval}
@@ -814,3 +1048,64 @@ export const ScenarioGraphEditorPage = observer(
     );
   },
 );
+
+function TriggerSetupCard({
+  title,
+  description,
+  enabled,
+  onClick,
+  onDelete,
+}: {
+  title: string;
+  description: string;
+  enabled: boolean;
+  onClick(): void;
+  onDelete?(): void;
+}) {
+  return (
+    <div
+      className="group flex items-center gap-3 rounded-xl border border-main-700/80 bg-main-900/25 p-3 transition-colors hover:bg-main-700/35"
+      onClick={onClick}
+    >
+      <span
+        className={`size-2 shrink-0 rounded-full ${enabled ? "bg-success-light" : "bg-main-600"}`}
+      />
+      <button className="min-w-0 flex-1 text-left">
+        <span className="block truncate text-sm font-medium text-main-100">
+          {title}
+        </span>
+        <span className="mt-1 block truncate text-xs text-main-500">
+          {description}
+        </span>
+      </button>
+      <Button
+        type="button"
+        variant="ghost"
+        className="shrink-0 px-2 text-xs"
+        onClick={onClick}
+      >
+        Настроить
+      </Button>
+      {onDelete ? (
+        <Button
+          type="button"
+          variant="ghost"
+          className="shrink-0 px-1 text-xs text-danger-light"
+          onClick={onDelete}
+        >
+          ×
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
+function triggerGroupDescription(
+  bindings: AutomaticTrigger[],
+  kind: AutomaticTrigger["kind"],
+) {
+  const group = bindings.filter((item) => item.kind === kind);
+  if (!group.length) return "Не настроено";
+  const enabled = group.filter((item) => item.enabled).length;
+  return `${group.length} настроено · ${enabled} включено`;
+}

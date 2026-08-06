@@ -17,7 +17,7 @@ import {
 import { automationStore, chatStore, textProviderStore } from "../../stores";
 import { PrimaryButton } from "@renderer/components/atoms/buttons";
 import { DangerModal } from "@renderer/components/organisms/modals";
-import type { StartRunInput } from "../../../shared/dto";
+import { scenarioTriggerConfigDtoSchema, type StartRunInput } from "../../../shared/dto";
 
 export const ChatPage = observer(function ChatPage() {
   const toasts = useToasts();
@@ -46,7 +46,12 @@ export const ChatPage = observer(function ChatPage() {
       : "Модель не настроена",
   }));
   const nextScenarioOptions = automationStore.scenarios
-    .filter((scenario) => scenario.status === "active")
+    .filter((scenario) => {
+      if (scenario.status !== "active") return false;
+      const trigger = scenario.graph.nodes.find((node) => node.kind === "trigger");
+      const parsed = scenarioTriggerConfigDtoSchema.safeParse(trigger?.config?.trigger);
+      return parsed.success ? parsed.data.manual.chatEnabled : true;
+    })
     .map((scenario) => ({ value: scenario.id, label: scenario.name }));
   const modelOptions = useStableOptions(nextModelOptions);
   const agentOptions = useStableOptions(nextAgentOptions);

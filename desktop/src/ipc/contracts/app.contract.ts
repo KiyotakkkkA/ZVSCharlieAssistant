@@ -22,6 +22,7 @@ export interface DesktopApi {
   tasks: import("./tasks.contract").TasksApi;
   terminalPolicy: import("./terminal-policy.contract").TerminalPolicyApi;
   directoryPolicy: import("./directory-policy.contract").DirectoryPolicyApi;
+  integrations: import("./integration.contract").IntegrationApi;
 }
 
 export interface GeneratedArtifactInput {

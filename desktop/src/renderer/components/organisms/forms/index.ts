@@ -10,3 +10,10 @@ export type {
   ProviderStatus,
 } from "./SettingsProviderManageForm";
 export { StorageVecdbManageForm } from "./StorageVecdbManageForm";
+export { SettingsIntegrationsBotsForm } from "./SettingsIntegrationsBotsForm";
+export { SettingsIntegrationsMailForm } from "./SettingsIntegrationsMailForm";
+export { ScenarioChatTriggerSetupForm } from "./ScenarioChatTriggerSetupForm";
+export { ScenarioEditorTriggerSetupForm } from "./ScenarioEditorTriggerSetupForm";
+export { ScenarioTelegramTriggerSetupForm } from "./ScenarioTelegramTriggerSetupForm";
+export { ScenarioEmailTriggerSetupForm } from "./ScenarioEmailTriggerSetupForm";
+export { ScenarioIntervalTriggerSetupForm } from "./ScenarioIntervalTriggerSetupForm";
