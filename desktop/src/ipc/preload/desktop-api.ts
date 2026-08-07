@@ -36,7 +36,11 @@ import {
   type TerminalApprovalRequest,
   INTEGRATION_IPC_CHANNELS,
 } from "../contracts";
-import type { IntegrationProfile, IntegrationSnapshot, IntegrationConnectionResult } from "../../shared/models/integration";
+import type {
+  IntegrationProfile,
+  IntegrationSnapshot,
+  IntegrationConnectionResult,
+} from "../../shared/models/integration";
 import type {
   TestTextProviderConnectionResult,
   TextProviderSnapshot,
@@ -72,13 +76,32 @@ export const desktopApi: DesktopApi = {
     ipcRenderer.invoke(IPC_CHANNELS.selectDirectory) as Promise<string | null>,
   integrations: {
     getSnapshot: (): Promise<IntegrationSnapshot> =>
-      ipcRenderer.invoke(INTEGRATION_IPC_CHANNELS.getSnapshot) as Promise<IntegrationSnapshot>,
-    upsert: (input: UpsertIntegrationProfileInput): Promise<IntegrationProfile> =>
-      ipcRenderer.invoke(INTEGRATION_IPC_CHANNELS.upsert, input) as Promise<IntegrationProfile>,
+      ipcRenderer.invoke(
+        INTEGRATION_IPC_CHANNELS.getSnapshot,
+      ) as Promise<IntegrationSnapshot>,
+    upsert: (
+      input: UpsertIntegrationProfileInput,
+    ): Promise<IntegrationProfile> =>
+      ipcRenderer.invoke(
+        INTEGRATION_IPC_CHANNELS.upsert,
+        input,
+      ) as Promise<IntegrationProfile>,
     delete: (id: number): Promise<void> =>
       ipcRenderer.invoke(INTEGRATION_IPC_CHANNELS.delete, id) as Promise<void>,
-    test: (input: UpsertIntegrationProfileInput): Promise<IntegrationConnectionResult> =>
-      ipcRenderer.invoke(INTEGRATION_IPC_CHANNELS.test, input) as Promise<IntegrationConnectionResult>,
+    test: (
+      input: UpsertIntegrationProfileInput,
+    ): Promise<IntegrationConnectionResult> =>
+      ipcRenderer.invoke(
+        INTEGRATION_IPC_CHANNELS.test,
+        input,
+      ) as Promise<IntegrationConnectionResult>,
+  },
+  core: {
+    openExternalUrl: (url: string): Promise<boolean> =>
+      ipcRenderer.invoke(
+        "coreInteractor:openExternalUrl",
+        url,
+      ) as Promise<boolean>,
   },
   tasks: {
     listAgentRuns: (): Promise<AgentTaskRun[]> =>
@@ -88,23 +111,43 @@ export const desktopApi: DesktopApi = {
   },
   terminalPolicy: {
     get: (): Promise<TerminalPolicy> =>
-      ipcRenderer.invoke(TERMINAL_POLICY_IPC_CHANNELS.get) as Promise<TerminalPolicy>,
+      ipcRenderer.invoke(
+        TERMINAL_POLICY_IPC_CHANNELS.get,
+      ) as Promise<TerminalPolicy>,
     upsert: (input: UpsertTerminalPolicyInput): Promise<TerminalPolicy> =>
-      ipcRenderer.invoke(TERMINAL_POLICY_IPC_CHANNELS.upsert, input) as Promise<TerminalPolicy>,
+      ipcRenderer.invoke(
+        TERMINAL_POLICY_IPC_CHANNELS.upsert,
+        input,
+      ) as Promise<TerminalPolicy>,
     recommended: (): Promise<UpsertTerminalPolicyInput> =>
-      ipcRenderer.invoke(TERMINAL_POLICY_IPC_CHANNELS.recommended) as Promise<UpsertTerminalPolicyInput>,
+      ipcRenderer.invoke(
+        TERMINAL_POLICY_IPC_CHANNELS.recommended,
+      ) as Promise<UpsertTerminalPolicyInput>,
     pendingApprovals: (): Promise<TerminalApprovalRequest[]> =>
-      ipcRenderer.invoke(TERMINAL_POLICY_IPC_CHANNELS.pendingApprovals) as Promise<TerminalApprovalRequest[]>,
+      ipcRenderer.invoke(
+        TERMINAL_POLICY_IPC_CHANNELS.pendingApprovals,
+      ) as Promise<TerminalApprovalRequest[]>,
     decideApproval: (id: string, approved: boolean): Promise<void> =>
-      ipcRenderer.invoke(TERMINAL_POLICY_IPC_CHANNELS.decideApproval, id, approved) as Promise<void>,
+      ipcRenderer.invoke(
+        TERMINAL_POLICY_IPC_CHANNELS.decideApproval,
+        id,
+        approved,
+      ) as Promise<void>,
   },
   directoryPolicy: {
     get: (): Promise<DirectoryPolicy> =>
-      ipcRenderer.invoke(DIRECTORY_POLICY_IPC_CHANNELS.get) as Promise<DirectoryPolicy>,
+      ipcRenderer.invoke(
+        DIRECTORY_POLICY_IPC_CHANNELS.get,
+      ) as Promise<DirectoryPolicy>,
     upsert: (input: UpsertDirectoryPolicyInput): Promise<DirectoryPolicy> =>
-      ipcRenderer.invoke(DIRECTORY_POLICY_IPC_CHANNELS.upsert, input) as Promise<DirectoryPolicy>,
+      ipcRenderer.invoke(
+        DIRECTORY_POLICY_IPC_CHANNELS.upsert,
+        input,
+      ) as Promise<DirectoryPolicy>,
     recommended: (): Promise<UpsertDirectoryPolicyInput> =>
-      ipcRenderer.invoke(DIRECTORY_POLICY_IPC_CHANNELS.recommended) as Promise<UpsertDirectoryPolicyInput>,
+      ipcRenderer.invoke(
+        DIRECTORY_POLICY_IPC_CHANNELS.recommended,
+      ) as Promise<UpsertDirectoryPolicyInput>,
   },
   secrets: {
     getSnapshot: (): Promise<SecretStorageSnapshot> =>

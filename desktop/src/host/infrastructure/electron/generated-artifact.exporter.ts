@@ -1,7 +1,7 @@
 import { copyFile, realpath, stat } from "node:fs/promises";
 import { basename, isAbsolute, relative, resolve } from "node:path";
 import { dialog } from "electron";
-import type { GeneratedArtifactExporter } from "../../application/ports/generated-artifact.port";
+import type { GeneratedArtifactExporter } from "../../application/ports/generated-artifact.ports";
 
 export class ElectronGeneratedArtifactExporter implements GeneratedArtifactExporter {
   private readonly allowedRoot: string;

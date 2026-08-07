@@ -15,6 +15,7 @@ import {
   ToolsIcon,
   PolicyIcon,
   TransitConnectionIcon,
+  PaletteIcon,
 } from "../components/atoms";
 
 export const APP_PATHS = {
@@ -51,6 +52,7 @@ export const APP_PATHS = {
     providers: "/settings/providers",
     policies: "/settings/policies",
     integrations: "/settings/integrations",
+    appearance: "/settings/appearance",
   },
 } as const;
 
@@ -129,6 +131,12 @@ export const NAVIGATION_ROUTES: readonly NavigationRoute[] = [
     label: "Настройки",
     icon: SettingsIcon,
     children: [
+      {
+        id: "settings-appearance",
+        label: "Внешний вид",
+        path: APP_PATHS.settings.appearance,
+        icon: PaletteIcon,
+      },
       {
         id: "settings-providers",
         label: "Провайдеры",

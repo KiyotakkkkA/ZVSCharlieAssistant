@@ -25,7 +25,7 @@ import { TextProviderDataSource } from "./infrastructure/database/text-provider.
 import { ChatDataSource } from "./infrastructure/database/chat.data-source";
 import { ProviderRegistry } from "./infrastructure/text-generation/provider.registry";
 import { RunEngine } from "./infrastructure/text-generation/run-engine";
-import { ScenarioCompiler } from "./domain/services/scenario-compiler";
+import { ScenarioCompiler } from "./infrastructure/automation/scenario-compiler";
 import { ScenarioRunEngine } from "./infrastructure/automation/scenario-run-engine";
 import { ScenarioExecutionDataSource } from "./infrastructure/database/scenario-execution.data-source";
 import { ToolRegistry } from "./infrastructure/tools/tool.registry";
@@ -69,10 +69,18 @@ import {
 import { IntegrationDataSource } from "./infrastructure/database/integration.data-source";
 import { AutomationJobDataSource } from "./infrastructure/database/automation-job.data-source";
 import { IntegrationProfileService } from "./application/services/integration-profile.service";
-import { registerIntegrationHandlers, removeIntegrationHandlers } from "../ipc/main/register-integration-handlers";
+import {
+  registerIntegrationHandlers,
+  removeIntegrationHandlers,
+} from "../ipc/main/register-integration-handlers";
 import { AutomationWorker } from "./infrastructure/automation/automation-worker";
 import { TelegramTriggerPoller } from "./infrastructure/automation/telegram-trigger-poller";
 import { EmailTriggerPoller } from "./infrastructure/automation/email-trigger-poller";
+import {
+  registerCoreInteractorHandlers,
+  removeCoreInteractorHandlers,
+} from "@ipc/main/register-core-interactor-handlers";
+import { CoreInteractorService } from "./infrastructure/electron/core-interactor.service";
 
 let database: ReturnType<typeof createSqliteDatabase> | undefined;
 let automationWorker: AutomationWorker | undefined;
@@ -130,7 +138,9 @@ app.whenReady().then(() => {
   const scenarioExecutions = new ScenarioExecutionDataSource(database);
   scenarioExecutions.recoverInterruptedRuns();
   const integrationDataSource = new IntegrationDataSource(database);
-  registerIntegrationHandlers(new IntegrationProfileService(integrationDataSource, secretRepository));
+  registerIntegrationHandlers(
+    new IntegrationProfileService(integrationDataSource, secretRepository),
+  );
   const ollamaWebService = new OllamaWebService(
     automationDataSource,
     secretRepository,
@@ -180,14 +190,23 @@ app.whenReady().then(() => {
       scenarioEngine,
     ),
   );
+  registerCoreInteractorHandlers(new CoreInteractorService());
   createMainWindow();
   const automationJobs = new AutomationJobDataSource(database);
   automationWorker = new AutomationWorker(
     automationJobs,
     integrationDataSource,
     scenarioEngine,
-    new TelegramTriggerPoller(integrationDataSource, automationJobs, secretRepository),
-    new EmailTriggerPoller(integrationDataSource, automationJobs, secretRepository),
+    new TelegramTriggerPoller(
+      integrationDataSource,
+      automationJobs,
+      secretRepository,
+    ),
+    new EmailTriggerPoller(
+      integrationDataSource,
+      automationJobs,
+      secretRepository,
+    ),
   );
   automationWorker.start();
 
@@ -206,6 +225,7 @@ app.on("before-quit", () => {
   removeChatHandlers();
   removeVectorStoreHandlers();
   removeTaskHandlers();
+  removeCoreInteractorHandlers();
   removeTerminalPolicyHandlers();
   removeDirectoryPolicyHandlers();
   removeIntegrationHandlers();

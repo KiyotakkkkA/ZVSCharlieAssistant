@@ -1,6 +1,6 @@
 import { InputCheckSlided } from "@kiyotakkkka/zvs-uikit-lib";
 import type { TextProviderModelInfo } from "../../../shared/models/text-provider";
-import { OpenrouterIcon } from "../atoms";
+import { OpenInNewIcon, OpenrouterIcon } from "../atoms";
 
 interface Props {
   model: TextProviderModelInfo;
@@ -22,9 +22,19 @@ export function SettingsProviderOpenrouterModelCard({
 }: Props) {
   const details = model.details;
   return (
-    <article className="flex items-center gap-3 rounded-xl bg-main-700/20 p-3 transition-colors hover:bg-main-700/35">
-      <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-main-700/50 text-main-300">
-        <OpenrouterIcon className="size-4" />
+    <article className="flex items-center gap-3 rounded-xl bg-main-700/20 p-3 transition-colors hover:bg-main-700/35 group/openrouter-card">
+      <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-main-700/50 text-main-300 group-hover/openrouter-card:hidden">
+        <OpenrouterIcon className="size-4 group-hover/openrouter-card:hidden" />
+      </span>
+      <span
+        className="hidden cursor-pointer size-10 shrink-0 place-items-center rounded-xl bg-accent-medium text-main-900 group-hover/openrouter-card:grid"
+        onClick={() => {
+          window.desktop.core.openExternalUrl(
+            `https://openrouter.ai/${model.id}`,
+          );
+        }}
+      >
+        <OpenInNewIcon className="size-4" />
       </span>
       <div className="min-w-0 flex-1">
         <div className="flex min-w-0 items-center gap-2">

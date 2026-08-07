@@ -148,6 +148,7 @@ export function SettingsProviderManageForm({
       setSaving(false);
     }
   };
+
   return (
     <ScrollArea className="min-h-0 min-w-0 flex-1 rounded-xl bg-main-800/40">
       <div className="p-5">
@@ -177,7 +178,7 @@ export function SettingsProviderManageForm({
                 onChange={(event) => onChange({ name: event.target.value })}
               />
             </Field>
-            <Field label="Тип провайдера">
+            <Field label="Поставщик модели">
               <Select
                 className="w-full"
                 value={model.kind}

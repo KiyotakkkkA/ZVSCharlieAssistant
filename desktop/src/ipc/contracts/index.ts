@@ -66,5 +66,9 @@ export type {
   DirectoryPolicy,
 } from "./directory-policy.contract";
 export { DIRECTORY_POLICY_IPC_CHANNELS } from "./directory-policy.contract";
+
 export type { IntegrationApi } from "./integration.contract";
 export { INTEGRATION_IPC_CHANNELS } from "./integration.contract";
+
+export type { CoreInteractorApi } from "./core-interactor.contract";
+export { CORE_INTERACTOR_IPC_CHANNELS } from "./core-interactor.contract";

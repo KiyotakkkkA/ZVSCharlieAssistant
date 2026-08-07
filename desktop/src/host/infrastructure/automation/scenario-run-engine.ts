@@ -7,7 +7,7 @@ import type {
 import type { AutomationScenarioNode } from "../../../shared/dto";
 import { ScenarioExecutionDataSource } from "../database/scenario-execution.data-source";
 import { ProviderRegistry } from "../text-generation/provider.registry";
-import { ScenarioCompiler } from "../../domain/services/scenario-compiler";
+import { ScenarioCompiler } from "./scenario-compiler";
 import type { VectorStoreService } from "../vector-store/vector-store.service";
 import type { ToolRegistry } from "../tools/tool.registry";
 import type { IntegrationDataSource } from "../database/integration.data-source";
@@ -34,9 +34,15 @@ export class ScenarioRunEngine {
     const definition = this.data.definition(scenarioId);
     if (!definition) throw new Error("Сценарий не найден");
     if (definition.status === "disabled") throw new Error("Сценарий отключён");
-    if (origin === "manual" && !this.integrations.hasManualBinding(scenarioId, "manual_editor"))
+    if (
+      origin === "manual" &&
+      !this.integrations.hasManualBinding(scenarioId, "manual_editor")
+    )
       throw new Error("Запуск из окна сценария отключён в настройках триггера");
-    if (origin === "chat" && !this.integrations.hasManualBinding(scenarioId, "manual_chat"))
+    if (
+      origin === "chat" &&
+      !this.integrations.hasManualBinding(scenarioId, "manual_chat")
+    )
       throw new Error("Запуск этого сценария из чата отключён");
     this.compiler.compile(definition.graph);
   }
@@ -51,7 +57,8 @@ export class ScenarioRunEngine {
   ): ScenarioRun {
     if (origin !== "background") this.assertRunnable(scenarioId, origin);
     const definition = this.data.definition(scenarioId, revisionId);
-    if (!definition) throw new Error("Сценарий или его сохранённая ревизия не найдены");
+    if (!definition)
+      throw new Error("Сценарий или его сохранённая ревизия не найдены");
     if (definition.status === "disabled") throw new Error("Сценарий отключён");
     const compiled = this.compiler.compile(definition.graph);
     const run = this.data.createRun(
@@ -84,7 +91,10 @@ export class ScenarioRunEngine {
   resume(runId: number, emit: Emit): ScenarioRun {
     const run = this.data.run(runId);
     if (!run) throw new Error("Запуск сценария не найден");
-    const definition = this.data.definition(run.scenarioId, run.scenarioRevisionId);
+    const definition = this.data.definition(
+      run.scenarioId,
+      run.scenarioRevisionId,
+    );
     if (!definition) throw new Error("Сохранённая ревизия сценария не найдена");
     const compiled = this.compiler.compile(definition.graph);
     const controller = new AbortController();
