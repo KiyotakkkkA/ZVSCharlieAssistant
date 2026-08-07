@@ -523,7 +523,7 @@ const migrations: readonly Migration[] = [
       database.exec(`
         CREATE TABLE integration_profiles (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
-          kind TEXT NOT NULL CHECK(kind IN ('telegram_bot','email_imap')),
+          kind TEXT NOT NULL CHECK(kind IN ('telegram_bot','email_imap', 'github_connector', 'gitlab_connector')),
           name TEXT NOT NULL,
           enabled INTEGER NOT NULL DEFAULT 1 CHECK(enabled IN (0,1)),
           config_json TEXT NOT NULL DEFAULT '{}',

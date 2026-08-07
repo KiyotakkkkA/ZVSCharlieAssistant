@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { observer } from "mobx-react-lite";
 import {
-  Button,
   ScrollArea,
   Tabs,
   useToasts,
@@ -14,6 +13,7 @@ import {
 import { PageHeader } from "../../../components/organisms";
 import {
   SettingsIntegrationsBotsForm,
+  SettingsIntegrationsConnectorsForm,
   SettingsIntegrationsMailForm,
 } from "../../../components/organisms/forms";
 import { DangerModal } from "../../../components/organisms/modals";
@@ -26,25 +26,70 @@ import type {
 import type { UpsertIntegrationProfileInput } from "../../../../shared/dto";
 import { ProvidedEntityStatus } from "src/shared/dto/shared";
 
+const MAPPING: Record<
+  IntegrationKind,
+  {
+    label: string;
+    emptyStateLabel: string;
+    emptyStateConfig: Record<string, unknown>;
+  }
+> = {
+  telegram_bot: {
+    label: "Бот · Telegram",
+    emptyStateLabel: "Новый бот · Telegram",
+    emptyStateConfig: { botProvider: "telegram" },
+  },
+  email_imap: {
+    label: "Почта · IMAP",
+    emptyStateLabel: "Новая почта · IMAP",
+    emptyStateConfig: { port: 993, secure: true, mailbox: "INBOX" },
+  },
+  github_connector: {
+    label: "Коннектор · GitHub",
+    emptyStateLabel: "Новое подключение GitHub",
+    emptyStateConfig: {
+      connectorProvider: "github",
+      repositoryUrl: "",
+    },
+  },
+  gitlab_connector: {
+    label: "Коннектор · GitLab",
+    emptyStateLabel: "Новое подключение GitLab",
+    emptyStateConfig: {
+      connectorProvider: "gitlab",
+      repositoryUrl: "",
+    },
+  },
+};
+
+type IntegrationTab = "bots" | "mail" | "connectors";
+
+const TAB_KINDS: Record<IntegrationTab, IntegrationKind[]> = {
+  bots: ["telegram_bot"],
+  mail: ["email_imap"],
+  connectors: ["github_connector", "gitlab_connector"],
+};
+
+const DEFAULT_KIND: Record<IntegrationTab, IntegrationKind> = {
+  bots: "telegram_bot",
+  mail: "email_imap",
+  connectors: "github_connector",
+};
+
 const emptyInput = (kind: IntegrationKind): UpsertIntegrationProfileInput => ({
   kind,
-  name: kind === "telegram_bot" ? "Новый Telegram-бот" : "Новая почта",
+  name: MAPPING[kind].emptyStateLabel,
   enabled: true,
-  config:
-    kind === "email_imap"
-      ? { port: 993, secure: true, mailbox: "INBOX" }
-      : { botProvider: "telegram" },
+  config: MAPPING[kind].emptyStateConfig,
   secretBindings: {},
 });
 
 export const SettingsIntegrationsPage = observer(
   function SettingsIntegrationsPage() {
     const toasts = useToasts();
-    const [tab, setTab] = useState<"telegram_bot" | "email_imap">(
-      "telegram_bot",
-    );
+    const [tab, setTab] = useState<IntegrationTab>("bots");
     const profiles = integrationStore.profiles.filter(
-      (item) => item.kind === tab,
+      (item) => TAB_KINDS[tab].includes(item.kind),
     );
     const [selectedId, setSelectedId] = useState<number | "draft" | null>(null);
     const [checking, setChecking] = useState(false);
@@ -59,7 +104,7 @@ export const SettingsIntegrationsPage = observer(
       (item) => item.id === (selectedId === "draft" ? null : selectedId),
     );
     const [draft, setDraft] = useState<UpsertIntegrationProfileInput>(() =>
-      emptyInput(tab),
+      emptyInput(DEFAULT_KIND[tab]),
     );
 
     useEffect(() => {
@@ -79,12 +124,12 @@ export const SettingsIntegrationsPage = observer(
               config: { ...selected.config },
               secretBindings: { ...selected.secretBindings },
             }
-          : emptyInput(tab),
+          : emptyInput(DEFAULT_KIND[tab]),
       );
     }, [selectedId, selected?.updatedAt, tab]);
 
     const createProfile = () => {
-      setDraft(emptyInput(tab));
+      setDraft(emptyInput(DEFAULT_KIND[tab]));
       setDraftStatus("unchecked");
       setDraftConnectionMetadata({});
       setSelectedId("draft");
@@ -153,7 +198,7 @@ export const SettingsIntegrationsPage = observer(
       <section className="flex h-full min-h-0 flex-col p-4">
         <PageHeader
           title="Интеграции"
-          description="Переиспользуемые подключения для автоматических запусков сценариев."
+          description="Использование возможностей внешних систем"
           breadcrumbs={[{ label: "Настройки" }, { label: "Интеграции" }]}
           footer={
             <Tabs
@@ -161,12 +206,16 @@ export const SettingsIntegrationsPage = observer(
               onChange={(value) => setTab(value as typeof tab)}
               options={[
                 {
-                  value: "telegram_bot",
+                  value: "bots",
                   label: `Боты · ${profileCount("telegram_bot")}`,
                 },
                 {
-                  value: "email_imap",
+                  value: "mail",
                   label: `Почта · ${profileCount("email_imap")}`,
+                },
+                {
+                  value: "connectors",
+                  label: `Коннекторы данных · ${profileCount("github_connector") + profileCount("gitlab_connector")}`,
                 },
               ]}
             />
@@ -196,11 +245,7 @@ export const SettingsIntegrationsPage = observer(
                         }
                       : null
                   }
-                  description={
-                    draft.kind === "telegram_bot"
-                      ? "Telegram · Bot API"
-                      : "Почта · IMAP"
-                  }
+                  description={MAPPING[draft.kind].label}
                   active={selectedId === "draft"}
                   onClick={() => setSelectedId("draft")}
                   deleteTitle="Удалить интеграцию"
@@ -209,11 +254,7 @@ export const SettingsIntegrationsPage = observer(
                   <ProvidedEntitySidebarCard
                     key={profile.id}
                     model={profile}
-                    description={
-                      profile.kind === "telegram_bot"
-                        ? "Telegram · Bot API"
-                        : "Почта · IMAP"
-                    }
+                    description={MAPPING[profile.kind].label}
                     active={profile.id === selectedId}
                     onClick={() => setSelectedId(profile.id)}
                     onDelete={() => setProfileToDelete(profile)}
@@ -242,10 +283,16 @@ export const SettingsIntegrationsPage = observer(
                 onChange={updateDraft}
                 connectionMetadata={draftConnectionMetadata}
               />
-            ) : (
+            ) : draft.kind === "email_imap" ? (
               <SettingsIntegrationsMailForm
                 value={draft}
                 onChange={updateDraft}
+              />
+            ) : (
+              <SettingsIntegrationsConnectorsForm
+                value={draft}
+                onChange={updateDraft}
+                connectionMetadata={draftConnectionMetadata}
               />
             )}
           </div>

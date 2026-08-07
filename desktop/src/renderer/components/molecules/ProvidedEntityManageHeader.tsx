@@ -7,6 +7,8 @@ import {
   TelegramIcon,
   MailIcon,
   StorageIcon,
+  GithubIcon,
+  GitlabIcon,
 } from "../atoms";
 import { PrimaryButton } from "../atoms/buttons";
 
@@ -22,6 +24,8 @@ const LABELS: Record<SupportedKind, string> = {
   openrouter: "OpenRouter",
   telegram_bot: "Telegram Bot",
   email_imap: "Email",
+  github_connector: "GitHub",
+  gitlab_connector: "GitLab",
   vecstore: "",
 };
 
@@ -30,6 +34,8 @@ const MAPPING: Record<SupportedKind, SvgIcon> = {
   openrouter: OpenrouterIcon,
   telegram_bot: TelegramIcon,
   email_imap: MailIcon,
+  github_connector: GithubIcon,
+  gitlab_connector: GitlabIcon,
   vecstore: StorageIcon,
 } as const;
 

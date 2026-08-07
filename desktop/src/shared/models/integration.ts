@@ -36,6 +36,19 @@ export interface IntegrationConnectionMetadata {
     firstName?: string;
     canJoinGroups?: boolean;
   };
+  repository?: {
+    fullName: string;
+    webUrl: string;
+    description?: string;
+    visibility?: string;
+    defaultBranch?: string;
+    branches: string[];
+    language?: string;
+    stars?: number;
+    forks?: number;
+    openIssues?: number;
+    updatedAt?: string;
+  };
 }
 
 export type { IntegrationKind };

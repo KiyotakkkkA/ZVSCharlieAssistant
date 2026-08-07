@@ -105,7 +105,7 @@ export function SettingsIntegrationsMailForm({
                 },
               })
             }
-            triggerClassName="w-full"
+            className="w-full"
             placeholder="Выберите секрет"
           />
         </Field>

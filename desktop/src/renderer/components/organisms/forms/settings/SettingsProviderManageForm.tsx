@@ -363,6 +363,7 @@ export function SettingsProviderManageForm({
               <div className="flex items-center gap-2">
                 {model.models.length ? (
                   <InputSmall
+                    preset="search"
                     value={modelQuery}
                     onChange={(event) => setModelQuery(event.target.value)}
                     placeholder="Найти модель"

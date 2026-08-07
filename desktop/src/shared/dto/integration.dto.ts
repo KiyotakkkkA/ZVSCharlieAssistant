@@ -1,6 +1,11 @@
 import { z } from "zod";
 
-export const integrationKindSchema = z.enum(["telegram_bot", "email_imap"]);
+export const integrationKindSchema = z.enum([
+  "telegram_bot",
+  "email_imap",
+  "github_connector",
+  "gitlab_connector",
+]);
 
 export const upsertIntegrationProfileDtoSchema = z.object({
   id: z.int().positive().optional(),
@@ -9,6 +14,8 @@ export const upsertIntegrationProfileDtoSchema = z.object({
   enabled: z.boolean(),
   config: z.object({
     botProvider: z.literal("telegram").optional(),
+    connectorProvider: z.enum(["github", "gitlab"]).optional(),
+    repositoryUrl: z.url().max(500).optional(),
     host: z.string().trim().max(500).optional(),
     port: z.int().positive().max(65535).optional(),
     secure: z.boolean().optional(),

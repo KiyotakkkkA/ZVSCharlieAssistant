@@ -42,11 +42,19 @@ export class IntegrationDataSource {
 
   listProfiles(): IntegrationProfile[] {
     const rows = this.db
-      .prepare("SELECT * FROM integration_profiles ORDER BY updated_at DESC, name")
+      .prepare(
+        "SELECT * FROM integration_profiles ORDER BY updated_at DESC, name",
+      )
       .all() as ProfileRow[];
     const bindings = this.db
-      .prepare("SELECT profile_id,binding_key,secret_id FROM integration_secret_bindings")
-      .all() as Array<{ profile_id: number; binding_key: string; secret_id: number }>;
+      .prepare(
+        "SELECT profile_id,binding_key,secret_id FROM integration_secret_bindings",
+      )
+      .all() as Array<{
+      profile_id: number;
+      binding_key: string;
+      secret_id: number;
+    }>;
     return rows.map((row) => ({
       id: row.id,
       kind: row.kind,
@@ -73,20 +81,39 @@ export class IntegrationDataSource {
 
   upsertProfile(input: UpsertIntegrationProfileInput): IntegrationProfile {
     const id = this.db.transaction(() => {
-      const profileId = input.id ?? Number(
-        this.db.prepare(
-          `INSERT INTO integration_profiles(kind,name,enabled,config_json,status)
+      const profileId =
+        input.id ??
+        Number(
+          this.db
+            .prepare(
+              `INSERT INTO integration_profiles(kind,name,enabled,config_json,status)
            VALUES(?,?,?,?,'unchecked')`,
-        ).run(input.kind, input.name, Number(input.enabled), JSON.stringify(input.config)).lastInsertRowid,
-      );
+            )
+            .run(
+              input.kind,
+              input.name,
+              Number(input.enabled),
+              JSON.stringify(input.config),
+            ).lastInsertRowid,
+        );
       if (input.id) {
-        const result = this.db.prepare(
-          `UPDATE integration_profiles SET kind=?,name=?,enabled=?,config_json=?,
+        const result = this.db
+          .prepare(
+            `UPDATE integration_profiles SET kind=?,name=?,enabled=?,config_json=?,
            updated_at=CURRENT_TIMESTAMP WHERE id=?`,
-        ).run(input.kind, input.name, Number(input.enabled), JSON.stringify(input.config), input.id);
+          )
+          .run(
+            input.kind,
+            input.name,
+            Number(input.enabled),
+            JSON.stringify(input.config),
+            input.id,
+          );
         if (!result.changes) throw new Error("Профиль интеграции не найден");
       }
-      this.db.prepare("DELETE FROM integration_secret_bindings WHERE profile_id=?").run(profileId);
+      this.db
+        .prepare("DELETE FROM integration_secret_bindings WHERE profile_id=?")
+        .run(profileId);
       const insert = this.db.prepare(
         "INSERT INTO integration_secret_bindings(profile_id,binding_key,secret_id) VALUES(?,?,?)",
       );
@@ -98,7 +125,9 @@ export class IntegrationDataSource {
   }
 
   deleteProfile(id: number): void {
-    const result = this.db.prepare("DELETE FROM integration_profiles WHERE id=?").run(id);
+    const result = this.db
+      .prepare("DELETE FROM integration_profiles WHERE id=?")
+      .run(id);
     if (!result.changes) throw new Error("Профиль интеграции не найден");
   }
 
@@ -108,15 +137,17 @@ export class IntegrationDataSource {
     error?: string,
     metadata: IntegrationConnectionMetadata = {},
   ): void {
-    this.db.prepare(
-      `UPDATE integration_profiles SET status=?,checked_at=CURRENT_TIMESTAMP,last_error=?,
+    this.db
+      .prepare(
+        `UPDATE integration_profiles SET status=?,checked_at=CURRENT_TIMESTAMP,last_error=?,
        connection_metadata_json=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`,
-    ).run(
-      ok ? "connected" : "error",
-      error ?? null,
-      JSON.stringify(ok ? metadata : {}),
-      id,
-    );
+      )
+      .run(
+        ok ? "connected" : "error",
+        error ?? null,
+        JSON.stringify(ok ? metadata : {}),
+        id,
+      );
   }
 
   syncScenarioBindings(
@@ -126,20 +157,43 @@ export class IntegrationDataSource {
     config: ScenarioTriggerConfig,
   ): void {
     this.db.transaction(() => {
-      this.db.prepare("DELETE FROM scenario_trigger_bindings WHERE scenario_id=?").run(scenarioId);
+      this.db
+        .prepare("DELETE FROM scenario_trigger_bindings WHERE scenario_id=?")
+        .run(scenarioId);
       const insert = this.db.prepare(
         `INSERT INTO scenario_trigger_bindings
          (id,scenario_id,scenario_revision_id,trigger_node_id,kind,integration_profile_id,enabled,config_json,next_run_at)
          VALUES(?,?,?,?,?,?,?,?,?)`,
       );
       if (config.manual.chatEnabled)
-        insert.run(`${scenarioId}:manual_chat`, scenarioId, revisionId, triggerNodeId, "manual_chat", null, 1, "{}", null);
+        insert.run(
+          `${scenarioId}:manual_chat`,
+          scenarioId,
+          revisionId,
+          triggerNodeId,
+          "manual_chat",
+          null,
+          1,
+          "{}",
+          null,
+        );
       if (config.manual.editorEnabled)
-        insert.run(`${scenarioId}:manual_editor`, scenarioId, revisionId, triggerNodeId, "manual_editor", null, 1, "{}", null);
+        insert.run(
+          `${scenarioId}:manual_editor`,
+          scenarioId,
+          revisionId,
+          triggerNodeId,
+          "manual_editor",
+          null,
+          1,
+          "{}",
+          null,
+        );
       for (const item of config.automatic) {
-        const nextRunAt = item.kind === "interval"
-          ? new Date(Date.now() + item.intervalSeconds * 1000).toISOString()
-          : null;
+        const nextRunAt =
+          item.kind === "interval"
+            ? new Date(Date.now() + item.intervalSeconds * 1000).toISOString()
+            : null;
         insert.run(
           `${scenarioId}:${item.id}`,
           scenarioId,
@@ -156,28 +210,39 @@ export class IntegrationDataSource {
   }
 
   dueIntervalBindings(now: string): DueTriggerBinding[] {
-    return (this.db.prepare(
-      `SELECT id,scenario_id,scenario_revision_id,kind,integration_profile_id,config_json,next_run_at
+    return (
+      this.db
+        .prepare(
+          `SELECT id,scenario_id,scenario_revision_id,kind,integration_profile_id,config_json,next_run_at
        FROM scenario_trigger_bindings WHERE kind='interval' AND enabled=1 AND next_run_at<=?`,
-    ).all(now) as Array<Record<string, unknown>>).map((row) => ({
+        )
+        .all(now) as Array<Record<string, unknown>>
+    ).map((row) => ({
       id: String(row.id),
       scenarioId: String(row.scenario_id),
       scenarioRevisionId: Number(row.scenario_revision_id),
       kind: row.kind as "interval",
-      integrationProfileId: row.integration_profile_id === null ? null : Number(row.integration_profile_id),
+      integrationProfileId:
+        row.integration_profile_id === null
+          ? null
+          : Number(row.integration_profile_id),
       config: JSON.parse(String(row.config_json)),
       nextRunAt: row.next_run_at === null ? null : String(row.next_run_at),
     }));
   }
 
   bindings(kind: "telegram" | "email"): DueTriggerBinding[] {
-    return (this.db.prepare(
-      `SELECT b.id,b.scenario_id,b.scenario_revision_id,b.kind,b.integration_profile_id,b.config_json,b.next_run_at
+    return (
+      this.db
+        .prepare(
+          `SELECT b.id,b.scenario_id,b.scenario_revision_id,b.kind,b.integration_profile_id,b.config_json,b.next_run_at
        FROM scenario_trigger_bindings b
        JOIN automation_scenarios s ON s.id=b.scenario_id
        JOIN integration_profiles p ON p.id=b.integration_profile_id
        WHERE b.kind=? AND b.enabled=1 AND s.status='active' AND p.enabled=1`,
-    ).all(kind) as Array<Record<string, unknown>>).map((row) => ({
+        )
+        .all(kind) as Array<Record<string, unknown>>
+    ).map((row) => ({
       id: String(row.id),
       scenarioId: String(row.scenario_id),
       scenarioRevisionId: Number(row.scenario_revision_id),
@@ -189,37 +254,58 @@ export class IntegrationDataSource {
   }
 
   cursor(bindingId: string): Record<string, unknown> {
-    const row = this.db.prepare("SELECT cursor_json FROM trigger_cursors WHERE binding_id=?").get(bindingId) as { cursor_json: string } | undefined;
+    const row = this.db
+      .prepare("SELECT cursor_json FROM trigger_cursors WHERE binding_id=?")
+      .get(bindingId) as { cursor_json: string } | undefined;
     return row ? JSON.parse(row.cursor_json) : {};
   }
 
   setCursor(bindingId: string, cursor: unknown, error?: string): void {
-    this.db.prepare(
-      `INSERT INTO trigger_cursors(binding_id,cursor_json,polled_at,last_event_at,last_error)
+    this.db
+      .prepare(
+        `INSERT INTO trigger_cursors(binding_id,cursor_json,polled_at,last_event_at,last_error)
        VALUES(?,?,CURRENT_TIMESTAMP,CASE WHEN ? IS NULL THEN CURRENT_TIMESTAMP ELSE NULL END,?)
        ON CONFLICT(binding_id) DO UPDATE SET cursor_json=excluded.cursor_json,
        polled_at=CURRENT_TIMESTAMP,last_event_at=CASE WHEN excluded.last_error IS NULL THEN CURRENT_TIMESTAMP ELSE last_event_at END,
        last_error=excluded.last_error`,
-    ).run(bindingId, JSON.stringify(cursor), error ?? null, error ?? null);
+      )
+      .run(bindingId, JSON.stringify(cursor), error ?? null, error ?? null);
   }
 
-  advanceInterval(id: string, intervalSeconds: number, from = Date.now()): void {
-    this.db.prepare(
-      "UPDATE scenario_trigger_bindings SET next_run_at=?,updated_at=CURRENT_TIMESTAMP WHERE id=?",
-    ).run(new Date(from + intervalSeconds * 1000).toISOString(), id);
+  advanceInterval(
+    id: string,
+    intervalSeconds: number,
+    from = Date.now(),
+  ): void {
+    this.db
+      .prepare(
+        "UPDATE scenario_trigger_bindings SET next_run_at=?,updated_at=CURRENT_TIMESTAMP WHERE id=?",
+      )
+      .run(new Date(from + intervalSeconds * 1000).toISOString(), id);
   }
 
   scenarioHasActiveRun(scenarioId: string): boolean {
-    return Boolean(this.db.prepare(
-      `SELECT 1 FROM execution_runs WHERE scenario_id=? AND status IN ('queued','running','waiting_for_approval') LIMIT 1`,
-    ).get(scenarioId));
+    return Boolean(
+      this.db
+        .prepare(
+          `SELECT 1 FROM execution_runs WHERE scenario_id=? AND status IN ('queued','running','waiting_for_approval') LIMIT 1`,
+        )
+        .get(scenarioId),
+    );
   }
 
-  hasManualBinding(scenarioId: string, kind: "manual_chat" | "manual_editor"): boolean {
-    return Boolean(this.db.prepare(
-      `SELECT 1 FROM scenario_trigger_bindings b JOIN automation_scenarios s ON s.id=b.scenario_id
+  hasManualBinding(
+    scenarioId: string,
+    kind: "manual_chat" | "manual_editor",
+  ): boolean {
+    return Boolean(
+      this.db
+        .prepare(
+          `SELECT 1 FROM scenario_trigger_bindings b JOIN automation_scenarios s ON s.id=b.scenario_id
        WHERE b.scenario_id=? AND b.kind=? AND b.enabled=1
        AND ((?='manual_chat' AND s.status='active') OR (?='manual_editor' AND s.status<>'disabled'))`,
-    ).get(scenarioId, kind, kind, kind));
+        )
+        .get(scenarioId, kind, kind, kind),
+    );
   }
 }

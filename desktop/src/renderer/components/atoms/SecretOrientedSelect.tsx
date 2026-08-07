@@ -7,6 +7,7 @@ interface SecretOrientedSelectProps extends Omit<
   "children" | "options"
 > {
   categoryId: number;
+  className?: string;
   triggerClassName?: string;
   menuClassName?: string;
   optionClassName?: string;
@@ -14,6 +15,7 @@ interface SecretOrientedSelectProps extends Omit<
 
 export const SecretOrientedSelect = observer(function SecretOrientedSelect({
   categoryId,
+  className,
   triggerClassName,
   menuClassName,
   optionClassName,
@@ -25,7 +27,12 @@ export const SecretOrientedSelect = observer(function SecretOrientedSelect({
     .map((secret) => ({ value: String(secret.id), label: secret.label }));
 
   return (
-    <Select {...selectProps} options={options} emptyMessage={emptyMessage}>
+    <Select
+      {...selectProps}
+      options={options}
+      emptyMessage={emptyMessage}
+      className={className}
+    >
       <Select.Trigger className={triggerClassName} />
       <Select.Menu className={menuClassName}>
         {options.map((option) => (

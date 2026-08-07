@@ -1,6 +1,8 @@
 import type { IntegrationKind } from "../../../shared/models/integration";
 import type { TextProviderKind } from "../../../shared/dto";
 import {
+  GithubIcon,
+  GitlabIcon,
   MailIcon,
   OllamaIcon,
   OpenrouterIcon,
@@ -26,6 +28,8 @@ const MAPPING: Record<SupportedKind, SvgIcon> = {
   openrouter: OpenrouterIcon,
   telegram_bot: TelegramIcon,
   email_imap: MailIcon,
+  github_connector: GithubIcon,
+  gitlab_connector: GitlabIcon,
   vecstore: StorageIcon,
 } as const;
 
