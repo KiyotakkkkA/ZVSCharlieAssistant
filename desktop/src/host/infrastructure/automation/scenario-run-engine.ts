@@ -7,7 +7,10 @@ import type {
 import type { AutomationScenarioNode } from "../../../shared/dto";
 import { ScenarioExecutionDataSource } from "../database/scenario-execution.data-source";
 import { ProviderRegistry } from "../text-generation/provider.registry";
-import { ScenarioCompiler } from "./scenario-compiler";
+import {
+  ScenarioCompiler,
+  createScenarioControlPlan,
+} from "./scenario-compiler";
 import type { VectorStoreService } from "../vector-store/vector-store.service";
 import type { ToolRegistry } from "../tools/tool.registry";
 import type { IntegrationDataSource } from "../database/integration.data-source";
@@ -61,6 +64,7 @@ export class ScenarioRunEngine {
       throw new Error("Сценарий или его сохранённая ревизия не найдены");
     if (definition.status === "disabled") throw new Error("Сценарий отключён");
     const compiled = this.compiler.compile(definition.graph);
+    const controlPlan = createScenarioControlPlan(compiled, input);
     const run = this.data.createRun(
       scenarioId,
       definition.revision_id,
@@ -73,8 +77,8 @@ export class ScenarioRunEngine {
     emit({ type: "run.started", run });
     void this.execute(
       run.id,
-      compiled.controlOrder,
-      compiled.controlIncoming,
+      controlPlan.order,
+      controlPlan.incoming,
       compiled.workerLevelsByOrchestrator,
       compiled.workerIncoming,
       compiled.workerTerminalIdsByOrchestrator,
@@ -97,13 +101,14 @@ export class ScenarioRunEngine {
     );
     if (!definition) throw new Error("Сохранённая ревизия сценария не найдена");
     const compiled = this.compiler.compile(definition.graph);
+    const controlPlan = createScenarioControlPlan(compiled, run.input);
     const controller = new AbortController();
     this.controllers.set(run.id, controller);
     emit({ type: "run.started", run });
     void this.execute(
       run.id,
-      compiled.controlOrder,
-      compiled.controlIncoming,
+      controlPlan.order,
+      controlPlan.incoming,
       compiled.workerLevelsByOrchestrator,
       compiled.workerIncoming,
       compiled.workerTerminalIdsByOrchestrator,

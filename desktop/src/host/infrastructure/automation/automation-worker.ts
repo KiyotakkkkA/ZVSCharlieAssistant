@@ -5,6 +5,7 @@ import type { ScenarioRunEngine } from "./scenario-run-engine";
 import type { TelegramTriggerPoller } from "./telegram-trigger-poller";
 import type { EmailTriggerPoller } from "./email-trigger-poller";
 import type { ScenarioRunEvent } from "../../../shared/models/automation";
+import { scenarioMessageTriggerInputDtoSchema } from "../../../shared/dto/scenario-trigger-event.dto";
 
 export class AutomationWorker {
   private readonly workerId = randomUUID();
@@ -87,6 +88,7 @@ export class AutomationWorker {
       if (job.kind === "scenario_run") {
         const scenarioId = String(job.payload.scenarioId ?? "");
         if (!scenarioId) throw new Error("В задании отсутствует scenarioId");
+        const input = parseJobInput(job.payload.input);
         await new Promise<void>((resolve, reject) => {
           const onEvent = (event: ScenarioRunEvent) => {
               if (event.type === "run.completed" || event.type === "run.cancelled") resolve();
@@ -97,7 +99,7 @@ export class AutomationWorker {
           else {
             const run = this.scenarios.start(
               scenarioId,
-              job.payload.input,
+              input,
               "background",
               onEvent,
               undefined,
@@ -113,4 +115,16 @@ export class AutomationWorker {
       this.jobs.fail(job, error instanceof Error ? error.message : "Неизвестная ошибка");
     }
   }
+}
+
+function parseJobInput(input: unknown) {
+  if (
+    input &&
+    typeof input === "object" &&
+    "trigger" in input &&
+    ((input as { trigger?: unknown }).trigger === "telegram" ||
+      (input as { trigger?: unknown }).trigger === "email")
+  )
+    return scenarioMessageTriggerInputDtoSchema.parse(input);
+  return input;
 }

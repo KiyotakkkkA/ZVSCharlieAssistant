@@ -1,16 +1,32 @@
 import type { SecretStorageRepository } from "../../application/ports/secret-storage.repository";
 import type { AutomationJobDataSource } from "../database/automation-job.data-source";
 import type { IntegrationDataSource } from "../database/integration.data-source";
+import type { TelegramMessageEntity } from "../../../shared/dto/scenario-trigger-event.dto";
 
 type TelegramUpdate = {
   update_id: number;
   message?: {
     message_id: number;
+    date: number;
     text?: string;
     caption?: string;
-    chat: { id: number; type: string };
-    from?: { id: number; username?: string; first_name?: string };
+    chat: { id: number; type: string; title?: string; username?: string };
+    from?: { id: number; username?: string; first_name?: string; last_name?: string; is_bot?: boolean };
+    reply_to_message?: { message_id: number };
+    photo?: Array<{ file_id: string; file_unique_id?: string; file_size?: number }>;
+    document?: TelegramFile;
+    video?: TelegramFile;
+    audio?: TelegramFile;
+    voice?: TelegramFile;
   };
+};
+
+type TelegramFile = {
+  file_id: string;
+  file_unique_id?: string;
+  file_name?: string;
+  mime_type?: string;
+  file_size?: number;
 };
 
 export class TelegramTriggerPoller {
@@ -55,10 +71,9 @@ export class TelegramTriggerPoller {
               triggerBindingId: binding.id,
               input: {
                 trigger: "telegram",
-                text,
-                chatId: message.chat.id,
-                messageId: message.message_id,
-                sender: message.from ?? null,
+                integrationProfileId: profile.id,
+                triggerBindingId: binding.id,
+                entity: toTelegramMessageEntity(update, message, text),
               },
             },
           );
@@ -69,4 +84,62 @@ export class TelegramTriggerPoller {
       }
     }
   }
+}
+
+function toTelegramMessageEntity(
+  update: TelegramUpdate,
+  message: NonNullable<TelegramUpdate["message"]>,
+  text: string,
+): TelegramMessageEntity {
+  const attachments: TelegramMessageEntity["attachments"] = [];
+  const photo = message.photo?.at(-1);
+  if (photo)
+    attachments.push({
+      kind: "photo",
+      id: photo.file_id,
+      uniqueId: photo.file_unique_id ?? null,
+      fileName: null,
+      mimeType: "image/jpeg",
+      size: photo.file_size ?? null,
+    });
+  for (const [kind, file] of [
+    ["document", message.document],
+    ["video", message.video],
+    ["audio", message.audio],
+    ["voice", message.voice],
+  ] as const) {
+    if (!file) continue;
+    attachments.push({
+      kind,
+      id: file.file_id,
+      uniqueId: file.file_unique_id ?? null,
+      fileName: file.file_name ?? null,
+      mimeType: file.mime_type ?? null,
+      size: file.file_size ?? null,
+    });
+  }
+  return {
+    type: "telegram_message",
+    updateId: update.update_id,
+    messageId: message.message_id,
+    sentAt: new Date(message.date * 1000).toISOString(),
+    text,
+    chat: {
+      id: String(message.chat.id),
+      type: message.chat.type,
+      title: message.chat.title ?? null,
+      username: message.chat.username ?? null,
+    },
+    sender: message.from
+      ? {
+          id: String(message.from.id),
+          username: message.from.username ?? null,
+          firstName: message.from.first_name ?? null,
+          lastName: message.from.last_name ?? null,
+          isBot: Boolean(message.from.is_bot),
+        }
+      : null,
+    replyToMessageId: message.reply_to_message?.message_id ?? null,
+    attachments,
+  };
 }

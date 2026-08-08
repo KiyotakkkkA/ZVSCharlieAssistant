@@ -1,6 +1,7 @@
 export type ScenarioPortKind =
   | "control-input"
   | "control-output"
+  | "event-output"
   | "worker-input"
   | "worker-output"
   | "knowledge-input"
@@ -45,7 +46,7 @@ export const SCENARIO_PORTS = {
   },
   telegramMessageOut: {
     id: "event-telegram-message-out",
-    kind: "control-output",
+    kind: "event-output",
     direction: "source",
     side: "right",
     label: "Сообщение Telegram",
@@ -53,7 +54,7 @@ export const SCENARIO_PORTS = {
   },
   emailMessageOut: {
     id: "event-email-message-out",
-    kind: "control-output",
+    kind: "event-output",
     direction: "source",
     side: "right",
     label: "Электронное письмо",
@@ -101,6 +102,7 @@ const COMPATIBLE_PORTS: Record<ScenarioPortKind, readonly ScenarioPortKind[]> =
   {
     "control-input": [],
     "control-output": ["control-input"],
+    "event-output": ["control-input"],
     "worker-input": [],
     "worker-output": ["worker-input"],
     "knowledge-input": [],
@@ -122,7 +124,7 @@ export function getScenarioEdgeKind(
   sourcePort?: string | null,
 ): ScenarioEdgeKind | undefined {
   const kind = getScenarioPort(sourcePort)?.kind;
-  if (kind === "control-output") return "control";
+  if (kind === "control-output" || kind === "event-output") return "control";
   if (kind === "worker-output") return "worker";
   if (kind === "knowledge-output") return "knowledge";
   return undefined;
@@ -159,6 +161,8 @@ export function isScenarioConnectionValid(
         targetKind === "agent"
       );
     case "control":
+      if (sourcePort.kind === "event-output" && sourceKind !== "trigger")
+        return false;
       return (
         sourceKind !== "agent" &&
         sourceKind !== "output" &&

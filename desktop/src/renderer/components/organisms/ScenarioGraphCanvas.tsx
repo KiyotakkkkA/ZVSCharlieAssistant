@@ -283,6 +283,7 @@ const portPositions = {
 const portClasses: Record<ScenarioPortDefinition["kind"], string> = {
   "control-input": "size-2.5! rounded-full! bg-lime-300! ring-2 ring-main-900",
   "control-output": "size-2.5! rounded-full! bg-lime-300! ring-2 ring-main-900",
+  "event-output": "size-2.5! rounded-full! bg-lime-300! ring-2 ring-main-900",
   "worker-input": "h-2! w-3.5! rounded-sm! bg-violet-300! ring-2 ring-main-900",
   "worker-output":
     "h-2! w-3.5! rounded-sm! bg-violet-300! ring-2 ring-main-900",

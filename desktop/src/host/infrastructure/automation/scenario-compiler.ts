@@ -5,17 +5,24 @@ import type {
   AutomationScenarioNode,
 } from "../../../shared/dto";
 import {
+  SCENARIO_PORTS,
   getScenarioEdgeKind,
   isScenarioConnectionValid,
 } from "../../../shared/scenario-ports";
 
 export interface CompiledScenario {
-  controlOrder: string[];
-  controlIncoming: Map<string, string[]>;
   workerLevelsByOrchestrator: Map<string, string[][]>;
   workerIncoming: Map<string, string[]>;
   workerTerminalIdsByOrchestrator: Map<string, string[]>;
   knowledgeStoreIdsByAgent: Map<string, number[]>;
+  controlEdges: AutomationScenarioEdge[];
+  controlNodeIds: string[];
+  triggerNodeId: string;
+}
+
+export interface ScenarioControlPlan {
+  order: string[];
+  incoming: Map<string, string[]>;
 }
 
 export class ScenarioCompiler {
@@ -244,32 +251,6 @@ export class ScenarioCompiler {
         byId.get(edge.source)?.kind !== "agent" &&
         byId.get(edge.target)?.kind !== "agent",
     );
-    const controlIncoming = new Map(
-      controlNodes.map((node) => [node.id, [] as string[]]),
-    );
-    const outgoing = new Map(
-      controlNodes.map((node) => [node.id, [] as string[]]),
-    );
-    for (const edge of controlEdges) {
-      controlIncoming.get(edge.target)!.push(edge.source);
-      outgoing.get(edge.source)!.push(edge.target);
-    }
-    const degree = new Map(
-      [...controlIncoming].map(([id, values]) => [id, values.length]),
-    );
-    const queue = controlNodes
-      .filter((node) => degree.get(node.id) === 0)
-      .map((node) => node.id);
-    const controlOrder: string[] = [];
-    while (queue.length) {
-      const id = queue.shift()!;
-      controlOrder.push(id);
-      for (const target of outgoing.get(id) ?? []) {
-        const next = degree.get(target)! - 1;
-        degree.set(target, next);
-        if (next === 0) queue.push(target);
-      }
-    }
     const workerEdges = graph.edges.filter(
       (item) => edgeKind(item) === "worker",
     );
@@ -356,14 +337,83 @@ export class ScenarioCompiler {
         knowledgeStoreIdsByAgent.get(edge.target)?.push(storeId);
     }
     return {
-      controlOrder,
-      controlIncoming,
       workerLevelsByOrchestrator,
       workerIncoming,
       workerTerminalIdsByOrchestrator,
       knowledgeStoreIdsByAgent,
+      controlEdges,
+      controlNodeIds: controlNodes.map((node) => node.id),
+      triggerNodeId: graph.nodes.find((node) => node.kind === "trigger")!.id,
     };
   }
+}
+
+export function createScenarioControlPlan(
+  compiled: CompiledScenario,
+  input: unknown,
+): ScenarioControlPlan {
+  const eventPort = triggerEventPort(input);
+  const edges = compiled.controlEdges.filter((edge) => {
+    if (edge.source !== compiled.triggerNodeId) return true;
+    const sourcePort = edge.sourcePort ?? SCENARIO_PORTS.controlOut.id;
+    if (sourcePort === SCENARIO_PORTS.telegramMessageOut.id)
+      return eventPort === sourcePort;
+    if (sourcePort === SCENARIO_PORTS.emailMessageOut.id)
+      return eventPort === sourcePort;
+    return eventPort === undefined;
+  });
+  const outgoing = new Map(
+    compiled.controlNodeIds.map((id) => [id, [] as string[]]),
+  );
+  for (const edge of edges) outgoing.get(edge.source)?.push(edge.target);
+  const reachable = new Set<string>();
+  const stack = [compiled.triggerNodeId];
+  while (stack.length) {
+    const id = stack.pop()!;
+    if (reachable.has(id)) continue;
+    reachable.add(id);
+    stack.push(...(outgoing.get(id) ?? []));
+  }
+  if (reachable.size === 1)
+    throw new Error(
+      eventPort
+        ? "Для полученного события не настроена ветка выполнения"
+        : "Для ручного или интервального запуска не настроена ветка выполнения",
+    );
+  const incoming = new Map(
+    [...reachable].map((id) => [id, [] as string[]]),
+  );
+  for (const edge of edges) {
+    if (!reachable.has(edge.source) || !reachable.has(edge.target)) continue;
+    incoming.get(edge.target)!.push(edge.source);
+  }
+  const degree = new Map(
+    [...incoming].map(([id, parents]) => [id, parents.length]),
+  );
+  const queue = [...degree]
+    .filter(([, count]) => count === 0)
+    .map(([id]) => id);
+  const order: string[] = [];
+  while (queue.length) {
+    const id = queue.shift()!;
+    order.push(id);
+    for (const target of outgoing.get(id) ?? []) {
+      if (!degree.has(target)) continue;
+      const next = degree.get(target)! - 1;
+      degree.set(target, next);
+      if (next === 0) queue.push(target);
+    }
+  }
+  return { order, incoming };
+}
+
+function triggerEventPort(input: unknown) {
+  if (!input || typeof input !== "object" || !("trigger" in input))
+    return undefined;
+  const trigger = (input as { trigger?: unknown }).trigger;
+  if (trigger === "telegram") return SCENARIO_PORTS.telegramMessageOut.id;
+  if (trigger === "email") return SCENARIO_PORTS.emailMessageOut.id;
+  return undefined;
 }
 
 function resolveEdgeKind(
