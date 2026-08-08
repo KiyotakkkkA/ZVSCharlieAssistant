@@ -1,18 +1,18 @@
-import type { ReactNode } from "react";
+import { AutomationScenarioNodeKind } from "@ipc/contracts";
 import { Dropdown, Floating } from "@kiyotakkkka/zvs-uikit-lib";
-import type { AutomationScenarioNodeKind } from "../../../ipc/contracts";
-import type { AutomationScenarioNode } from "../../../shared/dto";
 import {
-  MoreIcon,
+  SvgIcon,
   PlayCircleIcon,
   RobotIcon,
-  SendIcon,
-  SettingsIcon,
   StorageIcon,
-  SvgIcon,
+  SettingsIcon,
   TasksIcon,
+  SendIcon,
+  MoreIcon,
   TrashIcon,
-} from "../atoms";
+} from "@renderer/components/atoms";
+import { ReactNode } from "react";
+import { AutomationScenarioNode } from "src/shared/dto";
 
 interface ScenarioNodeCardProps {
   node: AutomationScenarioNode;
@@ -83,13 +83,13 @@ export function ScenarioNodeCard({
   const Icon = variant.icon;
   const isTrigger = node.kind === "trigger";
   const card = (
-    <div
-      className={`group/node relative h-full w-full select-none bg-main-800 ring-1 transition-[box-shadow,background-color] ${isTrigger ? "rounded-l-full rounded-r-lg" : "rounded-lg"} ${nodeRingClassName(runStatus, selected)}`}
-    >
+    <div className="group/node relative h-full w-full select-none">
       {children}
-      <div className="flex h-full items-center gap-2.5 px-2.5 py-2">
+      <div
+        className={`relative flex items-center gap-2.5 rounded-lg bg-main-800 px-2.5 py-2 ring-1 transition-[box-shadow,background-color] ${isTrigger ? "h-15" : "h-full"} ${nodeRingClassName(runStatus, selected)}`}
+      >
         <span
-          className={`grid size-7 shrink-0 place-items-center ${isTrigger ? "rounded-full" : "rounded-md"} ${variant.iconClassName}`}
+          className={`grid size-7 shrink-0 place-items-center rounded-md ${variant.iconClassName}`}
         >
           <Icon className="size-3.5" />
         </span>
@@ -132,7 +132,7 @@ export function ScenarioNodeCard({
       </div>
     </div>
   );
-  if (!showDescription) return card;
+  if (isTrigger || !showDescription) return card;
   return (
     <Floating anchor="bottom-center" className="h-full w-full">
       <Floating.Trigger className="h-full w-full">{card}</Floating.Trigger>

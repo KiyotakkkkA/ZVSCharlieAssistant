@@ -1,4 +1,4 @@
-import { memo, useMemo } from "react";
+import { memo, useMemo, type CSSProperties } from "react";
 import {
   Background,
   BaseEdge,
@@ -18,9 +18,8 @@ import {
   type Connection,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { Dropdown, Tooltip } from "@kiyotakkkka/zvs-uikit-lib";
+import { Dropdown } from "@kiyotakkkka/zvs-uikit-lib";
 import { TrashIcon } from "../atoms";
-import { ScenarioNodeCard, scenarioNodeVariants } from "../molecules";
 import type {
   AutomationScenarioEdge as GraphEdge,
   AutomationScenarioNode as GraphNode,
@@ -30,6 +29,11 @@ import {
   isScenarioConnectionValid,
   type ScenarioPortDefinition,
 } from "../../../shared/scenario-ports";
+import {
+  ScenarioNodeCard,
+  ScenarioTriggerNodeSummary,
+  scenarioNodeVariants,
+} from "../molecules/nodes";
 
 type ScenarioNodeData = {
   node: GraphNode;
@@ -209,6 +213,22 @@ const ScenarioFlowNodeView = memo(function ScenarioFlowNodeView({
       ) : node.kind !== "trigger" && node.kind !== "knowledge_store" ? (
         <ScenarioPort port={SCENARIO_PORTS.controlIn} />
       ) : null}
+      {node.kind === "trigger" ? (
+        <ScenarioTriggerNodeSummary
+          node={node}
+          renderPort={(channel) => (
+            <ScenarioPort
+              key={channel.portId}
+              port={
+                channel.portId === SCENARIO_PORTS.telegramMessageOut.id
+                  ? SCENARIO_PORTS.telegramMessageOut
+                  : SCENARIO_PORTS.emailMessageOut
+              }
+              style={{ right: -5, top: "50%" }}
+            />
+          )}
+        />
+      ) : null}
       {node.kind === "orchestrator" ? (
         <>
           <ScenarioPort port={SCENARIO_PORTS.controlOut} />
@@ -218,6 +238,11 @@ const ScenarioFlowNodeView = memo(function ScenarioFlowNodeView({
         <ScenarioPort port={SCENARIO_PORTS.workerOut} />
       ) : node.kind === "knowledge_store" ? (
         <ScenarioPort port={SCENARIO_PORTS.knowledgeOut} />
+      ) : node.kind === "trigger" ? (
+        <ScenarioPort
+          port={SCENARIO_PORTS.controlOut}
+          style={{ right: -5, top: 30 }}
+        />
       ) : node.kind !== "output" ? (
         <ScenarioPort port={SCENARIO_PORTS.controlOut} />
       ) : null}
@@ -267,14 +292,21 @@ const portClasses: Record<ScenarioPortDefinition["kind"], string> = {
     "size-2.5! rounded-none! bg-cyan-300! ring-2 ring-main-900",
 };
 
-function ScenarioPort({ port }: { port: ScenarioPortDefinition }) {
+function ScenarioPort({
+  port,
+  style,
+}: {
+  port: ScenarioPortDefinition;
+  style?: CSSProperties;
+}) {
   return (
     <Handle
       id={port.id}
       type={port.direction}
       position={portPositions[port.side]}
       aria-label={port.label}
-      className={`border-2! border-main-800! ${portClasses[port.kind]}`}
+      style={style}
+      className={`z-20! border-2! border-main-800! ${portClasses[port.kind]}`}
     >
       <span className="block size-full" />
     </Handle>

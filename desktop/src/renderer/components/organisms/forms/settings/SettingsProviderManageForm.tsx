@@ -180,6 +180,7 @@ export function SettingsProviderManageForm({
             </Field>
             <Field label="Поставщик модели">
               <Select
+                searchable
                 className="w-full"
                 value={model.kind}
                 onChange={(value) => {

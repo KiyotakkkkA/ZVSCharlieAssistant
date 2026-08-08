@@ -15,7 +15,6 @@ import {
 import {
   Button,
   InputCheckBox,
-  InputBig,
   InputSmall,
   Select,
   useToasts,
@@ -32,7 +31,6 @@ import {
   SettingsIcon,
   TasksIcon,
   StorageIcon,
-  Field,
   PlayCircleIcon,
 } from "../../../components/atoms";
 import {
@@ -46,7 +44,15 @@ import {
   ScenarioEmailTriggerSetupForm,
   ScenarioIntervalTriggerSetupForm,
   ScenarioTelegramTriggerSetupForm,
+  ScenarioNodeAgentForm,
+  ScenarioNodeApprovalForm,
+  ScenarioNodeConditionForm,
+  ScenarioNodeKnowledgeStoreForm,
+  ScenarioNodeOrchestratorForm,
+  ScenarioNodeOutputForm,
+  ScenarioNodeTriggerForm,
 } from "../../../components/organisms/forms";
+import { getScenarioTriggerEventChannels } from "../../../components/molecules/nodes";
 import { APP_PATHS } from "../../../app/routes";
 import { useHashRouter } from "../../../hooks";
 import {
@@ -289,25 +295,34 @@ export const ScenarioGraphEditorPage = observer(
 
     const flowNodes = useMemo<ScenarioFlowNode[]>(
       () =>
-        nodes.map((node) => ({
-          id: node.id,
-          type: "scenario",
-          position: { x: node.x, y: node.y },
-          data: {
-            node,
-            showDescription: showNodeDescriptions,
-            runStatus: runStatusByNode.get(node.id),
-            onDelete:
-              node.kind === "trigger" || node.kind === "orchestrator"
-                ? undefined
-                : deleteNode,
-          },
-          selected: node.id === selectedNodeId,
-          deletable: node.kind !== "trigger" && node.kind !== "orchestrator",
-          width: 176,
-          height: 60,
-          measured: { width: 176, height: 60 },
-        })),
+        nodes.map((node) => {
+          const eventChannelCount =
+            node.kind === "trigger"
+              ? getScenarioTriggerEventChannels(node).length
+              : 0;
+          const width = 176;
+          const height = eventChannelCount ? 68 + eventChannelCount * 35 : 60;
+          return {
+            id: node.id,
+            type: "scenario",
+            position: { x: node.x, y: node.y },
+            data: {
+              node,
+              showDescription: showNodeDescriptions,
+              runStatus: runStatusByNode.get(node.id),
+              onDelete:
+                node.kind === "trigger" || node.kind === "orchestrator"
+                  ? undefined
+                  : deleteNode,
+            },
+            selected: node.id === selectedNodeId,
+            deletable:
+              node.kind !== "trigger" && node.kind !== "orchestrator",
+            width,
+            height,
+            measured: { width, height },
+          };
+        }),
       [
         nodes,
         selectedNodeId,
@@ -407,7 +422,8 @@ export const ScenarioGraphEditorPage = observer(
             (edge) =>
               edge.source === connection.source &&
               edge.target === connection.target &&
-              edge.kind === kind,
+              edge.kind === kind &&
+              edge.sourcePort === (connection.sourceHandle ?? undefined),
           )
         )
           return current;
@@ -724,197 +740,49 @@ export const ScenarioGraphEditorPage = observer(
                   </div>
                 </div>
 
-                {selectedNode.kind !== "trigger" ? (
-                  <>
-                    <Field label="Название">
-                      <InputSmall
-                        value={selectedNode.title}
-                        onChange={(event) =>
-                          updateSelectedNode({ title: event.target.value })
-                        }
-                      />
-                    </Field>
-                    <Field label="Описание">
-                      <InputBig
-                        value={selectedNode.description}
-                        onChange={(event) =>
-                          updateSelectedNode({
-                            description: event.target.value,
-                          })
-                        }
-                        minRows={3}
-                        maxRows={6}
-                        autoResize
-                      />
-                    </Field>
-                  </>
-                ) : null}
                 {selectedNode.kind === "trigger" ? (
-                  <div className="space-y-5">
-                    <section className="space-y-3 rounded-xl bg-main-800/45 p-3">
-                      <div>
-                        <h3 className="text-sm font-semibold text-main-100">
-                          Ручной вызов
-                        </h3>
-                        <p className="text-xs text-main-500">
-                          Выберите доступные пользователю способы запуска.
-                        </p>
-                      </div>
-                      <TriggerSetupCard
-                        title="Из чата"
-                        description="Сценарий доступен в меню поля сообщения"
-                        enabled={selectedTriggerConfig.manual.chatEnabled}
-                        onClick={() => setTriggerSetupModal({ kind: "chat" })}
-                      />
-                      <TriggerSetupCard
-                        title="Из окна сценария"
-                        description="Ручной запуск из редактора сценария"
-                        enabled={selectedTriggerConfig.manual.editorEnabled}
-                        onClick={() => setTriggerSetupModal({ kind: "editor" })}
-                      />
-                    </section>
-                    <section className="space-y-3 rounded-xl bg-main-800/45 p-3">
-                      <div>
-                        <h3 className="text-sm font-semibold text-main-100">
-                          Автоматический вызов
-                        </h3>
-                        <p className="text-xs text-main-500">
-                          События активной сохранённой ревизии.
-                        </p>
-                      </div>
-                      <TriggerSetupCard
-                        title="Сообщение в Telegram"
-                        description={triggerGroupDescription(
-                          selectedTriggerConfig.automatic,
-                          "telegram",
-                        )}
-                        enabled={selectedTriggerConfig.automatic.some(
-                          (item) => item.kind === "telegram" && item.enabled,
-                        )}
-                        onClick={() =>
-                          setTriggerSetupModal({ kind: "telegram" })
-                        }
-                      />
-                      <TriggerSetupCard
-                        title="Сообщение на почту"
-                        description={triggerGroupDescription(
-                          selectedTriggerConfig.automatic,
-                          "email",
-                        )}
-                        enabled={selectedTriggerConfig.automatic.some(
-                          (item) => item.kind === "email" && item.enabled,
-                        )}
-                        onClick={() => setTriggerSetupModal({ kind: "email" })}
-                      />
-                      <TriggerSetupCard
-                        title="Временной промежуток"
-                        description={triggerGroupDescription(
-                          selectedTriggerConfig.automatic,
-                          "interval",
-                        )}
-                        enabled={selectedTriggerConfig.automatic.some(
-                          (item) => item.kind === "interval" && item.enabled,
-                        )}
-                        onClick={() =>
-                          setTriggerSetupModal({ kind: "interval" })
-                        }
-                      />
-                    </section>
-                  </div>
+                  <ScenarioNodeTriggerForm
+                    config={selectedTriggerConfig}
+                    onSetup={(kind) => setTriggerSetupModal({ kind })}
+                  />
                 ) : null}
                 {selectedNode.kind === "agent" ? (
-                  <>
-                    <Field label="Агент">
-                      <Select
-                        value={String(selectedNode.config?.agentId ?? "")}
-                        onChange={(agentId) =>
-                          updateSelectedNode({
-                            config: { ...selectedNode.config, agentId },
-                            description:
-                              automationStore.agents.find(
-                                (agent) => agent.id === agentId,
-                              )?.name ?? selectedNode.description,
-                          })
-                        }
-                        options={automationStore.agents.map((agent) => ({
-                          value: agent.id,
-                          label: agent.name,
-                        }))}
-                        placeholder="Выберите агента"
-                        searchable
-                      >
-                        <Select.Trigger className="w-full" />
-                        <Select.Menu>
-                          {automationStore.agents.map((agent) => (
-                            <Select.Option
-                              key={agent.id}
-                              value={agent.id}
-                              label={agent.name}
-                            />
-                          ))}
-                        </Select.Menu>
-                      </Select>
-                    </Field>
-                    <Field label="Инструкции для сценария">
-                      <InputBig
-                        value={String(
-                          selectedNode.config?.scenarioInstructions ?? "",
-                        )}
-                        onChange={(event) =>
-                          updateSelectedNode({
-                            config: {
-                              ...selectedNode.config,
-                              scenarioInstructions: event.target.value,
-                            },
-                          })
-                        }
-                        placeholder="Уточните роль агента, формат и ограничения результата"
-                        minRows={4}
-                        maxRows={9}
-                        autoResize
-                      />
-                    </Field>
-                  </>
+                  <ScenarioNodeAgentForm
+                    node={selectedNode}
+                    agents={automationStore.agents}
+                    onChange={updateSelectedNode}
+                  />
                 ) : null}
                 {selectedNode.kind === "knowledge_store" ? (
-                  <Field label="Векторное хранилище">
-                    <Select
-                      value={String(selectedNode.config?.vectorStoreId ?? "")}
-                      onChange={(vectorStoreId) =>
-                        updateSelectedNode({
-                          config: {
-                            ...selectedNode.config,
-                            vectorStoreId: Number(vectorStoreId),
-                          },
-                          description:
-                            vectorStoreStore.stores.find(
-                              (item) => item.id === Number(vectorStoreId),
-                            )?.name ?? selectedNode.description,
-                        })
-                      }
-                      options={vectorStoreStore.stores
-                        .filter((item) => item.status === "ready")
-                        .map((item) => ({
-                          value: String(item.id),
-                          label: item.name,
-                        }))}
-                      placeholder="Выберите хранилище"
-                      searchable
-                    >
-                      <Select.Trigger className="w-full" />
-                      <Select.Menu>
-                        {vectorStoreStore.stores
-                          .filter((item) => item.status === "ready")
-                          .map((item) => (
-                            <Select.Option
-                              key={item.id}
-                              value={String(item.id)}
-                              label={item.name}
-                            />
-                          ))}
-                      </Select.Menu>
-                    </Select>
-                  </Field>
+                  <ScenarioNodeKnowledgeStoreForm
+                    node={selectedNode}
+                    stores={vectorStoreStore.stores}
+                    onChange={updateSelectedNode}
+                  />
+                ) : null}
+                {selectedNode.kind === "orchestrator" ? (
+                  <ScenarioNodeOrchestratorForm
+                    node={selectedNode}
+                    onChange={updateSelectedNode}
+                  />
+                ) : null}
+                {selectedNode.kind === "condition" ? (
+                  <ScenarioNodeConditionForm
+                    node={selectedNode}
+                    onChange={updateSelectedNode}
+                  />
+                ) : null}
+                {selectedNode.kind === "approval" ? (
+                  <ScenarioNodeApprovalForm
+                    node={selectedNode}
+                    onChange={updateSelectedNode}
+                  />
+                ) : null}
+                {selectedNode.kind === "output" ? (
+                  <ScenarioNodeOutputForm
+                    node={selectedNode}
+                    onChange={updateSelectedNode}
+                  />
                 ) : null}
               </div>
             ) : (
@@ -1048,64 +916,3 @@ export const ScenarioGraphEditorPage = observer(
     );
   },
 );
-
-function TriggerSetupCard({
-  title,
-  description,
-  enabled,
-  onClick,
-  onDelete,
-}: {
-  title: string;
-  description: string;
-  enabled: boolean;
-  onClick(): void;
-  onDelete?(): void;
-}) {
-  return (
-    <div
-      className="group flex items-center gap-3 rounded-xl border border-main-700/80 bg-main-900/25 p-3 transition-colors hover:bg-main-700/35"
-      onClick={onClick}
-    >
-      <span
-        className={`size-2 shrink-0 rounded-full ${enabled ? "bg-success-light" : "bg-main-600"}`}
-      />
-      <button className="min-w-0 flex-1 text-left">
-        <span className="block truncate text-sm font-medium text-main-100">
-          {title}
-        </span>
-        <span className="mt-1 block truncate text-xs text-main-500">
-          {description}
-        </span>
-      </button>
-      <Button
-        type="button"
-        variant="ghost"
-        className="shrink-0 px-2 text-xs"
-        onClick={onClick}
-      >
-        Настроить
-      </Button>
-      {onDelete ? (
-        <Button
-          type="button"
-          variant="ghost"
-          className="shrink-0 px-1 text-xs text-danger-light"
-          onClick={onDelete}
-        >
-          ×
-        </Button>
-      ) : null}
-    </div>
-  );
-}
-
-function triggerGroupDescription(
-  bindings: AutomaticTrigger[],
-  kind: AutomaticTrigger["kind"],
-) {
-  const group = bindings.filter((item) => item.kind === kind);
-  if (!group.length) return "Не настроено";
-  const enabled = group.filter((item) => item.enabled).length;
-  return `${group.length} настроено · ${enabled} включено`;
-}

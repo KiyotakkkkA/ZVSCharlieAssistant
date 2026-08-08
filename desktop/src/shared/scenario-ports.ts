@@ -43,6 +43,22 @@ export const SCENARIO_PORTS = {
     label: "Следующий шаг",
     multiple: true,
   },
+  telegramMessageOut: {
+    id: "event-telegram-message-out",
+    kind: "control-output",
+    direction: "source",
+    side: "right",
+    label: "Сообщение Telegram",
+    multiple: true,
+  },
+  emailMessageOut: {
+    id: "event-email-message-out",
+    kind: "control-output",
+    direction: "source",
+    side: "right",
+    label: "Электронное письмо",
+    multiple: true,
+  },
   workerIn: {
     id: "worker-in",
     kind: "worker-input",
