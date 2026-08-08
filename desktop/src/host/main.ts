@@ -10,24 +10,24 @@ import {
   removeSecretStorageHandlers,
 } from "../ipc/main/register-secret-storage-handlers";
 import { createSqliteDatabase } from "./infrastructure/database/sqlite.database";
-import { SecretStorageDataSource } from "./infrastructure/database/secret-storage.data-source";
-import { SqliteSecretStorageRepository } from "./infrastructure/repositories/sqlite-secret-storage.repository";
+import { SecretStorageRepository } from "./infrastructure/database/secret-storage.repository";
+
 import {
   registerAutomationHandlers,
   removeAutomationHandlers,
 } from "../ipc/main/register-automation-handlers";
-import { AutomationDataSource } from "./infrastructure/database/automation.data-source";
-import { SqliteAutomationRepository } from "./infrastructure/repositories/sqlite-automation.repository";
+import { AutomationRepository } from "./infrastructure/database/automation.repository";
+
 import { BUILTIN_AUTOMATION_TOOLS } from "./infrastructure/automation/builtin-tools.registry";
 import { FileSystemSkillContentStore } from "./infrastructure/filesystem/skill-content.store";
 import { ProviderConnectionService } from "./infrastructure/text-generation/provider-connection.service";
-import { TextProviderDataSource } from "./infrastructure/database/text-provider.data-source";
-import { ChatDataSource } from "./infrastructure/database/chat.data-source";
+import { TextProviderRepository } from "./infrastructure/database/text-provider.repository";
+import { ChatRepository } from "./infrastructure/database/chat.repository";
 import { ProviderRegistry } from "./infrastructure/text-generation/provider.registry";
 import { RunEngine } from "./infrastructure/text-generation/run-engine";
 import { ScenarioCompiler } from "./infrastructure/automation/scenario-compiler";
 import { ScenarioRunEngine } from "./infrastructure/automation/scenario-run-engine";
-import { ScenarioExecutionDataSource } from "./infrastructure/database/scenario-execution.data-source";
+import { ScenarioExecutionRepository } from "./infrastructure/database/scenario-execution.repository";
 import { ToolRegistry } from "./infrastructure/tools/tool.registry";
 import { OllamaWebService } from "./infrastructure/tools/ollama-web.service";
 import {
@@ -42,7 +42,7 @@ import {
   registerVectorStoreHandlers,
   removeVectorStoreHandlers,
 } from "../ipc/main/register-vector-store-handlers";
-import { VectorStoreDataSource } from "./infrastructure/database/vector-store.data-source";
+import { VectorStoreRepository } from "./infrastructure/database/vector-store.repository";
 import { EmbeddingService } from "./infrastructure/vector-store/embedding.service";
 import { VectorStoreService } from "./infrastructure/vector-store/vector-store.service";
 import { ReportDocxService } from "./infrastructure/tools/report-docx.service";
@@ -53,21 +53,21 @@ import {
   registerTaskHandlers,
   removeTaskHandlers,
 } from "../ipc/main/register-task-handlers";
-import { TaskHistoryDataSource } from "./infrastructure/database/task-history.data-source";
-import { TerminalPolicyDataSource } from "./infrastructure/database/terminal-policy.data-source";
+import { TaskHistoryRepository } from "./infrastructure/database/task-history.repository";
+import { TerminalPolicyRepository } from "./infrastructure/database/terminal-policy.repository";
 import { CommandExecutionService } from "./infrastructure/tools/command-execution.service";
 import {
   registerTerminalPolicyHandlers,
   removeTerminalPolicyHandlers,
 } from "../ipc/main/register-terminal-policy-handlers";
 import { NativeSearchService } from "./infrastructure/tools/native-search.service";
-import { DirectoryPolicyDataSource } from "./infrastructure/database/directory-policy.data-source";
+import { DirectoryPolicyRepository } from "./infrastructure/database/directory-policy.repository";
 import {
   registerDirectoryPolicyHandlers,
   removeDirectoryPolicyHandlers,
 } from "../ipc/main/register-directory-policy-handlers";
-import { IntegrationDataSource } from "./infrastructure/database/integration.data-source";
-import { AutomationJobDataSource } from "./infrastructure/database/automation-job.data-source";
+import { IntegrationRepository } from "./infrastructure/database/integration.repository";
+import { AutomationJobRepository } from "./infrastructure/database/automation-job.repository";
 import { IntegrationProfileService } from "./application/services/integration-profile.service";
 import {
   registerIntegrationHandlers,
@@ -82,9 +82,9 @@ import {
   removeCoreInteractorHandlers,
 } from "@ipc/main/register-core-interactor-handlers";
 import { CoreInteractorService } from "./infrastructure/electron/core-interactor.service";
-import { ScenarioFileDataSource } from "./infrastructure/database/scenario-file.data-source";
+import { ScenarioFileRepository } from "./infrastructure/database/scenario-file.repository";
 import { ScenarioFileDownloadService } from "./infrastructure/automation/scenario-file-download.service";
-import { ScenarioFileContentReader } from "./infrastructure/automation/scenario-file-content-reader";
+import { ScenarioFileReaderService } from "./infrastructure/automation/scenario-file-reader.service";
 
 let database: ReturnType<typeof createSqliteDatabase> | undefined;
 let scenarioJobWorker: ScenarioJobWorker | undefined;
@@ -95,27 +95,24 @@ let scenarioFileDownloads: ScenarioFileDownloadService | undefined;
 
 app.whenReady().then(() => {
   database = createSqliteDatabase(join(app.getPath("userData"), "storage.db"));
-  const secretRepository = new SqliteSecretStorageRepository(
-    new SecretStorageDataSource(database),
-  );
-  const automationDataSource = new AutomationDataSource(database);
-  const terminalPolicyDataSource = new TerminalPolicyDataSource(database);
-  const directoryPolicyDataSource = new DirectoryPolicyDataSource(database);
+  const secretRepository = new SecretStorageRepository(database);
+  const terminalPolicyRepository = new TerminalPolicyRepository(database);
+  const directoryPolicyRepository = new DirectoryPolicyRepository(database);
   const skillContent = new FileSystemSkillContentStore(
     join(app.getPath("userData"), "skills"),
   );
+  const automationRepository = new AutomationRepository(
+    database,
+    BUILTIN_AUTOMATION_TOOLS,
+    skillContent,
+    terminalPolicyRepository,
+    directoryPolicyRepository,
+  );
   new BuiltinSkillProvisioner(
-    automationDataSource,
+    automationRepository,
     skillContent,
     DEFAULT_SKILLS,
   ).provision();
-  const automationRepository = new SqliteAutomationRepository(
-    automationDataSource,
-    BUILTIN_AUTOMATION_TOOLS,
-    skillContent,
-    terminalPolicyDataSource,
-    directoryPolicyDataSource,
-  );
 
   const reportsRoot = join(
     app.getPath("documents"),
@@ -124,50 +121,50 @@ app.whenReady().then(() => {
   );
   registerAppHandlers(new ElectronGeneratedArtifactExporter(reportsRoot));
   registerSecretStorageHandlers(secretRepository);
-  const providerDataSource = new TextProviderDataSource(database);
+  const providerRepository = new TextProviderRepository(database);
   registerTextProviderHandlers(
-    new ProviderConnectionService(secretRepository, providerDataSource),
+    new ProviderConnectionService(secretRepository, providerRepository),
   );
-  const chatDataSource = new ChatDataSource(database);
-  registerTaskHandlers(new TaskHistoryDataSource(database));
-  const vectorDataSource = new VectorStoreDataSource(database);
-  vectorDataSource.recoverInterruptedDocuments();
+  const chatRepository = new ChatRepository(database);
+  registerTaskHandlers(new TaskHistoryRepository(database));
+  const vectorRepository = new VectorStoreRepository(database);
+  vectorRepository.recoverInterruptedDocuments();
   const vectorService = new VectorStoreService(
-    vectorDataSource,
-    new EmbeddingService(vectorDataSource, secretRepository),
+    vectorRepository,
+    new EmbeddingService(vectorRepository, secretRepository),
     join(app.getPath("userData"), "vector-files"),
     join(app.getPath("userData"), "lancedb"),
   );
   registerVectorStoreHandlers(vectorService);
   const providerRegistry = new ProviderRegistry(
-    chatDataSource,
+    chatRepository,
     secretRepository,
   );
-  const scenarioExecutions = new ScenarioExecutionDataSource(database);
+  const scenarioExecutions = new ScenarioExecutionRepository(database);
   scenarioExecutions.recoverInterruptedRuns();
-  const integrationDataSource = new IntegrationDataSource(database);
+  const integrationRepository = new IntegrationRepository(database);
   const scenarioDownloadsRoot = join(app.getPath("userData"), "downloads");
   scenarioFileDownloads = new ScenarioFileDownloadService(
-    new ScenarioFileDataSource(database),
-    integrationDataSource,
+    new ScenarioFileRepository(database),
+    integrationRepository,
     secretRepository,
     scenarioDownloadsRoot,
   );
   scenarioFileDownloads.start();
   registerIntegrationHandlers(
-    new IntegrationProfileService(integrationDataSource, secretRepository),
+    new IntegrationProfileService(integrationRepository, secretRepository),
   );
   const ollamaWebService = new OllamaWebService(
-    automationDataSource,
+    automationRepository,
     secretRepository,
   );
   const commandExecutionService = new CommandExecutionService(
-    terminalPolicyDataSource,
-    directoryPolicyDataSource,
+    terminalPolicyRepository,
+    directoryPolicyRepository,
   );
   const toolRegistry = new ToolRegistry(
-    chatDataSource,
-    automationDataSource,
+    chatRepository,
+    automationRepository,
     ollamaWebService,
     vectorService,
     skillContent,
@@ -175,34 +172,34 @@ app.whenReady().then(() => {
     commandExecutionService,
     new NativeSearchService(
       join(app.getAppPath(), "native"),
-      directoryPolicyDataSource,
+      directoryPolicyRepository,
     ),
   );
   registerTerminalPolicyHandlers(
-    terminalPolicyDataSource,
+    terminalPolicyRepository,
     commandExecutionService,
   );
-  registerDirectoryPolicyHandlers(directoryPolicyDataSource);
+  registerDirectoryPolicyHandlers(directoryPolicyRepository);
   const scenarioEngine = new ScenarioRunEngine(
     scenarioExecutions,
     providerRegistry,
     new ScenarioCompiler(),
     vectorService,
     toolRegistry,
-    integrationDataSource,
+    integrationRepository,
     scenarioFileDownloads,
-    new ScenarioFileContentReader(scenarioDownloadsRoot),
+    new ScenarioFileReaderService(scenarioDownloadsRoot),
   );
   registerAutomationHandlers(
     automationRepository,
     scenarioExecutions,
     scenarioEngine,
-    integrationDataSource,
+    integrationRepository,
   );
   registerChatHandlers(
-    chatDataSource,
+    chatRepository,
     new RunEngine(
-      chatDataSource,
+      chatRepository,
       providerRegistry,
       toolRegistry,
       scenarioEngine,
@@ -210,19 +207,19 @@ app.whenReady().then(() => {
   );
   registerCoreInteractorHandlers(new CoreInteractorService());
   createMainWindow();
-  const automationJobs = new AutomationJobDataSource(database);
+  const automationJobs = new AutomationJobRepository(database);
   scenarioJobWorker = new ScenarioJobWorker(automationJobs, scenarioEngine);
   intervalScheduleWorker = new IntervalScheduleWorker(
     automationJobs,
-    integrationDataSource,
+    integrationRepository,
   );
   telegramWatchListener = new TelegramWatchListener(
-    integrationDataSource,
+    integrationRepository,
     automationJobs,
     secretRepository,
   );
   mailWatchListener = new MailWatchListener(
-    integrationDataSource,
+    integrationRepository,
     automationJobs,
     secretRepository,
   );

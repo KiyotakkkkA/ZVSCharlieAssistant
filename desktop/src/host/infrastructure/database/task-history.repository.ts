@@ -22,7 +22,7 @@ interface TaskRunRow {
   completed_at: string | null;
 }
 
-export class TaskHistoryDataSource {
+export class TaskHistoryRepository {
   constructor(private readonly db: Database.Database) {}
 
   listAgentRuns(): AgentTaskRun[] {

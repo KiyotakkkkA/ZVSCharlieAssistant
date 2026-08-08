@@ -2,6 +2,7 @@ import type Database from "better-sqlite3";
 import type {
   SecretCategory,
   SecretRecord,
+  SecretStorageSnapshot,
 } from "../../../shared/models/secret-storage";
 import type {
   UpsertSecretCategoryInput,
@@ -36,8 +37,17 @@ const mapSecret = (row: SecretRow): SecretRecord => ({
   builtin: Boolean(row.builtin),
 });
 
-export class SecretStorageDataSource {
+export class SecretStorageRepository {
   constructor(private readonly database: Database.Database) {}
+
+  getSnapshot(): SecretStorageSnapshot {
+    return {
+      categories: this.listCategories(),
+      secrets: this.listSecrets().map(
+        ({ content: _content, ...secret }) => secret,
+      ),
+    };
+  }
 
   listCategories(): SecretCategory[] {
     const rows = this.database

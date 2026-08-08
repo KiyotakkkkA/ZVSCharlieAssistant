@@ -35,7 +35,7 @@ class MarkdownFileReaderStrategy extends Utf8FileReaderStrategy {
   readonly extensions = new Set([".md"]);
 }
 
-export class ScenarioFileContentReader {
+export class ScenarioFileReaderService {
   private readonly rootPath: string;
   private readonly strategies: readonly ScenarioFileReaderStrategy[] = [
     new PlainTextFileReaderStrategy(),

@@ -1,12 +1,8 @@
 import { ipcMain } from "electron";
-import type { AutomationRepository } from "../../host/application/ports/automation.repository";
-import type { ScenarioExecutionDataSource } from "../../host/infrastructure/database/scenario-execution.data-source";
+import type { ScenarioExecutionRepository } from "../../host/infrastructure/database/scenario-execution.repository";
 import type { ScenarioRunEngine } from "../../host/infrastructure/automation/scenario-run-engine";
-import type { IntegrationDataSource } from "../../host/infrastructure/database/integration.data-source";
-import {
-  AUTOMATION_IPC_CHANNELS,
-  type ScenarioRunOrigin,
-} from "../contracts";
+import type { IntegrationRepository } from "../../host/infrastructure/database/integration.repository";
+import { AUTOMATION_IPC_CHANNELS, type ScenarioRunOrigin } from "../contracts";
 import {
   automationScenarioGraphDtoSchema,
   parseIpcDto,
@@ -21,12 +17,13 @@ import {
   type UpsertAutomationSkillInput,
   type UpsertAutomationToolSecretBindingInput,
 } from "../../shared/dto";
+import { AutomationRepository } from "@host/infrastructure/database/automation.repository";
 
 export function registerAutomationHandlers(
   repository: AutomationRepository,
-  executions: ScenarioExecutionDataSource,
+  executions: ScenarioExecutionRepository,
   engine: ScenarioRunEngine,
-  integrations: IntegrationDataSource,
+  integrations: IntegrationRepository,
 ): void {
   ipcMain.handle(AUTOMATION_IPC_CHANNELS.getSnapshot, () =>
     repository.getSnapshot(),
@@ -94,7 +91,12 @@ export function registerAutomationHandlers(
   );
   ipcMain.handle(
     AUTOMATION_IPC_CHANNELS.startScenario,
-    (event, id: string, input: unknown, origin: ScenarioRunOrigin = "manual") => {
+    (
+      event,
+      id: string,
+      input: unknown,
+      origin: ScenarioRunOrigin = "manual",
+    ) => {
       return engine.start(id, input, origin, (payload) => {
         if (!event.sender.isDestroyed())
           event.sender.send(AUTOMATION_IPC_CHANNELS.scenarioRunEvent, payload);

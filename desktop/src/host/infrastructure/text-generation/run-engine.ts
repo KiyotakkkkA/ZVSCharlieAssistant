@@ -1,7 +1,7 @@
 import { streamText, stepCountIs, type ModelMessage } from "ai";
 import type { RunEvent } from "../../../shared/models/chat";
 import type { StartRunInput } from "../../../shared/dto";
-import { ChatDataSource } from "../database/chat.data-source";
+import { ChatRepository } from "../database/chat.repository";
 import { ProviderRegistry } from "./provider.registry";
 import { ToolRegistry } from "../tools/tool.registry";
 import type { ScenarioRunEngine } from "../automation/scenario-run-engine";
@@ -10,7 +10,7 @@ export class RunEngine {
   private controllers = new Map<number, AbortController>();
   private scenarioRunIds = new Set<number>();
   constructor(
-    private readonly data: ChatDataSource,
+    private readonly data: ChatRepository,
     private readonly providers: ProviderRegistry,
     private readonly tools: ToolRegistry,
     private readonly scenarios?: ScenarioRunEngine,
@@ -219,13 +219,15 @@ export class RunEngine {
       const history = this.data
         .messages(conversationId)
         .filter((m) => m.id !== assistantMessageId)
-        .map((m): ModelMessage => ({
-          role:
-            m.role === "tool"
-              ? "assistant"
-              : (m.role as "user" | "assistant" | "system"),
-          content: m.text,
-        }));
+        .map(
+          (m): ModelMessage => ({
+            role:
+              m.role === "tool"
+                ? "assistant"
+                : (m.role as "user" | "assistant" | "system"),
+            content: m.text,
+          }),
+        );
       const baseSystem =
         input.mode === "planner"
           ? "Составь практичный пошаговый план. Не выполняй действия без необходимости."

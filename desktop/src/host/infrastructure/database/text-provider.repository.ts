@@ -41,7 +41,7 @@ interface ModelRow {
   details_json: string;
   enabled: number;
 }
-export class TextProviderDataSource {
+export class TextProviderRepository {
   constructor(private readonly database: Database.Database) {}
   getSnapshot(): TextProviderSnapshot {
     const providers = this.database
@@ -163,9 +163,9 @@ const mapProvider = (row: ProviderRow): TextProviderConfig => ({
 const parseGenerationSettings = (
   value: string,
 ): TextProviderGenerationSettings => {
-  const parsed = textProviderGenerationSettingsDtoSchema.partial().parse(
-    JSON.parse(value || "{}") as unknown,
-  );
+  const parsed = textProviderGenerationSettingsDtoSchema
+    .partial()
+    .parse(JSON.parse(value || "{}") as unknown);
   return {
     maxOutputTokens: parsed.maxOutputTokens ?? 2048,
     temperature: parsed.temperature ?? 0.7,

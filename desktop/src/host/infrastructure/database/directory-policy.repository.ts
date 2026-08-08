@@ -12,7 +12,7 @@ interface DirectoryPolicyRow {
   updated_at: string;
 }
 
-export class DirectoryPolicyDataSource {
+export class DirectoryPolicyRepository {
   constructor(private readonly database: Database.Database) {}
 
   get(): DirectoryPolicy {
@@ -32,7 +32,8 @@ export class DirectoryPolicyDataSource {
         throw new Error("Разрешённая директория должна иметь абсолютный путь");
       const path = normalize(grant.path);
       const key = path.toLowerCase();
-      if (seen.has(key)) throw new Error(`Директория ${path} добавлена повторно`);
+      if (seen.has(key))
+        throw new Error(`Директория ${path} добавлена повторно`);
       seen.add(key);
       return {
         ...grant,

@@ -33,7 +33,7 @@ export interface DueTriggerBinding {
   nextRunAt: string | null;
 }
 
-export class IntegrationDataSource {
+export class IntegrationRepository {
   constructor(private readonly db: Database.Database) {}
 
   snapshot(): IntegrationSnapshot {

@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 import type {
   AutomationJob,
-  AutomationJobDataSource,
-} from "../../database/automation-job.data-source";
+  AutomationJobRepository,
+} from "@host/infrastructure/database/automation-job.repository";
 import type { ScenarioRunEvent } from "../../../../shared/models/automation";
 import { scenarioMessageTriggerInputDtoSchema } from "../../../../shared/dto/scenario-trigger-event.dto";
 import type { ScenarioRunEngine } from "../scenario-run-engine";
@@ -13,7 +13,7 @@ export class ScenarioJobWorker {
   private busy = false;
 
   constructor(
-    private readonly jobs: AutomationJobDataSource,
+    private readonly jobs: AutomationJobRepository,
     private readonly scenarios: ScenarioRunEngine,
   ) {}
 

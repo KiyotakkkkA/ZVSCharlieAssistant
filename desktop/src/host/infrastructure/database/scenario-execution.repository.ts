@@ -14,25 +14,31 @@ import {
 const parse = (value: string | null): unknown =>
   value ? JSON.parse(value) : null;
 
-export class ScenarioExecutionDataSource {
+export class ScenarioExecutionRepository {
   constructor(private readonly db: Database.Database) {}
 
   recoverInterruptedRuns(): void {
     this.db.transaction(() => {
-      this.db.prepare(
-        `UPDATE scenario_node_runs SET status='failed',error_message='Выполнение было прервано перезапуском приложения',completed_at=CURRENT_TIMESTAMP
+      this.db
+        .prepare(
+          `UPDATE scenario_node_runs SET status='failed',error_message='Выполнение было прервано перезапуском приложения',completed_at=CURRENT_TIMESTAMP
          WHERE status IN ('queued','running','waiting_for_approval')`,
-      ).run();
-      this.db.prepare(
-        `UPDATE execution_runs SET
+        )
+        .run();
+      this.db
+        .prepare(
+          `UPDATE execution_runs SET
            status=CASE WHEN origin='background' THEN 'queued' ELSE 'failed' END,
            error_message=CASE WHEN origin='background' THEN NULL ELSE 'Выполнение было прервано перезапуском приложения' END,
            completed_at=CASE WHEN origin='background' THEN NULL ELSE CURRENT_TIMESTAMP END
          WHERE status IN ('queued','running','waiting_for_approval')`,
-      ).run();
-      this.db.prepare(
-        `UPDATE execution_approvals SET status='expired',resolved_at=CURRENT_TIMESTAMP WHERE status='pending'`,
-      ).run();
+        )
+        .run();
+      this.db
+        .prepare(
+          `UPDATE execution_approvals SET status='expired',resolved_at=CURRENT_TIMESTAMP WHERE status='pending'`,
+        )
+        .run();
     })();
   }
 
@@ -57,10 +63,7 @@ export class ScenarioExecutionDataSource {
     return row
       ? {
           ...row,
-          graph: parseJsonDto(
-            automationScenarioGraphDtoSchema,
-            row.graph_json,
-          ),
+          graph: parseJsonDto(automationScenarioGraphDtoSchema, row.graph_json),
         }
       : undefined;
   }
@@ -110,10 +113,12 @@ export class ScenarioExecutionDataSource {
   }
 
   completedOutputs(id: number): Map<string, unknown> {
-    const rows = this.db.prepare(
-      `SELECT node_id,output_json FROM scenario_node_runs
+    const rows = this.db
+      .prepare(
+        `SELECT node_id,output_json FROM scenario_node_runs
        WHERE execution_id=? AND status='completed' ORDER BY id`,
-    ).all(id) as Array<{ node_id: string; output_json: string | null }>;
+      )
+      .all(id) as Array<{ node_id: string; output_json: string | null }>;
     return new Map(rows.map((row) => [row.node_id, parse(row.output_json)]));
   }
 
@@ -152,9 +157,15 @@ export class ScenarioExecutionDataSource {
     kind: AutomationScenarioNodeKind,
     input: unknown,
   ): ScenarioNodeRun {
-    const attempt = Number((this.db.prepare(
-      "SELECT COALESCE(MAX(attempt),0)+1 value FROM scenario_node_runs WHERE execution_id=? AND node_id=?",
-    ).get(executionId, nodeId) as { value: number }).value);
+    const attempt = Number(
+      (
+        this.db
+          .prepare(
+            "SELECT COALESCE(MAX(attempt),0)+1 value FROM scenario_node_runs WHERE execution_id=? AND node_id=?",
+          )
+          .get(executionId, nodeId) as { value: number }
+      ).value,
+    );
     const id = Number(
       this.db
         .prepare(
@@ -192,17 +203,25 @@ export class ScenarioExecutionDataSource {
       .run(status, id);
   }
 
-  requestApproval(executionId: number, nodeRunId: number, prompt: string): void {
-    this.db.prepare(
-      `INSERT INTO execution_approvals(execution_id,node_run_id,prompt) VALUES(?,?,?)`,
-    ).run(executionId, nodeRunId, prompt);
+  requestApproval(
+    executionId: number,
+    nodeRunId: number,
+    prompt: string,
+  ): void {
+    this.db
+      .prepare(
+        `INSERT INTO execution_approvals(execution_id,node_run_id,prompt) VALUES(?,?,?)`,
+      )
+      .run(executionId, nodeRunId, prompt);
   }
 
   resolveApproval(executionId: number, approved: boolean): void {
-    this.db.prepare(
-      `UPDATE execution_approvals SET status=?,resolved_at=CURRENT_TIMESTAMP
+    this.db
+      .prepare(
+        `UPDATE execution_approvals SET status=?,resolved_at=CURRENT_TIMESTAMP
        WHERE execution_id=? AND status='pending'`,
-    ).run(approved ? "approved" : "denied", executionId);
+      )
+      .run(approved ? "approved" : "denied", executionId);
   }
 
   agent(id: string) {

@@ -1,8 +1,8 @@
 import { ipcMain } from "electron";
-import type { TaskHistoryDataSource } from "../../host/infrastructure/database/task-history.data-source";
+import type { TaskHistoryRepository } from "../../host/infrastructure/database/task-history.repository";
 import { TASKS_IPC_CHANNELS } from "../contracts";
 
-export function registerTaskHandlers(dataSource: TaskHistoryDataSource): void {
+export function registerTaskHandlers(dataSource: TaskHistoryRepository): void {
   ipcMain.handle(TASKS_IPC_CHANNELS.listAgentRuns, () =>
     dataSource.listAgentRuns(),
   );

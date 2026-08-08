@@ -1,9 +1,9 @@
 import { connect as connectTcp } from "node:net";
 import { connect as connectTls } from "node:tls";
-import type { SecretStorageRepository } from "../ports/secret-storage.repository";
 import type { UpsertIntegrationProfileInput } from "../../../shared/dto";
 import type { IntegrationConnectionResult } from "../../../shared/models/integration";
-import type { IntegrationDataSource } from "../../infrastructure/database/integration.data-source";
+import type { IntegrationRepository } from "../../infrastructure/database/integration.repository";
+import { SecretStorageRepository } from "@host/infrastructure/database/secret-storage.repository";
 
 const buildGithubCreds = (
   token: string | null | undefined,
@@ -31,7 +31,7 @@ const buildGitlabCreds = (
 
 export class IntegrationProfileService {
   constructor(
-    private readonly data: IntegrationDataSource,
+    private readonly data: IntegrationRepository,
     private readonly secrets: SecretStorageRepository,
   ) {}
 
@@ -41,7 +41,7 @@ export class IntegrationProfileService {
 
   upsert(input: UpsertIntegrationProfileInput) {
     for (const secretId of Object.values(input.secretBindings))
-      if (!this.secrets.getSecret(secretId))
+      if (!this.secrets.findSecret(secretId))
         throw new Error("Выбранный секрет не найден");
     return this.data.upsertProfile(input);
   }
@@ -83,7 +83,7 @@ export class IntegrationProfileService {
   ): Promise<IntegrationConnectionResult> {
     const secretId = input.secretBindings.botToken;
     const token = secretId
-      ? this.secrets.getSecret(secretId)?.content
+      ? this.secrets.findSecret(secretId)?.content
       : undefined;
     if (!token) throw new Error("Выберите токен Telegram-бота");
     const response = await fetch(`https://api.telegram.org/bot${token}/getMe`, {
@@ -159,7 +159,7 @@ export class IntegrationProfileService {
   ): Promise<IntegrationConnectionResult> {
     const secretId = input.secretBindings.accessToken;
     const token = secretId
-      ? this.secrets.getSecret(secretId)?.content
+      ? this.secrets.findSecret(secretId)?.content
       : undefined;
 
     const isGitLab = input.kind === "gitlab_connector";
@@ -247,7 +247,8 @@ export class IntegrationProfileService {
           webUrl: payload.html_url ?? payload.web_url ?? repositoryUrl,
           description: payload.description ?? undefined,
           visibility:
-            payload.visibility ?? (payload.private === true ? "private" : "public"),
+            payload.visibility ??
+            (payload.private === true ? "private" : "public"),
           defaultBranch: payload.default_branch,
           branches,
           language: payload.language ?? undefined,

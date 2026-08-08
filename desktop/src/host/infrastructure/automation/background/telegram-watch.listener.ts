@@ -1,10 +1,10 @@
-import type { SecretStorageRepository } from "../../../application/ports/secret-storage.repository";
-import type { AutomationJobDataSource } from "../../database/automation-job.data-source";
 import type {
   DueTriggerBinding,
-  IntegrationDataSource,
-} from "../../database/integration.data-source";
+  IntegrationRepository,
+} from "../../database/integration.repository";
 import type { TelegramMessageEntity } from "../../../../shared/dto/scenario-trigger-event.dto";
+import { AutomationJobRepository } from "@host/infrastructure/database/automation-job.repository";
+import { SecretStorageRepository } from "@host/infrastructure/database/secret-storage.repository";
 
 type TelegramUpdate = {
   update_id: number;
@@ -50,8 +50,8 @@ export class TelegramWatchListener {
   private stopped = true;
 
   constructor(
-    private readonly integrations: IntegrationDataSource,
-    private readonly jobs: AutomationJobDataSource,
+    private readonly integrations: IntegrationRepository,
+    private readonly jobs: AutomationJobRepository,
     private readonly secrets: SecretStorageRepository,
   ) {}
 
@@ -110,7 +110,7 @@ export class TelegramWatchListener {
         .profiles.find((item) => item.id === profileId);
       const secretId = profile?.secretBindings.botToken;
       const token = secretId
-        ? this.secrets.getSecret(secretId)?.content
+        ? this.secrets.findSecret(secretId)?.content
         : undefined;
       if (!profile || !token) {
         this.setBindingsError(bindings, "Не настроен токен Telegram-бота");

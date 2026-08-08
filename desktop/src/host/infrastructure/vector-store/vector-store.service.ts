@@ -8,10 +8,8 @@ import type {
   UpsertVectorStoreInput,
   VectorSearchInput,
 } from "../../../shared/dto";
-import type {
-  VectorSearchResultItem,
-} from "../../../shared/models/vector-store";
-import type { VectorStoreDataSource } from "../database/vector-store.data-source";
+import type { VectorSearchResultItem } from "../../../shared/models/vector-store";
+import type { VectorStoreRepository } from "../database/vector-store.repository";
 import { EmbeddingService } from "./embedding.service";
 
 export class VectorStoreService {
@@ -22,7 +20,7 @@ export class VectorStoreService {
   private rrfPromise?: ReturnType<typeof lancedb.rerankers.RRFReranker.create>;
 
   constructor(
-    private readonly data: VectorStoreDataSource,
+    private readonly data: VectorStoreRepository,
     private readonly embeddings: EmbeddingService,
     private readonly filesDir: string,
     private readonly lanceDir: string,

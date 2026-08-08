@@ -1,5 +1,5 @@
 import { app, ipcMain } from "electron";
-import type { DirectoryPolicyDataSource } from "../../host/infrastructure/database/directory-policy.data-source";
+import type { DirectoryPolicyRepository } from "../../host/infrastructure/database/directory-policy.repository";
 import {
   parseIpcDto,
   upsertDirectoryPolicyDtoSchema,
@@ -7,7 +7,9 @@ import {
 } from "../../shared/dto";
 import { DIRECTORY_POLICY_IPC_CHANNELS } from "../contracts/directory-policy.contract";
 
-export function registerDirectoryPolicyHandlers(data: DirectoryPolicyDataSource) {
+export function registerDirectoryPolicyHandlers(
+  data: DirectoryPolicyRepository,
+) {
   ipcMain.handle(DIRECTORY_POLICY_IPC_CHANNELS.get, () => data.get());
   ipcMain.handle(
     DIRECTORY_POLICY_IPC_CHANNELS.upsert,
@@ -37,4 +39,3 @@ export function removeDirectoryPolicyHandlers() {
   for (const channel of Object.values(DIRECTORY_POLICY_IPC_CHANNELS))
     ipcMain.removeHandler(channel);
 }
-

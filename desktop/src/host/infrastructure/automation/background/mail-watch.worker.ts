@@ -5,10 +5,10 @@ import type {
   IntegrationRepository,
 } from "../../database/integration.repository";
 import type { EmailMessageEntity } from "../../../../shared/dto/scenario-trigger-event.dto";
-import { SecretStorageRepository } from "@host/infrastructure/database/secret-storage.repository";
 import { AutomationJobRepository } from "@host/infrastructure/database/automation-job.repository";
+import { SecretStorageRepository } from "@host/infrastructure/database/secret-storage.repository";
 
-export class MailWatchListener {
+export class MailWatchWorker {
   private readonly watches = new Map<string, WatchHandle>();
   private reconcileTimer?: NodeJS.Timeout;
   private stopped = true;

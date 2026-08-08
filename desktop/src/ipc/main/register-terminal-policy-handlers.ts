@@ -1,12 +1,9 @@
 import { ipcMain } from "electron";
 import type { UpsertTerminalPolicyInput } from "../../shared/dto";
-import type { TerminalPolicyDataSource } from "../../host/infrastructure/database/terminal-policy.data-source";
+import type { TerminalPolicyRepository } from "../../host/infrastructure/database/terminal-policy.repository";
 import type { CommandExecutionService } from "../../host/infrastructure/tools/command-execution.service";
 import { TERMINAL_POLICY_IPC_CHANNELS } from "../contracts/terminal-policy.contract";
-import {
-  parseIpcDto,
-  upsertTerminalPolicyDtoSchema,
-} from "../../shared/dto";
+import { parseIpcDto, upsertTerminalPolicyDtoSchema } from "../../shared/dto";
 import { TERMINAL_CAPABILITIES } from "../../shared/terminal-capabilities";
 
 const recommendedCapabilityIds = new Set([
@@ -18,7 +15,7 @@ const recommendedCapabilityIds = new Set([
 ]);
 
 export function registerTerminalPolicyHandlers(
-  data: TerminalPolicyDataSource,
+  data: TerminalPolicyRepository,
   commands: CommandExecutionService,
 ) {
   ipcMain.handle(TERMINAL_POLICY_IPC_CHANNELS.get, () => data.get());

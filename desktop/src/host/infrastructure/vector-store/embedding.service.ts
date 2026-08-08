@@ -1,9 +1,9 @@
-import type { SecretStorageRepository } from "../../application/ports/secret-storage.repository";
-import type { VectorStoreDataSource } from "../database/vector-store.data-source";
+import { SecretStorageRepository } from "../database/secret-storage.repository";
+import type { VectorStoreRepository } from "../database/vector-store.repository";
 
 export class EmbeddingService {
   constructor(
-    private readonly data: VectorStoreDataSource,
+    private readonly data: VectorStoreRepository,
     private readonly secrets: SecretStorageRepository,
   ) {}
 
@@ -11,7 +11,7 @@ export class EmbeddingService {
     const model = this.data.embeddingModel(modelId);
     if (!model) throw new Error("Embedding-модель недоступна или отключена");
     const key = model.api_key_secret_id
-      ? this.secrets.getSecret(model.api_key_secret_id)?.content.trim()
+      ? this.secrets.findSecret(model.api_key_secret_id)?.content.trim()
       : undefined;
     let response: Response;
     try {

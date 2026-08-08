@@ -1,5 +1,5 @@
-import type { SecretStorageRepository } from "../../application/ports/secret-storage.repository";
 import type { AutomationRuntimeCatalog } from "../../application/ports/automation-runtime.ports";
+import { SecretStorageRepository } from "../database/secret-storage.repository";
 
 export type OllamaWebToolId = "web_search" | "web_fetch";
 
@@ -22,7 +22,7 @@ export class OllamaWebService {
       "ollamaApiKey",
     );
     const apiKey = secretId
-      ? this.secrets.getSecret(secretId)?.content.trim()
+      ? this.secrets.findSecret(secretId)?.content.trim()
       : "";
     if (!apiKey)
       throw new Error(`Для инструмента «${toolId}» не настроен Ollama API key`);

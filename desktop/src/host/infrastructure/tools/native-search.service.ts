@@ -1,7 +1,7 @@
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import type { AgentDirectoryPolicy } from "../../../shared/dto";
-import type { DirectoryPolicyDataSource } from "../database/directory-policy.data-source";
+import type { DirectoryPolicyRepository } from "../database/directory-policy.repository";
 
 export interface EntitySearchInput {
   base: string;
@@ -28,8 +28,12 @@ export interface RegexpSearchInput {
 }
 
 interface NativeSearchAddon {
-  entitySearch(input: EntitySearchInput & { allowedRoots: AllowedRoot[] }): Promise<unknown>;
-  regexpSearch(input: RegexpSearchInput & { allowedRoots: AllowedRoot[] }): Promise<unknown>;
+  entitySearch(
+    input: EntitySearchInput & { allowedRoots: AllowedRoot[] },
+  ): Promise<unknown>;
+  regexpSearch(
+    input: RegexpSearchInput & { allowedRoots: AllowedRoot[] },
+  ): Promise<unknown>;
 }
 
 interface AllowedRoot {
@@ -42,39 +46,44 @@ export class NativeSearchService {
 
   constructor(
     private readonly nativeRoot: string,
-    private readonly policies: DirectoryPolicyDataSource,
+    private readonly policies: DirectoryPolicyRepository,
   ) {}
 
   entitySearch(input: EntitySearchInput, policy: AgentDirectoryPolicy) {
-    return this.load().entitySearch({ ...input, allowedRoots: this.readRoots(policy) });
+    return this.load().entitySearch({
+      ...input,
+      allowedRoots: this.readRoots(policy),
+    });
   }
 
   regexpSearch(input: RegexpSearchInput, policy: AgentDirectoryPolicy) {
-    return this.load().regexpSearch({ ...input, allowedRoots: this.readRoots(policy) });
+    return this.load().regexpSearch({
+      ...input,
+      allowedRoots: this.readRoots(policy),
+    });
   }
 
   private readRoots(policy: AgentDirectoryPolicy) {
     const requested = new Map(
       policy.grants.map((grant) => [grant.path.toLowerCase(), grant]),
     );
-    const roots = this.policies
-      .get()
-      .grants.flatMap((global) => {
-        const agent = requested.get(global.path.toLowerCase());
-        if (
-          !agent ||
-          !global.permissions.includes("read") ||
-          !agent.permissions.includes("read")
-        )
-          return [];
-        return [
-          {
-            path: global.path,
-            recursive: global.recursive && agent.recursive,
-          },
-        ];
-      });
-    if (!roots.length) throw new Error("Агенту не разрешено чтение ни одной директории");
+    const roots = this.policies.get().grants.flatMap((global) => {
+      const agent = requested.get(global.path.toLowerCase());
+      if (
+        !agent ||
+        !global.permissions.includes("read") ||
+        !agent.permissions.includes("read")
+      )
+        return [];
+      return [
+        {
+          path: global.path,
+          recursive: global.recursive && agent.recursive,
+        },
+      ];
+    });
+    if (!roots.length)
+      throw new Error("Агенту не разрешено чтение ни одной директории");
     return roots;
   }
 
@@ -85,7 +94,9 @@ export class NativeSearchService {
       this.addon = createRequire(import.meta.url)(file) as NativeSearchAddon;
       return this.addon;
     } catch (error) {
-      throw new Error(`Нативные инструменты поиска не собраны (${file}): ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `Нативные инструменты поиска не собраны (${file}): ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 }

@@ -1,17 +1,15 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import { isAbsolute, normalize, relative, resolve } from "node:path";
-import type {
-  CommandSessionStatus,
-} from "../../../shared/models/terminal";
+import type { CommandSessionStatus } from "../../../shared/models/terminal";
 import type {
   AgentTerminalPolicy,
   AgentDirectoryPolicy,
   DirectoryGrant,
   DirectoryPermission,
 } from "../../../shared/dto";
-import type { TerminalPolicyDataSource } from "../database/terminal-policy.data-source";
-import type { DirectoryPolicyDataSource } from "../database/directory-policy.data-source";
+import type { TerminalPolicyRepository } from "../database/terminal-policy.repository";
+import type { DirectoryPolicyRepository } from "../database/directory-policy.repository";
 import { getTerminalCommandDefinition } from "../../../shared/terminal-capabilities";
 
 type StartInput = {
@@ -67,8 +65,8 @@ export class CommandExecutionService {
   private readonly approvals = new Map<string, (approved: boolean) => void>();
 
   constructor(
-    private readonly policies: TerminalPolicyDataSource,
-    private readonly directories: DirectoryPolicyDataSource,
+    private readonly policies: TerminalPolicyRepository,
+    private readonly directories: DirectoryPolicyRepository,
   ) {
     this.policies.recoverInterruptedSessions();
   }
@@ -164,7 +162,9 @@ export class CommandExecutionService {
       session.status = "pending_approval";
       const approvalId = randomUUID();
       const payloadHash = createHash("sha256")
-        .update(JSON.stringify({ script, cwd, agent, agentDirectories, global }))
+        .update(
+          JSON.stringify({ script, cwd, agent, agentDirectories, global }),
+        )
         .digest("hex");
       this.policies.createPendingSession({
         sessionId: session.id,
@@ -173,8 +173,14 @@ export class CommandExecutionService {
         script,
         cwd,
         policy: { global, agent, directories: grants },
-        risk: commands.some((command) => permissionByCommand(command) === "delete") ? "high" : "medium",
-        reasons: ["Команда требует подтверждения согласно эффективной политике"],
+        risk: commands.some(
+          (command) => permissionByCommand(command) === "delete",
+        )
+          ? "high"
+          : "medium",
+        reasons: [
+          "Команда требует подтверждения согласно эффективной политике",
+        ],
         payloadHash,
         expiresAt: new Date(Date.now() + 15 * 60_000).toISOString(),
       });
@@ -231,7 +237,8 @@ export class CommandExecutionService {
   decideApproval(id: string, approved: boolean) {
     this.policies.decideApproval(id, approved);
     const resolveApproval = this.approvals.get(id);
-    if (!resolveApproval) throw new Error("Ожидающее выполнение больше не активно");
+    if (!resolveApproval)
+      throw new Error("Ожидающее выполнение больше не активно");
     this.approvals.delete(id);
     resolveApproval(approved);
   }
@@ -257,10 +264,7 @@ export class CommandExecutionService {
     );
   }
 
-  private intersectGrants(
-    global: DirectoryGrant[],
-    agent: DirectoryGrant[],
-  ) {
+  private intersectGrants(global: DirectoryGrant[], agent: DirectoryGrant[]) {
     const byPath = new Map(
       global.map((item) => [normalize(item.path).toLowerCase(), item]),
     );

@@ -7,10 +7,7 @@ import type {
   ChatToolCall,
   RunStatus,
 } from "../../../shared/models/chat";
-import {
-  chatMessageContentDtoSchema,
-  parseJsonDto,
-} from "../../../shared/dto";
+import { chatMessageContentDtoSchema, parseJsonDto } from "../../../shared/dto";
 import type { ChatMode } from "../../../shared/dto";
 interface ConversationRow {
   id: number;
@@ -30,7 +27,7 @@ interface MessageRow {
   content_json: string;
   created_at: string;
 }
-export class ChatDataSource {
+export class ChatRepository {
   constructor(private readonly db: Database.Database) {}
   snapshot(conversationId?: number): ChatSnapshot {
     const conversations = (

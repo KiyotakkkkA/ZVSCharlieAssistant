@@ -7,7 +7,7 @@ import type {
 } from "../../../shared/models/vector-store";
 import type { UpsertVectorStoreInput } from "../../../shared/dto";
 
-export class VectorStoreDataSource {
+export class VectorStoreRepository {
   constructor(readonly db: Database.Database) {}
   snapshot(): VectorStoreSnapshot {
     return {
@@ -157,7 +157,8 @@ export class VectorStoreDataSource {
         "SELECT id,status FROM vector_store_documents WHERE vector_store_id=? AND content_hash=?",
       )
       .get(storeId, hash) as
-      { id: number; status: VectorDocumentStatus } | undefined;
+      | { id: number; status: VectorDocumentStatus }
+      | undefined;
   }
   document(id: number) {
     return this.db

@@ -1,5 +1,5 @@
 import { ipcMain } from "electron";
-import type { ChatDataSource } from "../../host/infrastructure/database/chat.data-source";
+import type { ChatRepository } from "../../host/infrastructure/database/chat.repository";
 import type { RunEngine } from "../../host/infrastructure/text-generation/run-engine";
 import { CHAT_IPC_CHANNELS } from "../contracts";
 import {
@@ -7,7 +7,7 @@ import {
   startRunDtoSchema,
   type StartRunInput,
 } from "../../shared/dto";
-export function registerChatHandlers(data: ChatDataSource, engine: RunEngine) {
+export function registerChatHandlers(data: ChatRepository, engine: RunEngine) {
   ipcMain.handle(CHAT_IPC_CHANNELS.getSnapshot, (_event, id?: number) =>
     data.snapshot(id),
   );

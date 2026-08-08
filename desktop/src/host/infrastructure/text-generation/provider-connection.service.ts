@@ -1,5 +1,3 @@
-import type { SecretStorageRepository } from "../../application/ports/secret-storage.repository";
-import type { TextProviderRepository } from "../../application/ports/text-provider.repository";
 import type {
   TestTextProviderConnectionResult,
   TextProviderModelInfo,
@@ -11,6 +9,8 @@ import type {
   TextProviderLimits,
   UpsertTextProviderInput,
 } from "../../../shared/dto";
+import { SecretStorageRepository } from "../database/secret-storage.repository";
+import { TextProviderRepository } from "../database/text-provider.repository";
 
 const API_KEYS_CATEGORY_ID = 1;
 
@@ -269,7 +269,7 @@ export class ProviderConnectionService {
 
     let apiKey: string | undefined;
     if (input.apiKeySecretId !== undefined) {
-      const secret = this.secrets.getSecret(input.apiKeySecretId);
+      const secret = this.secrets.findSecret(input.apiKeySecretId);
       if (!secret) throw new Error("Выбранный API-ключ не найден");
       if (secret.categoryId !== API_KEYS_CATEGORY_ID) {
         throw new Error("Ключ должен принадлежать категории «Ключи API»");

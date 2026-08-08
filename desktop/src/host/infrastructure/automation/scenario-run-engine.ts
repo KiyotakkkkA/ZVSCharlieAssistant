@@ -5,7 +5,7 @@ import type {
   ScenarioRunOrigin,
 } from "../../../shared/models/automation";
 import type { AutomationScenarioNode } from "../../../shared/dto";
-import { ScenarioExecutionDataSource } from "../database/scenario-execution.data-source";
+import { ScenarioExecutionRepository } from "../database/scenario-execution.repository";
 import { ProviderRegistry } from "../text-generation/provider.registry";
 import {
   ScenarioCompiler,
@@ -13,14 +13,14 @@ import {
 } from "./scenario-compiler";
 import type { VectorStoreService } from "../vector-store/vector-store.service";
 import type { ToolRegistry } from "../tools/tool.registry";
-import type { IntegrationDataSource } from "../database/integration.data-source";
+import type { IntegrationRepository } from "../database/integration.repository";
 import type { ScenarioFileDownloadService } from "./scenario-file-download.service";
-import type { ScenarioFileContentReader } from "./scenario-file-content-reader";
+import type { ScenarioFileReaderService } from "./scenario-file-reader.service";
 import type { ScenarioFileReference } from "../../../shared/dto/scenario-trigger-event.dto";
 
 type Emit = (event: ScenarioRunEvent) => void;
 type ScenarioAgent = NonNullable<
-  ReturnType<ScenarioExecutionDataSource["agent"]>
+  ReturnType<ScenarioExecutionRepository["agent"]>
 >;
 
 export class ScenarioRunEngine {
@@ -28,14 +28,14 @@ export class ScenarioRunEngine {
   private readonly approvals = new Map<number, (approved: boolean) => void>();
 
   constructor(
-    private readonly data: ScenarioExecutionDataSource,
+    private readonly data: ScenarioExecutionRepository,
     private readonly providers: ProviderRegistry,
     readonly compiler: ScenarioCompiler,
     private readonly vectorStores: VectorStoreService,
     private readonly tools: ToolRegistry,
-    private readonly integrations: IntegrationDataSource,
+    private readonly integrations: IntegrationRepository,
     private readonly fileDownloads: ScenarioFileDownloadService,
-    private readonly fileContentReader: ScenarioFileContentReader,
+    private readonly fileContentReader: ScenarioFileReaderService,
   ) {}
 
   assertRunnable(scenarioId: string, origin?: ScenarioRunOrigin) {

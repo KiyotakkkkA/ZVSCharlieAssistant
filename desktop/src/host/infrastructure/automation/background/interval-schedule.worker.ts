@@ -1,13 +1,13 @@
-import type { AutomationJobDataSource } from "../../database/automation-job.data-source";
-import type { IntegrationDataSource } from "../../database/integration.data-source";
+import { AutomationJobRepository } from "@host/infrastructure/database/automation-job.repository";
+import type { IntegrationRepository } from "../../database/integration.repository";
 
 export class IntervalScheduleWorker {
   private timer?: NodeJS.Timeout;
   private busy = false;
 
   constructor(
-    private readonly jobs: AutomationJobDataSource,
-    private readonly integrations: IntegrationDataSource,
+    private readonly jobs: AutomationJobRepository,
+    private readonly integrations: IntegrationRepository,
   ) {}
 
   start(): void {
