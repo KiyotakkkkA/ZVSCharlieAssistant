@@ -578,7 +578,7 @@ const migrations: readonly Migration[] = [
 
         CREATE TABLE automation_jobs (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
-          kind TEXT NOT NULL CHECK(kind IN ('scenario_run','poll_integration')),
+          kind TEXT NOT NULL CHECK(kind='scenario_run'),
           deduplication_key TEXT NOT NULL UNIQUE,
           status TEXT NOT NULL DEFAULT 'queued' CHECK(status IN (
             'queued','leased','waiting','completed','failed','cancelled'
@@ -601,6 +601,7 @@ const migrations: readonly Migration[] = [
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           execution_id INTEGER NOT NULL,
           node_run_id INTEGER NOT NULL,
+          node_id TEXT NOT NULL,
           status TEXT NOT NULL DEFAULT 'pending'
             CHECK(status IN ('pending','approved','denied','expired')),
           prompt TEXT NOT NULL,
@@ -621,6 +622,63 @@ const migrations: readonly Migration[] = [
       database.exec(`
         ALTER TABLE integration_profiles
           ADD COLUMN connection_metadata_json TEXT NOT NULL DEFAULT '{}';
+      `);
+    },
+  },
+  {
+    version: 15,
+    up(database) {
+      database.exec(`
+        CREATE TABLE scenario_file_jobs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          execution_id INTEGER NOT NULL,
+          node_run_id INTEGER NOT NULL,
+          node_id TEXT NOT NULL,
+          source_kind TEXT NOT NULL,
+          source_external_id TEXT NOT NULL,
+          integration_profile_id INTEGER,
+          source_scope TEXT NOT NULL,
+          input_json TEXT NOT NULL,
+          cleanup_on_finish INTEGER NOT NULL DEFAULT 1 CHECK(cleanup_on_finish IN (0,1)),
+          status TEXT NOT NULL DEFAULT 'queued' CHECK(status IN (
+            'queued','leased','completed','failed','cancelled'
+          )),
+          lease_owner TEXT,
+          lease_expires_at TEXT,
+          attempt INTEGER NOT NULL DEFAULT 0,
+          max_attempts INTEGER NOT NULL DEFAULT 3,
+          last_error TEXT,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(execution_id,node_id,source_kind,source_scope,source_external_id),
+          FOREIGN KEY(execution_id) REFERENCES execution_runs(id) ON DELETE CASCADE,
+          FOREIGN KEY(node_run_id) REFERENCES scenario_node_runs(id) ON DELETE CASCADE,
+          FOREIGN KEY(integration_profile_id) REFERENCES integration_profiles(id) ON DELETE RESTRICT
+        );
+        CREATE INDEX idx_scenario_file_jobs_ready
+          ON scenario_file_jobs(status, id);
+
+        CREATE TABLE execution_files (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          execution_id INTEGER NOT NULL,
+          node_run_id INTEGER NOT NULL,
+          job_id INTEGER NOT NULL UNIQUE,
+          source_kind TEXT NOT NULL,
+          source_external_id TEXT NOT NULL,
+          file_name TEXT NOT NULL,
+          mime_type TEXT,
+          size INTEGER NOT NULL CHECK(size >= 0),
+          sha256 TEXT NOT NULL,
+          storage_key TEXT NOT NULL UNIQUE,
+          local_path TEXT NOT NULL,
+          deleted_at TEXT,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY(execution_id) REFERENCES execution_runs(id) ON DELETE CASCADE,
+          FOREIGN KEY(node_run_id) REFERENCES scenario_node_runs(id) ON DELETE CASCADE,
+          FOREIGN KEY(job_id) REFERENCES scenario_file_jobs(id) ON DELETE CASCADE
+        );
+        CREATE INDEX idx_execution_files_run
+          ON execution_files(execution_id,node_run_id);
       `);
     },
   },

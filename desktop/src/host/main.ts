@@ -73,17 +73,25 @@ import {
   registerIntegrationHandlers,
   removeIntegrationHandlers,
 } from "../ipc/main/register-integration-handlers";
-import { AutomationWorker } from "./infrastructure/automation/automation-worker";
-import { TelegramTriggerPoller } from "./infrastructure/automation/telegram-trigger-poller";
-import { EmailTriggerPoller } from "./infrastructure/automation/email-trigger-poller";
+import { ScenarioJobWorker } from "./infrastructure/automation/background/scenario-job.worker";
+import { IntervalScheduleWorker } from "./infrastructure/automation/background/interval-schedule.worker";
+import { TelegramWatchListener } from "./infrastructure/automation/background/telegram-watch.listener";
+import { MailWatchListener } from "./infrastructure/automation/background/mail-watch.listener";
 import {
   registerCoreInteractorHandlers,
   removeCoreInteractorHandlers,
 } from "@ipc/main/register-core-interactor-handlers";
 import { CoreInteractorService } from "./infrastructure/electron/core-interactor.service";
+import { ScenarioFileDataSource } from "./infrastructure/database/scenario-file.data-source";
+import { ScenarioFileDownloadService } from "./infrastructure/automation/scenario-file-download.service";
+import { ScenarioFileContentReader } from "./infrastructure/automation/scenario-file-content-reader";
 
 let database: ReturnType<typeof createSqliteDatabase> | undefined;
-let automationWorker: AutomationWorker | undefined;
+let scenarioJobWorker: ScenarioJobWorker | undefined;
+let intervalScheduleWorker: IntervalScheduleWorker | undefined;
+let telegramWatchListener: TelegramWatchListener | undefined;
+let mailWatchListener: MailWatchListener | undefined;
+let scenarioFileDownloads: ScenarioFileDownloadService | undefined;
 
 app.whenReady().then(() => {
   database = createSqliteDatabase(join(app.getPath("userData"), "storage.db"));
@@ -138,6 +146,14 @@ app.whenReady().then(() => {
   const scenarioExecutions = new ScenarioExecutionDataSource(database);
   scenarioExecutions.recoverInterruptedRuns();
   const integrationDataSource = new IntegrationDataSource(database);
+  const scenarioDownloadsRoot = join(app.getPath("userData"), "downloads");
+  scenarioFileDownloads = new ScenarioFileDownloadService(
+    new ScenarioFileDataSource(database),
+    integrationDataSource,
+    secretRepository,
+    scenarioDownloadsRoot,
+  );
+  scenarioFileDownloads.start();
   registerIntegrationHandlers(
     new IntegrationProfileService(integrationDataSource, secretRepository),
   );
@@ -174,6 +190,8 @@ app.whenReady().then(() => {
     vectorService,
     toolRegistry,
     integrationDataSource,
+    scenarioFileDownloads,
+    new ScenarioFileContentReader(scenarioDownloadsRoot),
   );
   registerAutomationHandlers(
     automationRepository,
@@ -193,22 +211,25 @@ app.whenReady().then(() => {
   registerCoreInteractorHandlers(new CoreInteractorService());
   createMainWindow();
   const automationJobs = new AutomationJobDataSource(database);
-  automationWorker = new AutomationWorker(
+  scenarioJobWorker = new ScenarioJobWorker(automationJobs, scenarioEngine);
+  intervalScheduleWorker = new IntervalScheduleWorker(
     automationJobs,
     integrationDataSource,
-    scenarioEngine,
-    new TelegramTriggerPoller(
-      integrationDataSource,
-      automationJobs,
-      secretRepository,
-    ),
-    new EmailTriggerPoller(
-      integrationDataSource,
-      automationJobs,
-      secretRepository,
-    ),
   );
-  automationWorker.start();
+  telegramWatchListener = new TelegramWatchListener(
+    integrationDataSource,
+    automationJobs,
+    secretRepository,
+  );
+  mailWatchListener = new MailWatchListener(
+    integrationDataSource,
+    automationJobs,
+    secretRepository,
+  );
+  scenarioJobWorker.start();
+  intervalScheduleWorker.start();
+  telegramWatchListener.start();
+  mailWatchListener.start();
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
@@ -216,8 +237,16 @@ app.whenReady().then(() => {
 });
 
 app.on("before-quit", () => {
-  automationWorker?.stop();
-  automationWorker = undefined;
+  intervalScheduleWorker?.stop();
+  intervalScheduleWorker = undefined;
+  telegramWatchListener?.stop();
+  telegramWatchListener = undefined;
+  mailWatchListener?.stop();
+  mailWatchListener = undefined;
+  scenarioJobWorker?.stop();
+  scenarioJobWorker = undefined;
+  scenarioFileDownloads?.stop();
+  scenarioFileDownloads = undefined;
   removeAppHandlers();
   removeSecretStorageHandlers();
   removeAutomationHandlers();

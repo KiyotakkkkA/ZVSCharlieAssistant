@@ -10,6 +10,8 @@ import {
   SendIcon,
   MoreIcon,
   TrashIcon,
+  DownloadIcon,
+  FileIcon,
 } from "@renderer/components/atoms";
 import { ReactNode } from "react";
 import { AutomationScenarioNode } from "src/shared/dto";
@@ -53,6 +55,16 @@ export const scenarioNodeVariants: Record<
     label: "Хранилище",
     icon: StorageIcon,
     iconClassName: "bg-cyan-400/10 text-cyan-200",
+  },
+  download_files: {
+    label: "Файлы",
+    icon: DownloadIcon,
+    iconClassName: "bg-pink-400/10 text-pink-200",
+  },
+  read_files: {
+    label: "Чтение файлов",
+    icon: FileIcon,
+    iconClassName: "bg-pink-400/10 text-pink-200",
   },
   condition: {
     label: "Условие",

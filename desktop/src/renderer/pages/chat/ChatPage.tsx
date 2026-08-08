@@ -17,7 +17,10 @@ import {
 import { automationStore, chatStore, textProviderStore } from "../../stores";
 import { PrimaryButton } from "@renderer/components/atoms/buttons";
 import { DangerModal } from "@renderer/components/organisms/modals";
-import { scenarioTriggerConfigDtoSchema, type StartRunInput } from "../../../shared/dto";
+import {
+  scenarioTriggerConfigDtoSchema,
+  type StartRunInput,
+} from "../../../shared/dto";
 
 export const ChatPage = observer(function ChatPage() {
   const toasts = useToasts();
@@ -33,10 +36,6 @@ export const ChatPage = observer(function ChatPage() {
   const [renaming, setRenaming] = useState(false);
   const nextModelOptions = textProviderStore.enabledModels.map((item) => ({
     value: String(item.id),
-    label: item.name,
-    description: textProviderStore.providers.find(
-      (p) => p.id === item.providerId,
-    )?.name,
   }));
   const nextAgentOptions = automationStore.agents.map((agent) => ({
     value: agent.id,
@@ -48,8 +47,12 @@ export const ChatPage = observer(function ChatPage() {
   const nextScenarioOptions = automationStore.scenarios
     .filter((scenario) => {
       if (scenario.status !== "active") return false;
-      const trigger = scenario.graph.nodes.find((node) => node.kind === "trigger");
-      const parsed = scenarioTriggerConfigDtoSchema.safeParse(trigger?.config?.trigger);
+      const trigger = scenario.graph.nodes.find(
+        (node) => node.kind === "trigger",
+      );
+      const parsed = scenarioTriggerConfigDtoSchema.safeParse(
+        trigger?.config?.trigger,
+      );
       return parsed.success ? parsed.data.manual.chatEnabled : true;
     })
     .map((scenario) => ({ value: scenario.id, label: scenario.name }));
@@ -235,7 +238,6 @@ export const ChatPage = observer(function ChatPage() {
           scenarioId={scenarioId}
           agentOptions={agentOptions}
           scenarioOptions={scenarioOptions}
-          modelOptions={modelOptions}
           onTextChange={setText}
           onModeChange={setMode}
           onModelChange={setModel}

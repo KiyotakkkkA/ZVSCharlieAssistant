@@ -17,15 +17,11 @@ import {
   StorageIcon,
   UploadIcon,
   TasksIcon,
+  ModelOrientedSelect,
 } from "../../atoms";
 
 export type ChatMode = "chat" | "planner" | "agent" | "scenario";
 export type ChatModel = string;
-interface ChatModelOption {
-  value: string;
-  label: string;
-  description?: string;
-}
 const modes = [
   {
     value: "chat" as const,
@@ -61,7 +57,6 @@ interface ChatComposerProps {
   scenarioId: string;
   agentOptions: SelectOption[];
   scenarioOptions: SelectOption[];
-  modelOptions: ChatModelOption[];
   onTextChange: (value: string) => void;
   onModeChange: (value: ChatMode) => void;
   onModelChange: (value: ChatModel) => void;
@@ -75,9 +70,6 @@ interface ChatComposerProps {
 export function ChatComposer(props: ChatComposerProps) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const selectedMode = modes.find((item) => item.value === props.mode)!;
-  const selectedModel = props.modelOptions.find(
-    (item) => item.value === props.model,
-  );
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
@@ -263,43 +255,13 @@ export function ChatComposer(props: ChatComposerProps) {
             </div>
             <div className="flex items-center gap-1.5">
               {!["agent", "scenario"].includes(props.mode) && (
-                <Dropdown
-                  className="shrink-0"
-                  menuWidth={260}
+                <ModelOrientedSelect
+                  variant="ghost"
+                  value={props.model}
+                  onChange={props.onModelChange}
+                  menuWidth={280}
                   menuPlacement="top-right"
-                >
-                  <Dropdown.Trigger
-                    disabled={props.modelOptions.length === 0}
-                    rounded="rounded-full"
-                    className={`inline-flex h-9 items-center gap-2 border-0! px-3 text-xs text-main-300 shadow-none ring-0! hover:bg-main-600/70 hover:text-main-50`}
-                  >
-                    <span className="flex items-center">
-                      {selectedModel?.label ?? "Нет моделей"}
-                    </span>
-                  </Dropdown.Trigger>
-                  <Dropdown.Menu
-                    rounded="rounded-4xl"
-                    className="p-1.5 space-y-2"
-                  >
-                    {props.modelOptions.map((item) => (
-                      <Dropdown.Item
-                        key={item.value}
-                        active={props.model === item.value}
-                        className="rounded-3xl"
-                        onClick={() => props.onModelChange(item.value)}
-                      >
-                        <span className="block text-left">
-                          <span className="block text-sm font-medium">
-                            {item.label}
-                          </span>
-                          <span className="block text-xs text-main-500">
-                            {item.description}
-                          </span>
-                        </span>
-                      </Dropdown.Item>
-                    ))}
-                  </Dropdown.Menu>
-                </Dropdown>
+                />
               )}
               <Tooltip
                 label={
@@ -319,7 +281,7 @@ export function ChatComposer(props: ChatComposerProps) {
                   disabled={
                     !props.running &&
                     (!props.text.trim() ||
-                      (props.mode !== "scenario" && !selectedModel) ||
+                      (props.mode !== "scenario" && !props.model) ||
                       (props.mode === "scenario" && !props.scenarioId))
                   }
                   onClick={props.running ? props.onCancel : props.onSend}

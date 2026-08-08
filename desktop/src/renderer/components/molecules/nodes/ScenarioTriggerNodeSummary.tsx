@@ -25,7 +25,7 @@ export function ScenarioTriggerNodeSummary({
   if (!channels.length) return null;
 
   return (
-    <div className="absolute left-3 top-[68px] z-10 flex w-40 flex-col gap-2">
+    <div className="absolute left-3 top-17 z-10 flex w-40 flex-col gap-2">
       {channels.map((channel, index) => {
         const Icon = channel.icon;
         return (
@@ -61,7 +61,9 @@ export function getScenarioTriggerEventChannels(
 
   const enabled = parsed.data.automatic.filter((item) => item.enabled);
   const channels: ScenarioTriggerEventChannel[] = [];
-  const telegramCount = enabled.filter((item) => item.kind === "telegram").length;
+  const telegramCount = enabled.filter(
+    (item) => item.kind === "telegram",
+  ).length;
   const emailCount = enabled.filter((item) => item.kind === "email").length;
 
   if (telegramCount) {

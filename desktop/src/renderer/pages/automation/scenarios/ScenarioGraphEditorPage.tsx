@@ -32,6 +32,8 @@ import {
   TasksIcon,
   StorageIcon,
   PlayCircleIcon,
+  DownloadIcon,
+  FileIcon,
 } from "../../../components/atoms";
 import {
   ScenarioGraphCanvas,
@@ -47,6 +49,8 @@ import {
   ScenarioNodeAgentForm,
   ScenarioNodeApprovalForm,
   ScenarioNodeConditionForm,
+  ScenarioNodeDownloadFilesForm,
+  ScenarioNodeReadFilesForm,
   ScenarioNodeKnowledgeStoreForm,
   ScenarioNodeOrchestratorForm,
   ScenarioNodeOutputForm,
@@ -130,6 +134,18 @@ const nodeMeta: Record<
     dot: "bg-cyan-300",
     icon: (props) => <StorageIcon {...props} />,
   },
+  download_files: {
+    label: "Скачать файлы",
+    color: "text-pink-200 bg-pink-400/10",
+    dot: "bg-pink-300",
+    icon: (props) => <DownloadIcon {...props} />,
+  },
+  read_files: {
+    label: "Читать файлы",
+    color: "text-pink-200 bg-pink-400/10",
+    dot: "bg-pink-300",
+    icon: (props) => <FileIcon {...props} />,
+  },
   condition: {
     label: "Условие",
     color: "text-sky-200 bg-sky-400/10",
@@ -184,6 +200,16 @@ const palette: Array<{ kind: NodeKind; title: string; description: string }> = [
     kind: "knowledge_store",
     title: "База знаний",
     description: "Контекст для агента",
+  },
+  {
+    kind: "download_files",
+    title: "Скачать файлы",
+    description: "Сохраняет вложения запуска",
+  },
+  {
+    kind: "read_files",
+    title: "Читать файлы",
+    description: "Преобразует TXT и Markdown в текст",
   },
   {
     kind: "condition",
@@ -343,6 +369,10 @@ export const ScenarioGraphEditorPage = observer(
             stroke:
               edge.kind === "knowledge"
                 ? "rgb(70 160 175)"
+                : edge.kind === "files"
+                  ? "rgb(236 72 153)"
+                : edge.kind === "text"
+                  ? "rgb(232 121 249)"
                 : edge.kind === "worker"
                   ? "rgb(139 128 190)"
                   : "rgb(139 173 77)",
@@ -350,10 +380,17 @@ export const ScenarioGraphEditorPage = observer(
             strokeDasharray:
               edge.kind === "knowledge"
                 ? "1 5"
+                : edge.kind === "files"
+                  ? "1 5"
+                : edge.kind === "text"
+                  ? undefined
                 : edge.kind === "worker"
                   ? "4 4"
                   : undefined,
-            strokeLinecap: edge.kind === "knowledge" ? "round" : undefined,
+            strokeLinecap:
+              edge.kind === "knowledge" || edge.kind === "files"
+                ? "round"
+                : undefined,
           },
           data: {
             edgeId: edge.id,
@@ -452,6 +489,12 @@ export const ScenarioGraphEditorPage = observer(
           description: "Настройте новый узел",
           x: 410 + (current.length % 3) * 36,
           y: 170 + (current.length % 4) * 92,
+          config:
+            kind === "download_files"
+              ? { cleanupOnFinish: true, maxFileSizeMb: 50 }
+              : kind === "read_files"
+                ? { maxCharactersPerFile: 100000 }
+              : undefined,
         },
       ]);
       setSelectedNodeId(id);
@@ -768,6 +811,18 @@ export const ScenarioGraphEditorPage = observer(
                 ) : null}
                 {selectedNode.kind === "condition" ? (
                   <ScenarioNodeConditionForm
+                    node={selectedNode}
+                    onChange={updateSelectedNode}
+                  />
+                ) : null}
+                {selectedNode.kind === "download_files" ? (
+                  <ScenarioNodeDownloadFilesForm
+                    node={selectedNode}
+                    onChange={updateSelectedNode}
+                  />
+                ) : null}
+                {selectedNode.kind === "read_files" ? (
+                  <ScenarioNodeReadFilesForm
                     node={selectedNode}
                     onChange={updateSelectedNode}
                   />

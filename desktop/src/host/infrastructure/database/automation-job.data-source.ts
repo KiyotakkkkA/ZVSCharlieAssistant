@@ -2,7 +2,7 @@ import type Database from "better-sqlite3";
 
 export interface AutomationJob {
   id: number;
-  kind: "scenario_run" | "poll_integration";
+  kind: "scenario_run";
   payload: Record<string, unknown>;
   attempt: number;
   maxAttempts: number;

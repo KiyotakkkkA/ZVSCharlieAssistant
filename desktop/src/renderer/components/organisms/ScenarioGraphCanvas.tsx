@@ -118,6 +118,14 @@ export function ScenarioGraphCanvas({
               shape="size-2.5 rounded-[2px] bg-cyan-300"
               label="Хранилище"
             />
+            <PortLegend
+              shape="size-2.5 rounded-full bg-pink-300"
+              label="Файлы"
+            />
+            <PortLegend
+              shape="size-2.5 rounded-full bg-fuchsia-300"
+              label="Текст файлов"
+            />
           </div>
         </Panel>
       </ReactFlow>
@@ -205,11 +213,28 @@ const ScenarioFlowNodeView = memo(function ScenarioFlowNodeView({
       runStatus={data.runStatus}
       onDelete={data.onDelete}
     >
-      {node.kind === "agent" ? (
+      {node.kind === "orchestrator" ? (
+        <>
+          <ScenarioPort
+            port={SCENARIO_PORTS.controlIn}
+            style={{ left: -5, top: "25%" }}
+          />
+          <ScenarioPort
+            port={SCENARIO_PORTS.filesIn}
+            style={{ left: -5, top: "55%" }}
+          />
+          <ScenarioPort
+            port={SCENARIO_PORTS.textIn}
+            style={{ left: -5, top: "82%" }}
+          />
+        </>
+      ) : node.kind === "agent" ? (
         <>
           <ScenarioPort port={SCENARIO_PORTS.workerIn} />
           <ScenarioPort port={SCENARIO_PORTS.knowledgeIn} />
         </>
+      ) : node.kind === "download_files" || node.kind === "read_files" ? (
+        <ScenarioPort port={SCENARIO_PORTS.filesIn} />
       ) : node.kind !== "trigger" && node.kind !== "knowledge_store" ? (
         <ScenarioPort port={SCENARIO_PORTS.controlIn} />
       ) : null}
@@ -217,15 +242,26 @@ const ScenarioFlowNodeView = memo(function ScenarioFlowNodeView({
         <ScenarioTriggerNodeSummary
           node={node}
           renderPort={(channel) => (
-            <ScenarioPort
-              key={channel.portId}
-              port={
-                channel.portId === SCENARIO_PORTS.telegramMessageOut.id
-                  ? SCENARIO_PORTS.telegramMessageOut
-                  : SCENARIO_PORTS.emailMessageOut
-              }
-              style={{ right: -5, top: "50%" }}
-            />
+            <>
+              <ScenarioPort
+                key={channel.portId}
+                port={
+                  channel.portId === SCENARIO_PORTS.telegramMessageOut.id
+                    ? SCENARIO_PORTS.telegramMessageOut
+                    : SCENARIO_PORTS.emailMessageOut
+                }
+                style={{ right: -5, top: "25%" }}
+              />
+              <ScenarioPort
+                key={`${channel.portId}-attachments`}
+                port={
+                  channel.portId === SCENARIO_PORTS.telegramMessageOut.id
+                    ? SCENARIO_PORTS.telegramAttachmentsOut
+                    : SCENARIO_PORTS.emailAttachmentsOut
+                }
+                style={{ right: -5, top: "75%" }}
+              />
+            </>
           )}
         />
       ) : null}
@@ -238,11 +274,21 @@ const ScenarioFlowNodeView = memo(function ScenarioFlowNodeView({
         <ScenarioPort port={SCENARIO_PORTS.workerOut} />
       ) : node.kind === "knowledge_store" ? (
         <ScenarioPort port={SCENARIO_PORTS.knowledgeOut} />
+      ) : node.kind === "download_files" ? (
+        <ScenarioPort port={SCENARIO_PORTS.filesOut} />
+      ) : node.kind === "read_files" ? (
+        <ScenarioPort port={SCENARIO_PORTS.textOut} />
       ) : node.kind === "trigger" ? (
-        <ScenarioPort
-          port={SCENARIO_PORTS.controlOut}
-          style={{ right: -5, top: 30 }}
-        />
+        <>
+          <ScenarioPort
+            port={SCENARIO_PORTS.controlOut}
+            style={{ right: -5, top: 24 }}
+          />
+          <ScenarioPort
+            port={SCENARIO_PORTS.chatAttachmentsOut}
+            style={{ right: -5, top: 48 }}
+          />
+        </>
       ) : node.kind !== "output" ? (
         <ScenarioPort port={SCENARIO_PORTS.controlOut} />
       ) : null}
@@ -271,6 +317,8 @@ const edgeDotClasses: Record<GraphEdge["kind"], string> = {
   control: "bg-lime-300",
   worker: "bg-violet-300",
   knowledge: "bg-cyan-300",
+  files: "bg-pink-300",
+  text: "bg-fuchsia-300",
 };
 
 const portPositions = {
@@ -291,6 +339,10 @@ const portClasses: Record<ScenarioPortDefinition["kind"], string> = {
     "size-2.5! rounded-none! bg-cyan-300! ring-2 ring-main-900",
   "knowledge-output":
     "size-2.5! rounded-none! bg-cyan-300! ring-2 ring-main-900",
+  "files-input": "size-2.5! rounded-full! bg-pink-300! ring-2 ring-main-900",
+  "files-output": "size-2.5! rounded-full! bg-pink-300! ring-2 ring-main-900",
+  "text-input": "size-2.5! rounded-full! bg-fuchsia-300! ring-2 ring-main-900",
+  "text-output": "size-2.5! rounded-full! bg-fuchsia-300! ring-2 ring-main-900",
 };
 
 function ScenarioPort({

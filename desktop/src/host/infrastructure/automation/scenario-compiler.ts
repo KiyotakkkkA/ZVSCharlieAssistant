@@ -39,7 +39,9 @@ export class ScenarioCompiler {
       resolveEdgeKind(edge, byId);
     const controlEdges = edges.filter(
       (edge) =>
-        edgeKind(edge) === "control" &&
+        (edgeKind(edge) === "control" ||
+          edgeKind(edge) === "files" ||
+          edgeKind(edge) === "text") &&
         byId.get(edge.source)?.kind !== "agent" &&
         byId.get(edge.target)?.kind !== "agent",
     );
@@ -247,7 +249,9 @@ export class ScenarioCompiler {
       resolveEdgeKind(edge, byId);
     const controlEdges = graph.edges.filter(
       (edge) =>
-        edgeKind(edge) === "control" &&
+        (edgeKind(edge) === "control" ||
+          edgeKind(edge) === "files" ||
+          edgeKind(edge) === "text") &&
         byId.get(edge.source)?.kind !== "agent" &&
         byId.get(edge.target)?.kind !== "agent",
     );
@@ -353,6 +357,7 @@ export function createScenarioControlPlan(
   input: unknown,
 ): ScenarioControlPlan {
   const eventPort = triggerEventPort(input);
+  const trigger = triggerKind(input);
   const edges = compiled.controlEdges.filter((edge) => {
     if (edge.source !== compiled.triggerNodeId) return true;
     const sourcePort = edge.sourcePort ?? SCENARIO_PORTS.controlOut.id;
@@ -360,6 +365,12 @@ export function createScenarioControlPlan(
       return eventPort === sourcePort;
     if (sourcePort === SCENARIO_PORTS.emailMessageOut.id)
       return eventPort === sourcePort;
+    if (sourcePort === SCENARIO_PORTS.telegramAttachmentsOut.id)
+      return eventPort === SCENARIO_PORTS.telegramMessageOut.id;
+    if (sourcePort === SCENARIO_PORTS.emailAttachmentsOut.id)
+      return eventPort === SCENARIO_PORTS.emailMessageOut.id;
+    if (sourcePort === SCENARIO_PORTS.chatAttachmentsOut.id)
+      return trigger === "chat";
     return eventPort === undefined;
   });
   const outgoing = new Map(
@@ -408,12 +419,17 @@ export function createScenarioControlPlan(
 }
 
 function triggerEventPort(input: unknown) {
-  if (!input || typeof input !== "object" || !("trigger" in input))
-    return undefined;
-  const trigger = (input as { trigger?: unknown }).trigger;
+  const trigger = triggerKind(input);
   if (trigger === "telegram") return SCENARIO_PORTS.telegramMessageOut.id;
   if (trigger === "email") return SCENARIO_PORTS.emailMessageOut.id;
   return undefined;
+}
+
+function triggerKind(input: unknown) {
+  if (!input || typeof input !== "object" || !("trigger" in input))
+    return undefined;
+  const trigger = (input as { trigger?: unknown }).trigger;
+  return typeof trigger === "string" ? trigger : undefined;
 }
 
 function resolveEdgeKind(

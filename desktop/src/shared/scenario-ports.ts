@@ -5,15 +5,26 @@ export type ScenarioPortKind =
   | "worker-input"
   | "worker-output"
   | "knowledge-input"
-  | "knowledge-output";
+  | "knowledge-output"
+  | "files-input"
+  | "files-output"
+  | "text-input"
+  | "text-output";
 
-export type ScenarioEdgeKind = "control" | "worker" | "knowledge";
+export type ScenarioEdgeKind =
+  | "control"
+  | "worker"
+  | "knowledge"
+  | "files"
+  | "text";
 
 export type ScenarioNodeKind =
   | "trigger"
   | "orchestrator"
   | "agent"
   | "knowledge_store"
+  | "download_files"
+  | "read_files"
   | "condition"
   | "approval"
   | "output";
@@ -58,6 +69,62 @@ export const SCENARIO_PORTS = {
     direction: "source",
     side: "right",
     label: "Электронное письмо",
+    multiple: true,
+  },
+  telegramAttachmentsOut: {
+    id: "attachments-telegram-out",
+    kind: "files-output",
+    direction: "source",
+    side: "right",
+    label: "Вложения Telegram",
+    multiple: true,
+  },
+  emailAttachmentsOut: {
+    id: "attachments-email-out",
+    kind: "files-output",
+    direction: "source",
+    side: "right",
+    label: "Вложения письма",
+    multiple: true,
+  },
+  chatAttachmentsOut: {
+    id: "attachments-chat-out",
+    kind: "files-output",
+    direction: "source",
+    side: "right",
+    label: "Вложения из чата",
+    multiple: true,
+  },
+  filesIn: {
+    id: "files-in",
+    kind: "files-input",
+    direction: "target",
+    side: "left",
+    label: "Файлы для скачивания",
+    multiple: true,
+  },
+  filesOut: {
+    id: "files-out",
+    kind: "files-output",
+    direction: "source",
+    side: "right",
+    label: "Скачанные файлы",
+    multiple: true,
+  },
+  textIn: {
+    id: "text-in",
+    kind: "text-input",
+    direction: "target",
+    side: "left",
+    label: "Прочитанный текст",
+    multiple: true,
+  },
+  textOut: {
+    id: "text-out",
+    kind: "text-output",
+    direction: "source",
+    side: "right",
+    label: "Текст документов",
     multiple: true,
   },
   workerIn: {
@@ -107,6 +174,10 @@ const COMPATIBLE_PORTS: Record<ScenarioPortKind, readonly ScenarioPortKind[]> =
     "worker-output": ["worker-input"],
     "knowledge-input": [],
     "knowledge-output": ["knowledge-input"],
+    "files-input": [],
+    "files-output": ["files-input"],
+    "text-input": [],
+    "text-output": ["text-input"],
   };
 
 export interface ScenarioConnectionLike {
@@ -127,6 +198,8 @@ export function getScenarioEdgeKind(
   if (kind === "control-output" || kind === "event-output") return "control";
   if (kind === "worker-output") return "worker";
   if (kind === "knowledge-output") return "knowledge";
+  if (kind === "files-output") return "files";
+  if (kind === "text-output") return "text";
   return undefined;
 }
 
@@ -155,6 +228,14 @@ export function isScenarioConnectionValid(
   switch (getScenarioEdgeKind(sourcePort.id)) {
     case "knowledge":
       return sourceKind === "knowledge_store" && targetKind === "agent";
+    case "files":
+      return (
+        (sourceKind === "trigger" && targetKind === "download_files") ||
+        (sourceKind === "download_files" &&
+          (targetKind === "read_files" || targetKind === "orchestrator"))
+      );
+    case "text":
+      return sourceKind === "read_files" && targetKind === "orchestrator";
     case "worker":
       return (
         (sourceKind === "orchestrator" || sourceKind === "agent") &&

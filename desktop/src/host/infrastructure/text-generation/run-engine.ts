@@ -118,7 +118,17 @@ export class RunEngine {
     let scenarioRunId = 0;
     const run = this.scenarios.start(
       input.scenarioId,
-      { message: text },
+      {
+        trigger: "chat",
+        triggerBindingId: "manual-chat",
+        entity: {
+          type: "chat_message",
+          conversationId,
+          messageId: userMessage.id,
+          text,
+          attachments: this.data.messageAttachments(userMessage.id),
+        },
+      },
       "chat",
       (event) => {
         if (event.type === "run.started") {

@@ -260,6 +260,13 @@ export class IntegrationDataSource {
     return row ? JSON.parse(row.cursor_json) : {};
   }
 
+  bindingConfig(bindingId: string): Record<string, unknown> {
+    const row = this.db
+      .prepare("SELECT config_json FROM scenario_trigger_bindings WHERE id=?")
+      .get(bindingId) as { config_json: string } | undefined;
+    return row ? JSON.parse(row.config_json) : {};
+  }
+
   setCursor(bindingId: string, cursor: unknown, error?: string): void {
     this.db
       .prepare(

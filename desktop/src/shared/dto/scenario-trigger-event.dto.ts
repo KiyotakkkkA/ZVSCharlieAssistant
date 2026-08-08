@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const attachmentSchema = z.object({
+export const attachmentReferenceDtoSchema = z.object({
   kind: z.enum(["photo", "document", "video", "audio", "voice", "file"]),
   id: z.string(),
   uniqueId: z.string().nullable(),
@@ -31,7 +31,7 @@ export const telegramMessageEntityDtoSchema = z.object({
     })
     .nullable(),
   replyToMessageId: z.number().int().positive().nullable(),
-  attachments: z.array(attachmentSchema),
+  attachments: z.array(attachmentReferenceDtoSchema),
 });
 
 const emailAddressSchema = z.object({
@@ -50,7 +50,15 @@ export const emailMessageEntityDtoSchema = z.object({
   cc: z.array(emailAddressSchema),
   text: z.string(),
   inReplyTo: z.string().nullable(),
-  attachments: z.array(attachmentSchema),
+  attachments: z.array(attachmentReferenceDtoSchema),
+});
+
+export const chatMessageEntityDtoSchema = z.object({
+  type: z.literal("chat_message"),
+  conversationId: z.number().int().positive(),
+  messageId: z.number().int().positive(),
+  text: z.string(),
+  attachments: z.array(attachmentReferenceDtoSchema),
 });
 
 export const scenarioMessageTriggerInputDtoSchema = z.discriminatedUnion(
@@ -68,6 +76,11 @@ export const scenarioMessageTriggerInputDtoSchema = z.discriminatedUnion(
       triggerBindingId: z.string(),
       entity: emailMessageEntityDtoSchema,
     }),
+    z.object({
+      trigger: z.literal("chat"),
+      triggerBindingId: z.string(),
+      entity: chatMessageEntityDtoSchema,
+    }),
   ],
 );
 
@@ -75,6 +88,22 @@ export type TelegramMessageEntity = z.infer<
   typeof telegramMessageEntityDtoSchema
 >;
 export type EmailMessageEntity = z.infer<typeof emailMessageEntityDtoSchema>;
+export type ChatMessageEntity = z.infer<typeof chatMessageEntityDtoSchema>;
 export type ScenarioMessageTriggerInput = z.infer<
   typeof scenarioMessageTriggerInputDtoSchema
+>;
+export type AttachmentReference = z.infer<
+  typeof attachmentReferenceDtoSchema
+>;
+
+export const scenarioFileReferenceDtoSchema = z.object({
+  id: z.number().int().positive(),
+  fileName: z.string(),
+  mimeType: z.string().nullable(),
+  size: z.number().int().nonnegative(),
+  sha256: z.string(),
+  storageKey: z.string(),
+});
+export type ScenarioFileReference = z.infer<
+  typeof scenarioFileReferenceDtoSchema
 >;

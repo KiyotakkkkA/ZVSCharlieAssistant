@@ -14,6 +14,9 @@ import {
 import type { VectorStoreService } from "../vector-store/vector-store.service";
 import type { ToolRegistry } from "../tools/tool.registry";
 import type { IntegrationDataSource } from "../database/integration.data-source";
+import type { ScenarioFileDownloadService } from "./scenario-file-download.service";
+import type { ScenarioFileContentReader } from "./scenario-file-content-reader";
+import type { ScenarioFileReference } from "../../../shared/dto/scenario-trigger-event.dto";
 
 type Emit = (event: ScenarioRunEvent) => void;
 type ScenarioAgent = NonNullable<
@@ -31,6 +34,8 @@ export class ScenarioRunEngine {
     private readonly vectorStores: VectorStoreService,
     private readonly tools: ToolRegistry,
     private readonly integrations: IntegrationDataSource,
+    private readonly fileDownloads: ScenarioFileDownloadService,
+    private readonly fileContentReader: ScenarioFileContentReader,
   ) {}
 
   assertRunnable(scenarioId: string, origin?: ScenarioRunOrigin) {
@@ -151,9 +156,19 @@ export class ScenarioRunEngine {
     outputs: Map<string, unknown>,
   ) {
     const nodesById = new Map(nodes.map((node) => [node.id, node]));
+    const executionOrder = order.toSorted((leftId, rightId) => {
+      const priority = (nodeId: string) => {
+        const kind = nodesById.get(nodeId)?.kind;
+        if (kind === "trigger") return 0;
+        if (kind === "download_files") return 1;
+        if (kind === "read_files") return 2;
+        return 3;
+      };
+      return priority(leftId) - priority(rightId);
+    });
     try {
       this.data.setRunStatus(runId, "running");
-      for (const nodeId of order) {
+      for (const nodeId of executionOrder) {
         if (outputs.has(nodeId)) continue;
         if (controller.signal.aborted)
           throw new DOMException("Cancelled", "AbortError");
@@ -194,13 +209,18 @@ export class ScenarioRunEngine {
           );
           emit({ type: "node.completed", runId, node: completed });
         } catch (error) {
+          const message = errorMessage(error);
           const failed = this.data.finishNode(
             nodeRun.id,
             controller.signal.aborted ? "cancelled" : "failed",
             undefined,
-            errorMessage(error),
+            message,
           );
           emit({ type: "node.completed", runId, node: failed });
+          if (node.kind === "download_files" && !controller.signal.aborted) {
+            outputs.set(node.id, { files: [], error: message });
+            continue;
+          }
           throw error;
         }
       }
@@ -229,6 +249,7 @@ export class ScenarioRunEngine {
           : { type: "run.failed", run },
       );
     } finally {
+      await this.fileDownloads.cleanupExecution(runId);
       this.controllers.delete(runId);
       this.approvals.delete(runId);
     }
@@ -248,6 +269,36 @@ export class ScenarioRunEngine {
     emit: Emit,
   ): Promise<unknown> {
     if (node.kind === "trigger" || node.kind === "output") return input;
+    if (node.kind === "download_files") {
+      const maxFileSizeMb = Math.max(
+        1,
+        Math.min(1024, Number(node.config?.maxFileSizeMb ?? 50)),
+      );
+      return {
+        files: await this.fileDownloads.downloadForNode({
+          executionId: runId,
+          nodeRunId,
+          nodeId: node.id,
+          value: input,
+          cleanupOnFinish: Boolean(node.config?.cleanupOnFinish ?? true),
+          maxFileSizeBytes: maxFileSizeMb * 1024 * 1024,
+          signal,
+        }),
+      };
+    }
+    if (node.kind === "read_files") {
+      const maxCharactersPerFile = Math.max(
+        1_000,
+        Math.min(
+          1_000_000,
+          Number(node.config?.maxCharactersPerFile ?? 100_000),
+        ),
+      );
+      return this.fileContentReader.read(
+        collectScenarioFiles(input),
+        maxCharactersPerFile,
+      );
+    }
     if (node.kind === "condition") {
       const expected = node.config?.equals;
       return {
@@ -540,6 +591,40 @@ const errorMessage = (error: unknown) =>
 
 type ScenarioWebSource = { title: string; url: string; content: string };
 type ScenarioArtifact = { kind: "document"; path: string; fileName: string };
+
+function collectScenarioFiles(value: unknown): ScenarioFileReference[] {
+  const files = new Map<number, ScenarioFileReference>();
+  const visit = (candidate: unknown) => {
+    if (Array.isArray(candidate)) {
+      candidate.forEach(visit);
+      return;
+    }
+    if (!isRecord(candidate)) return;
+    if (
+      Number.isInteger(candidate.id) &&
+      typeof candidate.fileName === "string" &&
+      typeof candidate.storageKey === "string" &&
+      typeof candidate.sha256 === "string" &&
+      Number.isInteger(candidate.size)
+    ) {
+      files.set(Number(candidate.id), {
+        id: Number(candidate.id),
+        fileName: candidate.fileName,
+        mimeType:
+          candidate.mimeType === null || typeof candidate.mimeType === "string"
+            ? candidate.mimeType
+            : null,
+        size: Number(candidate.size),
+        sha256: candidate.sha256,
+        storageKey: candidate.storageKey,
+      });
+      return;
+    }
+    Object.values(candidate).forEach(visit);
+  };
+  visit(value);
+  return [...files.values()];
+}
 
 function parseScenarioArtifact(value: unknown): ScenarioArtifact | undefined {
   if (

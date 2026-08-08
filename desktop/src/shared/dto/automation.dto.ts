@@ -10,6 +10,8 @@ export const scenarioNodeKindSchema = z.enum([
   "orchestrator",
   "agent",
   "knowledge_store",
+  "download_files",
+  "read_files",
   "condition",
   "approval",
   "output",
@@ -18,6 +20,8 @@ export const scenarioEdgeKindSchema = z.enum([
   "control",
   "worker",
   "knowledge",
+  "files",
+  "text",
 ]);
 export const scenarioMisfirePolicySchema = z.enum([
   "skip",

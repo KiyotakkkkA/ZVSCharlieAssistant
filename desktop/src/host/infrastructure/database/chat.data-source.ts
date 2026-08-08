@@ -140,6 +140,28 @@ export class ChatDataSource {
         .get(id) as MessageRow,
     );
   }
+  messageAttachments(messageId: number) {
+    return (
+      this.db
+        .prepare(
+          `SELECT id,name,mime_type,size FROM chat_attachments
+           WHERE message_id=? ORDER BY id`,
+        )
+        .all(messageId) as Array<{
+        id: number;
+        name: string;
+        mime_type: string | null;
+        size: number;
+      }>
+    ).map((row) => ({
+      kind: "file" as const,
+      id: String(row.id),
+      uniqueId: null,
+      fileName: row.name,
+      mimeType: row.mime_type,
+      size: row.size,
+    }));
+  }
   appendText(messageId: number, delta: string) {
     const row = this.db
       .prepare("SELECT content_json FROM chat_messages WHERE id=?")
