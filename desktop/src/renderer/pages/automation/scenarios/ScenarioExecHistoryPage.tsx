@@ -482,13 +482,17 @@ function LabelledCode({ label, value }: { label: string; value: unknown }) {
   if (value === null || value === undefined)
     return (
       <div>
-        <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-main-500">{label}</p>
+        <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-main-500">
+          {label}
+        </p>
         <p className="text-xs text-main-600">пусто</p>
       </div>
     );
   return (
     <div>
-      <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-main-500">{label}</p>
+      <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-main-500">
+        {label}
+      </p>
       <CodeView
         code={asText(value)}
         language="json"
