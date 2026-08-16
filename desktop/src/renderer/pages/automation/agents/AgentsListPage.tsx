@@ -10,7 +10,7 @@ import { APP_PATHS } from "../../../app/routes";
 import { RobotIcon } from "../../../components/atoms";
 import { AutomationAgentCard } from "../../../components/molecules";
 import { PageHeader } from "../../../components/organisms";
-import { useHashRouter } from "../../../hooks";
+import { useAppNavigation } from "../../../hooks";
 import { automationStore, textProviderStore } from "../../../stores";
 import { useMemo, useState } from "react";
 import { PrimaryButton } from "@renderer/components/atoms/buttons";
@@ -21,7 +21,7 @@ import { AutomationAgentsListTable } from "@renderer/components/organisms/tables
 type ViewMode = "table" | "cards";
 
 export const AgentsListPage = observer(function AgentsListPage() {
-  const { goTo } = useHashRouter();
+  const { goTo } = useAppNavigation();
   const toasts = useToasts();
   const [query, setQuery] = useState("");
   const [viewMode, setViewMode] = useState<ViewMode>("cards");

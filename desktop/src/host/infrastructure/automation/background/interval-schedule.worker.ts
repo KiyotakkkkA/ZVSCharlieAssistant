@@ -1,6 +1,12 @@
 import { AutomationJobRepository } from "@host/infrastructure/database/automation-job.repository";
 import type { IntegrationRepository } from "../../database/integration.repository";
 
+/**
+ * Расписания заданы в секундах и минутах, поэтому опрос раз в секунду был
+ * избыточен: задержка до 5 с для фоновой автоматизации несущественна.
+ */
+const SCHEDULE_POLL_MS = 5_000;
+
 export class IntervalScheduleWorker {
   private timer?: NodeJS.Timeout;
   private busy = false;
@@ -12,7 +18,7 @@ export class IntervalScheduleWorker {
 
   start(): void {
     if (this.timer) return;
-    this.timer = setInterval(() => this.tick(), 1_000);
+    this.timer = setInterval(() => this.tick(), SCHEDULE_POLL_MS);
     this.timer.unref();
     this.tick();
   }

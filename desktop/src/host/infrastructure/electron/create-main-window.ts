@@ -1,5 +1,24 @@
-import { BrowserWindow } from "electron";
+import { BrowserWindow, shell } from "electron";
 import { join } from "node:path";
+import { isSafeExternalUrl } from "./core-interactor.service";
+
+function restrictNavigation(window: BrowserWindow): void {
+  window.webContents.setWindowOpenHandler(({ url }) => {
+    if (isSafeExternalUrl(url)) void shell.openExternal(url);
+    return { action: "deny" };
+  });
+
+  window.webContents.on("will-navigate", (event, url) => {
+    const current = window.webContents.getURL();
+    if (url.split("#")[0] === current.split("#")[0]) return;
+    event.preventDefault();
+    if (isSafeExternalUrl(url)) void shell.openExternal(url);
+  });
+
+  window.webContents.on("will-attach-webview", (event) =>
+    event.preventDefault(),
+  );
+}
 
 export function createMainWindow(): BrowserWindow {
   const window = new BrowserWindow({
@@ -12,8 +31,11 @@ export function createMainWindow(): BrowserWindow {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      webviewTag: false,
     },
   });
+
+  restrictNavigation(window);
 
   window.maximize();
 

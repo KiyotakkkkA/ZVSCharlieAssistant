@@ -6,11 +6,11 @@ import { APP_PATHS } from "../../../app/routes";
 import { AutomationAgentManageForm } from "../../../components/organisms/forms";
 import { PageHeader } from "../../../components/organisms";
 import { automationStore } from "../../../stores";
-import { useHashRouter } from "@renderer/hooks";
+import { useAppNavigation } from "@renderer/hooks";
 
 export const AgentManagerPage = observer(function AgentManagerPage() {
   const { agentId } = useParams();
-  const { goTo } = useHashRouter();
+  const { goTo } = useAppNavigation();
   const toasts = useToasts();
   const [submitting, setSubmitting] = useState(false);
   const model = automationStore.getAgent(agentId);

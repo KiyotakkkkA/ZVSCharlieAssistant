@@ -1,6 +1,6 @@
 import { Breadcrumbs } from "@kiyotakkkka/zvs-uikit-lib";
 import type { To } from "react-router-dom";
-import { useHashRouter } from "../../hooks";
+import { useAppNavigation } from "../../hooks";
 
 export interface AppBreadcrumbItem {
   label: React.ReactNode;
@@ -13,7 +13,7 @@ interface AppBreadcrumbsProps {
 }
 
 export function AppBreadcrumbs({ items, className = "" }: AppBreadcrumbsProps) {
-  const { goTo } = useHashRouter();
+  const { goTo } = useAppNavigation();
 
   return (
     <Breadcrumbs className={`ml-auto w-fit ${className}`}>

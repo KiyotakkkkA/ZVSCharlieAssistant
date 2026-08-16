@@ -1,5 +1,6 @@
 import { SecretStorageRepository } from "../database/secret-storage.repository";
 import type { VectorStoreRepository } from "../database/vector-store.repository";
+import { describeProviderHttpError } from "../text-generation/provider-error";
 
 export class EmbeddingService {
   constructor(
@@ -38,7 +39,11 @@ export class EmbeddingService {
     }
     if (!response.ok)
       throw new Error(
-        `Embedding API вернул ${response.status}: ${(await response.text()).slice(0, 300)}`,
+        describeProviderHttpError(
+          "Embedding-провайдер",
+          response.status,
+          await response.text(),
+        ),
       );
     const payload = (await response.json()) as {
       embeddings?: number[][];

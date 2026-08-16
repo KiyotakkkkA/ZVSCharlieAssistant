@@ -14,7 +14,7 @@ import {
   ChevronDownIcon,
 } from "@renderer/components/atoms";
 import { PageHeader } from "@renderer/components/organisms";
-import { useHashRouter } from "@renderer/hooks";
+import { useAppNavigation } from "@renderer/hooks";
 import { useState, useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
 
@@ -61,7 +61,7 @@ const nodeIcons: Record<ScenarioNodeRun["nodeKind"], string> = {
 
 export function ScenarioExecHistoryPage() {
   const { runId } = useParams<{ runId: string }>();
-  const { goBack, goTo } = useHashRouter();
+  const { goBack, goTo } = useAppNavigation();
   const [execution, setExecution] = useState<Execution | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());

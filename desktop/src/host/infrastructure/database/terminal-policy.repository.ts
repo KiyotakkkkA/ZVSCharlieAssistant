@@ -76,11 +76,31 @@ export class TerminalPolicyRepository {
       throw new Error(
         "Максимальный таймаут должен быть не меньше таймаута по умолчанию",
       );
+    if (
+      !Number.isInteger(input.maxOutputBytes) ||
+      input.maxOutputBytes < 1_024 ||
+      input.maxOutputBytes > 16 * 1_048_576
+    )
+      throw new Error("Лимит вывода должен быть целым числом от 1 КБ до 16 МБ");
+
     const forbidden = new Set([
       "invoke-expression",
+      "invoke-command",
+      "invoke-webrequest",
+      "invoke-restmethod",
+      "invoke-item",
+      "start-process",
       "add-type",
       "new-object",
+      "new-module",
       "set-executionpolicy",
+      "set-alias",
+      "new-alias",
+      "import-module",
+      "register-scheduledtask",
+      "start-job",
+      "enter-pssession",
+      "new-pssession",
     ]);
     const allowedCommands = [
       ...new Set(

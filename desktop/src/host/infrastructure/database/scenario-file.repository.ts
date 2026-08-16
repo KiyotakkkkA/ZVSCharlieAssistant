@@ -1,3 +1,4 @@
+import { notifyWork } from "../automation/background/work-signal";
 import type Database from "better-sqlite3";
 import type {
   AttachmentReference,
@@ -82,6 +83,7 @@ export class ScenarioFileRepository {
         input.sourceScope,
         input.sourceExternalId,
       );
+    notifyWork("scenario-file");
   }
 
   leaseNext(workerId: string): ScenarioFileJob | undefined {

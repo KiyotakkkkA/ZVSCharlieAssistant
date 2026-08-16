@@ -5,6 +5,9 @@ import type { IntegrationRepository } from "../../host/infrastructure/database/i
 import { AUTOMATION_IPC_CHANNELS, type ScenarioRunOrigin } from "../contracts";
 import {
   automationScenarioGraphDtoSchema,
+  booleanFlagSchema,
+  entityIdSchema,
+  entityKeySchema,
   parseIpcDto,
   upsertAutomationAgentDtoSchema,
   upsertAutomationScenarioDtoSchema,
@@ -17,6 +20,7 @@ import {
   type UpsertAutomationSkillInput,
   type UpsertAutomationToolSecretBindingInput,
 } from "../../shared/dto";
+import { scenarioTriggerInputDtoSchema } from "../../shared/dto/scenario-trigger-event.dto";
 import { AutomationRepository } from "@host/infrastructure/database/automation.repository";
 
 export function registerAutomationHandlers(
@@ -36,7 +40,7 @@ export function registerAutomationHandlers(
       ),
   );
   ipcMain.handle(AUTOMATION_IPC_CHANNELS.deleteAgent, (_event, id: string) =>
-    repository.deleteAgent(id),
+    repository.deleteAgent(parseIpcDto(entityKeySchema, id)),
   );
   ipcMain.handle(
     AUTOMATION_IPC_CHANNELS.upsertSkill,
@@ -46,7 +50,7 @@ export function registerAutomationHandlers(
       ),
   );
   ipcMain.handle(AUTOMATION_IPC_CHANNELS.deleteSkill, (_event, id: number) =>
-    repository.deleteSkill(id),
+    repository.deleteSkill(parseIpcDto(entityIdSchema, id)),
   );
   ipcMain.handle(
     AUTOMATION_IPC_CHANNELS.upsertToolSecretBinding,
@@ -80,7 +84,7 @@ export function registerAutomationHandlers(
     },
   );
   ipcMain.handle(AUTOMATION_IPC_CHANNELS.deleteScenario, (_event, id: string) =>
-    repository.deleteScenario(id),
+    repository.deleteScenario(parseIpcDto(entityKeySchema, id)),
   );
   ipcMain.handle(
     AUTOMATION_IPC_CHANNELS.validateScenario,
@@ -97,7 +101,9 @@ export function registerAutomationHandlers(
       input: unknown,
       origin: ScenarioRunOrigin = "manual",
     ) => {
-      return engine.start(id, input, origin, (payload) => {
+      const scenarioId = parseIpcDto(entityKeySchema, id);
+      const triggerInput = parseIpcDto(scenarioTriggerInputDtoSchema, input);
+      return engine.start(scenarioId, triggerInput, origin, (payload) => {
         if (!event.sender.isDestroyed())
           event.sender.send(AUTOMATION_IPC_CHANNELS.scenarioRunEvent, payload);
       });
@@ -105,18 +111,23 @@ export function registerAutomationHandlers(
   );
   ipcMain.handle(
     AUTOMATION_IPC_CHANNELS.cancelScenarioRun,
-    (_event, id: number) => engine.cancel(id),
+    (_event, id: number) => engine.cancel(parseIpcDto(entityIdSchema, id)),
   );
   ipcMain.handle(
     AUTOMATION_IPC_CHANNELS.approveScenarioRun,
-    (_event, id: number, approved: boolean) => engine.approve(id, approved),
+    (_event, id: number, approved: boolean) =>
+      engine.approve(
+        parseIpcDto(entityIdSchema, id),
+        parseIpcDto(booleanFlagSchema, approved),
+      ),
   );
   ipcMain.handle(
     AUTOMATION_IPC_CHANNELS.getScenarioRun,
     (_event, id: number) => {
-      const run = executions.run(id);
+      const runId = parseIpcDto(entityIdSchema, id);
+      const run = executions.run(runId);
       if (!run) throw new Error("Запуск не найден");
-      return { run, nodes: executions.nodeRuns(id) };
+      return { run, nodes: executions.nodeRuns(runId) };
     },
   );
 }

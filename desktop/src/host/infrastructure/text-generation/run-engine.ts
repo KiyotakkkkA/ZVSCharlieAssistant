@@ -6,6 +6,18 @@ import { ProviderRegistry } from "./provider.registry";
 import { ToolRegistry } from "../tools/tool.registry";
 import type { ScenarioRunEngine } from "../automation/scenario-run-engine";
 type Emit = (event: RunEvent) => void;
+
+/**
+ * Как часто накопленный текст ответа сбрасывается в базу. Рендерер получает
+ * дельты сразу через `emit`, поэтому задержка записи на скорость отклика UI не
+ * влияет — она лишь ограничивает объём потерь при аварийном завершении.
+ */
+const CONTENT_FLUSH_MS = 400;
+
+/** Границы истории, передаваемой модели (см. `ChatRepository.historyMessages`). */
+const HISTORY_MAX_MESSAGES = 80;
+const HISTORY_MAX_CHARACTERS = 60_000;
+
 export class RunEngine {
   private controllers = new Map<number, AbortController>();
   private scenarioRunIds = new Set<number>();
@@ -213,19 +225,52 @@ export class RunEngine {
     controller: AbortController,
     emit: Emit,
   ) {
+    let bufferedText = "";
+    let bufferedReasoning = "";
+    let pendingWrite = false;
+    let flushTimer: NodeJS.Timeout | undefined;
+    const flushContent = () => {
+      if (!pendingWrite) return;
+      pendingWrite = false;
+      this.data.writeMessageContent(
+        assistantMessageId,
+        bufferedReasoning,
+        bufferedText,
+      );
+    };
+    const scheduleFlush = () => {
+      pendingWrite = true;
+      if (flushTimer) return;
+      flushTimer = setTimeout(() => {
+        flushTimer = undefined;
+        flushContent();
+      }, CONTENT_FLUSH_MS);
+      flushTimer.unref();
+    };
+    const stopFlushing = () => {
+      if (flushTimer) clearTimeout(flushTimer);
+      flushTimer = undefined;
+      flushContent();
+    };
     try {
       if (!input.modelId) throw new Error("Модель не выбрана");
       this.data.setRunStatus(runId, "running");
       const history = this.data
-        .messages(conversationId)
+        .historyMessages(
+          conversationId,
+          HISTORY_MAX_MESSAGES,
+          HISTORY_MAX_CHARACTERS,
+        )
         .filter((m) => m.id !== assistantMessageId)
-        .map((m): ModelMessage => ({
-          role:
-            m.role === "tool"
-              ? "assistant"
-              : (m.role as "user" | "assistant" | "system"),
-          content: m.text,
-        }));
+        .map(
+          (m): ModelMessage => ({
+            role:
+              m.role === "tool"
+                ? "assistant"
+                : (m.role as "user" | "assistant" | "system"),
+            content: m.text,
+          }),
+        );
       const baseSystem =
         input.mode === "planner"
           ? "Составь практичный пошаговый план. Не выполняй действия без необходимости."
@@ -273,7 +318,8 @@ export class RunEngine {
         if (part.type === "error") {
           throw normalizeStreamError(part.error);
         } else if (part.type === "text-delta") {
-          this.data.appendText(assistantMessageId, part.text);
+          bufferedText += part.text;
+          scheduleFlush();
           emit({
             type: "text.delta",
             runId,
@@ -281,7 +327,8 @@ export class RunEngine {
             delta: part.text,
           });
         } else if (part.type === "reasoning-delta") {
-          this.data.appendReasoning(assistantMessageId, part.text);
+          bufferedReasoning += part.text;
+          scheduleFlush();
           emit({
             type: "reasoning.delta",
             runId,
@@ -290,10 +337,12 @@ export class RunEngine {
           });
         }
       }
+      stopFlushing();
       this.data.setMessageStatus(assistantMessageId, "completed");
       this.data.setRunStatus(runId, "completed");
       emit({ type: "run.completed", runId });
     } catch (error) {
+      stopFlushing();
       const cancelled = controller.signal.aborted;
       this.data.setMessageStatus(
         assistantMessageId,

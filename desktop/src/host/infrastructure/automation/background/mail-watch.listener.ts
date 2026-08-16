@@ -253,8 +253,6 @@ class MinimalImapClient {
         (/^\+ /m.test(this.buffer) ||
           /^\* \d+ (?:EXISTS|EXPUNGE)/m.test(this.buffer))
       ) {
-        // A continuation only arms IDLE. DONE is sent after a mailbox event or
-        // by the keep-alive timer below, never by a periodic SEARCH loop.
         if (/^\* \d+ (?:EXISTS|EXPUNGE)/m.test(this.buffer)) {
           waiter.doneSent = true;
           this.socket.write("DONE\r\n");
@@ -329,7 +327,6 @@ class MinimalImapClient {
         waiter.doneSent = true;
         this.socket.write("DONE\r\n");
       };
-      // RFC 2177 recommends periodically terminating IDLE before 30 minutes.
       const timer = setTimeout(finish, 25 * 60_000);
       this.waiter = {
         tag,

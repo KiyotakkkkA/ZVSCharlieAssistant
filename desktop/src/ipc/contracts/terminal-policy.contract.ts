@@ -12,6 +12,7 @@ export interface TerminalPolicyApi {
   recommended(): Promise<UpsertTerminalPolicyInput>;
   pendingApprovals(): Promise<TerminalApprovalRequest[]>;
   decideApproval(id: string, approved: boolean): Promise<void>;
+  subscribeApprovals(listener: () => void): () => void;
 }
 
 export const TERMINAL_POLICY_IPC_CHANNELS = {
@@ -20,4 +21,5 @@ export const TERMINAL_POLICY_IPC_CHANNELS = {
   recommended: "terminal-policy:recommended",
   pendingApprovals: "terminal-policy:pending-approvals",
   decideApproval: "terminal-policy:decide-approval",
+  approvalsChanged: "terminal-policy:approvals-changed",
 } as const;

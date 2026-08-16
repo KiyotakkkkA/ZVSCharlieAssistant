@@ -1,5 +1,6 @@
 import type { AutomationRuntimeCatalog } from "../../application/ports/automation-runtime.ports";
 import { SecretStorageRepository } from "../database/secret-storage.repository";
+import { describeProviderHttpError } from "../text-generation/provider-error";
 
 export type OllamaWebToolId = "web_search" | "web_fetch";
 
@@ -40,9 +41,12 @@ export class OllamaWebService {
       },
     );
     if (!response.ok) {
-      const details = (await response.text()).slice(0, 500);
       throw new Error(
-        `Ollama ${toolId} вернул ${response.status}${details ? `: ${details}` : ""}`,
+        describeProviderHttpError(
+          `Ollama (${toolId})`,
+          response.status,
+          await response.text(),
+        ),
       );
     }
     return response.json() as Promise<unknown>;

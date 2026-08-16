@@ -1,10 +1,15 @@
 import { randomUUID } from "node:crypto";
 import type { ScenarioDeliveryRepository } from "../../database/scenario-delivery.repository";
 import type { ScenarioDeliveryAdapterRegistry } from "../delivery/scenario-delivery.adapter";
+import { onWork } from "./work-signal";
+
+/** Страховочный опрос на случай, если сигнал о работе был потерян. */
+const FALLBACK_POLL_MS = 30_000;
 
 export class ScenarioDeliveryWorker {
   private readonly workerId = randomUUID();
   private timer?: NodeJS.Timeout;
+  private unsubscribe?: () => void;
   private busy = false;
   constructor(
     private jobs: ScenarioDeliveryRepository,
@@ -13,11 +18,14 @@ export class ScenarioDeliveryWorker {
   start() {
     if (this.timer) return;
     this.jobs.recoverExpiredLeases();
-    this.timer = setInterval(() => void this.tick(), 1_000);
+    this.unsubscribe = onWork("scenario-delivery", () => void this.tick());
+    this.timer = setInterval(() => void this.tick(), FALLBACK_POLL_MS);
     this.timer.unref();
     void this.tick();
   }
   stop() {
+    this.unsubscribe?.();
+    this.unsubscribe = undefined;
     if (this.timer) clearInterval(this.timer);
     this.timer = undefined;
   }

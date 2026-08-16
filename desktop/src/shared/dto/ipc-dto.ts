@@ -32,3 +32,13 @@ export function parseJsonDto<TSchema extends z.ZodType>(
 ): z.output<TSchema> {
   return parseIpcDto(schema, JSON.parse(value) as unknown);
 }
+
+/**
+ * Скалярные аргументы IPC. Раньше они проходили в обработчики сырыми: строка
+ * вместо числового id доезжала до фильтра LanceDB, а заголовок диалога — до
+ * базы без ограничения длины.
+ */
+export const entityIdSchema = z.int().positive();
+export const entityKeySchema = z.string().trim().min(1).max(64);
+export const entityTitleSchema = z.string().trim().min(1).max(200);
+export const booleanFlagSchema = z.boolean();

@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import * as lancedb from "@lancedb/lancedb";
-import mammoth from "mammoth";
+import type { TextExtractionClient } from "./text-extraction.client";
 import type {
   UploadVectorDocumentInput,
   UpsertVectorStoreInput,
@@ -12,7 +12,15 @@ import type { VectorSearchResultItem } from "../../../shared/models/vector-store
 import type { VectorStoreRepository } from "../database/vector-store.repository";
 import { EmbeddingService } from "./embedding.service";
 
+/** Сколько документов обрабатывается одновременно (см. `upload`). */
+const INGEST_CONCURRENCY = 2;
+
+/** Предел размера одного документа. */
+export const MAX_DOCUMENT_BYTES = 64 * 1_048_576;
+
 export class VectorStoreService {
+  private activeIngests = 0;
+  private readonly ingestQueue: Array<() => Promise<void>> = [];
   private readonly writeQueues = new Map<number, Promise<void>>();
   private readonly ftsIndexPromises = new Map<number, Promise<void>>();
   private connectionPromise?: Promise<lancedb.Connection>;
@@ -24,6 +32,7 @@ export class VectorStoreService {
     private readonly embeddings: EmbeddingService,
     private readonly filesDir: string,
     private readonly lanceDir: string,
+    private readonly extraction: TextExtractionClient,
   ) {}
 
   snapshot() {
@@ -114,8 +123,27 @@ export class VectorStoreService {
       if (existing && existing.status !== "failed")
         throw new Error(`Документ «${input.fileName}» уже добавлен`);
     }
-    for (const input of inputs) void this.ingest(input).catch(() => undefined);
+    for (const input of inputs) this.enqueueIngest(input);
     return this.snapshot();
+  }
+
+  private enqueueIngest(input: UploadVectorDocumentInput): void {
+    const task = () => this.ingest(input).catch(() => undefined);
+    if (this.activeIngests >= INGEST_CONCURRENCY) {
+      this.ingestQueue.push(task);
+      return;
+    }
+    this.activeIngests += 1;
+    void task().finally(() => {
+      this.activeIngests -= 1;
+      const next = this.ingestQueue.shift();
+      if (next) {
+        this.activeIngests += 1;
+        void next().finally(() => {
+          this.activeIngests -= 1;
+        });
+      }
+    });
   }
 
   async deleteDocument(id: number) {
@@ -231,7 +259,13 @@ export class VectorStoreService {
       await writeFile(path, buffer);
       this.data.setStoreState(store.id, "indexing");
       this.data.updateDocument(id, "extracting", 15);
-      const text = await extractText(buffer, input.fileName);
+      const text = await this.extraction.extract(
+        input.fileName,
+        buffer.buffer.slice(
+          buffer.byteOffset,
+          buffer.byteOffset + buffer.byteLength,
+        ),
+      );
       const chunks = chunkText(
         text,
         store.chunkSizeTokens,
@@ -263,8 +297,6 @@ export class VectorStoreService {
         text,
         vector: vectors[index]!,
         file_name: input.fileName,
-        // Keep this numeric so Arrow can infer the schema. A negative value
-        // represents a chunk without page metadata.
         page_number: -1,
       }));
       if (
@@ -299,6 +331,10 @@ export class VectorStoreService {
       throw new Error(`Формат ${input.fileName} не поддерживается`);
     if (!input.data.byteLength)
       throw new Error(`Документ «${input.fileName}» пуст`);
+    if (input.data.byteLength > MAX_DOCUMENT_BYTES)
+      throw new Error(
+        `Документ «${input.fileName}» больше ${Math.round(MAX_DOCUMENT_BYTES / 1_048_576)} МБ`,
+      );
   }
 
   private async writeRows(
@@ -395,22 +431,6 @@ export class VectorStoreService {
 const tableName = (id: number) => `vector_store_${id}`;
 const safeName = (name: string) =>
   name.replace(/[^a-zA-Zа-яА-Я0-9._-]+/g, "_").slice(-120);
-
-async function extractText(buffer: Buffer, name: string) {
-  if (/\.txt$/i.test(name)) return buffer.toString("utf8");
-  if (/\.docx$/i.test(name))
-    return (await mammoth.extractRawText({ buffer })).value;
-  const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs");
-  const pdf = await getDocument({ data: new Uint8Array(buffer) }).promise;
-  const pages: string[] = [];
-  for (let index = 1; index <= pdf.numPages; index++) {
-    const content = await (await pdf.getPage(index)).getTextContent();
-    pages.push(
-      content.items.map((item) => ("str" in item ? item.str : "")).join(" "),
-    );
-  }
-  return pages.join("\n\n");
-}
 
 function chunkText(text: string, sizeTokens: number, overlapTokens: number) {
   const normalized = text

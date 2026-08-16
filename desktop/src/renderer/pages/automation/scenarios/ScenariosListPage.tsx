@@ -11,7 +11,7 @@ import { TasksIcon } from "../../../components/atoms";
 import { AutomationScenarioCard } from "../../../components/molecules";
 import { PageHeader } from "../../../components/organisms";
 import type { AutomationScenario } from "../../../../ipc/contracts";
-import { useHashRouter } from "../../../hooks";
+import { useAppNavigation } from "../../../hooks";
 import { automationStore } from "../../../stores";
 import { PrimaryButton } from "@renderer/components/atoms/buttons";
 import { useMemo, useState } from "react";
@@ -19,7 +19,7 @@ import { DangerModal } from "@renderer/components/organisms/modals";
 import { AutomationScenariosListTable } from "@renderer/components/organisms/tables";
 
 export const ScenariosListPage = observer(function ScenariosListPage() {
-  const { goTo } = useHashRouter();
+  const { goTo } = useAppNavigation();
   const toasts = useToasts();
   const [query, setQuery] = useState("");
   const [viewMode, setViewMode] = useState<"table" | "cards">("cards");

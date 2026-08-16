@@ -5,7 +5,7 @@ import { useToasts } from "@kiyotakkkka/zvs-uikit-lib";
 import { APP_PATHS } from "../../../app/routes";
 import { AutomationSkillManageForm } from "../../../components/organisms/forms";
 import { PageHeader } from "../../../components/organisms";
-import { useHashRouter } from "../../../hooks";
+import { useAppNavigation } from "../../../hooks";
 import { automationStore } from "../../../stores";
 
 export const SkillManagerPage = observer(function SkillManagerPage() {
@@ -14,7 +14,7 @@ export const SkillManagerPage = observer(function SkillManagerPage() {
   const model = automationStore.getSkill(id);
   const creating = !skillId;
   const [busy, setBusy] = useState(false);
-  const { goTo } = useHashRouter();
+  const { goTo } = useAppNavigation();
   const toasts = useToasts();
   if (!creating && automationStore.initialized && !model)
     return <Navigate to={APP_PATHS.automation.skills.index} replace />;

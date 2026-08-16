@@ -8,7 +8,7 @@ import {
 } from "../atoms";
 import { APP_PATHS } from "../../app/routes";
 import type { AutomationAgent } from "../../../ipc/contracts";
-import { useHashRouter } from "../../hooks";
+import { useAppNavigation } from "../../hooks";
 import { ControlButton } from "../atoms/buttons";
 
 interface AutomationAgentCardProps {
@@ -20,7 +20,7 @@ export const AutomationAgentCard = ({
   agent,
   onDelete,
 }: AutomationAgentCardProps) => {
-  const { goTo } = useHashRouter();
+  const { goTo } = useAppNavigation();
 
   return (
     <article className="relative rounded-xl bg-main-800/30 p-5 ring-1 ring-main-700/40 transition-colors hover:bg-main-800/50 hover:ring-main-600">

@@ -239,19 +239,31 @@ export class ToolRegistry {
         description:
           "Загружает полные инструкции назначенного агенту навыка. Используй перед применением навыка.",
         inputSchema: z.object({ skillId: z.int().positive() }),
-        execute: ({ skillId }) => {
-          if (!allowedSkillIds.includes(skillId))
-            throw new Error("Навык не назначен агенту");
-          const skill = this.automationCatalog
-            .listSkills()
-            .find((item) => item.id === skillId && item.status === "active");
-          if (!skill) throw new Error("Навык недоступен");
-          return {
-            id: skill.id,
-            name: skill.name,
-            instructions: this.skillContent.read(skill.slug),
-          };
-        },
+        execute: (input, { toolCallId }) =>
+          this.execute(
+            toolCallId,
+            "skills.load",
+            input,
+            signal,
+            observer,
+            // eslint-disable-next-line @typescript-eslint/require-await
+            async () => {
+              if (!allowedSkillIds.includes(input.skillId))
+                throw new Error("Навык не назначен агенту");
+              const skill = this.automationCatalog
+                .listSkills()
+                .find(
+                  (item) =>
+                    item.id === input.skillId && item.status === "active",
+                );
+              if (!skill) throw new Error("Навык недоступен");
+              return {
+                id: skill.id,
+                name: skill.name,
+                instructions: this.skillContent.read(skill.slug),
+              };
+            },
+          ),
       }),
       reports_docx: tool({
         description:
@@ -357,7 +369,7 @@ export class ToolRegistry {
             runId,
             callId,
             toolId,
-            "read",
+            riskOf(toolId, input),
             input,
             "requested",
           );
@@ -421,3 +433,25 @@ export class ToolRegistry {
 
 const errorMessage = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
+
+/**
+ * Раньше каждый вызов писался в журнал с уровнем `read`, включая `cmd_exec` с
+ * `Remove-Item` — по такому следу разобрать инцидент было невозможно.
+ */
+const WRITE_TOOL_IDS = new Set(["reports_docx"]);
+
+function riskOf(toolId: string, input: unknown): string {
+  if (toolId !== "cmd_exec") return WRITE_TOOL_IDS.has(toolId) ? "write" : "read";
+  const payload = input as { action?: string; script?: string } | undefined;
+  if (payload?.action !== "start") return "read";
+  const script = payload.script ?? "";
+  if (/\b(Remove-Item|Clear-Content|Remove-ItemProperty)\b/i.test(script))
+    return "delete";
+  if (
+    /\b(Set-Content|Add-Content|New-Item|Move-Item|Copy-Item|Rename-Item|Out-File)\b/i.test(
+      script,
+    )
+  )
+    return "write";
+  return "read";
+}

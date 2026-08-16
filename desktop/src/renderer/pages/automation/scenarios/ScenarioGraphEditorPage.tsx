@@ -59,7 +59,7 @@ import {
 } from "../../../components/organisms/forms";
 import { getScenarioTriggerEventChannels } from "../../../components/molecules/nodes";
 import { APP_PATHS } from "../../../app/routes";
-import { useHashRouter } from "../../../hooks";
+import { useAppNavigation } from "../../../hooks";
 import {
   automationStore,
   integrationStore,
@@ -247,7 +247,7 @@ const scenarioStatusOptions = [
 
 export const ScenarioGraphEditorPage = observer(
   function ScenarioGraphEditorPage() {
-    const { goTo, goBack } = useHashRouter();
+    const { goTo, goBack } = useAppNavigation();
     const toasts = useToasts();
     const { scenarioId } = useParams();
     const scenario = automationStore.getScenario(scenarioId);
@@ -281,26 +281,42 @@ export const ScenarioGraphEditorPage = observer(
     const [nodeSearch, setNodeSearch] = useState("");
     const [triggerSetupModal, setTriggerSetupModal] =
       useState<TriggerSetupModal | null>(null);
+    const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
+    const [pendingExit, setPendingExit] = useState(false);
 
     useEffect(() => {
       if (!scenario) return;
-      setNodes(
-        parseIpcDto(
-          automationScenarioNodeDtoSchema.array(),
-          scenario.graph.nodes,
-        ),
+      const loadedNodes = parseIpcDto(
+        automationScenarioNodeDtoSchema.array(),
+        scenario.graph.nodes,
       );
-      setEdges(
-        parseIpcDto(
-          automationScenarioEdgeDtoSchema.array(),
-          scenario.graph.edges,
-        ),
+      const loadedEdges = parseIpcDto(
+        automationScenarioEdgeDtoSchema.array(),
+        scenario.graph.edges,
       );
+      setNodes(loadedNodes);
+      setEdges(loadedEdges);
       setSelectedNodeId(scenario.graph.nodes[0]?.id ?? "");
       setStatus(scenario.status);
       setScenarioName(scenario.name);
       setIsEditingName(false);
+      setSavedSnapshot(
+        JSON.stringify({
+          nodes: loadedNodes,
+          edges: loadedEdges,
+          name: scenario.name,
+          status: scenario.status,
+        }),
+      );
     }, [scenario]);
+
+    const currentSnapshot = useMemo(
+      () => JSON.stringify({ nodes, edges, name: scenarioName, status }),
+      [nodes, edges, scenarioName, status],
+    );
+
+    const [initialSnapshot] = useState(() => currentSnapshot);
+    const isDirty = (savedSnapshot ?? initialSnapshot) !== currentSnapshot;
 
     const nodesById = useMemo(
       () => new Map(nodes.map((node) => [node.id, node])),
@@ -555,6 +571,23 @@ export const ScenarioGraphEditorPage = observer(
         .editorEnabled,
     );
 
+    useEffect(() => {
+      if (!isDirty) return;
+      const guard = (event: BeforeUnloadEvent) => event.preventDefault();
+      window.addEventListener("beforeunload", guard);
+      return () => window.removeEventListener("beforeunload", guard);
+    }, [isDirty]);
+
+    const leaveEditor = useCallback(
+      () => goBack(APP_PATHS.automation.scenarios.index),
+      [goBack],
+    );
+
+    const requestExit = useCallback(() => {
+      if (isDirty) setPendingExit(true);
+      else leaveEditor();
+    }, [isDirty, leaveEditor]);
+
     const saveScenario = async () => {
       try {
         const saved = await automationStore.upsertScenario({
@@ -580,6 +613,7 @@ export const ScenarioGraphEditorPage = observer(
             { replace: true },
           );
         }
+        setSavedSnapshot(currentSnapshot);
         toasts.success({ title: "Сценарий сохранён" });
         return saved;
       } catch (error) {
@@ -622,7 +656,7 @@ export const ScenarioGraphEditorPage = observer(
               label="Назад"
               rounded="rounded-lg"
               className="size-7 shrink-0 p-0 text-main-400 hover:bg-main-600/50"
-              onClick={() => goBack(APP_PATHS.automation.scenarios.index)}
+              onClick={requestExit}
             >
               <ChevronLeftIcon className="size-4" />
             </Button>
@@ -1008,6 +1042,18 @@ export const ScenarioGraphEditorPage = observer(
           }}
           onConfirm={() => setTriggerSetupModal(null)}
           onCancel={() => setTriggerSetupModal(null)}
+        />
+        <DangerModal
+          open={pendingExit}
+          model={pendingExit}
+          title="Выйти без сохранения?"
+          description="В сценарии есть несохранённые изменения. Если выйти сейчас, они будут потеряны."
+          confirmLabel="Выйти без сохранения"
+          onCancel={() => setPendingExit(false)}
+          onConfirm={() => {
+            setPendingExit(false);
+            leaveEditor();
+          }}
         />
         <DangerModal
           open={automationStore.pendingScenarioApproval !== null}

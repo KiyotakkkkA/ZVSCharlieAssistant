@@ -91,6 +91,8 @@ import { ScenarioDeliveryAdapterRegistry } from "./infrastructure/automation/del
 import { TelegramDeliveryAdapter } from "./infrastructure/automation/delivery/telegram-delivery.adapter";
 import { EmailDeliveryAdapter } from "./infrastructure/automation/delivery/email-delivery.adapter";
 import { ScenarioDeliveryWorker } from "./infrastructure/automation/background/scenario-delivery.worker";
+import { TextExtractionClient } from "./infrastructure/vector-store/text-extraction.client";
+import { installContentSecurityPolicy } from "./infrastructure/electron/install-content-security-policy";
 
 let database: ReturnType<typeof createSqliteDatabase> | undefined;
 let scenarioJobWorker: ScenarioJobWorker | undefined;
@@ -99,10 +101,14 @@ let telegramWatchListener: TelegramWatchListener | undefined;
 let mailWatchListener: MailWatchListener | undefined;
 let scenarioFileDownloads: ScenarioFileDownloadService | undefined;
 let scenarioDeliveryWorker: ScenarioDeliveryWorker | undefined;
+let textExtraction: TextExtractionClient | undefined;
 
 app.whenReady().then(() => {
+  installContentSecurityPolicy();
   database = createSqliteDatabase(join(app.getPath("userData"), "storage.db"));
   const secretRepository = new SecretStorageRepository(database);
+  secretRepository.encryptLegacySecrets();
+  textExtraction = new TextExtractionClient();
   const terminalPolicyRepository = new TerminalPolicyRepository(database);
   const directoryPolicyRepository = new DirectoryPolicyRepository(database);
   const skillContent = new FileSystemSkillContentStore(
@@ -141,6 +147,7 @@ app.whenReady().then(() => {
     new EmbeddingService(vectorRepository, secretRepository),
     join(app.getPath("userData"), "vector-files"),
     join(app.getPath("userData"), "lancedb"),
+    textExtraction,
   );
   registerVectorStoreHandlers(vectorService);
   const providerRegistry = new ProviderRegistry(
@@ -196,7 +203,7 @@ app.whenReady().then(() => {
     toolRegistry,
     integrationRepository,
     scenarioFileDownloads,
-    new ScenarioFileReaderService(scenarioDownloadsRoot),
+    new ScenarioFileReaderService(scenarioDownloadsRoot, textExtraction),
     new ScenarioResponseService(scenarioDeliveries),
   );
   registerAutomationHandlers(
@@ -251,6 +258,8 @@ app.whenReady().then(() => {
 });
 
 app.on("before-quit", () => {
+  textExtraction?.dispose();
+  textExtraction = undefined;
   scenarioDeliveryWorker?.stop();
   scenarioDeliveryWorker = undefined;
   intervalScheduleWorker?.stop();

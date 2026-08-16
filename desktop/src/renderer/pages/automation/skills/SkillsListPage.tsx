@@ -14,12 +14,12 @@ import { AutomationSkillCard } from "../../../components/molecules";
 import { PrimaryButton } from "../../../components/atoms/buttons";
 import { PageHeader } from "../../../components/organisms";
 import { DangerModal } from "../../../components/organisms/modals";
-import { useHashRouter } from "../../../hooks";
+import { useAppNavigation } from "../../../hooks";
 import { automationStore } from "../../../stores";
 import { AutomationSkillsListTable } from "@renderer/components/organisms/tables";
 
 export const SkillsListPage = observer(function SkillsListPage() {
-  const { goTo } = useHashRouter();
+  const { goTo } = useAppNavigation();
   const toasts = useToasts();
   const [query, setQuery] = useState("");
   const [mode, setMode] = useState<"table" | "cards">("cards");

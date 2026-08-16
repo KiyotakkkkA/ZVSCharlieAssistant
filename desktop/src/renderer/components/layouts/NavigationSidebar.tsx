@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { Button, Separator, Tooltip } from "@kiyotakkkka/zvs-uikit-lib";
-import { useHashRouter } from "../../hooks";
+import { useAppNavigation } from "../../hooks";
 import { NavigationTreeItem } from "../molecules";
 import {
   ArrowExpandRightIcon,
@@ -21,7 +21,7 @@ function leafRoutes(routes: readonly NavigationRoute[]): NavigationRoute[] {
 }
 
 export const NavigationSidebar = () => {
-  const { currentPath, routes } = useHashRouter();
+  const { currentPath, routes } = useAppNavigation();
   const [collapsed, setCollapsed] = useState(false);
   const [navigationVisible, setNavigationVisible] = useState(true);
   const transitionTimers = useRef<number[]>([]);

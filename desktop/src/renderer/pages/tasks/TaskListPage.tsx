@@ -9,12 +9,12 @@ import {
 import { APP_PATHS } from "../../app/routes";
 import { TasksIcon } from "../../components/atoms";
 import { PageHeader } from "../../components/organisms";
-import { useHashRouter } from "../../hooks";
+import { useAppNavigation } from "../../hooks";
 import { automationStore, tasksStore } from "../../stores";
 import { TasksScenarioRunsListTable } from "@renderer/components/organisms/tables";
 
 export const TaskListPage = observer(function TaskListPage() {
-  const { goTo } = useHashRouter();
+  const { goTo } = useAppNavigation();
   const [query, setQuery] = useState("");
 
   useEffect(() => {

@@ -10,6 +10,9 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: resolve("src/host/main.ts"),
+          "text-extraction.worker": resolve(
+            "src/host/infrastructure/vector-store/text-extraction.worker.ts",
+          ),
         },
       },
     },
@@ -42,7 +45,7 @@ export default defineConfig({
   renderer: {
     root: resolve("src/renderer"),
     server: {
-      host: true,
+      host: "127.0.0.1",
     },
     resolve: {
       alias: {

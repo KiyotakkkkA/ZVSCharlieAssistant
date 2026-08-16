@@ -2,6 +2,7 @@ import { ipcMain } from "electron";
 import type { VectorStoreService } from "../../host/infrastructure/vector-store/vector-store.service";
 import { VECTOR_STORE_IPC_CHANNELS } from "../contracts";
 import {
+  entityIdSchema,
   parseIpcDto,
   uploadVectorDocumentDtoSchema,
   upsertVectorStoreDtoSchema,
@@ -17,7 +18,8 @@ export function registerVectorStoreHandlers(service: VectorStoreService) {
   );
   ipcMain.handle(
     VECTOR_STORE_IPC_CHANNELS.getDocuments,
-    (_event, ids: number[]) => service.documents(ids),
+    (_event, ids: number[]) =>
+      service.documents(parseIpcDto(entityIdSchema.array().max(100), ids)),
   );
   ipcMain.handle(
     VECTOR_STORE_IPC_CHANNELS.upsertStore,
@@ -25,7 +27,7 @@ export function registerVectorStoreHandlers(service: VectorStoreService) {
       service.upsert(parseIpcDto(upsertVectorStoreDtoSchema, input)),
   );
   ipcMain.handle(VECTOR_STORE_IPC_CHANNELS.deleteStore, (_event, id: number) =>
-    service.deleteStore(id),
+    service.deleteStore(parseIpcDto(entityIdSchema, id)),
   );
   ipcMain.handle(
     VECTOR_STORE_IPC_CHANNELS.uploadDocuments,
@@ -34,7 +36,8 @@ export function registerVectorStoreHandlers(service: VectorStoreService) {
   );
   ipcMain.handle(
     VECTOR_STORE_IPC_CHANNELS.deleteDocument,
-    (_event, id: number) => service.deleteDocument(id),
+    (_event, id: number) =>
+      service.deleteDocument(parseIpcDto(entityIdSchema, id)),
   );
   ipcMain.handle(
     VECTOR_STORE_IPC_CHANNELS.search,

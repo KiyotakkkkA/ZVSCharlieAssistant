@@ -7,7 +7,12 @@ import {
 } from "react-router-dom";
 import { APP_PATHS, NAVIGATION_ROUTES, type AppPath } from "../app/routes";
 
-export function useHashRouter() {
+/**
+ * Единая точка навигации приложения поверх react-router. Прежнее имя
+ * `useAppNavigation` заставляло думать, что это самостоятельный роутер, тогда как
+ * часть компонентов ходила в react-router напрямую — два стиля в одной базе.
+ */
+export function useAppNavigation() {
   const navigate = useNavigate();
   const location = useLocation();
 

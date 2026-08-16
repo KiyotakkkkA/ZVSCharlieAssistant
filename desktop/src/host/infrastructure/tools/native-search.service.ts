@@ -94,8 +94,9 @@ export class NativeSearchService {
       this.addon = createRequire(import.meta.url)(file) as NativeSearchAddon;
       return this.addon;
     } catch (error) {
+      console.error("Не удалось загрузить нативный аддон поиска", file, error);
       throw new Error(
-        `Нативные инструменты поиска не собраны (${file}): ${error instanceof Error ? error.message : String(error)}`,
+        "Инструменты поиска по файлам недоступны: нативный модуль не собран. Выполните «npm run build:native» в каталоге desktop.",
       );
     }
   }

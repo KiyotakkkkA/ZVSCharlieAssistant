@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { jsonValueSchema } from "./ipc-dto";
 
 export const attachmentReferenceDtoSchema = z.object({
   kind: z.enum(["photo", "document", "video", "audio", "voice", "file"]),
@@ -83,6 +84,17 @@ export const scenarioMessageTriggerInputDtoSchema = z.discriminatedUnion(
     }),
   ],
 );
+
+/**
+ * Полезная нагрузка запуска сценария. Триггеры из почты и Telegram имеют
+ * строгую форму; ручной запуск из редактора присылает произвольный объект,
+ * поэтому он проверяется только на то, что это безопасный JSON.
+ */
+export const scenarioTriggerInputDtoSchema = z.union([
+  scenarioMessageTriggerInputDtoSchema,
+  jsonValueSchema,
+]);
+export type ScenarioTriggerInput = z.infer<typeof scenarioTriggerInputDtoSchema>;
 
 export type TelegramMessageEntity = z.infer<
   typeof telegramMessageEntityDtoSchema

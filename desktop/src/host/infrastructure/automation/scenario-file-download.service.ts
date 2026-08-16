@@ -1,3 +1,4 @@
+import { onWork } from "./background/work-signal";
 import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
@@ -21,9 +22,13 @@ type TriggerEnvelope = {
   entity: Record<string, unknown> & { attachments?: AttachmentReference[] };
 };
 
+/** Страховочный опрос на случай, если сигнал о работе был потерян. */
+const FALLBACK_POLL_MS = 30_000;
+
 export class ScenarioFileDownloadService {
   private readonly workerId = randomUUID();
   private timer?: NodeJS.Timeout;
+  private unsubscribe?: () => void;
   private busy = false;
 
   constructor(
@@ -34,13 +39,17 @@ export class ScenarioFileDownloadService {
   ) {}
 
   start(): void {
+    if (this.timer) return;
     this.data.recoverExpiredLeases();
-    this.timer = setInterval(() => void this.tick(), 250);
+    this.unsubscribe = onWork("scenario-file", () => void this.tick());
+    this.timer = setInterval(() => void this.tick(), FALLBACK_POLL_MS);
     this.timer.unref();
     void this.tick();
   }
 
   stop(): void {
+    this.unsubscribe?.();
+    this.unsubscribe = undefined;
     if (this.timer) clearInterval(this.timer);
     this.timer = undefined;
   }

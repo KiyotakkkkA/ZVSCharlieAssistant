@@ -10,6 +10,7 @@ import type {
   UpsertTextProviderInput,
 } from "../../../shared/dto";
 import { SecretStorageRepository } from "../database/secret-storage.repository";
+import { describeProviderHttpError } from "./provider-error";
 import { TextProviderRepository } from "../database/text-provider.repository";
 
 const API_KEYS_CATEGORY_ID = 1;
@@ -58,7 +59,7 @@ class OllamaConnectionChecker implements ProviderConnectionChecker {
     });
 
     if (!response.ok) {
-      throw new Error(`Ollama вернул HTTP ${response.status}`);
+      throw new Error(describeProviderHttpError("Ollama", response.status));
     }
 
     const payload = (await response.json()) as OllamaTagsResponse;
@@ -149,14 +150,25 @@ class OpenRouterConnectionChecker implements ProviderConnectionChecker {
     ]);
     if (!modelsResponse.ok)
       throw new Error(
-        `OpenRouter models API вернул HTTP ${modelsResponse.status}`,
+        describeProviderHttpError(
+          "OpenRouter (список моделей)",
+          modelsResponse.status,
+        ),
       );
     if (!zdrModelsResponse.ok)
       throw new Error(
-        `OpenRouter ZDR models API вернул HTTP ${zdrModelsResponse.status}`,
+        describeProviderHttpError(
+          "OpenRouter (модели без хранения данных)",
+          zdrModelsResponse.status,
+        ),
       );
     if (!keyResponse.ok)
-      throw new Error(`OpenRouter key API вернул HTTP ${keyResponse.status}`);
+      throw new Error(
+        describeProviderHttpError(
+          "OpenRouter (проверка ключа)",
+          keyResponse.status,
+        ),
+      );
     const modelPayload =
       (await modelsResponse.json()) as OpenRouterModelsResponse;
     const zdrModelPayload =
@@ -168,11 +180,6 @@ class OpenRouterConnectionChecker implements ProviderConnectionChecker {
       throw new Error("OpenRouter вернул некорректный список ZDR-моделей");
     if (!keyPayload.data)
       throw new Error("OpenRouter не вернул данные API-ключа");
-    // The models catalogue does not expose endpoint data policies on each
-    // model. `zdr=true` is the only documented catalogue-level privacy
-    // filter. A ZDR endpoint neither retains prompts nor trains on them, so it
-    // is also a guaranteed (albeit deliberately conservative) no-training
-    // match.
     const zdrModelIds = new Set(
       zdrModelPayload.data.flatMap((model) =>
         model.id?.trim() ? [model.id.trim()] : [],

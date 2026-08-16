@@ -1,3 +1,4 @@
+import { notifyWork } from "../automation/background/work-signal";
 import type Database from "better-sqlite3";
 
 export interface AutomationJob {
@@ -32,6 +33,7 @@ export class AutomationJobRepository {
        VALUES(?,?,?,?) ON CONFLICT(deduplication_key) DO NOTHING`,
       )
       .run(kind, key, JSON.stringify(payload), priority);
+    notifyWork("scenario-job");
   }
 
   leaseNext(workerId: string): AutomationJob | undefined {

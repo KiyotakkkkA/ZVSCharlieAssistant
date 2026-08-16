@@ -1,6 +1,7 @@
 import { ipcRenderer } from "electron";
 import {
   AUTOMATION_IPC_CHANNELS,
+  CORE_INTERACTOR_IPC_CHANNELS,
   IPC_CHANNELS,
   SECRET_IPC_CHANNELS,
   TEXT_PROVIDER_IPC_CHANNELS,
@@ -99,7 +100,7 @@ export const desktopApi: DesktopApi = {
   core: {
     openExternalUrl: (url: string): Promise<boolean> =>
       ipcRenderer.invoke(
-        "coreInteractor:openExternalUrl",
+        CORE_INTERACTOR_IPC_CHANNELS.openExternalUrl,
         url,
       ) as Promise<boolean>,
   },
@@ -133,6 +134,15 @@ export const desktopApi: DesktopApi = {
         id,
         approved,
       ) as Promise<void>,
+    subscribeApprovals: (listener: () => void) => {
+      const handler = () => listener();
+      ipcRenderer.on(TERMINAL_POLICY_IPC_CHANNELS.approvalsChanged, handler);
+      return () =>
+        ipcRenderer.removeListener(
+          TERMINAL_POLICY_IPC_CHANNELS.approvalsChanged,
+          handler,
+        );
+    },
   },
   directoryPolicy: {
     get: (): Promise<DirectoryPolicy> =>

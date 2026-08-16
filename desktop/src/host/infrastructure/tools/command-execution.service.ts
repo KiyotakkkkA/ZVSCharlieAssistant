@@ -1,4 +1,8 @@
-import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import {
+  spawn,
+  spawnSync,
+  type ChildProcessWithoutNullStreams,
+} from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import { isAbsolute, normalize, relative, resolve } from "node:path";
 import type { CommandSessionStatus } from "../../../shared/models/terminal";
@@ -38,6 +42,53 @@ interface Session {
   finished?: Promise<void>;
 }
 
+interface PendingApproval {
+  settle: (approved: boolean, reason: string) => void;
+  expectedHash: string;
+  currentHash: () => string;
+  timer: NodeJS.Timeout;
+}
+
+const APPROVAL_TTL_MS = 15 * 60_000;
+
+let resolvedShell: string | undefined;
+
+/**
+ * Windows поставляется с `powershell.exe` (5.1), а `pwsh.exe` (PowerShell 7)
+ * ставится отдельно. Без выбора между ними любая команда на машине без
+ * PowerShell 7 падала с невнятным ENOENT от spawn.
+ */
+function resolvePowerShell(): string {
+  if (resolvedShell) return resolvedShell;
+  for (const candidate of ["pwsh.exe", "powershell.exe"]) {
+    const probe = spawnSync(
+      candidate,
+      ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", "exit 0"],
+      { windowsHide: true, timeout: 10_000 },
+    );
+    if (!probe.error) return (resolvedShell = candidate);
+  }
+  throw new Error(
+    "PowerShell не найден. Установите PowerShell 7 (pwsh) или убедитесь, что powershell.exe доступен в PATH",
+  );
+}
+
+/**
+ * `child.kill()` на Windows не завершает потомков оболочки: по таймауту или
+ * отмене сессия помечалась завершённой, а её работа продолжалась в фоне.
+ */
+function terminateTree(child: ChildProcessWithoutNullStreams): void {
+  if (child.exitCode !== null || child.signalCode !== null) return;
+  if (process.platform === "win32" && child.pid) {
+    const killer = spawn("taskkill", ["/pid", String(child.pid), "/t", "/f"], {
+      windowsHide: true,
+    });
+    killer.on("error", () => child.kill());
+    return;
+  }
+  child.kill();
+}
+
 const permissionByCommand = (command: string): DirectoryPermission => {
   const definition = getTerminalCommandDefinition(command);
   if (definition) return definition.permission;
@@ -62,13 +113,23 @@ const permissionByCommand = (command: string): DirectoryPermission => {
 
 export class CommandExecutionService {
   private readonly sessions = new Map<string, Session>();
-  private readonly approvals = new Map<string, (approved: boolean) => void>();
+  private readonly approvals = new Map<string, PendingApproval>();
+
+  /**
+   * Вызывается при появлении и снятии заявки на подтверждение. Позволяет
+   * рендереру подписаться на события вместо опроса каждые 750 мс.
+   */
+  private onApprovalsChanged?: () => void;
 
   constructor(
     private readonly policies: TerminalPolicyRepository,
     private readonly directories: DirectoryPolicyRepository,
   ) {
     this.policies.recoverInterruptedSessions();
+  }
+
+  watchApprovals(listener: () => void): void {
+    this.onApprovalsChanged = listener;
   }
 
   async execute(
@@ -104,7 +165,9 @@ export class CommandExecutionService {
       throw new Error("Не удалось определить исполняемую команду");
     for (const command of commands)
       if (!effectiveCommands.has(command.toLowerCase()))
-        throw new Error(`Команда ${command} не разрешена политикой`);
+        throw new Error(
+          `Команда ${command} не разрешена политикой. Разрешить её можно в «Настройки → Политики» — команда должна быть включена и в глобальной политике, и в политике агента.`,
+        );
     if (
       !global.allowNetwork &&
       commands.some((command) => getTerminalCommandDefinition(command)?.network)
@@ -161,11 +224,19 @@ export class CommandExecutionService {
     if (requiresApproval) {
       session.status = "pending_approval";
       const approvalId = randomUUID();
-      const payloadHash = createHash("sha256")
-        .update(
-          JSON.stringify({ script, cwd, agent, agentDirectories, global }),
-        )
-        .digest("hex");
+      const currentHash = () =>
+        createHash("sha256")
+          .update(
+            JSON.stringify({
+              script,
+              cwd,
+              agent,
+              agentDirectories,
+              global: this.policies.get(),
+            }),
+          )
+          .digest("hex");
+      const expiresAtMs = Date.now() + APPROVAL_TTL_MS;
       this.policies.createPendingSession({
         sessionId: session.id,
         approvalId,
@@ -181,29 +252,21 @@ export class CommandExecutionService {
         reasons: [
           "Команда требует подтверждения согласно эффективной политике",
         ],
-        payloadHash,
-        expiresAt: new Date(Date.now() + 15 * 60_000).toISOString(),
+        payloadHash: currentHash(),
+        expiresAt: new Date(expiresAtMs).toISOString(),
       });
-      const approved = await new Promise<boolean>((resolveApproval) => {
-        this.approvals.set(approvalId, resolveApproval);
-        signal?.addEventListener(
-          "abort",
-          () => {
-            if (!this.approvals.delete(approvalId)) return;
-            try {
-              this.policies.decideApproval(approvalId, false);
-            } catch {
-              // Approval may already have been handled by the user.
-            }
-            resolveApproval(false);
-          },
-          { once: true },
-        );
-      });
-      if (!approved) {
+      this.onApprovalsChanged?.();
+      const decision = await this.awaitApproval(
+        approvalId,
+        currentHash,
+        expiresAtMs,
+        signal,
+      );
+      this.onApprovalsChanged?.();
+      if (!decision.approved) {
         session.status = "cancelled";
         this.policies.setSessionStatus(session.id, "cancelled");
-        throw new Error("Выполнение команды отклонено пользователем");
+        throw new Error(decision.reason);
       }
     }
     this.startProcess(
@@ -221,7 +284,7 @@ export class CommandExecutionService {
       () => {
         if (session.status !== "running") return;
         session.status = "cancelled";
-        session.process?.kill();
+        if (session.process) terminateTree(session.process);
       },
       { once: true },
     );
@@ -235,12 +298,62 @@ export class CommandExecutionService {
   }
 
   decideApproval(id: string, approved: boolean) {
+    const pending = this.approvals.get(id);
+    if (!pending) throw new Error("Ожидающее выполнение больше не активно");
+    if (approved && pending.currentHash() !== pending.expectedHash) {
+      this.policies.decideApproval(id, false);
+      pending.settle(false, "Политика изменилась после запроса подтверждения");
+      throw new Error(
+        "Политика доступа изменилась после запроса подтверждения — команда отклонена. Повторите запрос.",
+      );
+    }
     this.policies.decideApproval(id, approved);
-    const resolveApproval = this.approvals.get(id);
-    if (!resolveApproval)
-      throw new Error("Ожидающее выполнение больше не активно");
-    this.approvals.delete(id);
-    resolveApproval(approved);
+    pending.settle(
+      approved,
+      approved ? "" : "Выполнение команды отклонено пользователем",
+    );
+  }
+
+  /**
+   * Ожидание решения пользователя с жёстким сроком. Без таймера промис висел
+   * вечно: для сценария из фоновой очереди это останавливало весь конвейер
+   * заданий до перезапуска приложения.
+   */
+  private awaitApproval(
+    approvalId: string,
+    currentHash: () => string,
+    expiresAtMs: number,
+    signal?: AbortSignal,
+  ): Promise<{ approved: boolean; reason: string }> {
+    return new Promise((resolvePromise) => {
+      const settle = (approved: boolean, reason: string) => {
+        const pending = this.approvals.get(approvalId);
+        if (!pending) return;
+        clearTimeout(pending.timer);
+        this.approvals.delete(approvalId);
+        resolvePromise({ approved, reason });
+      };
+      const decline = (reason: string) => {
+        try {
+          this.policies.decideApproval(approvalId, false);
+        } catch {}
+        settle(false, reason);
+      };
+      const timer = setTimeout(
+        () => decline("Истёк срок подтверждения команды"),
+        Math.max(1_000, expiresAtMs - Date.now()),
+      );
+      timer.unref();
+      this.approvals.set(approvalId, {
+        settle,
+        expectedHash: currentHash(),
+        currentHash,
+        timer,
+      });
+      signal?.addEventListener("abort", () => decline("Выполнение отменено"), {
+        once: true,
+      });
+    });
   }
 
   private parseCommands(script: string): string[] {
@@ -252,10 +365,23 @@ export class CommandExecutionService {
       throw new Error("Команда содержит запрещённую конструкцию PowerShell");
     if (/[&`]/.test(script))
       throw new Error("Операторы динамического выполнения запрещены");
-    return script
+    if (/~|%[A-Za-z_][A-Za-z0-9_()]*%/.test(script))
+      throw new Error(
+        "Пути с «~» или переменными окружения запрещены: укажите абсолютный путь",
+      );
+    const segments = script
       .split(/[;|\r\n]+/)
-      .map((part) => part.trim().match(/^([A-Za-z][\w-]*)/)?.[1])
-      .filter((item): item is string => Boolean(item));
+      .map((part) => part.trim())
+      .filter(Boolean);
+    const commands = segments.map(
+      (segment) => segment.match(/^([A-Za-z][\w-]*)/)?.[1],
+    );
+    const unrecognized = segments.find((_, index) => !commands[index]);
+    if (unrecognized !== undefined)
+      throw new Error(
+        `Не удалось определить команду во фрагменте «${unrecognized.slice(0, 80)}»`,
+      );
+    return commands.filter((item): item is string => Boolean(item));
   }
 
   private absolutePaths(script: string): string[] {
@@ -303,7 +429,9 @@ export class CommandExecutionService {
       );
     });
     if (!grant)
-      throw new Error(`Нет права ${permission} для пути ${candidate}`);
+      throw new Error(
+        `Нет права «${permission}» для пути ${candidate}. Выдать доступ можно в «Настройки → Политики → Директории».`,
+      );
     return candidate;
   }
 
@@ -315,7 +443,7 @@ export class CommandExecutionService {
     maxOutputBytes: number,
   ) {
     const child = spawn(
-      "pwsh.exe",
+      resolvePowerShell(),
       ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", "-"],
       {
         cwd,
@@ -340,7 +468,7 @@ export class CommandExecutionService {
     child.stderr.on("data", (chunk: Buffer) => append("stderr", chunk));
     const timer = setTimeout(() => {
       session.status = "timed_out";
-      child.kill();
+      terminateTree(child);
     }, timeoutSeconds * 1000);
     session.finished = new Promise((resolveFinished) => {
       child.once("error", (error) => {
@@ -367,7 +495,7 @@ export class CommandExecutionService {
     if (!session) throw new Error("Терминальная сессия не найдена");
     if (input.action === "cancel" && session.status === "running") {
       session.status = "cancelled";
-      session.process?.kill();
+      if (session.process) terminateTree(session.process);
     } else if (input.action === "wait" && session.finished) {
       await Promise.race([
         session.finished,

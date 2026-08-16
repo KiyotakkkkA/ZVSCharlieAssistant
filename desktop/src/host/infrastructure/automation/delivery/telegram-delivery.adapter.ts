@@ -59,7 +59,10 @@ export class TelegramDeliveryAdapter implements ScenarioDeliveryAdapter {
       };
       if (!response.ok || !result.ok)
         throw new Error(
-          result.description ?? `Telegram HTTP ${response.status}`,
+          redactToken(
+            result.description ?? `Telegram HTTP ${response.status}`,
+            token,
+          ),
         );
     }
   }
@@ -74,13 +77,6 @@ export class TelegramDeliveryAdapter implements ScenarioDeliveryAdapter {
         action: "typing",
       }),
     });
-  }
-
-  private escapeHtml(text: string): string {
-    return text
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
   }
 
   private sanitizeMarkdownToTelegramHtml(md: string): string {
@@ -107,15 +103,20 @@ export class TelegramDeliveryAdapter implements ScenarioDeliveryAdapter {
     text = text.replace(/^---+$/gm, "\n");
     text = text.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
     text = text.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "<i>$1</i>");
-    text = text.replace(/`([^`]+)`/g, "<code>$1</code>");
     text = text.replace(
       /```[\s\S]*?\n([\s\S]*?)```/g,
       "<pre><code>$1</code></pre>",
     );
+    text = text.replace(/`([^`]+)`/g, "<code>$1</code>");
     text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
     text = text.replace(/^[\s]*[-*]\s+/gm, "• ");
     return text;
   }
+}
+
+/** Токен бота входит в URL запроса и не должен утечь в журнал или в UI. */
+function redactToken(message: string, token: string) {
+  return token ? message.split(token).join("***") : message;
 }
 
 function splitTelegram(text: string) {

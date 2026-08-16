@@ -1,3 +1,4 @@
+import { safeStorage } from "electron";
 import type Database from "better-sqlite3";
 import type {
   SecretCategory,
@@ -23,6 +24,26 @@ interface SecretRow {
   builtin: number;
 }
 
+const ENCRYPTED_PREFIX = "enc:v1:";
+
+const encryptSecret = (value: string): string => {
+  if (!safeStorage.isEncryptionAvailable()) return value;
+  return ENCRYPTED_PREFIX + safeStorage.encryptString(value).toString("base64");
+};
+
+const decryptSecret = (value: string): string => {
+  if (!value.startsWith(ENCRYPTED_PREFIX)) return value;
+  try {
+    return safeStorage.decryptString(
+      Buffer.from(value.slice(ENCRYPTED_PREFIX.length), "base64"),
+    );
+  } catch {
+    throw new Error(
+      "Не удалось расшифровать секрет: хранилище создано под другой учётной записью или профиль повреждён",
+    );
+  }
+};
+
 const mapCategory = (row: CategoryRow): SecretCategory => ({
   id: row.id,
   label: row.label,
@@ -33,7 +54,7 @@ const mapSecret = (row: SecretRow): SecretRecord => ({
   id: row.id,
   categoryId: row.category_id,
   label: row.label,
-  content: row.content,
+  content: decryptSecret(row.content),
   builtin: Boolean(row.builtin),
 });
 
@@ -41,12 +62,44 @@ export class SecretStorageRepository {
   constructor(private readonly database: Database.Database) {}
 
   getSnapshot(): SecretStorageSnapshot {
+    const rows = this.database
+      .prepare(
+        `SELECT id, category_id, label, builtin
+         FROM secret_entities
+         ORDER BY builtin DESC, label ASC`,
+      )
+      .all() as Array<Omit<SecretRow, "content">>;
+
     return {
       categories: this.listCategories(),
-      secrets: this.listSecrets().map(
-        ({ content: _content, ...secret }) => secret,
-      ),
+      secrets: rows.map((row) => ({
+        id: row.id,
+        categoryId: row.category_id,
+        label: row.label,
+        builtin: Boolean(row.builtin),
+      })),
     };
+  }
+
+  /**
+   * Переводит секреты, сохранённые открытым текстом, под DPAPI. Идемпотентно:
+   * значения с маркером пропускаются.
+   */
+  encryptLegacySecrets(): void {
+    if (!safeStorage.isEncryptionAvailable()) return;
+    const rows = this.database
+      .prepare("SELECT id, content FROM secret_entities")
+      .all() as Array<{ id: number; content: string }>;
+    const pending = rows.filter(
+      (row) => !row.content.startsWith(ENCRYPTED_PREFIX),
+    );
+    if (!pending.length) return;
+    const update = this.database.prepare(
+      "UPDATE secret_entities SET content = ? WHERE id = ?",
+    );
+    this.database.transaction(() => {
+      for (const row of pending) update.run(encryptSecret(row.content), row.id);
+    })();
   }
 
   listCategories(): SecretCategory[] {
@@ -119,7 +172,7 @@ export class SecretStorageRepository {
           `INSERT INTO secret_entities (category_id, label, content)
            VALUES (?, ?, ?)`,
         )
-        .run(input.categoryId, input.label, input.content!);
+        .run(input.categoryId, input.label, encryptSecret(input.content!));
       return this.findSecret(Number(result.lastInsertRowid))!;
     }
 
@@ -129,7 +182,14 @@ export class SecretStorageRepository {
          SET category_id = ?, label = ?, content = COALESCE(?, content)
          WHERE id = ?`,
       )
-      .run(input.categoryId, input.label, input.content, input.id);
+      .run(
+        input.categoryId,
+        input.label,
+        input.content === undefined || input.content === null
+          ? null
+          : encryptSecret(input.content),
+        input.id,
+      );
     if (result.changes === 0) throw new Error("Секрет не найден");
     return this.findSecret(input.id)!;
   }

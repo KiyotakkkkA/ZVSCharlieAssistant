@@ -8,7 +8,7 @@ import type {
   RunStatus,
 } from "../../../shared/models/chat";
 import { chatMessageContentDtoSchema, parseJsonDto } from "../../../shared/dto";
-import type { ChatMode } from "../../../shared/dto";
+import type { ChatMessageContentPart, ChatMode } from "../../../shared/dto";
 interface ConversationRow {
   id: number;
   title: string;
@@ -159,36 +159,51 @@ export class ChatRepository {
       size: row.size,
     }));
   }
-  appendText(messageId: number, delta: string) {
-    const row = this.db
-      .prepare("SELECT content_json FROM chat_messages WHERE id=?")
-      .get(messageId) as { content_json: string };
-
-    const parts = parseJsonDto(chatMessageContentDtoSchema, row.content_json);
-    let part = parts.find((part) => part.type === "text");
-    if (!part) {
-      part = { type: "text", text: "" };
-      parts.push(part);
-    }
-    part.text += delta;
+  /**
+   * Записывает накопленное содержимое сообщения одним UPDATE, без чтения и
+   * разбора предыдущего значения.
+   *
+   * Прежние `appendText`/`appendReasoning` делали SELECT + JSON.parse +
+   * валидацию + JSON.stringify + UPDATE на каждую дельту стрима. Это O(n²) по
+   * длине ответа и синхронная запись в главном процессе на каждый токен —
+   * ответ на 4000 токенов означал 4000 перезаписей растущего блоба. Накопление
+   * дельт и периодический сброс делает движок (см. `RunEngine.execute`).
+   */
+  writeMessageContent(messageId: number, reasoning: string, text: string) {
+    const parts: ChatMessageContentPart[] = [];
+    if (reasoning) parts.push({ type: "reasoning", text: reasoning });
+    if (text || !parts.length) parts.push({ type: "text", text });
     this.db
       .prepare("UPDATE chat_messages SET content_json=? WHERE id=?")
       .run(JSON.stringify(parts), messageId);
   }
-  appendReasoning(messageId: number, delta: string) {
-    const row = this.db
-      .prepare("SELECT content_json FROM chat_messages WHERE id=?")
-      .get(messageId) as { content_json: string };
-    const parts = parseJsonDto(chatMessageContentDtoSchema, row.content_json);
-    let part = parts.find((item) => item.type === "reasoning");
-    if (!part) {
-      part = { type: "reasoning", text: "" };
-      parts.unshift(part);
+
+  /**
+   * Ограниченная история для передачи модели. Раньше выбирался весь диалог
+   * целиком, из-за чего стоимость и латентность каждого следующего запроса
+   * росли линейно, пока не упирались в контекстное окно.
+   */
+  historyMessages(
+    conversationId: number,
+    maxMessages: number,
+    maxCharacters: number,
+  ): ChatMessage[] {
+    const rows = (
+      this.db
+        .prepare(
+          "SELECT * FROM chat_messages WHERE conversation_id=? ORDER BY id DESC LIMIT ?",
+        )
+        .all(conversationId, maxMessages) as MessageRow[]
+    ).map((row) => this.mapMessage(row));
+
+    const selected: ChatMessage[] = [];
+    let budget = maxCharacters;
+    for (const message of rows) {
+      budget -= message.text.length;
+      if (budget < 0 && selected.length) break;
+      selected.push(message);
     }
-    part.text += delta;
-    this.db
-      .prepare("UPDATE chat_messages SET content_json=? WHERE id=?")
-      .run(JSON.stringify(parts), messageId);
+    return selected.reverse();
   }
   replaceText(messageId: number, text: string) {
     this.db

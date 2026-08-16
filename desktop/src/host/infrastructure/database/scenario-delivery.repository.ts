@@ -1,3 +1,4 @@
+import { notifyWork } from "../automation/background/work-signal";
 import type Database from "better-sqlite3";
 
 export type ScenarioDeliveryChannel = "telegram" | "email";
@@ -36,6 +37,7 @@ export class ScenarioDeliveryRepository {
         JSON.stringify(input.payload),
         input.idempotencyKey,
       );
+    notifyWork("scenario-delivery");
   }
 
   recoverExpiredLeases() {

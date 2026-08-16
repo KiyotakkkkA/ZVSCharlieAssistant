@@ -152,7 +152,15 @@ createRoot(root).render(
       <Routes>
         <Route element={<App />}>
           <Route element={<AppLayout />}>
-            <Route index element={<RoutePage title="Главная" />} />
+            <Route
+              index
+              element={
+                <RoutePage
+                  title="Главная"
+                  description="Начните с чата или откройте раздел автоматизации в боковом меню."
+                />
+              }
+            />
             <Route path={APP_PATHS.chat} element={<ChatPage />} />
             <Route path={APP_PATHS.tasks} element={<TaskListPage />} />
             <Route
@@ -207,7 +215,12 @@ createRoot(root).render(
             />
             <Route
               path={APP_PATHS.storage.index}
-              element={<RoutePage title="Хранилище" />}
+              element={
+                <RoutePage
+                  title="Хранилище"
+                  description="Выберите «Секреты» или «Векторная БД» в боковом меню."
+                />
+              }
             />
             <Route
               path={APP_PATHS.settings.index}

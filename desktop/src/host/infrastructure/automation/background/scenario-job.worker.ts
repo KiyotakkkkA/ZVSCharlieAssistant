@@ -6,10 +6,15 @@ import type {
 import type { ScenarioRunEvent } from "../../../../shared/models/automation";
 import { scenarioMessageTriggerInputDtoSchema } from "../../../../shared/dto/scenario-trigger-event.dto";
 import type { ScenarioRunEngine } from "../scenario-run-engine";
+import { onWork } from "./work-signal";
+
+/** Страховочный опрос на случай, если сигнал о работе был потерян. */
+const FALLBACK_POLL_MS = 30_000;
 
 export class ScenarioJobWorker {
   private readonly workerId = randomUUID();
   private timer?: NodeJS.Timeout;
+  private unsubscribe?: () => void;
   private busy = false;
 
   constructor(
@@ -20,12 +25,15 @@ export class ScenarioJobWorker {
   start(): void {
     if (this.timer) return;
     this.jobs.recoverExpiredLeases();
-    this.timer = setInterval(() => void this.tick(), 1_000);
+    this.unsubscribe = onWork("scenario-job", () => void this.tick());
+    this.timer = setInterval(() => void this.tick(), FALLBACK_POLL_MS);
     this.timer.unref();
     void this.tick();
   }
 
   stop(): void {
+    this.unsubscribe?.();
+    this.unsubscribe = undefined;
     if (this.timer) clearInterval(this.timer);
     this.timer = undefined;
   }

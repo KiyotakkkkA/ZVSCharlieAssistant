@@ -717,9 +717,7 @@ function parseDelegationPlan(
   try {
     const parsed = JSON.parse(raw.trim()) as unknown;
     if (isRecord(parsed) && Array.isArray(parsed.delegations)) return parsed;
-  } catch {
-    // Ниже формируется безопасный план, если модель нарушила JSON-контракт.
-  }
+  } catch {}
   return {
     originalRequest: input,
     delegations: agents.map((agent) => ({

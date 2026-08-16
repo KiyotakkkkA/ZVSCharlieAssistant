@@ -1,14 +1,15 @@
-import { CoreInteractorApi } from "@ipc/contracts";
+import { CORE_INTERACTOR_IPC_CHANNELS, CoreInteractorApi } from "@ipc/contracts";
 import { ipcMain } from "electron";
 
 export function registerCoreInteractorHandlers(
   coreInteractor: CoreInteractorApi,
 ) {
-  ipcMain.handle("coreInteractor:openExternalUrl", (_event, url: string) =>
-    coreInteractor.openExternalUrl(url),
+  ipcMain.handle(
+    CORE_INTERACTOR_IPC_CHANNELS.openExternalUrl,
+    (_event, url: string) => coreInteractor.openExternalUrl(url),
   );
 }
 
 export function removeCoreInteractorHandlers() {
-  ipcMain.removeHandler("coreInteractor:openExternalUrl");
+  ipcMain.removeHandler(CORE_INTERACTOR_IPC_CHANNELS.openExternalUrl);
 }

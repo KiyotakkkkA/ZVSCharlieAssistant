@@ -1,9 +1,14 @@
-import { ipcMain } from "electron";
+import { BrowserWindow, ipcMain } from "electron";
 import type { UpsertTerminalPolicyInput } from "../../shared/dto";
 import type { TerminalPolicyRepository } from "../../host/infrastructure/database/terminal-policy.repository";
 import type { CommandExecutionService } from "../../host/infrastructure/tools/command-execution.service";
 import { TERMINAL_POLICY_IPC_CHANNELS } from "../contracts/terminal-policy.contract";
-import { parseIpcDto, upsertTerminalPolicyDtoSchema } from "../../shared/dto";
+import {
+  booleanFlagSchema,
+  entityKeySchema,
+  parseIpcDto,
+  upsertTerminalPolicyDtoSchema,
+} from "../../shared/dto";
 import { TERMINAL_CAPABILITIES } from "../../shared/terminal-capabilities";
 
 const recommendedCapabilityIds = new Set([
@@ -44,14 +49,23 @@ export function registerTerminalPolicyHandlers(
   ipcMain.handle(TERMINAL_POLICY_IPC_CHANNELS.pendingApprovals, () =>
     commands.pendingApprovals(),
   );
+  commands.watchApprovals(() => {
+    for (const window of BrowserWindow.getAllWindows())
+      if (!window.webContents.isDestroyed())
+        window.webContents.send(TERMINAL_POLICY_IPC_CHANNELS.approvalsChanged);
+  });
   ipcMain.handle(
     TERMINAL_POLICY_IPC_CHANNELS.decideApproval,
     (_event, id: string, approved: boolean) =>
-      commands.decideApproval(id, approved),
+      commands.decideApproval(
+        parseIpcDto(entityKeySchema, id),
+        parseIpcDto(booleanFlagSchema, approved),
+      ),
   );
 }
 
 export function removeTerminalPolicyHandlers() {
   for (const channel of Object.values(TERMINAL_POLICY_IPC_CHANNELS))
-    ipcMain.removeHandler(channel);
+    if (channel !== TERMINAL_POLICY_IPC_CHANNELS.approvalsChanged)
+      ipcMain.removeHandler(channel);
 }
