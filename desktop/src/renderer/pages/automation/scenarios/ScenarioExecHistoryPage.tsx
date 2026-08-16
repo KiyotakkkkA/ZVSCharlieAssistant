@@ -364,9 +364,9 @@ export function ScenarioExecHistoryPage() {
             return (
               <li
                 key={node.id}
-                className={`overflow-hidden rounded-2xl border bg-main-800/35 transition-[border-color,background-color,box-shadow] duration-300 ${
+                className={`overflow-hidden rounded-2xl border bg-main-800/35 transition-colors duration-150 ease-out ${
                   isOpen
-                    ? "border-main-600/80 bg-main-800/55 shadow-[0_12px_32px_rgba(0,0,0,0.14)]"
+                    ? "border-main-600/80 bg-main-800/55"
                     : "border-main-700/55 hover:border-main-600/70 hover:bg-main-800/50"
                 }`}
               >
