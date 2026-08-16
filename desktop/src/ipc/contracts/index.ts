@@ -72,3 +72,9 @@ export { INTEGRATION_IPC_CHANNELS } from "./integration.contract";
 
 export type { CoreInteractorApi } from "./core-interactor.contract";
 export { CORE_INTERACTOR_IPC_CHANNELS } from "./core-interactor.contract";
+
+export type { AssistantApi } from "./assistant.contract";
+export { ASSISTANT_IPC_CHANNELS } from "./assistant.contract";
+export type * from "../../shared/models/memory";
+export type * from "../../shared/models/task-plan";
+export type * from "../../shared/models/user-question";

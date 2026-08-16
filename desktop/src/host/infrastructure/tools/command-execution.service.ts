@@ -53,11 +53,6 @@ const APPROVAL_TTL_MS = 15 * 60_000;
 
 let resolvedShell: string | undefined;
 
-/**
- * Windows поставляется с `powershell.exe` (5.1), а `pwsh.exe` (PowerShell 7)
- * ставится отдельно. Без выбора между ними любая команда на машине без
- * PowerShell 7 падала с невнятным ENOENT от spawn.
- */
 function resolvePowerShell(): string {
   if (resolvedShell) return resolvedShell;
   for (const candidate of ["pwsh.exe", "powershell.exe"]) {
@@ -73,10 +68,6 @@ function resolvePowerShell(): string {
   );
 }
 
-/**
- * `child.kill()` на Windows не завершает потомков оболочки: по таймауту или
- * отмене сессия помечалась завершённой, а её работа продолжалась в фоне.
- */
 function terminateTree(child: ChildProcessWithoutNullStreams): void {
   if (child.exitCode !== null || child.signalCode !== null) return;
   if (process.platform === "win32" && child.pid) {
@@ -115,10 +106,6 @@ export class CommandExecutionService {
   private readonly sessions = new Map<string, Session>();
   private readonly approvals = new Map<string, PendingApproval>();
 
-  /**
-   * Вызывается при появлении и снятии заявки на подтверждение. Позволяет
-   * рендереру подписаться на события вместо опроса каждые 750 мс.
-   */
   private onApprovalsChanged?: () => void;
 
   constructor(
@@ -314,11 +301,6 @@ export class CommandExecutionService {
     );
   }
 
-  /**
-   * Ожидание решения пользователя с жёстким сроком. Без таймера промис висел
-   * вечно: для сценария из фоновой очереди это останавливало весь конвейер
-   * заданий до перезапуска приложения.
-   */
   private awaitApproval(
     approvalId: string,
     currentHash: () => string,

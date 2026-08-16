@@ -11,10 +11,8 @@ export interface ScenarioFileTextContent {
   truncated: boolean;
 }
 
-/** Читается как обычный текст, без внешних зависимостей. */
 const PLAIN_TEXT_EXTENSIONS = new Set([".txt", ".md", ".csv", ".json", ".log"]);
 
-/** Разбирается в потоке извлечения (mammoth / pdfjs). */
 const DOCUMENT_EXTENSIONS = new Set([".docx", ".pdf"]);
 
 function isSupported(fileName: string): boolean {
@@ -63,12 +61,6 @@ export class ScenarioFileReaderService {
     };
   }
 
-  /**
-   * Раньше поддерживались только `.txt` и `.md`, а ради их различения
-   * существовала иерархия из трёх классов-стратегий с одинаковым чтением.
-   * Вложение в DOCX или PDF молча попадало в `unsupportedFiles`, хотя разбор
-   * этих форматов в проекте уже был — им пользовалось векторное хранилище.
-   */
   private async readFileText(file: ScenarioFileReference): Promise<string> {
     const path = this.resolveStorageKey(file.storageKey);
     const extension = extname(file.fileName).toLocaleLowerCase();

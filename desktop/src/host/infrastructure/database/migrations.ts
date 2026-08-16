@@ -713,6 +713,151 @@ const migrations: readonly Migration[] = [
       `);
     },
   },
+  {
+    version: 17,
+    up: (database) => {
+      database.exec(`
+        -- Долговременная память ассистента. Общая на приложение; доступ
+        -- ограничивается флагами на карточке агента (memory_read/memory_write).
+        CREATE TABLE memory_entries (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          kind TEXT NOT NULL DEFAULT 'fact'
+            CHECK(kind IN ('fact','preference','instruction','episode')),
+          title TEXT NOT NULL,
+          content TEXT NOT NULL,
+          tags_json TEXT NOT NULL DEFAULT '[]',
+          source TEXT NOT NULL DEFAULT 'chat'
+            CHECK(source IN ('chat','scenario','manual')),
+          conversation_id INTEGER,
+          execution_id INTEGER,
+          agent_id TEXT,
+          pinned INTEGER NOT NULL DEFAULT 0 CHECK(pinned IN (0,1)),
+          hits INTEGER NOT NULL DEFAULT 0 CHECK(hits >= 0),
+          used_at TEXT,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY(conversation_id) REFERENCES chat_conversations(id) ON DELETE SET NULL,
+          FOREIGN KEY(execution_id) REFERENCES execution_runs(id) ON DELETE SET NULL
+        );
+        CREATE INDEX idx_memory_entries_lookup ON memory_entries(pinned DESC, updated_at DESC);
+        CREATE UNIQUE INDEX idx_memory_entries_title ON memory_entries(title);
+
+        -- Полнотекстовый поиск по памяти. FTS5 входит в сборку better-sqlite3,
+        -- отдельная зависимость не нужна.
+        CREATE VIRTUAL TABLE memory_search USING fts5(
+          title, content, tags,
+          content='memory_entries', content_rowid='id',
+          tokenize='unicode61 remove_diacritics 2'
+        );
+        CREATE TRIGGER memory_entries_ai AFTER INSERT ON memory_entries BEGIN
+          INSERT INTO memory_search(rowid,title,content,tags)
+          VALUES (new.id,new.title,new.content,new.tags_json);
+        END;
+        CREATE TRIGGER memory_entries_ad AFTER DELETE ON memory_entries BEGIN
+          INSERT INTO memory_search(memory_search,rowid,title,content,tags)
+          VALUES ('delete',old.id,old.title,old.content,old.tags_json);
+        END;
+        CREATE TRIGGER memory_entries_au AFTER UPDATE ON memory_entries BEGIN
+          INSERT INTO memory_search(memory_search,rowid,title,content,tags)
+          VALUES ('delete',old.id,old.title,old.content,old.tags_json);
+          INSERT INTO memory_search(rowid,title,content,tags)
+          VALUES (new.id,new.title,new.content,new.tags_json);
+        END;
+
+        CREATE TABLE memory_policy (
+          id INTEGER PRIMARY KEY CHECK(id = 1),
+          enabled INTEGER NOT NULL DEFAULT 1 CHECK(enabled IN (0,1)),
+          autosave INTEGER NOT NULL DEFAULT 1 CHECK(autosave IN (0,1)),
+          allow_scenario_writes INTEGER NOT NULL DEFAULT 0 CHECK(allow_scenario_writes IN (0,1)),
+          max_entries INTEGER NOT NULL DEFAULT 500 CHECK(max_entries > 0),
+          max_content_chars INTEGER NOT NULL DEFAULT 2000 CHECK(max_content_chars > 0),
+          injected_entries INTEGER NOT NULL DEFAULT 12 CHECK(injected_entries >= 0),
+          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        INSERT INTO memory_policy(id) VALUES(1);
+
+        -- Разрешения агента на память, по образцу существующих флагов доступа.
+        ALTER TABLE automation_agents ADD COLUMN memory_read INTEGER NOT NULL DEFAULT 0 CHECK(memory_read IN (0,1));
+        ALTER TABLE automation_agents ADD COLUMN memory_write INTEGER NOT NULL DEFAULT 0 CHECK(memory_write IN (0,1));
+
+        -- План задач. Привязан либо к диалогу (чат), либо к запуску сценария.
+        CREATE TABLE task_plans (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          conversation_id INTEGER,
+          execution_id INTEGER,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY(conversation_id) REFERENCES chat_conversations(id) ON DELETE CASCADE,
+          FOREIGN KEY(execution_id) REFERENCES execution_runs(id) ON DELETE CASCADE
+        );
+        CREATE UNIQUE INDEX idx_task_plans_conversation ON task_plans(conversation_id) WHERE conversation_id IS NOT NULL;
+        CREATE UNIQUE INDEX idx_task_plans_execution ON task_plans(execution_id) WHERE execution_id IS NOT NULL;
+
+        CREATE TABLE task_items (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          plan_id INTEGER NOT NULL,
+          position INTEGER NOT NULL,
+          subject TEXT NOT NULL,
+          detail TEXT NOT NULL DEFAULT '',
+          status TEXT NOT NULL DEFAULT 'pending'
+            CHECK(status IN ('pending','in_progress','completed','skipped')),
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY(plan_id) REFERENCES task_plans(id) ON DELETE CASCADE
+        );
+        CREATE INDEX idx_task_items_plan ON task_items(plan_id, position);
+
+        -- Вопросы к пользователю. Обобщает execution_approvals: подтверждение —
+        -- это вопрос с двумя вариантами. Живёт в БД, поэтому переживает
+        -- перезапуск и не требует держать промис в памяти.
+        CREATE TABLE user_questions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          scope TEXT NOT NULL CHECK(scope IN ('chat','scenario')),
+          conversation_id INTEGER,
+          run_id INTEGER,
+          execution_id INTEGER,
+          node_id TEXT,
+          node_run_id INTEGER,
+          mode TEXT NOT NULL DEFAULT 'choice'
+            CHECK(mode IN ('confirm','choice','text')),
+          header TEXT NOT NULL DEFAULT '',
+          question TEXT NOT NULL,
+          options_json TEXT NOT NULL DEFAULT '[]',
+          multi_select INTEGER NOT NULL DEFAULT 0 CHECK(multi_select IN (0,1)),
+          default_answer TEXT,
+          status TEXT NOT NULL DEFAULT 'pending'
+            CHECK(status IN ('pending','answered','timed_out','cancelled')),
+          answer_json TEXT,
+          answered_by TEXT,
+          answered_via TEXT
+            CHECK(answered_via IN ('ui','telegram','email','default')),
+          -- Куда отправлен вопрос и как узнать ответ. Для Telegram здесь
+          -- message_id заданного вопроса и chat_id, для почты — Message-ID.
+          channel TEXT NOT NULL DEFAULT 'ui'
+            CHECK(channel IN ('ui','telegram','email')),
+          integration_profile_id INTEGER,
+          recipient TEXT,
+          correlation_id TEXT,
+          expected_author TEXT,
+          expires_at TEXT,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          answered_at TEXT,
+          FOREIGN KEY(conversation_id) REFERENCES chat_conversations(id) ON DELETE CASCADE,
+          FOREIGN KEY(execution_id) REFERENCES execution_runs(id) ON DELETE CASCADE,
+          FOREIGN KEY(integration_profile_id) REFERENCES integration_profiles(id) ON DELETE SET NULL
+        );
+        CREATE INDEX idx_user_questions_pending ON user_questions(status, expires_at);
+        CREATE INDEX idx_user_questions_execution ON user_questions(execution_id, node_id);
+        CREATE INDEX idx_user_questions_correlation ON user_questions(channel, correlation_id) WHERE status='pending';
+        CREATE INDEX idx_user_questions_conversation ON user_questions(conversation_id, status);
+
+        -- Статус ожидания намеренно переиспользует существующий
+        -- 'waiting_for_approval': он ограничен CHECK в execution_runs и
+        -- scenario_node_runs, а перестройка таблиц с внешними ключами ради
+        -- переименования не оправдана. Семантика та же — пауза на человеке.
+      `);
+    },
+  },
 ];
 
 export function runMigrations(database: Database.Database): void {

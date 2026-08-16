@@ -1,5 +1,8 @@
 import { ipcRenderer } from "electron";
 import {
+  ASSISTANT_IPC_CHANNELS,
+  type MemoryChangeEvent,
+  type UserQuestion,
   AUTOMATION_IPC_CHANNELS,
   CORE_INTERACTOR_IPC_CHANNELS,
   IPC_CHANNELS,
@@ -96,6 +99,77 @@ export const desktopApi: DesktopApi = {
         INTEGRATION_IPC_CHANNELS.test,
         input,
       ) as Promise<IntegrationConnectionResult>,
+  },
+  assistant: {
+    memory: {
+      getSnapshot: () =>
+        ipcRenderer.invoke(ASSISTANT_IPC_CHANNELS.memoryGetSnapshot),
+      upsertEntry: (input: unknown) =>
+        ipcRenderer.invoke(ASSISTANT_IPC_CHANNELS.memoryUpsertEntry, input),
+      upsertPolicy: (input: unknown) =>
+        ipcRenderer.invoke(ASSISTANT_IPC_CHANNELS.memoryUpsertPolicy, input),
+      setPinned: (id: number, pinned: boolean) =>
+        ipcRenderer.invoke(ASSISTANT_IPC_CHANNELS.memorySetPinned, id, pinned),
+      remove: (id: number) =>
+        ipcRenderer.invoke(ASSISTANT_IPC_CHANNELS.memoryRemove, id),
+      clear: () => ipcRenderer.invoke(ASSISTANT_IPC_CHANNELS.memoryClear),
+      subscribe: (listener: (event: MemoryChangeEvent) => void) => {
+        const handler = (
+          _event: Electron.IpcRendererEvent,
+          payload: MemoryChangeEvent,
+        ) => listener(payload);
+        ipcRenderer.on(ASSISTANT_IPC_CHANNELS.memoryChanged, handler);
+        return () => {
+          ipcRenderer.removeListener(
+            ASSISTANT_IPC_CHANNELS.memoryChanged,
+            handler,
+          );
+        };
+      },
+    },
+    tasks: {
+      forConversation: (conversationId: number) =>
+        ipcRenderer.invoke(
+          ASSISTANT_IPC_CHANNELS.tasksForConversation,
+          conversationId,
+        ),
+      setStatus: (conversationId: number, position: number, status: string) =>
+        ipcRenderer.invoke(
+          ASSISTANT_IPC_CHANNELS.tasksSetStatus,
+          conversationId,
+          position,
+          status,
+        ),
+      clear: (conversationId: number) =>
+        ipcRenderer.invoke(ASSISTANT_IPC_CHANNELS.tasksClear, conversationId),
+    },
+    questions: {
+      pendingForConversation: (conversationId: number) =>
+        ipcRenderer.invoke(
+          ASSISTANT_IPC_CHANNELS.questionsPending,
+          conversationId,
+        ),
+      forExecution: (executionId: number) =>
+        ipcRenderer.invoke(
+          ASSISTANT_IPC_CHANNELS.questionsForExecution,
+          executionId,
+        ),
+      answer: (input: unknown) =>
+        ipcRenderer.invoke(ASSISTANT_IPC_CHANNELS.questionsAnswer, input),
+      subscribe: (listener: (question: UserQuestion) => void) => {
+        const handler = (
+          _event: Electron.IpcRendererEvent,
+          payload: UserQuestion,
+        ) => listener(payload);
+        ipcRenderer.on(ASSISTANT_IPC_CHANNELS.questionsChanged, handler);
+        return () => {
+          ipcRenderer.removeListener(
+            ASSISTANT_IPC_CHANNELS.questionsChanged,
+            handler,
+          );
+        };
+      },
+    },
   },
   core: {
     openExternalUrl: (url: string): Promise<boolean> =>

@@ -1,4 +1,9 @@
-import { Alert, Button, ToastProvider } from "@kiyotakkkka/zvs-uikit-lib";
+import {
+  Alert,
+  Button,
+  ToastProvider,
+  useToasts,
+} from "@kiyotakkkka/zvs-uikit-lib";
 import { useCallback, useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
 import {
@@ -11,15 +16,11 @@ import {
   terminalPolicyStore,
   directoryPolicyStore,
   integrationStore,
+  memoryStore,
+  questionStore,
 } from "../stores";
 import { TerminalApprovalModal } from "../components/organisms/modals/TerminalApprovalModal";
 
-/**
- * Разделение на обязательные и отложенные снимки: раньше при запуске
- * одновременно загружались все девять хранилищ, включая полные снимки
- * автоматизации и векторных баз, — время до первого экрана росло линейно с
- * объёмом данных, хотя большая часть этих данных нужна не на стартовой странице.
- */
 const CRITICAL_STORES = [
   ["Секреты", () => secretStorageStore.bootstrap()],
   ["Диалоги", () => chatStore.bootstrap()],
@@ -33,6 +34,7 @@ const DEFERRED_STORES = [
   ["Векторные хранилища", () => vectorStoreStore.bootstrap()],
   ["Задачи", () => tasksStore.bootstrap()],
   ["Интеграции", () => integrationStore.bootstrap()],
+  ["Память", () => memoryStore.bootstrap()],
 ] as const;
 
 export function App() {
@@ -58,6 +60,7 @@ export function App() {
 
   useEffect(() => {
     void load();
+    questionStore.start();
   }, [load]);
 
   const retry = useCallback(async () => {
@@ -71,8 +74,6 @@ export function App() {
 
   return (
     <ToastProvider>
-      {/* Прежде ошибки загрузки глушились `.catch(() => undefined)`, и
-          повреждённая база выглядела как пустое приложение без объяснений. */}
       {failed.length ? (
         <Alert
           variant="danger"

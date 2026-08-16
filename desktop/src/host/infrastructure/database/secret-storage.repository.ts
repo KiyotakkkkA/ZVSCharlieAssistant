@@ -81,10 +81,6 @@ export class SecretStorageRepository {
     };
   }
 
-  /**
-   * Переводит секреты, сохранённые открытым текстом, под DPAPI. Идемпотентно:
-   * значения с маркером пропускаются.
-   */
   encryptLegacySecrets(): void {
     if (!safeStorage.isEncryptionAvailable()) return;
     const rows = this.database

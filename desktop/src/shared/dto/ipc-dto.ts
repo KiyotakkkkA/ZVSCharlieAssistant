@@ -14,11 +14,6 @@ export const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
   ]),
 );
 
-/**
- * Validates a value at an IPC boundary and returns a recursively rebuilt,
- * structured-clone-safe plain object. Zod parsing deliberately replaces the
- * former JSON stringify/parse and MobX-specific cloning helpers.
- */
 export function parseIpcDto<TSchema extends z.ZodType>(
   schema: TSchema,
   value: unknown,
@@ -33,11 +28,6 @@ export function parseJsonDto<TSchema extends z.ZodType>(
   return parseIpcDto(schema, JSON.parse(value) as unknown);
 }
 
-/**
- * Скалярные аргументы IPC. Раньше они проходили в обработчики сырыми: строка
- * вместо числового id доезжала до фильтра LanceDB, а заголовок диалога — до
- * базы без ограничения длины.
- */
 export const entityIdSchema = z.int().positive();
 export const entityKeySchema = z.string().trim().min(1).max(64);
 export const entityTitleSchema = z.string().trim().min(1).max(200);

@@ -38,7 +38,6 @@ export function Icon({
   );
 }
 
-/** Wrapper for icon sets such as Material Design Icons whose paths are fills. */
 export function FilledIcon({
   children,
   className,

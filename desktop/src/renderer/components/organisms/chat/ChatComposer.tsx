@@ -1,4 +1,9 @@
-import { useRef, type KeyboardEvent, type MouseEvent } from "react";
+import {
+  useRef,
+  type KeyboardEvent,
+  type MouseEvent,
+  type ReactNode,
+} from "react";
 import {
   Button,
   Dropdown,
@@ -65,6 +70,7 @@ interface ChatComposerProps {
   onSend: () => void;
   running?: boolean;
   onCancel?: () => void;
+  topContent?: ReactNode;
 }
 
 export function ChatComposer(props: ChatComposerProps) {
@@ -96,6 +102,11 @@ export function ChatComposer(props: ChatComposerProps) {
           className="cursor-text rounded-3xl border border-main-700 bg-main-800/95 p-2 hover:border-main-600 focus-within:border-main-600"
           onClick={focusInputFromContainer}
         >
+          {props.topContent ? (
+            <div className="-mx-2 -mt-2 mb-2 overflow-hidden rounded-t-[23px]">
+              {props.topContent}
+            </div>
+          ) : null}
           <InputBig
             ref={inputRef}
             value={props.text}

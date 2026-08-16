@@ -5,6 +5,7 @@ import type {
 import type { TelegramMessageEntity } from "../../../../shared/dto/scenario-trigger-event.dto";
 import { AutomationJobRepository } from "@host/infrastructure/database/automation-job.repository";
 import { SecretStorageRepository } from "@host/infrastructure/database/secret-storage.repository";
+import type { UserQuestionService } from "@host/application/services/user-question.service";
 
 type TelegramUpdate = {
   update_id: number;
@@ -53,6 +54,7 @@ export class TelegramWatchListener {
     private readonly integrations: IntegrationRepository,
     private readonly jobs: AutomationJobRepository,
     private readonly secrets: SecretStorageRepository,
+    private readonly questions: UserQuestionService,
   ) {}
 
   start(): void {
@@ -157,6 +159,22 @@ export class TelegramWatchListener {
     updates: TelegramUpdate[],
     token: string,
   ): void {
+    const consumed = new Set<number>();
+    for (const update of updates) {
+      const message = update.message;
+      const text = (message?.text ?? message?.caption ?? "").trim();
+      if (!message || !text) continue;
+      const answered = this.questions.resolveExternal({
+        channel: "telegram",
+        recipient: String(message.chat.id),
+        authorId: message.from?.id ? String(message.from.id) : null,
+        replyToId: message.reply_to_message?.message_id
+          ? String(message.reply_to_message.message_id)
+          : null,
+        text,
+      });
+      if (answered) consumed.add(update.update_id);
+    }
     for (const binding of bindings) {
       let lastUpdateId = Number(
         this.integrations.cursor(binding.id).updateId ?? 0,
@@ -164,6 +182,7 @@ export class TelegramWatchListener {
       for (const update of updates) {
         if (update.update_id <= lastUpdateId) continue;
         lastUpdateId = update.update_id;
+        if (consumed.has(update.update_id)) continue;
         const message = update.message;
         if (!message || !matchesBinding(binding, message)) continue;
         const text = message.text ?? message.caption ?? "";

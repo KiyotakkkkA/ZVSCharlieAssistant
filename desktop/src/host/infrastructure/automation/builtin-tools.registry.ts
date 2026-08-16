@@ -9,6 +9,120 @@ const ollamaApiKey = {
 
 export const BUILTIN_AUTOMATION_TOOLS: readonly AutomationTool[] = [
   {
+    id: "tasks_plan",
+    name: "План задач",
+    description:
+      "Составляет и обновляет список задач для текущей работы. Список виден пользователю в чате.",
+    category: "Планирование",
+    builtin: true,
+    enabled: true,
+    requiresConfirmation: false,
+    inputSchema: {
+      type: "object",
+      required: ["tasks"],
+      properties: {
+        tasks: {
+          type: "array",
+          description: "Полный актуальный список задач",
+          items: {
+            type: "object",
+            required: ["subject"],
+            properties: {
+              subject: { type: "string" },
+              detail: { type: "string" },
+              status: {
+                enum: ["pending", "in_progress", "completed", "skipped"],
+              },
+            },
+          },
+        },
+      },
+    },
+    outputSchema: { type: "object" },
+    secretRequirements: [],
+    secretBindings: [],
+  },
+  {
+    id: "memory_search",
+    name: "Поиск в памяти",
+    description:
+      "Ищет ранее сохранённые факты, предпочтения и указания пользователя.",
+    category: "Память",
+    builtin: true,
+    enabled: true,
+    requiresConfirmation: false,
+    inputSchema: {
+      type: "object",
+      required: ["query"],
+      properties: {
+        query: { type: "string", description: "Поисковый запрос" },
+        limit: { type: "integer", minimum: 1, maximum: 25 },
+      },
+    },
+    outputSchema: { type: "object" },
+    secretRequirements: [],
+    secretBindings: [],
+  },
+  {
+    id: "memory_save",
+    name: "Запись в память",
+    description:
+      "Сохраняет факт, предпочтение или указание, которое должно пережить текущий диалог.",
+    category: "Память",
+    builtin: true,
+    enabled: true,
+    requiresConfirmation: false,
+    inputSchema: {
+      type: "object",
+      required: ["kind", "title", "content"],
+      properties: {
+        kind: { enum: ["fact", "preference", "instruction", "episode"] },
+        title: {
+          type: "string",
+          description: "Короткий заголовок, он же ключ",
+        },
+        content: { type: "string" },
+        tags: { type: "array", items: { type: "string" } },
+      },
+    },
+    outputSchema: { type: "object" },
+    secretRequirements: [],
+    secretBindings: [],
+  },
+  {
+    id: "ask_user",
+    name: "Вопрос пользователю",
+    description:
+      "Задаёт уточняющий вопрос с вариантами ответа и дожидается выбора пользователя.",
+    category: "Планирование",
+    builtin: true,
+    enabled: true,
+    requiresConfirmation: false,
+    inputSchema: {
+      type: "object",
+      required: ["question"],
+      properties: {
+        header: { type: "string", description: "Короткий заголовок вопроса" },
+        question: { type: "string" },
+        options: {
+          type: "array",
+          items: {
+            type: "object",
+            required: ["label"],
+            properties: {
+              label: { type: "string" },
+              description: { type: "string" },
+            },
+          },
+        },
+        multiSelect: { type: "boolean" },
+      },
+    },
+    outputSchema: { type: "object" },
+    secretRequirements: [],
+    secretBindings: [],
+  },
+  {
     id: "grep_search",
     name: "Поиск файлов и папок",
     description:

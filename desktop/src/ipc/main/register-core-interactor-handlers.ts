@@ -1,4 +1,7 @@
-import { CORE_INTERACTOR_IPC_CHANNELS, CoreInteractorApi } from "@ipc/contracts";
+import {
+  CORE_INTERACTOR_IPC_CHANNELS,
+  CoreInteractorApi,
+} from "@ipc/contracts";
 import { ipcMain } from "electron";
 
 export function registerCoreInteractorHandlers(

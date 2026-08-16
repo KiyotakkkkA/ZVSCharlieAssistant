@@ -15,6 +15,9 @@ import type {
 } from "../../../shared/dto";
 import type { CommandExecutionService } from "./command-execution.service";
 import type { NativeSearchService } from "./native-search.service";
+import type { MemoryService } from "../../application/services/memory.service";
+import type { TaskPlanRepository } from "../database/task-plan.repository";
+import type { UserQuestionService } from "../../application/services/user-question.service";
 
 type Emit = (event: RunEvent) => void;
 
@@ -42,6 +45,11 @@ interface ToolExecutionObserver<TReference = unknown> {
 interface ToolRegistryOptions {
   signal: AbortSignal;
   allowedToolIds: string[];
+  conversationId?: number;
+  runId?: number;
+  agentId?: string;
+  memoryRead?: boolean;
+  memoryWrite?: boolean;
   allowedVectorStoreIds?: number[];
   retrievalLimit?: number;
   allowedSkillIds?: number[];
@@ -60,6 +68,9 @@ export class ToolRegistry {
     private readonly reports: ReportDocxService,
     private readonly commands: CommandExecutionService,
     private readonly search: NativeSearchService,
+    private readonly memory: MemoryService,
+    private readonly taskPlans: TaskPlanRepository,
+    private readonly questions: UserQuestionService,
   ) {}
 
   create(options: ToolRegistryOptions): ToolSet | undefined {
@@ -72,6 +83,11 @@ export class ToolRegistry {
       allowedSkillIds = [],
       terminalPolicy,
       directoryPolicy,
+      conversationId,
+      runId,
+      agentId,
+      memoryRead = false,
+      memoryWrite = false,
     } = options;
     const tools: ToolSet = {
       cmd_exec: tool({
@@ -265,6 +281,144 @@ export class ToolRegistry {
             },
           ),
       }),
+      tasks_plan: tool({
+        description:
+          "Составляет или обновляет список задач текущей работы. Передавай полный актуальный список: он заменяет предыдущий. Список видит пользователь.",
+        inputSchema: z.object({
+          tasks: z
+            .array(
+              z.object({
+                subject: z.string().trim().min(1).max(200),
+                detail: z.string().trim().max(1_000).default(""),
+                status: z
+                  .enum(["pending", "in_progress", "completed", "skipped"])
+                  .default("pending"),
+              }),
+            )
+            .min(1)
+            .max(50),
+        }),
+        execute: (input, { toolCallId }) =>
+          this.execute(
+            toolCallId,
+            "tasks_plan",
+            input,
+            signal,
+            observer,
+            async () => {
+              if (!conversationId)
+                throw new Error("План задач доступен только в диалоге");
+              const plan = this.taskPlans.replace(
+                { conversationId },
+                input.tasks,
+              );
+              return {
+                taskCount: plan.items.length,
+                updatedAt: plan.updatedAt,
+              };
+            },
+          ),
+      }),
+      memory_search: tool({
+        description:
+          "Ищет в долговременной памяти факты, предпочтения и указания пользователя, сохранённые ранее.",
+        inputSchema: z.object({
+          query: z.string().trim().min(1).max(500),
+          limit: z.int().min(1).max(25).optional(),
+        }),
+        execute: (input, { toolCallId }) =>
+          this.execute(
+            toolCallId,
+            "memory_search",
+            input,
+            signal,
+            observer,
+            async () => ({
+              entries: this.memory
+                .search(input.query, input.limit ?? 10, memoryRead)
+                .map((entry) => ({
+                  id: entry.id,
+                  kind: entry.kind,
+                  title: entry.title,
+                  content: entry.content,
+                  tags: entry.tags,
+                })),
+            }),
+          ),
+      }),
+      memory_save: tool({
+        description:
+          "Сохраняет в долговременную память то, что должно пережить текущий диалог: факт о пользователе, его предпочтение или указание. Заголовок служит ключом — повторное сохранение обновляет запись.",
+        inputSchema: z.object({
+          kind: z.enum(["fact", "preference", "instruction", "episode"]),
+          title: z.string().trim().min(1).max(200),
+          content: z.string().trim().min(1).max(20_000),
+          tags: z.array(z.string().trim().min(1).max(40)).max(12).optional(),
+        }),
+        execute: (input, { toolCallId }) =>
+          this.execute(
+            toolCallId,
+            "memory_save",
+            input,
+            signal,
+            observer,
+            async () => {
+              const entry = this.memory.save(
+                { ...input, tags: input.tags ?? [] },
+                {
+                  source: conversationId ? "chat" : "scenario",
+                  conversationId: conversationId ?? null,
+                  agentId: agentId ?? null,
+                  agentMayWrite: memoryWrite,
+                },
+              );
+              return { id: entry.id, title: entry.title, kind: entry.kind };
+            },
+          ),
+      }),
+      ask_user: tool({
+        description:
+          "Задаёт пользователю уточняющий вопрос и дожидается ответа. Используй, когда без решения пользователя работа пойдёт не туда. Не спрашивай о том, что выводится из контекста.",
+        inputSchema: z.object({
+          header: z.string().trim().max(60).optional(),
+          question: z.string().trim().min(1).max(1_000),
+          options: z
+            .array(
+              z.object({
+                label: z.string().trim().min(1).max(120),
+                description: z.string().trim().max(400).optional(),
+              }),
+            )
+            .max(4)
+            .optional(),
+          multiSelect: z.boolean().optional(),
+        }),
+        execute: (input, { toolCallId }) =>
+          this.execute(
+            toolCallId,
+            "ask_user",
+            input,
+            signal,
+            observer,
+            async () => {
+              if (!conversationId || !runId)
+                throw new Error(
+                  "Вопрос доступен только в диалоге. В сценарии используй узел «Вопрос».",
+                );
+              const answer = await this.questions.askInChat(
+                {
+                  mode: input.options?.length ? "choice" : "text",
+                  header: input.header ?? "Уточнение",
+                  question: input.question,
+                  options: input.options ?? [],
+                  multiSelect: Boolean(input.multiSelect),
+                },
+                { conversationId, runId },
+              );
+              return { answer };
+            },
+          ),
+      }),
       reports_docx: tool({
         description:
           "Создаёт единый DOCX-файл из структурированных блоков по шаблону оформления РТУ МИРЭА/ГОСТ 7.32–2017. Передавай весь документ за один вызов.",
@@ -335,6 +489,10 @@ export class ToolRegistry {
           (allowedToolIds.includes(id) ||
             (id === "skills.load" && allowedSkillIds.length > 0)) &&
           (id === "cmd_exec" ||
+            id === "tasks_plan" ||
+            id === "memory_search" ||
+            id === "memory_save" ||
+            id === "ask_user" ||
             id === "grep_search" ||
             id === "regexp_search" ||
             id === "vecdb_search" ||
@@ -434,14 +592,11 @@ export class ToolRegistry {
 const errorMessage = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
 
-/**
- * Раньше каждый вызов писался в журнал с уровнем `read`, включая `cmd_exec` с
- * `Remove-Item` — по такому следу разобрать инцидент было невозможно.
- */
-const WRITE_TOOL_IDS = new Set(["reports_docx"]);
+const WRITE_TOOL_IDS = new Set(["reports_docx", "memory_save", "tasks_plan"]);
 
 function riskOf(toolId: string, input: unknown): string {
-  if (toolId !== "cmd_exec") return WRITE_TOOL_IDS.has(toolId) ? "write" : "read";
+  if (toolId !== "cmd_exec")
+    return WRITE_TOOL_IDS.has(toolId) ? "write" : "read";
   const payload = input as { action?: string; script?: string } | undefined;
   if (payload?.action !== "start") return "read";
   const script = payload.script ?? "";
