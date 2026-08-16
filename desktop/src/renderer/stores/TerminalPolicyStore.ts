@@ -1,7 +1,5 @@
 import { makeAutoObservable, runInAction } from "mobx";
-import type {
-  TerminalPolicy,
-} from "../../ipc/contracts";
+import type { TerminalPolicy } from "../../ipc/contracts";
 import {
   parseIpcDto,
   upsertTerminalPolicyDtoSchema,

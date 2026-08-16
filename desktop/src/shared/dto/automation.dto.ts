@@ -17,11 +17,10 @@ export const scenarioNodeKindSchema = z.enum([
   "output",
 ]);
 export const scenarioEdgeKindSchema = z.enum([
-  "control",
+  "text",
   "worker",
   "knowledge",
   "files",
-  "text",
 ]);
 export const scenarioMisfirePolicySchema = z.enum([
   "skip",
@@ -66,6 +65,16 @@ export const scenarioTriggerConfigDtoSchema = z.object({
       }),
     ]),
   ),
+});
+export const scenarioResponseChannelDtoSchema = z.object({
+  channel: z.enum(["telegram", "email"]),
+  enabled: z.boolean(),
+  mode: z.enum(["reply_to_trigger", "explicit_recipient"]),
+  integrationProfileId: z.int().positive().nullable(),
+  recipient: z.string().trim().max(320),
+});
+export const scenarioResponseConfigDtoSchema = z.object({
+  channels: z.array(scenarioResponseChannelDtoSchema),
 });
 export const automationScenarioNodeDtoSchema = z.object({
   id: z.string(),
@@ -153,6 +162,12 @@ export type AutomationScenarioGraph = z.infer<
 >;
 export type ScenarioTriggerConfig = z.infer<
   typeof scenarioTriggerConfigDtoSchema
+>;
+export type ScenarioResponseChannel = z.infer<
+  typeof scenarioResponseChannelDtoSchema
+>;
+export type ScenarioResponseConfig = z.infer<
+  typeof scenarioResponseConfigDtoSchema
 >;
 export type AutomationScenarioToolSetting = z.infer<
   typeof automationScenarioToolSettingDtoSchema

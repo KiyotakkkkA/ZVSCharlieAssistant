@@ -269,11 +269,7 @@ export const AutomationAgentManageForm = observer(
             onChange={(value) =>
               setActiveTab(
                 value as
-                  | "basic"
-                  | "storage"
-                  | "skills"
-                  | "directories"
-                  | "terminal",
+                  "basic" | "storage" | "skills" | "directories" | "terminal",
               )
             }
             options={[

@@ -35,4 +35,3 @@ export type AgentDirectoryPolicy = z.infer<
 export type UpsertDirectoryPolicyInput = z.infer<
   typeof upsertDirectoryPolicyDtoSchema
 >;
-

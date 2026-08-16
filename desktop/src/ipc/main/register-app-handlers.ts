@@ -5,14 +5,11 @@ import type { GeneratedArtifactExporter } from "../../host/application/ports/gen
 export function registerAppHandlers(
   artifacts: GeneratedArtifactExporter,
 ): void {
-  ipcMain.handle(
-    IPC_CHANNELS.getAppInfo,
-    (): AppInfo => ({
-      name: app.getName(),
-      version: app.getVersion(),
-      platform: process.platform,
-    }),
-  );
+  ipcMain.handle(IPC_CHANNELS.getAppInfo, (): AppInfo => ({
+    name: app.getName(),
+    version: app.getVersion(),
+    platform: process.platform,
+  }));
   ipcMain.handle(IPC_CHANNELS.saveGeneratedArtifact, (_event, input) =>
     artifacts.save(input),
   );

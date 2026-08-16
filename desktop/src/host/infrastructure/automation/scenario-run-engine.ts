@@ -17,6 +17,7 @@ import type { IntegrationRepository } from "../database/integration.repository";
 import type { ScenarioFileDownloadService } from "./scenario-file-download.service";
 import type { ScenarioFileReaderService } from "./scenario-file-reader.service";
 import type { ScenarioFileReference } from "../../../shared/dto/scenario-trigger-event.dto";
+import type { ScenarioResponseService } from "./scenario-response.service";
 
 type Emit = (event: ScenarioRunEvent) => void;
 type ScenarioAgent = NonNullable<
@@ -36,6 +37,7 @@ export class ScenarioRunEngine {
     private readonly integrations: IntegrationRepository,
     private readonly fileDownloads: ScenarioFileDownloadService,
     private readonly fileContentReader: ScenarioFileReaderService,
+    private readonly responses: ScenarioResponseService,
   ) {}
 
   assertRunnable(scenarioId: string, origin?: ScenarioRunOrigin) {
@@ -193,6 +195,7 @@ export class ScenarioRunEngine {
             nodeRun.id,
             node,
             nodeInput,
+            input,
             workerLevelsByOrchestrator.get(node.id) ?? [],
             workerIncoming,
             workerTerminalIdsByOrchestrator.get(node.id) ?? [],
@@ -260,6 +263,7 @@ export class ScenarioRunEngine {
     nodeRunId: number,
     node: AutomationScenarioNode,
     input: unknown,
+    triggerInput: unknown,
     workerLevels: string[][],
     workerIncoming: Map<string, string[]>,
     workerTerminalIds: string[],
@@ -268,7 +272,17 @@ export class ScenarioRunEngine {
     signal: AbortSignal,
     emit: Emit,
   ): Promise<unknown> {
-    if (node.kind === "trigger" || node.kind === "output") return input;
+    if (node.kind === "trigger") return input;
+    if (node.kind === "output") {
+      this.responses.enqueue({
+        executionId: runId,
+        nodeRunId,
+        config: node.config?.response,
+        triggerInput,
+        output: input,
+      });
+      return input;
+    }
     if (node.kind === "download_files") {
       const maxFileSizeMb = Math.max(
         1,
@@ -429,7 +443,7 @@ ${JSON.stringify(scenarioAgents, null, 2)}
     }
 
     throw new Error(
-      `Узел типа «${node.kind}» нельзя выполнить в управляющем контуре`,
+      `Узел типа «${node.kind}» нельзя выполнить в текстовом контуре`,
     );
   }
 

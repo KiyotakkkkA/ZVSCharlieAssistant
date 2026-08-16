@@ -11,10 +11,8 @@ export interface DefaultSkillDefinition {
   instructions: string;
 }
 
-const stripFrontmatter = (value: string) => value.replace(
-  /^---\r?\n[\s\S]*?\r?\n---\r?\n/,
-  "",
-);
+const stripFrontmatter = (value: string) =>
+  value.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, "");
 
 export const DEFAULT_SKILLS: readonly DefaultSkillDefinition[] = [
   {

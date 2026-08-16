@@ -4,6 +4,7 @@ import type {
   AutomationScenarioGraph,
   AutomationScenarioNode,
 } from "../../../shared/dto";
+import { scenarioResponseConfigDtoSchema } from "../../../shared/dto";
 import {
   SCENARIO_PORTS,
   getScenarioEdgeKind,
@@ -39,9 +40,7 @@ export class ScenarioCompiler {
       resolveEdgeKind(edge, byId);
     const controlEdges = edges.filter(
       (edge) =>
-        (edgeKind(edge) === "control" ||
-          edgeKind(edge) === "files" ||
-          edgeKind(edge) === "text") &&
+        (edgeKind(edge) === "text" || edgeKind(edge) === "files") &&
         byId.get(edge.source)?.kind !== "agent" &&
         byId.get(edge.target)?.kind !== "agent",
     );
@@ -102,6 +101,30 @@ export class ScenarioCompiler {
           nodeId: node.id,
           message: `Для узла «${node.title}» не выбрано хранилище`,
         });
+      if (node.kind === "output" && node.config?.response !== undefined) {
+        const response = scenarioResponseConfigDtoSchema.safeParse(
+          node.config.response,
+        );
+        if (!response.success) {
+          issues.push({
+            nodeId: node.id,
+            message: "Настройки каналов ответа имеют некорректный формат",
+          });
+        } else {
+          for (const channel of response.data.channels.filter(
+            (item) => item.enabled,
+          )) {
+            if (
+              channel.mode === "explicit_recipient" &&
+              (!channel.integrationProfileId || !channel.recipient)
+            )
+              issues.push({
+                nodeId: node.id,
+                message: `Для канала ${channel.channel} выберите подключение и получателя`,
+              });
+          }
+        }
+      }
       if (node.kind === "agent" && !String(node.config?.agentId ?? "").trim())
         issues.push({
           nodeId: node.id,
@@ -143,8 +166,7 @@ export class ScenarioCompiler {
       )
     )
       issues.push({
-        message:
-          "Триггер должен быть соединён с управляющим входом оркестратора",
+        message: "Триггер должен быть соединён с текстовым входом оркестратора",
       });
     if (
       orchestrators[0] &&
@@ -156,7 +178,7 @@ export class ScenarioCompiler {
     )
       issues.push({
         message:
-          "Управляющий выход оркестратора должен быть соединён с результатом",
+          "Текстовый выход оркестратора должен быть соединён с результатом",
       });
 
     const workerOutgoing = new Map(
@@ -216,7 +238,7 @@ export class ScenarioCompiler {
       }
     }
     if (visited.length !== controlNodes.length)
-      issues.push({ message: "Управляющий граф содержит цикл" });
+      issues.push({ message: "Граф передачи текста содержит цикл" });
 
     if (triggers[0]) {
       const reachable = new Set<string>();
@@ -231,7 +253,7 @@ export class ScenarioCompiler {
         if (!reachable.has(node.id))
           issues.push({
             nodeId: node.id,
-            message: "Управляющий узел недостижим из триггера",
+            message: "Узел передачи текста недостижим из триггера",
           });
     }
     return { valid: issues.length === 0, issues };
@@ -249,9 +271,7 @@ export class ScenarioCompiler {
       resolveEdgeKind(edge, byId);
     const controlEdges = graph.edges.filter(
       (edge) =>
-        (edgeKind(edge) === "control" ||
-          edgeKind(edge) === "files" ||
-          edgeKind(edge) === "text") &&
+        (edgeKind(edge) === "text" || edgeKind(edge) === "files") &&
         byId.get(edge.source)?.kind !== "agent" &&
         byId.get(edge.target)?.kind !== "agent",
     );
@@ -360,7 +380,7 @@ export function createScenarioControlPlan(
   const trigger = triggerKind(input);
   const edges = compiled.controlEdges.filter((edge) => {
     if (edge.source !== compiled.triggerNodeId) return true;
-    const sourcePort = edge.sourcePort ?? SCENARIO_PORTS.controlOut.id;
+    const sourcePort = edge.sourcePort ?? SCENARIO_PORTS.textOut.id;
     if (sourcePort === SCENARIO_PORTS.telegramMessageOut.id)
       return eventPort === sourcePort;
     if (sourcePort === SCENARIO_PORTS.emailMessageOut.id)
@@ -391,9 +411,7 @@ export function createScenarioControlPlan(
         ? "Для полученного события не настроена ветка выполнения"
         : "Для ручного или интервального запуска не настроена ветка выполнения",
     );
-  const incoming = new Map(
-    [...reachable].map((id) => [id, [] as string[]]),
-  );
+  const incoming = new Map([...reachable].map((id) => [id, [] as string[]]));
   for (const edge of edges) {
     if (!reachable.has(edge.source) || !reachable.has(edge.target)) continue;
     incoming.get(edge.target)!.push(edge.source);

@@ -1,6 +1,4 @@
-import type {
-  AutomationSkill,
-} from "../../../shared/models/automation";
+import type { AutomationSkill } from "../../../shared/models/automation";
 import type {
   AutomationStatus,
   UpsertAutomationSkillInput,

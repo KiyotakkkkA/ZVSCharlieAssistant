@@ -64,14 +64,16 @@ class VectorStoreStore {
   }
 
   async createStore() {
-    const snapshot = await window.desktop.vectorStores.upsertStore(parseIpcDto(upsertVectorStoreDtoSchema, {
-      name: "Новое векторное хранилище",
-      description: "",
-      embeddingModelId: null,
-      searchMode: "vector",
-      chunkSizeTokens: 700,
-      chunkOverlapTokens: 100,
-    }));
+    const snapshot = await window.desktop.vectorStores.upsertStore(
+      parseIpcDto(upsertVectorStoreDtoSchema, {
+        name: "Новое векторное хранилище",
+        description: "",
+        embeddingModelId: null,
+        searchMode: "vector",
+        chunkSizeTokens: 700,
+        chunkOverlapTokens: 100,
+      }),
+    );
     runInAction(() => {
       const previous = new Set(this.stores.map((item) => item.id));
       this.apply(snapshot);

@@ -157,8 +157,7 @@ export class VectorStoreRepository {
         "SELECT id,status FROM vector_store_documents WHERE vector_store_id=? AND content_hash=?",
       )
       .get(storeId, hash) as
-      | { id: number; status: VectorDocumentStatus }
-      | undefined;
+      { id: number; status: VectorDocumentStatus } | undefined;
   }
   document(id: number) {
     return this.db

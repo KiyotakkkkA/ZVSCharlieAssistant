@@ -9,7 +9,9 @@ export interface IntegrationApi {
   getSnapshot(): Promise<IntegrationSnapshot>;
   upsert(input: UpsertIntegrationProfileInput): Promise<IntegrationProfile>;
   delete(id: number): Promise<void>;
-  test(input: UpsertIntegrationProfileInput): Promise<IntegrationConnectionResult>;
+  test(
+    input: UpsertIntegrationProfileInput,
+  ): Promise<IntegrationConnectionResult>;
 }
 
 export const INTEGRATION_IPC_CHANNELS = {

@@ -8,9 +8,7 @@ export const ScenarioNodeOrchestratorForm = observer(
     node,
     onChange,
   }: ScenarioNodeFormProps) {
-    const value = node.config?.modelId
-      ? String(node.config.modelId)
-      : "";
+    const value = node.config?.modelId ? String(node.config.modelId) : "";
 
     return (
       <>

@@ -4,4 +4,3 @@ export interface DirectoryPolicy {
   grants: DirectoryGrant[];
   updatedAt: string;
 }
-

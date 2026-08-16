@@ -682,6 +682,37 @@ const migrations: readonly Migration[] = [
       `);
     },
   },
+  {
+    version: 16,
+    up(database) {
+      database.exec(`
+        CREATE TABLE scenario_delivery_outbox (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          execution_id INTEGER NOT NULL,
+          node_run_id INTEGER NOT NULL,
+          channel TEXT NOT NULL CHECK(channel IN ('telegram','email')),
+          integration_profile_id INTEGER NOT NULL,
+          recipient TEXT NOT NULL,
+          payload_json TEXT NOT NULL,
+          idempotency_key TEXT NOT NULL UNIQUE,
+          status TEXT NOT NULL DEFAULT 'queued' CHECK(status IN ('queued','leased','completed','failed')),
+          attempt INTEGER NOT NULL DEFAULT 0,
+          max_attempts INTEGER NOT NULL DEFAULT 5,
+          available_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          lease_owner TEXT,
+          lease_expires_at TEXT,
+          last_error TEXT,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          completed_at TEXT,
+          FOREIGN KEY(execution_id) REFERENCES execution_runs(id) ON DELETE CASCADE,
+          FOREIGN KEY(node_run_id) REFERENCES scenario_node_runs(id) ON DELETE CASCADE,
+          FOREIGN KEY(integration_profile_id) REFERENCES integration_profiles(id) ON DELETE RESTRICT
+        );
+        CREATE INDEX idx_scenario_delivery_ready
+          ON scenario_delivery_outbox(status,available_at,id);
+      `);
+    },
+  },
 ];
 
 export function runMigrations(database: Database.Database): void {

@@ -53,12 +53,10 @@ export class IntervalScheduleWorker {
             ? 0
             : 1;
 
-      if (
-        !(
-          preventOverlap &&
-          this.integrations.scenarioHasActiveRun(binding.scenarioId)
-        )
-      ) {
+      if (!(
+        preventOverlap &&
+        this.integrations.scenarioHasActiveRun(binding.scenarioId)
+      )) {
         for (let index = 0; index < occurrences; index++) {
           const occurrenceAt = new Date(
             new Date(plannedAt).getTime() + index * intervalSeconds * 1_000,

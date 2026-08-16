@@ -14,4 +14,3 @@ export const DIRECTORY_POLICY_IPC_CHANNELS = {
   upsert: "directory-policy:upsert",
   recommended: "directory-policy:recommended",
 } as const;
-

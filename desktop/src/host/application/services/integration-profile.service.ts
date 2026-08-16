@@ -127,31 +127,25 @@ export class IntegrationProfileService {
   ): Promise<IntegrationConnectionResult> {
     const host = input.config.host;
     const port = input.config.port;
+    const smtpHost = input.config.smtpHost;
+    const smtpPort = input.config.smtpPort;
     if (!host || !port) throw new Error("Укажите IMAP host и port");
+    if (!smtpHost || !smtpPort)
+      throw new Error("Укажите SMTP host и port для отправки ответов");
     if (!input.secretBindings.password)
       throw new Error("Выберите пароль или app password");
-    return new Promise((resolve, reject) => {
-      const done = (error?: Error) =>
-        error
-          ? reject(error)
-          : resolve({
-              ok: true,
-              identity: `${input.config.username ?? "email"}@${host}`,
-            });
-      const socket = input.config.secure
-        ? connectTls({ host, port, servername: host }, () => {
-            socket.end();
-            done();
-          })
-        : connectTcp({ host, port }, () => {
-            socket.end();
-            done();
-          });
-      socket.setTimeout(10_000, () =>
-        socket.destroy(new Error("Таймаут подключения к IMAP")),
-      );
-      socket.once("error", done);
-    });
+    return Promise.all([
+      testSocket(host, port, input.config.secure ?? true, "IMAP"),
+      testSocket(
+        smtpHost,
+        smtpPort,
+        input.config.smtpSecure ?? smtpPort === 465,
+        "SMTP",
+      ),
+    ]).then(() => ({
+      ok: true,
+      identity: input.config.smtpFrom ?? input.config.username ?? host,
+    }));
   }
 
   private async testConnector(
@@ -260,4 +254,34 @@ export class IntegrationProfileService {
       },
     };
   }
+}
+
+function testSocket(
+  host: string,
+  port: number,
+  secure: boolean,
+  label: string,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const done = (error?: Error) => {
+      if (settled) return;
+      settled = true;
+      if (error) reject(error);
+      else resolve();
+    };
+    const socket = secure
+      ? connectTls({ host, port, servername: host }, () => {
+          socket.end();
+          done();
+        })
+      : connectTcp({ host, port }, () => {
+          socket.end();
+          done();
+        });
+    socket.setTimeout(10_000, () =>
+      socket.destroy(new Error(`Таймаут подключения к ${label}`)),
+    );
+    socket.once("error", done);
+  });
 }

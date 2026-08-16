@@ -1,22 +1,15 @@
 export type ScenarioPortKind =
-  | "control-input"
-  | "control-output"
+  | "text-input"
+  | "text-output"
   | "event-output"
   | "worker-input"
   | "worker-output"
   | "knowledge-input"
   | "knowledge-output"
   | "files-input"
-  | "files-output"
-  | "text-input"
-  | "text-output";
+  | "files-output";
 
-export type ScenarioEdgeKind =
-  | "control"
-  | "worker"
-  | "knowledge"
-  | "files"
-  | "text";
+export type ScenarioEdgeKind = "text" | "worker" | "knowledge" | "files";
 
 export type ScenarioNodeKind =
   | "trigger"
@@ -39,20 +32,20 @@ export interface ScenarioPortDefinition {
 }
 
 export const SCENARIO_PORTS = {
-  controlIn: {
-    id: "control-in",
-    kind: "control-input",
+  textIn: {
+    id: "text-in",
+    kind: "text-input",
     direction: "target",
     side: "left",
-    label: "Управляющий вход",
-    multiple: false,
+    label: "Входящий текст",
+    multiple: true,
   },
-  controlOut: {
-    id: "control-out",
-    kind: "control-output",
+  textOut: {
+    id: "text-out",
+    kind: "text-output",
     direction: "source",
     side: "right",
-    label: "Следующий шаг",
+    label: "Текст",
     multiple: true,
   },
   telegramMessageOut: {
@@ -111,22 +104,6 @@ export const SCENARIO_PORTS = {
     label: "Скачанные файлы",
     multiple: true,
   },
-  textIn: {
-    id: "text-in",
-    kind: "text-input",
-    direction: "target",
-    side: "left",
-    label: "Прочитанный текст",
-    multiple: true,
-  },
-  textOut: {
-    id: "text-out",
-    kind: "text-output",
-    direction: "source",
-    side: "right",
-    label: "Текст документов",
-    multiple: true,
-  },
   workerIn: {
     id: "worker-in",
     kind: "worker-input",
@@ -167,17 +144,15 @@ const PORTS_BY_ID = new Map<string, ScenarioPortDefinition>(
 
 const COMPATIBLE_PORTS: Record<ScenarioPortKind, readonly ScenarioPortKind[]> =
   {
-    "control-input": [],
-    "control-output": ["control-input"],
-    "event-output": ["control-input"],
+    "text-input": [],
+    "text-output": ["text-input"],
+    "event-output": ["text-input"],
     "worker-input": [],
     "worker-output": ["worker-input"],
     "knowledge-input": [],
     "knowledge-output": ["knowledge-input"],
     "files-input": [],
     "files-output": ["files-input"],
-    "text-input": [],
-    "text-output": ["text-input"],
   };
 
 export interface ScenarioConnectionLike {
@@ -195,11 +170,10 @@ export function getScenarioEdgeKind(
   sourcePort?: string | null,
 ): ScenarioEdgeKind | undefined {
   const kind = getScenarioPort(sourcePort)?.kind;
-  if (kind === "control-output" || kind === "event-output") return "control";
+  if (kind === "text-output" || kind === "event-output") return "text";
   if (kind === "worker-output") return "worker";
   if (kind === "knowledge-output") return "knowledge";
   if (kind === "files-output") return "files";
-  if (kind === "text-output") return "text";
   return undefined;
 }
 
@@ -231,17 +205,10 @@ export function isScenarioConnectionValid(
     case "files":
       return (
         (sourceKind === "trigger" && targetKind === "download_files") ||
-        (sourceKind === "download_files" &&
-          (targetKind === "read_files" || targetKind === "orchestrator"))
+        (sourceKind === "download_files" && targetKind === "read_files")
       );
     case "text":
-      return sourceKind === "read_files" && targetKind === "orchestrator";
-    case "worker":
-      return (
-        (sourceKind === "orchestrator" || sourceKind === "agent") &&
-        targetKind === "agent"
-      );
-    case "control":
+      if (sourceKind === "read_files") return targetKind === "orchestrator";
       if (sourcePort.kind === "event-output" && sourceKind !== "trigger")
         return false;
       return (
@@ -251,6 +218,11 @@ export function isScenarioConnectionValid(
         targetKind !== "agent" &&
         targetKind !== "trigger" &&
         targetKind !== "knowledge_store"
+      );
+    case "worker":
+      return (
+        (sourceKind === "orchestrator" || sourceKind === "agent") &&
+        targetKind === "agent"
       );
     default:
       return false;

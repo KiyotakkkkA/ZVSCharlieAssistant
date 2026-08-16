@@ -1,8 +1,6 @@
 import { ipcMain } from "electron";
 import type { ProviderConnectionService } from "../../host/infrastructure/text-generation/provider-connection.service";
-import {
-  TEXT_PROVIDER_IPC_CHANNELS,
-} from "../contracts";
+import { TEXT_PROVIDER_IPC_CHANNELS } from "../contracts";
 import {
   parseIpcDto,
   testTextProviderConnectionDtoSchema,

@@ -1,8 +1,6 @@
 import { ipcMain } from "electron";
 import type { VectorStoreService } from "../../host/infrastructure/vector-store/vector-store.service";
-import {
-  VECTOR_STORE_IPC_CHANNELS,
-} from "../contracts";
+import { VECTOR_STORE_IPC_CHANNELS } from "../contracts";
 import {
   parseIpcDto,
   uploadVectorDocumentDtoSchema,

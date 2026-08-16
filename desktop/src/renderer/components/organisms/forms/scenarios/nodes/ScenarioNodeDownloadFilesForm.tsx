@@ -1,7 +1,4 @@
-import {
-  InputCheckBox,
-  InputSmall,
-} from "@kiyotakkkka/zvs-uikit-lib";
+import { InputCheckBox, InputSmall } from "@kiyotakkkka/zvs-uikit-lib";
 import { Field, ParameterLabel } from "../../../../atoms";
 import { ScenarioNodeBaseFields } from "./ScenarioNodeBaseFields";
 import type { ScenarioNodeFormProps } from "./ScenarioNodeForm.types";

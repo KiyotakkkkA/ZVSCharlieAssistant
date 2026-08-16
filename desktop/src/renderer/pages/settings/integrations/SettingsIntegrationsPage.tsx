@@ -1,10 +1,6 @@
 import { useEffect, useState } from "react";
 import { observer } from "mobx-react-lite";
-import {
-  ScrollArea,
-  Tabs,
-  useToasts,
-} from "@kiyotakkkka/zvs-uikit-lib";
+import { ScrollArea, Tabs, useToasts } from "@kiyotakkkka/zvs-uikit-lib";
 import { PrimaryButton } from "../../../components/atoms/buttons";
 import {
   ProvidedEntityManageHeader,
@@ -42,7 +38,13 @@ const MAPPING: Record<
   email_imap: {
     label: "Почта · IMAP",
     emptyStateLabel: "Новая почта · IMAP",
-    emptyStateConfig: { port: 993, secure: true, mailbox: "INBOX" },
+    emptyStateConfig: {
+      port: 993,
+      secure: true,
+      mailbox: "INBOX",
+      smtpPort: 465,
+      smtpSecure: true,
+    },
   },
   github_connector: {
     label: "Коннектор · GitHub",
@@ -88,8 +90,8 @@ export const SettingsIntegrationsPage = observer(
   function SettingsIntegrationsPage() {
     const toasts = useToasts();
     const [tab, setTab] = useState<IntegrationTab>("bots");
-    const profiles = integrationStore.profiles.filter(
-      (item) => TAB_KINDS[tab].includes(item.kind),
+    const profiles = integrationStore.profiles.filter((item) =>
+      TAB_KINDS[tab].includes(item.kind),
     );
     const [selectedId, setSelectedId] = useState<number | "draft" | null>(null);
     const [checking, setChecking] = useState(false);

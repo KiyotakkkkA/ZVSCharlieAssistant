@@ -48,6 +48,35 @@ export function SettingsIntegrationsMailForm({
             placeholder="imap.example.com"
           />
         </Field>
+        <Field label="SMTP host">
+          <InputSmall
+            value={value.config.smtpHost ?? ""}
+            onChange={(event) => patchConfig({ smtpHost: event.target.value })}
+            placeholder="smtp.example.com"
+          />
+        </Field>
+        <Field label="SMTP порт">
+          <InputSmall
+            type="number"
+            value={String(value.config.smtpPort ?? 465)}
+            onChange={(event) =>
+              patchConfig({ smtpPort: Number(event.target.value) })
+            }
+          />
+        </Field>
+        <Field label="Адрес отправителя">
+          <InputSmall
+            value={value.config.smtpFrom ?? value.config.username ?? ""}
+            onChange={(event) => patchConfig({ smtpFrom: event.target.value })}
+            placeholder="assistant@example.com"
+          />
+        </Field>
+        <Field label="SMTP через TLS">
+          <InputCheckSlided
+            checked={value.config.smtpSecure ?? true}
+            onChange={(smtpSecure) => patchConfig({ smtpSecure })}
+          />
+        </Field>
         <Field
           label={
             <ParameterLabel description="Порт IMAP-сервера. Для защищённого IMAP">

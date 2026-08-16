@@ -1,7 +1,5 @@
 import { makeAutoObservable, runInAction } from "mobx";
-import type {
-  AutomationSkill,
-} from "../../../ipc/contracts";
+import type { AutomationSkill } from "../../../ipc/contracts";
 import {
   parseIpcDto,
   upsertAutomationSkillDtoSchema,

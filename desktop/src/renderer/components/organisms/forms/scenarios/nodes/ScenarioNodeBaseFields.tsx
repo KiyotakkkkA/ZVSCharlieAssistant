@@ -2,7 +2,10 @@ import { InputBig, InputSmall } from "@kiyotakkkka/zvs-uikit-lib";
 import { Field } from "../../../../atoms";
 import type { ScenarioNodeFormProps } from "./ScenarioNodeForm.types";
 
-export function ScenarioNodeBaseFields({ node, onChange }: ScenarioNodeFormProps) {
+export function ScenarioNodeBaseFields({
+  node,
+  onChange,
+}: ScenarioNodeFormProps) {
   return (
     <>
       <Field label="Название">

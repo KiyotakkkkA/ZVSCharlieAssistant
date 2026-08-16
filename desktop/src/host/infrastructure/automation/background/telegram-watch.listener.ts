@@ -137,7 +137,7 @@ export class TelegramWatchListener {
           throw new Error(
             payload.description ?? `Telegram HTTP ${response.status}`,
           );
-        this.dispatch(profileId, bindings, payload.result ?? []);
+        this.dispatch(profileId, bindings, payload.result ?? [], token);
         retryDelay = 1_000;
       } catch (error) {
         if (signal.aborted) return;
@@ -155,6 +155,7 @@ export class TelegramWatchListener {
     profileId: number,
     bindings: DueTriggerBinding[],
     updates: TelegramUpdate[],
+    token: string,
   ): void {
     for (const binding of bindings) {
       let lastUpdateId = Number(

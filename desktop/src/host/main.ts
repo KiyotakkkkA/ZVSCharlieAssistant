@@ -85,6 +85,12 @@ import { CoreInteractorService } from "./infrastructure/electron/core-interactor
 import { ScenarioFileRepository } from "./infrastructure/database/scenario-file.repository";
 import { ScenarioFileDownloadService } from "./infrastructure/automation/scenario-file-download.service";
 import { ScenarioFileReaderService } from "./infrastructure/automation/scenario-file-reader.service";
+import { ScenarioDeliveryRepository } from "./infrastructure/database/scenario-delivery.repository";
+import { ScenarioResponseService } from "./infrastructure/automation/scenario-response.service";
+import { ScenarioDeliveryAdapterRegistry } from "./infrastructure/automation/delivery/scenario-delivery.adapter";
+import { TelegramDeliveryAdapter } from "./infrastructure/automation/delivery/telegram-delivery.adapter";
+import { EmailDeliveryAdapter } from "./infrastructure/automation/delivery/email-delivery.adapter";
+import { ScenarioDeliveryWorker } from "./infrastructure/automation/background/scenario-delivery.worker";
 
 let database: ReturnType<typeof createSqliteDatabase> | undefined;
 let scenarioJobWorker: ScenarioJobWorker | undefined;
@@ -92,6 +98,7 @@ let intervalScheduleWorker: IntervalScheduleWorker | undefined;
 let telegramWatchListener: TelegramWatchListener | undefined;
 let mailWatchListener: MailWatchListener | undefined;
 let scenarioFileDownloads: ScenarioFileDownloadService | undefined;
+let scenarioDeliveryWorker: ScenarioDeliveryWorker | undefined;
 
 app.whenReady().then(() => {
   database = createSqliteDatabase(join(app.getPath("userData"), "storage.db"));
@@ -143,6 +150,7 @@ app.whenReady().then(() => {
   const scenarioExecutions = new ScenarioExecutionRepository(database);
   scenarioExecutions.recoverInterruptedRuns();
   const integrationRepository = new IntegrationRepository(database);
+  const scenarioDeliveries = new ScenarioDeliveryRepository(database);
   const scenarioDownloadsRoot = join(app.getPath("userData"), "downloads");
   scenarioFileDownloads = new ScenarioFileDownloadService(
     new ScenarioFileRepository(database),
@@ -189,6 +197,7 @@ app.whenReady().then(() => {
     integrationRepository,
     scenarioFileDownloads,
     new ScenarioFileReaderService(scenarioDownloadsRoot),
+    new ScenarioResponseService(scenarioDeliveries),
   );
   registerAutomationHandlers(
     automationRepository,
@@ -223,10 +232,18 @@ app.whenReady().then(() => {
     automationJobs,
     secretRepository,
   );
+  scenarioDeliveryWorker = new ScenarioDeliveryWorker(
+    scenarioDeliveries,
+    new ScenarioDeliveryAdapterRegistry([
+      new TelegramDeliveryAdapter(integrationRepository, secretRepository),
+      new EmailDeliveryAdapter(integrationRepository, secretRepository),
+    ]),
+  );
   scenarioJobWorker.start();
   intervalScheduleWorker.start();
   telegramWatchListener.start();
   mailWatchListener.start();
+  scenarioDeliveryWorker.start();
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
@@ -234,6 +251,8 @@ app.whenReady().then(() => {
 });
 
 app.on("before-quit", () => {
+  scenarioDeliveryWorker?.stop();
+  scenarioDeliveryWorker = undefined;
   intervalScheduleWorker?.stop();
   intervalScheduleWorker = undefined;
   telegramWatchListener?.stop();

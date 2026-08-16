@@ -92,9 +92,7 @@ export type ChatMessageEntity = z.infer<typeof chatMessageEntityDtoSchema>;
 export type ScenarioMessageTriggerInput = z.infer<
   typeof scenarioMessageTriggerInputDtoSchema
 >;
-export type AttachmentReference = z.infer<
-  typeof attachmentReferenceDtoSchema
->;
+export type AttachmentReference = z.infer<typeof attachmentReferenceDtoSchema>;
 
 export const scenarioFileReferenceDtoSchema = z.object({
   id: z.number().int().positive(),

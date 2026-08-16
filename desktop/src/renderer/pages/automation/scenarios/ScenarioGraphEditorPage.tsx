@@ -16,6 +16,7 @@ import {
   Button,
   InputCheckBox,
   InputSmall,
+  ScrollArea,
   Select,
   useToasts,
 } from "@kiyotakkkka/zvs-uikit-lib";
@@ -194,34 +195,48 @@ const initialNodes: GraphNode[] = [
   },
 ];
 
-const palette: Array<{ kind: NodeKind; title: string; description: string }> = [
-  { kind: "agent", title: "Вызов агента", description: "Делегирование задачи" },
+type PaletteItem = { kind: NodeKind; title: string; description: string };
+const paletteGroups: Array<{ label: string; items: PaletteItem[] }> = [
   {
-    kind: "knowledge_store",
-    title: "База знаний",
-    description: "Контекст для агента",
+    label: "Исполнение",
+    items: [
+      {
+        kind: "agent",
+        title: "Вызов агента",
+        description: "Делегирование задачи",
+      },
+      {
+        kind: "condition",
+        title: "Условие",
+        description: "Выбор следующей ветки",
+      },
+      {
+        kind: "approval",
+        title: "Подтверждение",
+        description: "Решение пользователя",
+      },
+    ],
   },
   {
-    kind: "download_files",
-    title: "Скачать файлы",
-    description: "Сохраняет вложения запуска",
+    label: "Данные и файлы",
+    items: [
+      {
+        kind: "knowledge_store",
+        title: "База знаний",
+        description: "Контекст для агента",
+      },
+      {
+        kind: "download_files",
+        title: "Скачать файлы",
+        description: "Сохраняет вложения запуска",
+      },
+      {
+        kind: "read_files",
+        title: "Читать файлы",
+        description: "Преобразует TXT и Markdown в текст",
+      },
+    ],
   },
-  {
-    kind: "read_files",
-    title: "Читать файлы",
-    description: "Преобразует TXT и Markdown в текст",
-  },
-  {
-    kind: "condition",
-    title: "Условие",
-    description: "Выбор следующей ветки",
-  },
-  {
-    kind: "approval",
-    title: "Подтверждение",
-    description: "Решение пользователя",
-  },
-  { kind: "output", title: "Результат", description: "Завершение ветки" },
 ];
 
 const scenarioStatusOptions = [
@@ -263,6 +278,7 @@ export const ScenarioGraphEditorPage = observer(
     const nameBeforeEdit = useRef(scenarioName);
     const cancelNameEdit = useRef(false);
     const [showNodeDescriptions, setShowNodeDescriptions] = useState(true);
+    const [nodeSearch, setNodeSearch] = useState("");
     const [triggerSetupModal, setTriggerSetupModal] =
       useState<TriggerSetupModal | null>(null);
 
@@ -292,6 +308,9 @@ export const ScenarioGraphEditorPage = observer(
     );
     const selectedNode = nodesById.get(selectedNodeId);
     const selectedTriggerConfig = triggerConfigOf(selectedNode);
+    const scenarioTriggerConfig = triggerConfigOf(
+      nodes.find((node) => node.kind === "trigger"),
+    );
     const runStatusVersion = automationStore.scenarioNodeRuns
       .map((run) => `${run.nodeId}:${run.status}`)
       .join("|");
@@ -337,13 +356,17 @@ export const ScenarioGraphEditorPage = observer(
               showDescription: showNodeDescriptions,
               runStatus: runStatusByNode.get(node.id),
               onDelete:
-                node.kind === "trigger" || node.kind === "orchestrator"
+                node.kind === "trigger" ||
+                node.kind === "orchestrator" ||
+                node.kind === "output"
                   ? undefined
                   : deleteNode,
             },
             selected: node.id === selectedNodeId,
             deletable:
-              node.kind !== "trigger" && node.kind !== "orchestrator",
+              node.kind !== "trigger" &&
+              node.kind !== "orchestrator" &&
+              node.kind !== "output",
             width,
             height,
             measured: { width, height },
@@ -371,22 +394,22 @@ export const ScenarioGraphEditorPage = observer(
                 ? "rgb(70 160 175)"
                 : edge.kind === "files"
                   ? "rgb(236 72 153)"
-                : edge.kind === "text"
-                  ? "rgb(232 121 249)"
-                : edge.kind === "worker"
-                  ? "rgb(139 128 190)"
-                  : "rgb(139 173 77)",
+                  : edge.kind === "text"
+                    ? "rgb(139 173 77)"
+                    : edge.kind === "worker"
+                      ? "rgb(139 128 190)"
+                      : "rgb(139 173 77)",
             strokeWidth: 1.25,
             strokeDasharray:
               edge.kind === "knowledge"
                 ? "1 5"
                 : edge.kind === "files"
                   ? "1 5"
-                : edge.kind === "text"
-                  ? undefined
-                : edge.kind === "worker"
-                  ? "4 4"
-                  : undefined,
+                  : edge.kind === "text"
+                    ? undefined
+                    : edge.kind === "worker"
+                      ? "4 4"
+                      : undefined,
             strokeLinecap:
               edge.kind === "knowledge" || edge.kind === "files"
                 ? "round"
@@ -441,7 +464,7 @@ export const ScenarioGraphEditorPage = observer(
             id: edge.id,
             source: edge.source,
             target: edge.target,
-            kind: edge.data?.kind ?? "control",
+            kind: edge.data?.kind ?? "text",
             sourcePort: edge.sourceHandle ?? undefined,
             targetPort: edge.targetHandle ?? undefined,
           })),
@@ -494,7 +517,7 @@ export const ScenarioGraphEditorPage = observer(
               ? { cleanupOnFinish: true, maxFileSizeMb: 50 }
               : kind === "read_files"
                 ? { maxCharactersPerFile: 100000 }
-              : undefined,
+                : undefined,
         },
       ]);
       setSelectedNodeId(id);
@@ -715,33 +738,53 @@ export const ScenarioGraphEditorPage = observer(
               preset="search"
               placeholder="Поиск узлов"
               className="w-full"
+              value={nodeSearch}
+              onChange={(event) => setNodeSearch(event.target.value)}
             />
 
-            <div className="mt-4 space-y-1.5 overflow-auto">
-              {palette.map((item) => {
-                const meta = nodeMeta[item.kind];
+            <div className="mt-4 space-y-4 overflow-auto">
+              {paletteGroups.map((group) => {
+                const query = nodeSearch.trim().toLowerCase();
+                const items = group.items.filter((item) =>
+                  `${item.title} ${item.description}`
+                    .toLowerCase()
+                    .includes(query),
+                );
+                if (!items.length) return null;
                 return (
-                  <button
-                    key={item.kind}
-                    type="button"
-                    className="group flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition hover:bg-main-800/70"
-                    onClick={() => addNode(item.kind, item.title)}
-                  >
-                    <span
-                      className={`grid size-9 shrink-0 place-items-center rounded-lg ${meta.color}`}
-                    >
-                      {meta.icon({ className: "size-4" })}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-medium text-main-200">
-                        {item.title}
-                      </span>
-                      <span className="block truncate text-xs text-main-500">
-                        {item.description}
-                      </span>
-                    </span>
-                    <PlusIcon className="size-3.5 text-main-600 group-hover:text-main-300" />
-                  </button>
+                  <section key={group.label}>
+                    <h3 className="mb-1 px-2 text-[10px] font-medium uppercase tracking-wider text-main-600">
+                      {group.label}
+                    </h3>
+                    <div className="space-y-1">
+                      {items.map((item) => {
+                        const meta = nodeMeta[item.kind];
+                        return (
+                          <button
+                            key={item.kind}
+                            type="button"
+                            className="group flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition hover:bg-main-800/70"
+                            onClick={() => addNode(item.kind, item.title)}
+                          >
+                            <span
+                              className={`grid size-9 shrink-0 place-items-center rounded-lg ${meta.color}`}
+                            >
+                              {meta.icon({ className: "size-4" })}
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block text-sm font-medium text-main-200">
+                                {item.title}
+                              </span>
+                              <span className="block truncate text-xs text-main-500">
+                                {item.description}
+                              </span>
+                            </span>
+                            <PlusIcon className="size-3.5 text-main-600 group-hover:text-main-300" />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </section>
                 );
               })}
             </div>
@@ -762,109 +805,117 @@ export const ScenarioGraphEditorPage = observer(
             onNodeSelect={setSelectedNodeId}
           />
 
-          <aside className="w-96 shrink-0 overflow-auto border-l border-main-800 bg-main-900/90">
-            <div className="flex h-12 items-center justify-between border-b border-main-800 px-4">
-              <h2 className="text-sm font-semibold text-main-200">Настройки</h2>
-              <SettingsIcon className="size-4 text-main-500" />
-            </div>
-            {selectedNode ? (
-              <div className="space-y-5 p-4">
-                <div className="flex items-center gap-3">
-                  <span
-                    className={`grid size-10 place-items-center rounded-lg ${nodeMeta[selectedNode.kind].color}`}
-                  >
-                    {nodeMeta[selectedNode.kind].icon({ className: "size-4" })}
-                  </span>
-                  <div>
-                    <p className="text-sm font-medium text-main-100">
-                      {nodeMeta[selectedNode.kind].label}
-                    </p>
-                    <p className="text-xs text-main-500">{selectedNode.id}</p>
+          <aside className="w-96 shrink-0 border-l border-main-800 bg-main-900/90">
+            <ScrollArea className="min-h-0 max-h-full">
+              <div className="flex h-12 items-center justify-between border-b border-main-800 px-4">
+                <h2 className="text-sm font-semibold text-main-200">
+                  Настройки
+                </h2>
+                <SettingsIcon className="size-4 text-main-500" />
+              </div>
+              {selectedNode ? (
+                <div className="space-y-5 p-4">
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`grid size-10 place-items-center rounded-lg ${nodeMeta[selectedNode.kind].color}`}
+                    >
+                      {nodeMeta[selectedNode.kind].icon({
+                        className: "size-4",
+                      })}
+                    </span>
+                    <div>
+                      <p className="text-sm font-medium text-main-100">
+                        {nodeMeta[selectedNode.kind].label}
+                      </p>
+                      <p className="text-xs text-main-500">{selectedNode.id}</p>
+                    </div>
                   </div>
-                </div>
 
-                {selectedNode.kind === "trigger" ? (
-                  <ScenarioNodeTriggerForm
-                    config={selectedTriggerConfig}
-                    onSetup={(kind) => setTriggerSetupModal({ kind })}
-                  />
-                ) : null}
-                {selectedNode.kind === "agent" ? (
-                  <ScenarioNodeAgentForm
-                    node={selectedNode}
-                    agents={automationStore.agents}
-                    onChange={updateSelectedNode}
-                  />
-                ) : null}
-                {selectedNode.kind === "knowledge_store" ? (
-                  <ScenarioNodeKnowledgeStoreForm
-                    node={selectedNode}
-                    stores={vectorStoreStore.stores}
-                    onChange={updateSelectedNode}
-                  />
-                ) : null}
-                {selectedNode.kind === "orchestrator" ? (
-                  <ScenarioNodeOrchestratorForm
-                    node={selectedNode}
-                    onChange={updateSelectedNode}
-                  />
-                ) : null}
-                {selectedNode.kind === "condition" ? (
-                  <ScenarioNodeConditionForm
-                    node={selectedNode}
-                    onChange={updateSelectedNode}
-                  />
-                ) : null}
-                {selectedNode.kind === "download_files" ? (
-                  <ScenarioNodeDownloadFilesForm
-                    node={selectedNode}
-                    onChange={updateSelectedNode}
-                  />
-                ) : null}
-                {selectedNode.kind === "read_files" ? (
-                  <ScenarioNodeReadFilesForm
-                    node={selectedNode}
-                    onChange={updateSelectedNode}
-                  />
-                ) : null}
-                {selectedNode.kind === "approval" ? (
-                  <ScenarioNodeApprovalForm
-                    node={selectedNode}
-                    onChange={updateSelectedNode}
-                  />
-                ) : null}
-                {selectedNode.kind === "output" ? (
-                  <ScenarioNodeOutputForm
-                    node={selectedNode}
-                    onChange={updateSelectedNode}
-                  />
-                ) : null}
-              </div>
-            ) : (
-              <div className="grid h-48 place-items-center px-6 text-center text-sm text-main-500">
-                Выберите узел на графе
-              </div>
-            )}
-            {automationStore.activeScenarioRun ? (
-              <div className="m-4 rounded-lg bg-main-800/55 p-3 text-xs text-main-300">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-medium">
-                    Запуск #{automationStore.activeScenarioRun.id}
-                  </span>
-                  <span className="text-main-500">
-                    {automationStore.activeScenarioRun.status}
-                  </span>
+                  {selectedNode.kind === "trigger" ? (
+                    <ScenarioNodeTriggerForm
+                      config={selectedTriggerConfig}
+                      onSetup={(kind) => setTriggerSetupModal({ kind })}
+                    />
+                  ) : null}
+                  {selectedNode.kind === "agent" ? (
+                    <ScenarioNodeAgentForm
+                      node={selectedNode}
+                      agents={automationStore.agents}
+                      onChange={updateSelectedNode}
+                    />
+                  ) : null}
+                  {selectedNode.kind === "knowledge_store" ? (
+                    <ScenarioNodeKnowledgeStoreForm
+                      node={selectedNode}
+                      stores={vectorStoreStore.stores}
+                      onChange={updateSelectedNode}
+                    />
+                  ) : null}
+                  {selectedNode.kind === "orchestrator" ? (
+                    <ScenarioNodeOrchestratorForm
+                      node={selectedNode}
+                      onChange={updateSelectedNode}
+                    />
+                  ) : null}
+                  {selectedNode.kind === "condition" ? (
+                    <ScenarioNodeConditionForm
+                      node={selectedNode}
+                      onChange={updateSelectedNode}
+                    />
+                  ) : null}
+                  {selectedNode.kind === "download_files" ? (
+                    <ScenarioNodeDownloadFilesForm
+                      node={selectedNode}
+                      onChange={updateSelectedNode}
+                    />
+                  ) : null}
+                  {selectedNode.kind === "read_files" ? (
+                    <ScenarioNodeReadFilesForm
+                      node={selectedNode}
+                      onChange={updateSelectedNode}
+                    />
+                  ) : null}
+                  {selectedNode.kind === "approval" ? (
+                    <ScenarioNodeApprovalForm
+                      node={selectedNode}
+                      onChange={updateSelectedNode}
+                    />
+                  ) : null}
+                  {selectedNode.kind === "output" ? (
+                    <ScenarioNodeOutputForm
+                      node={selectedNode}
+                      onChange={updateSelectedNode}
+                      triggerConfig={scenarioTriggerConfig}
+                      profiles={integrationStore.profiles}
+                    />
+                  ) : null}
                 </div>
-                <p className="mt-2 text-main-500">
-                  Выполнено узлов:{" "}
-                  {
-                    automationStore.scenarioNodeRuns.filter(
-                      (item) => item.status === "completed",
-                    ).length
-                  }
-                </p>
-              </div>
-            ) : null}
+              ) : (
+                <div className="grid h-48 place-items-center px-6 text-center text-sm text-main-500">
+                  Выберите узел на графе
+                </div>
+              )}
+              {automationStore.activeScenarioRun ? (
+                <div className="m-4 rounded-lg bg-main-800/55 p-3 text-xs text-main-300">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-medium">
+                      Запуск #{automationStore.activeScenarioRun.id}
+                    </span>
+                    <span className="text-main-500">
+                      {automationStore.activeScenarioRun.status}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-main-500">
+                    Выполнено узлов:{" "}
+                    {
+                      automationStore.scenarioNodeRuns.filter(
+                        (item) => item.status === "completed",
+                      ).length
+                    }
+                  </p>
+                </div>
+              ) : null}
+            </ScrollArea>
           </aside>
         </div>
         <FormModal

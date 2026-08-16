@@ -25,7 +25,7 @@ export function ScenarioTriggerNodeSummary({
   if (!channels.length) return null;
 
   return (
-    <div className="absolute left-3 top-17 z-10 flex w-40 flex-col gap-2">
+    <div className="absolute left-3 right-0 top-17 z-10 flex flex-col gap-2">
       {channels.map((channel, index) => {
         const Icon = channel.icon;
         return (

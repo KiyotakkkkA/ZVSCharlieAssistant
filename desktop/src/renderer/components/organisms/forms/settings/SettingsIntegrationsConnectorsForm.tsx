@@ -144,7 +144,10 @@ function RepositoryInfo({
           label="Язык"
           value={metadata.language ?? "Не определён"}
         />
-        <RepositoryInfoItem label="Звёзды" value={String(metadata.stars ?? 0)} />
+        <RepositoryInfoItem
+          label="Звёзды"
+          value={String(metadata.stars ?? 0)}
+        />
         <RepositoryInfoItem label="Форки" value={String(metadata.forks ?? 0)} />
         <RepositoryInfoItem
           label="Открытые задачи"
@@ -175,7 +178,13 @@ function RepositoryInfo({
   );
 }
 
-function RepositoryInfoItem({ label, value }: { label: string; value: string }) {
+function RepositoryInfoItem({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
   return (
     <div className="min-w-0">
       <p className="text-xs text-main-500">{label}</p>

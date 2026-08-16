@@ -97,7 +97,9 @@ export class ToolRegistry {
             if (!terminalPolicy)
               throw new Error("Политика терминала агента не настроена");
             if (!directoryPolicy)
-              throw new Error("Политика доступа агента к директориям не настроена");
+              throw new Error(
+                "Политика доступа агента к директориям не настроена",
+              );
             return this.commands.execute(
               input,
               terminalPolicy,
@@ -112,18 +114,30 @@ export class ToolRegistry {
         inputSchema: z.object({
           base: z.string().trim().min(1).max(4096),
           query: z.string().trim().min(1).max(500),
-          entityTypes: z.array(z.enum(["file", "directory"])).max(2).optional(),
+          entityTypes: z
+            .array(z.enum(["file", "directory"]))
+            .max(2)
+            .optional(),
           matchMode: z.enum(["exact", "contains", "glob"]).optional(),
           includeHidden: z.boolean().optional(),
           maxDepth: z.int().min(1).max(100).optional(),
           limit: z.int().min(1).max(1000).optional(),
         }),
         execute: (input, { toolCallId }) =>
-          this.execute(toolCallId, "grep_search", input, signal, observer, () => {
-            if (!directoryPolicy)
-              throw new Error("Политика доступа агента к директориям не настроена");
-            return this.search.entitySearch(input, directoryPolicy);
-          }),
+          this.execute(
+            toolCallId,
+            "grep_search",
+            input,
+            signal,
+            observer,
+            () => {
+              if (!directoryPolicy)
+                throw new Error(
+                  "Политика доступа агента к директориям не настроена",
+                );
+              return this.search.entitySearch(input, directoryPolicy);
+            },
+          ),
       }),
       regexp_search: tool({
         description:
@@ -135,18 +149,37 @@ export class ToolRegistry {
           mode: z.enum(["regex", "literal"]).optional(),
           caseSensitive: z.boolean().optional(),
           wholeWord: z.boolean().optional(),
-          include: z.array(z.string().trim().min(1).max(500)).max(50).optional(),
-          exclude: z.array(z.string().trim().min(1).max(500)).max(50).optional(),
+          include: z
+            .array(z.string().trim().min(1).max(500))
+            .max(50)
+            .optional(),
+          exclude: z
+            .array(z.string().trim().min(1).max(500))
+            .max(50)
+            .optional(),
           includeHidden: z.boolean().optional(),
-          maxFileBytes: z.int().min(1).max(50 * 1024 * 1024).optional(),
+          maxFileBytes: z
+            .int()
+            .min(1)
+            .max(50 * 1024 * 1024)
+            .optional(),
           limit: z.int().min(1).max(1000).optional(),
         }),
         execute: (input, { toolCallId }) =>
-          this.execute(toolCallId, "regexp_search", input, signal, observer, () => {
-            if (!directoryPolicy)
-              throw new Error("Политика доступа агента к директориям не настроена");
-            return this.search.regexpSearch(input, directoryPolicy);
-          }),
+          this.execute(
+            toolCallId,
+            "regexp_search",
+            input,
+            signal,
+            observer,
+            () => {
+              if (!directoryPolicy)
+                throw new Error(
+                  "Политика доступа агента к директориям не настроена",
+                );
+              return this.search.regexpSearch(input, directoryPolicy);
+            },
+          ),
       }),
       web_search: tool({
         description:

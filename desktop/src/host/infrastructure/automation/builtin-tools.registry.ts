@@ -35,8 +35,7 @@ export const BUILTIN_AUTOMATION_TOOLS: readonly AutomationTool[] = [
   {
     id: "regexp_search",
     name: "Поиск по содержимому файлов",
-    description:
-      "Ищет текст или регулярное выражение в файле либо директории.",
+    description: "Ищет текст или регулярное выражение в файле либо директории.",
     category: "Файловая система",
     builtin: true,
     enabled: true,
@@ -46,8 +45,14 @@ export const BUILTIN_AUTOMATION_TOOLS: readonly AutomationTool[] = [
       required: ["base", "pattern"],
       properties: {
         base: { type: "string", description: "Разрешённая базовая директория" },
-        target: { type: "string", description: "Относительный файл или директория" },
-        pattern: { type: "string", description: "Текст или регулярное выражение" },
+        target: {
+          type: "string",
+          description: "Относительный файл или директория",
+        },
+        pattern: {
+          type: "string",
+          description: "Текст или регулярное выражение",
+        },
         mode: { enum: ["regex", "literal"] },
         include: { type: "array", items: { type: "string" } },
         exclude: { type: "array", items: { type: "string" } },

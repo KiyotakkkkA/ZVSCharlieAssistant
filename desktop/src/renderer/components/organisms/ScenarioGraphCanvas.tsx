@@ -108,7 +108,7 @@ export function ScenarioGraphCanvas({
           <div className="flex items-center gap-3 rounded-md bg-main-800/90 px-2.5 py-1.5 text-[10px] text-main-500 ring-1 ring-main-700/80">
             <PortLegend
               shape="size-2.5 rounded-full bg-lime-300"
-              label="Управление"
+              label="Текст"
             />
             <PortLegend
               shape="h-2.5 w-4 rounded bg-violet-300"
@@ -121,10 +121,6 @@ export function ScenarioGraphCanvas({
             <PortLegend
               shape="size-2.5 rounded-full bg-pink-300"
               label="Файлы"
-            />
-            <PortLegend
-              shape="size-2.5 rounded-full bg-fuchsia-300"
-              label="Текст файлов"
             />
           </div>
         </Panel>
@@ -171,7 +167,7 @@ const ScenarioFlowEdgeView = memo(function ScenarioFlowEdgeView({
             <Dropdown.Trigger
               icon={
                 <span
-                  className={`block size-1.5 rounded-full ${edgeDotClasses[data?.kind ?? "control"]}`}
+                  className={`block size-1.5 rounded-full ${edgeDotClasses[data?.kind ?? "text"]}`}
                 />
               }
               aria-label="Настроить связь"
@@ -214,20 +210,7 @@ const ScenarioFlowNodeView = memo(function ScenarioFlowNodeView({
       onDelete={data.onDelete}
     >
       {node.kind === "orchestrator" ? (
-        <>
-          <ScenarioPort
-            port={SCENARIO_PORTS.controlIn}
-            style={{ left: -5, top: "25%" }}
-          />
-          <ScenarioPort
-            port={SCENARIO_PORTS.filesIn}
-            style={{ left: -5, top: "55%" }}
-          />
-          <ScenarioPort
-            port={SCENARIO_PORTS.textIn}
-            style={{ left: -5, top: "82%" }}
-          />
-        </>
+        <ScenarioPort port={SCENARIO_PORTS.textIn} />
       ) : node.kind === "agent" ? (
         <>
           <ScenarioPort port={SCENARIO_PORTS.workerIn} />
@@ -236,7 +219,7 @@ const ScenarioFlowNodeView = memo(function ScenarioFlowNodeView({
       ) : node.kind === "download_files" || node.kind === "read_files" ? (
         <ScenarioPort port={SCENARIO_PORTS.filesIn} />
       ) : node.kind !== "trigger" && node.kind !== "knowledge_store" ? (
-        <ScenarioPort port={SCENARIO_PORTS.controlIn} />
+        <ScenarioPort port={SCENARIO_PORTS.textIn} />
       ) : null}
       {node.kind === "trigger" ? (
         <ScenarioTriggerNodeSummary
@@ -267,7 +250,7 @@ const ScenarioFlowNodeView = memo(function ScenarioFlowNodeView({
       ) : null}
       {node.kind === "orchestrator" ? (
         <>
-          <ScenarioPort port={SCENARIO_PORTS.controlOut} />
+          <ScenarioPort port={SCENARIO_PORTS.textOut} />
           <ScenarioPort port={SCENARIO_PORTS.workerOut} />
         </>
       ) : node.kind === "agent" ? (
@@ -281,16 +264,16 @@ const ScenarioFlowNodeView = memo(function ScenarioFlowNodeView({
       ) : node.kind === "trigger" ? (
         <>
           <ScenarioPort
-            port={SCENARIO_PORTS.controlOut}
-            style={{ right: -5, top: 24 }}
+            port={SCENARIO_PORTS.textOut}
+            style={{ right: -5, top: 22 }}
           />
           <ScenarioPort
             port={SCENARIO_PORTS.chatAttachmentsOut}
-            style={{ right: -5, top: 48 }}
+            style={{ right: -5, top: 40 }}
           />
         </>
       ) : node.kind !== "output" ? (
-        <ScenarioPort port={SCENARIO_PORTS.controlOut} />
+        <ScenarioPort port={SCENARIO_PORTS.textOut} />
       ) : null}
     </ScenarioNodeCard>
   );
@@ -314,11 +297,10 @@ const scenarioNodeTypes = { scenario: ScenarioFlowNodeView };
 const scenarioEdgeTypes = { scenario: ScenarioFlowEdgeView };
 
 const edgeDotClasses: Record<GraphEdge["kind"], string> = {
-  control: "bg-lime-300",
+  text: "bg-lime-300",
   worker: "bg-violet-300",
   knowledge: "bg-cyan-300",
   files: "bg-pink-300",
-  text: "bg-fuchsia-300",
 };
 
 const portPositions = {
@@ -329,8 +311,8 @@ const portPositions = {
 } as const;
 
 const portClasses: Record<ScenarioPortDefinition["kind"], string> = {
-  "control-input": "size-2.5! rounded-full! bg-lime-300! ring-2 ring-main-900",
-  "control-output": "size-2.5! rounded-full! bg-lime-300! ring-2 ring-main-900",
+  "text-input": "size-2.5! rounded-full! bg-lime-300! ring-2 ring-main-900",
+  "text-output": "size-2.5! rounded-full! bg-lime-300! ring-2 ring-main-900",
   "event-output": "size-2.5! rounded-full! bg-lime-300! ring-2 ring-main-900",
   "worker-input": "h-2! w-3.5! rounded-sm! bg-violet-300! ring-2 ring-main-900",
   "worker-output":
@@ -341,8 +323,6 @@ const portClasses: Record<ScenarioPortDefinition["kind"], string> = {
     "size-2.5! rounded-none! bg-cyan-300! ring-2 ring-main-900",
   "files-input": "size-2.5! rounded-full! bg-pink-300! ring-2 ring-main-900",
   "files-output": "size-2.5! rounded-full! bg-pink-300! ring-2 ring-main-900",
-  "text-input": "size-2.5! rounded-full! bg-fuchsia-300! ring-2 ring-main-900",
-  "text-output": "size-2.5! rounded-full! bg-fuchsia-300! ring-2 ring-main-900",
 };
 
 function ScenarioPort({

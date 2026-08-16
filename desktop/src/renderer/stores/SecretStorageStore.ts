@@ -1,8 +1,5 @@
 import { makeAutoObservable, runInAction } from "mobx";
-import type {
-  SecretCategory,
-  SecretEntity,
-} from "../../ipc/contracts";
+import type { SecretCategory, SecretEntity } from "../../ipc/contracts";
 import {
   parseIpcDto,
   upsertSecretCategoryDtoSchema,
