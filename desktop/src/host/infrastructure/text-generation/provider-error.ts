@@ -1,7 +1,3 @@
-/**
- * Пользователю выводились сырые коды («OpenRouter models API вернул HTTP 401»).
- * Здесь они переводятся в подсказку, что именно делать.
- */
 export function describeProviderHttpError(
   provider: string,
   status: number,

@@ -3,7 +3,6 @@ import type { ScenarioDeliveryRepository } from "../../database/scenario-deliver
 import type { ScenarioDeliveryAdapterRegistry } from "../delivery/scenario-delivery.adapter";
 import { onWork } from "./work-signal";
 
-/** Страховочный опрос на случай, если сигнал о работе был потерян. */
 const FALLBACK_POLL_MS = 30_000;
 
 export class ScenarioDeliveryWorker {

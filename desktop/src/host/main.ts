@@ -93,6 +93,15 @@ import { EmailDeliveryAdapter } from "./infrastructure/automation/delivery/email
 import { ScenarioDeliveryWorker } from "./infrastructure/automation/background/scenario-delivery.worker";
 import { TextExtractionClient } from "./infrastructure/vector-store/text-extraction.client";
 import { installContentSecurityPolicy } from "./infrastructure/electron/install-content-security-policy";
+import { MemoryRepository } from "./infrastructure/database/memory.repository";
+import { MemoryService } from "./application/services/memory.service";
+import { TaskPlanRepository } from "./infrastructure/database/task-plan.repository";
+import { UserQuestionRepository } from "./infrastructure/database/user-question.repository";
+import { UserQuestionService } from "./application/services/user-question.service";
+import {
+  registerAssistantHandlers,
+  removeAssistantHandlers,
+} from "../ipc/main/register-assistant-handlers";
 
 let database: ReturnType<typeof createSqliteDatabase> | undefined;
 let scenarioJobWorker: ScenarioJobWorker | undefined;
@@ -102,6 +111,7 @@ let mailWatchListener: MailWatchListener | undefined;
 let scenarioFileDownloads: ScenarioFileDownloadService | undefined;
 let scenarioDeliveryWorker: ScenarioDeliveryWorker | undefined;
 let textExtraction: TextExtractionClient | undefined;
+let questionSweeper: NodeJS.Timeout | undefined;
 
 app.whenReady().then(() => {
   installContentSecurityPolicy();
@@ -169,6 +179,16 @@ app.whenReady().then(() => {
   registerIntegrationHandlers(
     new IntegrationProfileService(integrationRepository, secretRepository),
   );
+  const memoryService = new MemoryService(new MemoryRepository(database));
+  const taskPlans = new TaskPlanRepository(database);
+  const automationJobs = new AutomationJobRepository(database);
+  const questionService = new UserQuestionService(
+    new UserQuestionRepository(database),
+    integrationRepository,
+    secretRepository,
+    scenarioDeliveries,
+    automationJobs,
+  );
   const ollamaWebService = new OllamaWebService(
     automationRepository,
     secretRepository,
@@ -189,6 +209,9 @@ app.whenReady().then(() => {
       join(app.getAppPath(), "native"),
       directoryPolicyRepository,
     ),
+    memoryService,
+    taskPlans,
+    questionService,
   );
   registerTerminalPolicyHandlers(
     terminalPolicyRepository,
@@ -205,6 +228,7 @@ app.whenReady().then(() => {
     scenarioFileDownloads,
     new ScenarioFileReaderService(scenarioDownloadsRoot, textExtraction),
     new ScenarioResponseService(scenarioDeliveries),
+    questionService,
   );
   registerAutomationHandlers(
     automationRepository,
@@ -218,12 +242,13 @@ app.whenReady().then(() => {
       chatRepository,
       providerRegistry,
       toolRegistry,
+      memoryService,
       scenarioEngine,
     ),
   );
   registerCoreInteractorHandlers(new CoreInteractorService());
+  registerAssistantHandlers(memoryService, taskPlans, questionService);
   createMainWindow();
-  const automationJobs = new AutomationJobRepository(database);
   scenarioJobWorker = new ScenarioJobWorker(automationJobs, scenarioEngine);
   intervalScheduleWorker = new IntervalScheduleWorker(
     automationJobs,
@@ -233,11 +258,13 @@ app.whenReady().then(() => {
     integrationRepository,
     automationJobs,
     secretRepository,
+    questionService,
   );
   mailWatchListener = new MailWatchListener(
     integrationRepository,
     automationJobs,
     secretRepository,
+    questionService,
   );
   scenarioDeliveryWorker = new ScenarioDeliveryWorker(
     scenarioDeliveries,
@@ -251,6 +278,8 @@ app.whenReady().then(() => {
   telegramWatchListener.start();
   mailWatchListener.start();
   scenarioDeliveryWorker.start();
+  questionSweeper = setInterval(() => questionService.sweepTimeouts(), 30_000);
+  questionSweeper.unref();
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
@@ -258,6 +287,8 @@ app.whenReady().then(() => {
 });
 
 app.on("before-quit", () => {
+  if (questionSweeper) clearInterval(questionSweeper);
+  questionSweeper = undefined;
   textExtraction?.dispose();
   textExtraction = undefined;
   scenarioDeliveryWorker?.stop();
@@ -283,6 +314,7 @@ app.on("before-quit", () => {
   removeTerminalPolicyHandlers();
   removeDirectoryPolicyHandlers();
   removeIntegrationHandlers();
+  removeAssistantHandlers();
   database?.close();
   database = undefined;
 });

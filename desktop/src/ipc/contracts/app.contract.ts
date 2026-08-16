@@ -24,6 +24,7 @@ export interface DesktopApi {
   directoryPolicy: import("./directory-policy.contract").DirectoryPolicyApi;
   integrations: import("./integration.contract").IntegrationApi;
   core: import("./core-interactor.contract").CoreInteractorApi;
+  assistant: import("./assistant.contract").AssistantApi;
 }
 
 export interface GeneratedArtifactInput {

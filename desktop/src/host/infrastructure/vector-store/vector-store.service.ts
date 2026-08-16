@@ -12,10 +12,8 @@ import type { VectorSearchResultItem } from "../../../shared/models/vector-store
 import type { VectorStoreRepository } from "../database/vector-store.repository";
 import { EmbeddingService } from "./embedding.service";
 
-/** Сколько документов обрабатывается одновременно (см. `upload`). */
 const INGEST_CONCURRENCY = 2;
 
-/** Предел размера одного документа. */
 export const MAX_DOCUMENT_BYTES = 64 * 1_048_576;
 
 export class VectorStoreService {

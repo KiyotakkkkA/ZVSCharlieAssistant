@@ -159,16 +159,7 @@ export class ChatRepository {
       size: row.size,
     }));
   }
-  /**
-   * Записывает накопленное содержимое сообщения одним UPDATE, без чтения и
-   * разбора предыдущего значения.
-   *
-   * Прежние `appendText`/`appendReasoning` делали SELECT + JSON.parse +
-   * валидацию + JSON.stringify + UPDATE на каждую дельту стрима. Это O(n²) по
-   * длине ответа и синхронная запись в главном процессе на каждый токен —
-   * ответ на 4000 токенов означал 4000 перезаписей растущего блоба. Накопление
-   * дельт и периодический сброс делает движок (см. `RunEngine.execute`).
-   */
+
   writeMessageContent(messageId: number, reasoning: string, text: string) {
     const parts: ChatMessageContentPart[] = [];
     if (reasoning) parts.push({ type: "reasoning", text: reasoning });
@@ -178,11 +169,6 @@ export class ChatRepository {
       .run(JSON.stringify(parts), messageId);
   }
 
-  /**
-   * Ограниченная история для передачи модели. Раньше выбирался весь диалог
-   * целиком, из-за чего стоимость и латентность каждого следующего запроса
-   * росли линейно, пока не упирались в контекстное окно.
-   */
   historyMessages(
     conversationId: number,
     maxMessages: number,
@@ -366,7 +352,7 @@ export class ChatRepository {
     if (!id) return undefined;
     const row = this.db
       .prepare(
-        "SELECT instructions,text_model_id,max_tool_calls,timeout_seconds,retrieval_limit,terminal_policy_json,directory_policy_json FROM automation_agents WHERE id=? AND status!='disabled'",
+        "SELECT instructions,text_model_id,max_tool_calls,timeout_seconds,retrieval_limit,terminal_policy_json,directory_policy_json,memory_read,memory_write FROM automation_agents WHERE id=? AND status!='disabled'",
       )
       .get(id) as
       | {
@@ -377,6 +363,8 @@ export class ChatRepository {
           retrieval_limit: number;
           terminal_policy_json: string;
           directory_policy_json: string;
+          memory_read: number;
+          memory_write: number;
         }
       | undefined;
     if (!row) return undefined;
@@ -403,6 +391,8 @@ export class ChatRepository {
       ...row,
       terminalPolicy: JSON.parse(row.terminal_policy_json),
       directoryPolicy: JSON.parse(row.directory_policy_json),
+      memoryRead: Boolean(row.memory_read),
+      memoryWrite: Boolean(row.memory_write),
       allowedToolIds,
       allowedVectorStoreIds,
       allowedSkillIds,

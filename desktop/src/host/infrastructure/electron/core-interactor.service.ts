@@ -1,11 +1,6 @@
 import { shell } from "electron";
 import { CoreInteractor } from "@host/application/ports/core-interactor.ports";
 
-/**
- * `shell.openExternal` отдаёт строку системному обработчику протоколов, то есть
- * `file:///…/x.exe`, `ms-msdt:` и любая другая зарегистрированная схема означали
- * бы запуск постороннего кода. Наружу выпускаем только веб-ссылки и почту.
- */
 const ALLOWED_PROTOCOLS = new Set(["http:", "https:", "mailto:"]);
 
 export function isSafeExternalUrl(url: unknown): url is string {

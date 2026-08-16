@@ -5,16 +5,11 @@ import { ChatRepository } from "../database/chat.repository";
 import { ProviderRegistry } from "./provider.registry";
 import { ToolRegistry } from "../tools/tool.registry";
 import type { ScenarioRunEngine } from "../automation/scenario-run-engine";
+import type { MemoryService } from "../../application/services/memory.service";
 type Emit = (event: RunEvent) => void;
 
-/**
- * Как часто накопленный текст ответа сбрасывается в базу. Рендерер получает
- * дельты сразу через `emit`, поэтому задержка записи на скорость отклика UI не
- * влияет — она лишь ограничивает объём потерь при аварийном завершении.
- */
 const CONTENT_FLUSH_MS = 400;
 
-/** Границы истории, передаваемой модели (см. `ChatRepository.historyMessages`). */
 const HISTORY_MAX_MESSAGES = 80;
 const HISTORY_MAX_CHARACTERS = 60_000;
 
@@ -25,6 +20,7 @@ export class RunEngine {
     private readonly data: ChatRepository,
     private readonly providers: ProviderRegistry,
     private readonly tools: ToolRegistry,
+    private readonly memory: MemoryService,
     private readonly scenarios?: ScenarioRunEngine,
   ) {}
   async start(
@@ -262,15 +258,13 @@ export class RunEngine {
           HISTORY_MAX_CHARACTERS,
         )
         .filter((m) => m.id !== assistantMessageId)
-        .map(
-          (m): ModelMessage => ({
-            role:
-              m.role === "tool"
-                ? "assistant"
-                : (m.role as "user" | "assistant" | "system"),
-            content: m.text,
-          }),
-        );
+        .map((m): ModelMessage => ({
+          role:
+            m.role === "tool"
+              ? "assistant"
+              : (m.role as "user" | "assistant" | "system"),
+          content: m.text,
+        }));
       const baseSystem =
         input.mode === "planner"
           ? "Составь практичный пошаговый план. Не выполняй действия без необходимости."
@@ -281,7 +275,11 @@ export class RunEngine {
         input.mode === "agent"
           ? this.data.resolveAgent(input.agentId)
           : undefined;
-      const system = `${baseSystem}${this.tools.skillCatalog(agentRuntime?.allowedSkillIds ?? [])}`;
+      const memoryBlock = this.memory.contextBlock({
+        agentMayRead: Boolean(agentRuntime?.memoryRead),
+        query: input.text,
+      });
+      const system = `${baseSystem}${this.tools.skillCatalog(agentRuntime?.allowedSkillIds ?? [])}${memoryBlock}`;
       const generationSettings = this.providers.generationSettings(
         input.modelId,
       );
@@ -294,6 +292,11 @@ export class RunEngine {
           input.mode === "agent"
             ? this.tools.createForChat(runId, emit, {
                 signal: controller.signal,
+                conversationId,
+                runId,
+                agentId: input.agentId,
+                memoryRead: Boolean(agentRuntime?.memoryRead),
+                memoryWrite: Boolean(agentRuntime?.memoryWrite),
                 allowedToolIds: agentRuntime?.allowedToolIds ?? [],
                 allowedVectorStoreIds:
                   agentRuntime?.allowedVectorStoreIds ?? [],

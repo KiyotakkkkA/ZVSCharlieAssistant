@@ -6,6 +6,7 @@ import type {
 } from "../../database/integration.repository";
 import type { EmailMessageEntity } from "../../../../shared/dto/scenario-trigger-event.dto";
 import { SecretStorageRepository } from "@host/infrastructure/database/secret-storage.repository";
+import type { UserQuestionService } from "@host/application/services/user-question.service";
 import { AutomationJobRepository } from "@host/infrastructure/database/automation-job.repository";
 
 export class MailWatchListener {
@@ -17,6 +18,7 @@ export class MailWatchListener {
     private readonly integrations: IntegrationRepository,
     private readonly jobs: AutomationJobRepository,
     private readonly secrets: SecretStorageRepository,
+    private readonly questions: UserQuestionService,
   ) {}
 
   start(): void {
@@ -137,6 +139,17 @@ export class MailWatchListener {
         newest = Math.max(newest, uid);
         const from = header(raw, "From");
         const subject = header(raw, "Subject");
+        const entity = toEmailMessageEntity(uid, raw);
+        if (
+          this.questions.resolveExternal({
+            channel: "email",
+            recipient: entity.from[0]?.address ?? "",
+            authorId: entity.from[0]?.address ?? null,
+            replyToId: entity.inReplyTo,
+            text: `${subject}\n${entity.text}`,
+          })
+        )
+          continue;
         if (
           String(binding.config.from ?? "") &&
           !from
@@ -162,7 +175,7 @@ export class MailWatchListener {
               trigger: "email",
               integrationProfileId: profileId,
               triggerBindingId: binding.id,
-              entity: toEmailMessageEntity(uid, raw),
+              entity,
             },
           },
         );

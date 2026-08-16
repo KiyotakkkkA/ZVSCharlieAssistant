@@ -8,7 +8,6 @@ import { scenarioMessageTriggerInputDtoSchema } from "../../../../shared/dto/sce
 import type { ScenarioRunEngine } from "../scenario-run-engine";
 import { onWork } from "./work-signal";
 
-/** Страховочный опрос на случай, если сигнал о работе был потерян. */
 const FALLBACK_POLL_MS = 30_000;
 
 export class ScenarioJobWorker {

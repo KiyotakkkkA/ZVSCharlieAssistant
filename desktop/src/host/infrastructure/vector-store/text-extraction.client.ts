@@ -5,14 +5,8 @@ import type {
   TextExtractionResponse,
 } from "./text-extraction.worker";
 
-/** Через сколько простоя поток завершается, чтобы не держать память впустую. */
 const IDLE_SHUTDOWN_MS = 60_000;
 
-/**
- * Клиент к потоку разбора документов. Поток поднимается лениво при первой
- * загрузке и гасится после простоя; запросы обрабатываются по одному, что
- * заодно служит естественным ограничителем нагрузки на CPU.
- */
 export class TextExtractionClient {
   private worker?: Worker;
   private nextId = 1;

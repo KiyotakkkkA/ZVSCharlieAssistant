@@ -5,10 +5,6 @@ interface RoutePageProps {
   description?: string;
 }
 
-/**
- * Страница-заполнитель для разделов, у которых пока нет собственного экрана.
- * Прежде выводила только заголовок, из-за чего выглядела как сломанная загрузка.
- */
 export function RoutePage({ title, description }: RoutePageProps) {
   return (
     <section className="p-4">

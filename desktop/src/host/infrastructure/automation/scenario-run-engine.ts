@@ -18,6 +18,10 @@ import type { ScenarioFileDownloadService } from "./scenario-file-download.servi
 import type { ScenarioFileReaderService } from "./scenario-file-reader.service";
 import type { ScenarioFileReference } from "../../../shared/dto/scenario-trigger-event.dto";
 import type { ScenarioResponseService } from "./scenario-response.service";
+import {
+  ScenarioSuspended,
+  type UserQuestionService,
+} from "../../application/services/user-question.service";
 
 type Emit = (event: ScenarioRunEvent) => void;
 type ScenarioAgent = NonNullable<
@@ -26,7 +30,6 @@ type ScenarioAgent = NonNullable<
 
 export class ScenarioRunEngine {
   private readonly controllers = new Map<number, AbortController>();
-  private readonly approvals = new Map<number, (approved: boolean) => void>();
 
   constructor(
     private readonly data: ScenarioExecutionRepository,
@@ -38,6 +41,7 @@ export class ScenarioRunEngine {
     private readonly fileDownloads: ScenarioFileDownloadService,
     private readonly fileContentReader: ScenarioFileReaderService,
     private readonly responses: ScenarioResponseService,
+    private readonly questions: UserQuestionService,
   ) {}
 
   assertRunnable(scenarioId: string, origin?: ScenarioRunOrigin) {
@@ -131,16 +135,15 @@ export class ScenarioRunEngine {
 
   cancel(id: number) {
     this.controllers.get(id)?.abort();
-    this.approvals.get(id)?.(false);
-    this.approvals.delete(id);
+    this.questions.cancelForExecution(id);
   }
 
   approve(id: number, approved: boolean) {
-    const resolve = this.approvals.get(id);
-    if (!resolve) throw new Error("Запуск не ожидает подтверждения");
-    this.approvals.delete(id);
-    this.data.resolveApproval(id, approved);
-    resolve(approved);
+    const question = this.questions
+      .forExecution(id)
+      .find((item) => item.status === "pending");
+    if (!question) throw new Error("Запуск не ожидает ответа");
+    this.questions.answer(question.id, [approved ? "Да" : "Нет"], "ui");
   }
 
   private async execute(
@@ -168,6 +171,7 @@ export class ScenarioRunEngine {
       };
       return priority(leftId) - priority(rightId);
     });
+    let suspended = false;
     try {
       this.data.setRunStatus(runId, "running");
       for (const nodeId of executionOrder) {
@@ -212,6 +216,18 @@ export class ScenarioRunEngine {
           );
           emit({ type: "node.completed", runId, node: completed });
         } catch (error) {
+          if (error instanceof ScenarioSuspended) {
+            suspended = true;
+            this.data.setNodeStatus(nodeRun.id, "waiting_for_approval");
+            this.data.setRunStatus(runId, "waiting_for_approval");
+            emit({
+              type: "run.suspended",
+              runId,
+              nodeId: node.id,
+              questionId: error.questionId,
+            });
+            return;
+          }
           const message = errorMessage(error);
           const failed = this.data.finishNode(
             nodeRun.id,
@@ -252,9 +268,8 @@ export class ScenarioRunEngine {
           : { type: "run.failed", run },
       );
     } finally {
-      await this.fileDownloads.cleanupExecution(runId);
+      if (!suspended) await this.fileDownloads.cleanupExecution(runId);
       this.controllers.delete(runId);
-      this.approvals.delete(runId);
     }
   }
 
@@ -321,22 +336,66 @@ export class ScenarioRunEngine {
       };
     }
     if (node.kind === "approval") {
-      this.data.setRunStatus(runId, "waiting_for_approval");
-      this.data.setNodeStatus(nodeRunId, "waiting_for_approval");
-      const prompt = String(
-        node.config?.prompt ??
-          node.description ??
-          "Продолжить выполнение сценария?",
-      );
-      this.data.requestApproval(runId, nodeRunId, prompt);
-      emit({ type: "approval.required", runId, nodeId: node.id, prompt });
-      const approved = await new Promise<boolean>((resolve) =>
-        this.approvals.set(runId, resolve),
-      );
-      if (!approved) throw new Error("Выполнение отклонено пользователем");
-      this.data.setRunStatus(runId, "running");
-      this.data.setNodeStatus(nodeRunId, "running");
-      return { approved: true, value: input };
+      const config = (node.config ?? {}) as {
+        prompt?: string;
+        header?: string;
+        mode?: "confirm" | "choice" | "text";
+        options?: Array<{ label?: string; description?: string }>;
+        multiSelect?: boolean;
+        defaultAnswer?: string;
+        timeoutSeconds?: number;
+      };
+      const mode = config.mode ?? "confirm";
+      const options =
+        mode === "confirm"
+          ? [{ label: "Да" }, { label: "Нет" }]
+          : (config.options ?? [])
+              .map((option) => ({
+                label: String(option.label ?? "").trim(),
+                description: option.description,
+              }))
+              .filter((option) => option.label);
+      const askInput = {
+        mode,
+        header: String(config.header ?? node.title ?? "Вопрос"),
+        question: String(
+          config.prompt ??
+            node.description ??
+            "Продолжить выполнение сценария?",
+        ),
+        options,
+        multiSelect: Boolean(config.multiSelect),
+        defaultAnswer:
+          config.defaultAnswer ?? (mode === "confirm" ? "Нет" : null),
+        timeoutSeconds: config.timeoutSeconds ?? null,
+      };
+      const askContext = {
+        executionId: runId,
+        nodeId: node.id,
+        nodeRunId,
+        triggerInput,
+      };
+      let answer: string[];
+      try {
+        answer = this.questions.askInScenario(askInput, askContext);
+      } catch (error) {
+        if (error instanceof ScenarioSuspended) {
+          const pending = this.questions
+            .forExecution(runId)
+            .find((item) => item.id === error.questionId);
+          if (pending?.channel === "ui")
+            emit({
+              type: "approval.required",
+              runId,
+              nodeId: node.id,
+              prompt: pending.question,
+            });
+        }
+        throw error;
+      }
+      if (mode === "confirm" && answer[0] !== "Да")
+        throw new Error("Выполнение отклонено пользователем");
+      return { answer, value: input };
     }
 
     if (node.kind === "orchestrator") {

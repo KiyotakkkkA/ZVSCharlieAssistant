@@ -115,6 +115,8 @@ export const upsertAutomationAgentDtoSchema = z.object({
   allowedToolIds: z.array(z.string()),
   allowedVectorStoreIds: z.array(z.int().positive()),
   allowedSkillIds: z.array(z.int().positive()),
+  memoryRead: z.boolean(),
+  memoryWrite: z.boolean(),
   retrievalLimit: z.int().positive(),
   maxToolCalls: z.int().positive(),
   timeoutSeconds: z.int().positive(),

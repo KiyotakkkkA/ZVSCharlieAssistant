@@ -22,7 +22,6 @@ type TriggerEnvelope = {
   entity: Record<string, unknown> & { attachments?: AttachmentReference[] };
 };
 
-/** Страховочный опрос на случай, если сигнал о работе был потерян. */
 const FALLBACK_POLL_MS = 30_000;
 
 export class ScenarioFileDownloadService {

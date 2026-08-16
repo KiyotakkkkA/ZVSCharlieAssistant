@@ -7,3 +7,6 @@ export * from "./secret-storage.dto";
 export * from "./vector-store.dto";
 export * from "./integration.dto";
 export * from "./chat.dto";
+export * from "./memory.dto";
+export * from "./user-question.dto";
+export * from "./task-plan.dto";

@@ -7,4 +7,7 @@ export { vectorStoreStore } from "./VectorStoreStore";
 export { terminalPolicyStore } from "./TerminalPolicyStore";
 export { directoryPolicyStore } from "./DirectoryPolicyStore";
 export { integrationStore } from "./IntegrationStore";
+export { memoryStore } from "./MemoryStore";
+export { taskPlanStore } from "./TaskPlanStore";
+export { questionStore } from "./QuestionStore";
 export type { VectorDocument, VectorStoreModel } from "./VectorStoreStore";

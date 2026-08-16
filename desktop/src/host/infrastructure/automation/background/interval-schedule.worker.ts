@@ -1,10 +1,6 @@
 import { AutomationJobRepository } from "@host/infrastructure/database/automation-job.repository";
 import type { IntegrationRepository } from "../../database/integration.repository";
 
-/**
- * Расписания заданы в секундах и минутах, поэтому опрос раз в секунду был
- * избыточен: задержка до 5 с для фоновой автоматизации несущественна.
- */
 const SCHEDULE_POLL_MS = 5_000;
 
 export class IntervalScheduleWorker {

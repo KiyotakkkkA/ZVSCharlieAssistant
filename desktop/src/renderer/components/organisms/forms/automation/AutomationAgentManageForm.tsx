@@ -19,6 +19,7 @@ import {
   vectorStoreStore,
   terminalPolicyStore,
   directoryPolicyStore,
+  memoryStore,
 } from "../../../../stores";
 import { Field } from "../../../atoms";
 import { PrimaryButton } from "../../../atoms/buttons";
@@ -68,8 +69,10 @@ export const AutomationAgentManageForm = observer(
     const [textModelId, setTextModelId] = useState("");
     const [toolModel, setToolModel] = useState<Record<string, boolean>>({});
     const [activeTab, setActiveTab] = useState<
-      "basic" | "storage" | "skills" | "directories" | "terminal"
+      "basic" | "storage" | "memory" | "skills" | "directories" | "terminal"
     >("basic");
+    const [memoryRead, setMemoryRead] = useState(false);
+    const [memoryWrite, setMemoryWrite] = useState(false);
     const [terminalEnabled, setTerminalEnabled] = useState(false);
     const [terminalConfirmationMode, setTerminalConfirmationMode] =
       useState<TerminalConfirmationMode>("always");
@@ -87,6 +90,9 @@ export const AutomationAgentManageForm = observer(
     const [retrievalLimit, setRetrievalLimit] = useState("5");
     const vectorSearchEnabled = Boolean(toolModel["vecdb_search"]);
     const terminalToolEnabled = Boolean(toolModel["cmd_exec"]);
+    const memorySearchEnabled = Boolean(toolModel["memory_search"]);
+    const memorySaveEnabled = Boolean(toolModel["memory_save"]);
+    const memoryToolsEnabled = memorySearchEnabled || memorySaveEnabled;
     const availableConfirmationModeOptions = useMemo(() => {
       const globalMode =
         terminalPolicyStore.policy?.confirmationMode ?? "always";
@@ -142,11 +148,22 @@ export const AutomationAgentManageForm = observer(
           ]),
         ),
       );
+      const isNewAgent = model === undefined;
+      const memoryPolicy = memoryStore.policy;
+      setMemoryRead(
+        isNewAgent
+          ? Boolean(memoryPolicy?.enabled)
+          : Boolean(model?.memoryRead),
+      );
+      setMemoryWrite(
+        isNewAgent
+          ? Boolean(memoryPolicy?.enabled && memoryPolicy.autosave)
+          : Boolean(model?.memoryWrite),
+      );
       const globalPolicy = terminalPolicyStore.policy;
       const globalDirectories = directoryPolicyStore.policy;
       const terminalPolicy = model?.terminalPolicy;
       const directoryPolicy = model?.directoryPolicy;
-      const isNewAgent = model === undefined;
       setTerminalEnabled(
         isNewAgent
           ? (globalPolicy?.enabled ?? false)
@@ -196,6 +213,7 @@ export const AutomationAgentManageForm = observer(
       vectorStoreStore.initialized,
       terminalPolicyStore.initialized,
       directoryPolicyStore.initialized,
+      memoryStore.initialized,
     ]);
 
     useEffect(() => {
@@ -203,7 +221,13 @@ export const AutomationAgentManageForm = observer(
         setActiveTab("basic");
       if (!terminalToolEnabled && activeTab === "terminal")
         setActiveTab("basic");
-    }, [activeTab, vectorSearchEnabled, terminalToolEnabled]);
+      if (!memoryToolsEnabled && activeTab === "memory") setActiveTab("basic");
+    }, [
+      activeTab,
+      vectorSearchEnabled,
+      terminalToolEnabled,
+      memoryToolsEnabled,
+    ]);
 
     const selectedToolIds = useMemo(
       () =>
@@ -229,6 +253,14 @@ export const AutomationAgentManageForm = observer(
         allowedSkillIds: Object.entries(skillModel)
           .filter(([, selected]) => selected)
           .map(([id]) => Number(id)),
+        memoryRead:
+          memorySearchEnabled &&
+          Boolean(memoryStore.policy?.enabled) &&
+          memoryRead,
+        memoryWrite:
+          memorySaveEnabled &&
+          Boolean(memoryStore.policy?.enabled && memoryStore.policy.autosave) &&
+          memoryWrite,
         retrievalLimit: Math.min(Math.max(Number(retrievalLimit) || 5, 1), 20),
         maxToolCalls: model?.maxToolCalls ?? 20,
         timeoutSeconds: model?.timeoutSeconds ?? 120,
@@ -269,7 +301,12 @@ export const AutomationAgentManageForm = observer(
             onChange={(value) =>
               setActiveTab(
                 value as
-                  "basic" | "storage" | "skills" | "directories" | "terminal",
+                  | "basic"
+                  | "storage"
+                  | "memory"
+                  | "skills"
+                  | "directories"
+                  | "terminal",
               )
             }
             options={[
@@ -289,6 +326,12 @@ export const AutomationAgentManageForm = observer(
                 value: "terminal",
                 label: "Работа с терминалом",
                 disabled: !terminalToolEnabled,
+              },
+
+              {
+                value: "memory",
+                label: "Работа с памятью",
+                disabled: !memoryToolsEnabled,
               },
             ]}
           />
@@ -400,6 +443,45 @@ export const AutomationAgentManageForm = observer(
               />
             </FormSection>
           </>
+        ) : activeTab === "memory" ? (
+          <FormSection
+            title="Работа с памятью"
+            description="Уточняет глобальную политику памяти для этого агента."
+          >
+            {!memoryStore.policy?.enabled ? (
+              <div className="rounded-lg border border-dashed border-main-700 p-6 text-center text-sm text-main-500">
+                Память отключена глобально в разделе «Настройки → Политики →
+                Память».
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {memorySearchEnabled ? (
+                  <InputCheckBox checked={memoryRead} onChange={setMemoryRead}>
+                    Разрешить этому агенту читать память
+                  </InputCheckBox>
+                ) : null}
+                {memorySaveEnabled ? (
+                  <InputCheckBox
+                    checked={memoryWrite}
+                    disabled={!memoryStore.policy.autosave}
+                    onChange={setMemoryWrite}
+                  >
+                    Разрешить этому агенту сохранять записи в память
+                  </InputCheckBox>
+                ) : null}
+                {memorySaveEnabled && !memoryStore.policy.autosave ? (
+                  <p className="text-xs leading-5 text-main-500">
+                    Самостоятельная запись отключена глобально. Включите её в
+                    разделе «Настройки → Политики → Память».
+                  </p>
+                ) : null}
+                <p className="text-xs leading-5 text-main-500">
+                  Вкладка доступна, пока у агента включён хотя бы один из
+                  инструментов memory_search или memory_save.
+                </p>
+              </div>
+            )}
+          </FormSection>
         ) : activeTab === "storage" ? (
           <FormSection
             title="Доступ к базам знаний"

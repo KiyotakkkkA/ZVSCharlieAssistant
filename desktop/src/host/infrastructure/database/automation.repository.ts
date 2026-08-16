@@ -42,6 +42,8 @@ interface AgentRow {
   retrieval_limit: number;
   terminal_policy_json: string;
   directory_policy_json: string;
+  memory_read: number;
+  memory_write: number;
 }
 
 interface ScenarioRow {
@@ -185,7 +187,7 @@ export class AutomationRepository {
       .prepare(
         `SELECT id, name, description, instructions, text_model_id, status,
                 max_tool_calls, timeout_seconds, runs, updated_at, retrieval_limit, 
-                terminal_policy_json, directory_policy_json
+                terminal_policy_json, directory_policy_json, memory_read, memory_write
          FROM automation_agents
          ORDER BY updated_at DESC, name ASC`,
       )
@@ -239,7 +241,7 @@ export class AutomationRepository {
       .prepare(
         `SELECT id, name, description, instructions, text_model_id, status,
                 max_tool_calls, timeout_seconds, runs, updated_at, retrieval_limit, 
-                terminal_policy_json, directory_policy_json
+                terminal_policy_json, directory_policy_json, memory_read, memory_write
          FROM automation_agents WHERE id = ?`,
       )
       .get(id) as AgentRow | undefined;
@@ -355,8 +357,9 @@ export class AutomationRepository {
         .prepare(
           `INSERT INTO automation_agents (
              id, name, description, instructions, text_model_id, status,
-             max_tool_calls, timeout_seconds, retrieval_limit, terminal_policy_json, directory_policy_json
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             max_tool_calls, timeout_seconds, retrieval_limit, terminal_policy_json, directory_policy_json,
+             memory_read, memory_write
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(id) DO UPDATE SET
              name = excluded.name, description = excluded.description,
              instructions = excluded.instructions, text_model_id = excluded.text_model_id,
@@ -364,6 +367,7 @@ export class AutomationRepository {
              timeout_seconds = excluded.timeout_seconds, retrieval_limit = excluded.retrieval_limit,
              terminal_policy_json = excluded.terminal_policy_json,
              directory_policy_json = excluded.directory_policy_json,
+             memory_read = excluded.memory_read, memory_write = excluded.memory_write,
              updated_at = CURRENT_TIMESTAMP`,
         )
         .run(
@@ -378,6 +382,8 @@ export class AutomationRepository {
           normalizedInput.retrievalLimit,
           JSON.stringify(normalizedInput.terminalPolicy),
           JSON.stringify(normalizedInput.directoryPolicy),
+          Number(normalizedInput.memoryRead),
+          Number(normalizedInput.memoryWrite),
         );
 
       this.database
@@ -842,6 +848,8 @@ export class AutomationRepository {
       allowedToolIds,
       allowedVectorStoreIds,
       allowedSkillIds,
+      memoryRead: Boolean(row.memory_read),
+      memoryWrite: Boolean(row.memory_write),
       retrievalLimit: row.retrieval_limit,
       maxToolCalls: row.max_tool_calls,
       timeoutSeconds: row.timeout_seconds,

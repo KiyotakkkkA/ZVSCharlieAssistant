@@ -41,6 +41,8 @@ export interface AutomationAgent {
   allowedToolIds: string[];
   allowedVectorStoreIds: number[];
   allowedSkillIds: number[];
+  memoryRead: boolean;
+  memoryWrite: boolean;
   retrievalLimit: number;
   maxToolCalls: number;
   timeoutSeconds: number;
@@ -117,6 +119,12 @@ export type ScenarioRunEvent =
   | { type: "node.started"; runId: number; node: ScenarioNodeRun }
   | { type: "node.output.delta"; runId: number; nodeId: string; delta: string }
   | { type: "approval.required"; runId: number; nodeId: string; prompt: string }
+  | {
+      type: "run.suspended";
+      runId: number;
+      nodeId: string;
+      questionId: number;
+    }
   | { type: "node.completed"; runId: number; node: ScenarioNodeRun }
   | { type: "run.completed"; run: ScenarioRun }
   | { type: "run.failed"; run: ScenarioRun }

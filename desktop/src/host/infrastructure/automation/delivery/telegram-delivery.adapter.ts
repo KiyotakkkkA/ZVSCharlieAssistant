@@ -114,14 +114,13 @@ export class TelegramDeliveryAdapter implements ScenarioDeliveryAdapter {
   }
 }
 
-/** Токен бота входит в URL запроса и не должен утечь в журнал или в UI. */
 function redactToken(message: string, token: string) {
   return token ? message.split(token).join("***") : message;
 }
 
 function splitTelegram(text: string) {
   const result: string[] = [];
-  for (let rest = text; rest.length; ) {
+  for (let rest = text; rest.length;) {
     if (rest.length <= 4000) {
       result.push(rest);
       break;

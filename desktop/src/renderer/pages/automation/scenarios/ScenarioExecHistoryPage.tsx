@@ -1,392 +1,514 @@
-import { ScenarioRun, ScenarioNodeRun } from "@ipc/contracts";
+import type {
+  ScenarioNodeRun,
+  ScenarioRun,
+  UserQuestion,
+} from "@ipc/contracts";
 import {
-  EmptyState,
+  Alert,
   Button,
-  ScrollArea,
-  Timeline,
   CodeView,
+  EmptyState,
+  ScrollArea,
 } from "@kiyotakkkka/zvs-uikit-lib";
 import { APP_PATHS } from "@renderer/app/routes";
 import {
-  TasksIcon,
+  ChevronDownIcon,
   ChevronLeftIcon,
   GraphIcon,
-  ChevronDownIcon,
+  TasksIcon,
 } from "@renderer/components/atoms";
 import { PageHeader } from "@renderer/components/organisms";
 import { useAppNavigation } from "@renderer/hooks";
-import { useState, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 
 type Execution = { run: ScenarioRun; nodes: ScenarioNodeRun[] };
 
-const statusLabels: Record<ScenarioRun["status"], string> = {
-  queued: "В очереди",
-  running: "Выполняется",
-  waiting_for_approval: "Ожидает подтверждения",
-  completed: "Завершён",
-  failed: "Ошибка",
-  cancelled: "Отменён",
+const RUN_STATUS: Record<
+  ScenarioRun["status"],
+  { label: string; tone: string; dot: string }
+> = {
+  queued: { label: "В очереди", tone: "text-main-400", dot: "bg-main-500" },
+  running: {
+    label: "Выполняется",
+    tone: "text-accent-light",
+    dot: "bg-accent-light animate-pulse",
+  },
+  waiting_for_approval: {
+    label: "Ждёт ответа",
+    tone: "text-amber-300",
+    dot: "bg-amber-300 animate-pulse",
+  },
+  completed: {
+    label: "Завершён",
+    tone: "text-emerald-300",
+    dot: "bg-emerald-400",
+  },
+  failed: { label: "Ошибка", tone: "text-red-300", dot: "bg-red-400" },
+  cancelled: { label: "Отменён", tone: "text-main-500", dot: "bg-main-600" },
 };
 
-const originLabels: Record<ScenarioRun["origin"], string> = {
+const NODE_LABELS: Record<ScenarioNodeRun["nodeKind"], string> = {
+  trigger: "Триггер",
+  orchestrator: "Оркестратор",
+  agent: "Агент",
+  knowledge_store: "Хранилище знаний",
+  download_files: "Скачивание файлов",
+  read_files: "Чтение файлов",
+  condition: "Условие",
+  approval: "Вопрос",
+  output: "Результат",
+};
+
+const ORIGIN_LABELS: Record<ScenarioRun["origin"], string> = {
   manual: "Ручной запуск",
   chat: "Из чата",
   background: "Фоновый запуск",
 };
 
-const nodeLabels: Record<ScenarioNodeRun["nodeKind"], string> = {
-  trigger: "Триггер",
-  orchestrator: "Оркестратор",
-  agent: "Агент",
-  knowledge_store: "Хранилище",
-  download_files: "Скачивание файлов",
-  read_files: "Чтение файлов",
-  condition: "Условие",
-  approval: "Подтверждение",
-  output: "Результат",
+const ACTIVE_STATUSES = new Set(["queued", "running", "waiting_for_approval"]);
+
+const formatMs = (ms: number): string => {
+  if (ms < 1_000) return `${Math.max(0, Math.round(ms))} мс`;
+  if (ms < 60_000) return `${(ms / 1_000).toFixed(1)} с`;
+  const minutes = Math.floor(ms / 60_000);
+  const seconds = Math.round((ms % 60_000) / 1_000);
+  return `${minutes} мин ${seconds} с`;
 };
 
-const nodeIcons: Record<ScenarioNodeRun["nodeKind"], string> = {
-  trigger: "mdi:message-outline",
-  orchestrator: "mdi:robot-outline",
-  agent: "mdi:account-cog-outline",
-  knowledge_store: "mdi:database-search-outline",
-  download_files: "mdi:download-outline",
-  read_files: "mdi:file-document-outline",
-  condition: "mdi:source-branch",
-  approval: "mdi:check-decagram-outline",
-  output: "mdi:send-outline",
+const spanMs = (
+  from: string | null,
+  to: string | null,
+  now: number,
+): number | null => {
+  if (!from) return null;
+  const start = new Date(from).getTime();
+  if (!Number.isFinite(start)) return null;
+  return (to ? new Date(to).getTime() : now) - start;
 };
+
+const asText = (value: unknown): string =>
+  typeof value === "string" ? value : JSON.stringify(value, null, 2);
 
 export function ScenarioExecHistoryPage() {
   const { runId } = useParams<{ runId: string }>();
   const { goBack, goTo } = useAppNavigation();
+  const numericRunId = Number(runId);
+
   const [execution, setExecution] = useState<Execution | null>(null);
+  const [questions, setQuestions] = useState<UserQuestion[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
-  const numericRunId = Number(runId);
+  const [answering, setAnswering] = useState(false);
+  const [liveOutput, setLiveOutput] = useState<Map<string, string>>(new Map());
+  const [now, setNow] = useState(() => Date.now());
+  const feedRef = useRef<HTMLDivElement>(null);
+
+  const refresh = useCallback(async () => {
+    try {
+      const [value, pending] = await Promise.all([
+        window.desktop.automation.getScenarioRun(numericRunId),
+        window.desktop.assistant.questions.forExecution(numericRunId),
+      ]);
+      setExecution(value);
+      setQuestions(pending);
+      setError(null);
+    } catch (cause) {
+      setError(
+        cause instanceof Error ? cause.message : "Не удалось загрузить запуск",
+      );
+    }
+  }, [numericRunId]);
 
   useEffect(() => {
     if (!Number.isInteger(numericRunId) || numericRunId <= 0) {
       setError("Некорректный идентификатор запуска");
       return;
     }
-    let disposed = false;
-    let timer: number | undefined;
-    const load = async () => {
-      try {
-        const value =
-          await window.desktop.automation.getScenarioRun(numericRunId);
-        if (disposed) return;
-        setExecution(value);
-        setError(null);
-        if (
-          ["queued", "running", "waiting_for_approval"].includes(
-            value.run.status,
-          )
-        ) {
-          timer = window.setTimeout(load, 2000);
+    void refresh();
+    const stopRuns = window.desktop.automation.subscribeScenarioRuns(
+      (event) => {
+        if ("runId" in event && event.runId !== numericRunId) return;
+        if ("run" in event && event.run.id !== numericRunId) return;
+        if (event.type === "node.output.delta") {
+          setLiveOutput((current) => {
+            const next = new Map(current);
+            next.set(
+              event.nodeId,
+              (next.get(event.nodeId) ?? "") + event.delta,
+            );
+            return next;
+          });
+          return;
         }
-      } catch (cause) {
-        if (!disposed)
-          setError(
-            cause instanceof Error
-              ? cause.message
-              : "Не удалось загрузить запуск",
-          );
-      }
-    };
-    void load();
+        void refresh();
+      },
+    );
+    const stopQuestions = window.desktop.assistant.questions.subscribe(
+      (question) => {
+        if (question.executionId !== numericRunId) return;
+        void refresh();
+      },
+    );
     return () => {
-      disposed = true;
-      if (timer !== undefined) window.clearTimeout(timer);
+      stopRuns();
+      stopQuestions();
     };
-  }, [numericRunId]);
+  }, [numericRunId, refresh]);
+
+  const active = execution ? ACTIVE_STATUSES.has(execution.run.status) : false;
+
+  useEffect(() => {
+    if (!active) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 1_000);
+    return () => window.clearInterval(timer);
+  }, [active]);
+
+  useEffect(() => {
+    if (active)
+      feedRef.current?.scrollTo({ top: feedRef.current.scrollHeight });
+  }, [execution?.nodes.length, active]);
 
   const stats = useMemo(() => {
     if (!execution) return null;
-    const finished = execution.nodes.filter(
-      (node) => node.status === "completed",
-    ).length;
-    const failed = execution.nodes.filter(
-      (node) => node.status === "failed",
-    ).length;
-    const attempts = execution.nodes.reduce(
-      (sum, node) => sum + node.attempt,
-      0,
-    );
+    const nodes = execution.nodes;
     return {
-      finished,
-      failed,
-      attempts,
-      duration: formatDuration(execution.run),
+      total: nodes.length,
+      completed: nodes.filter((node) => node.status === "completed").length,
+      failed: nodes.filter((node) => node.status === "failed").length,
+      retries: nodes.reduce(
+        (sum, node) => sum + Math.max(0, node.attempt - 1),
+        0,
+      ),
+      elapsed: spanMs(
+        execution.run.startedAt ?? execution.run.createdAt,
+        execution.run.completedAt,
+        now,
+      ),
+      slowest: nodes.reduce<{ node: ScenarioNodeRun; ms: number } | null>(
+        (slowest, node) => {
+          const ms = spanMs(node.startedAt, node.completedAt, now);
+          if (ms === null) return slowest;
+          return !slowest || ms > slowest.ms ? { node, ms } : slowest;
+        },
+        null,
+      ),
     };
-  }, [execution]);
+  }, [execution, now]);
+
+  const pendingQuestion = questions.find((item) => item.status === "pending");
+
+  const answer = async (value: string[]) => {
+    if (!pendingQuestion) return;
+    setAnswering(true);
+    try {
+      await window.desktop.assistant.questions.answer({
+        questionId: pendingQuestion.id,
+        answer: value,
+      });
+      await refresh();
+    } catch (cause) {
+      setError(
+        cause instanceof Error ? cause.message : "Не удалось отправить ответ",
+      );
+    } finally {
+      setAnswering(false);
+    }
+  };
 
   if (!execution) {
     return (
       <div className="grid h-full place-items-center p-4">
         {error ? (
           <EmptyState
-            icon={<TasksIcon className="size-6" />}
-            title="Запуск не найден"
+            icon={<TasksIcon className="size-8" />}
+            title="Запуск недоступен"
             description={error}
+            action={
+              <Button onClick={() => goBack(APP_PATHS.tasks)}>Назад</Button>
+            }
           />
         ) : (
-          <span className="text-sm text-main-500">
-            Загрузка истории запуска…
-          </span>
+          <p className="text-sm text-main-500">Загрузка запуска…</p>
         )}
       </div>
     );
   }
 
-  const { run, nodes } = execution;
+  const { run } = execution;
+  const status = RUN_STATUS[run.status];
+
   return (
-    <section className="flex h-full min-h-0 flex-col overflow-hidden p-4">
+    <div className="flex h-full min-h-0 flex-col p-4">
       <PageHeader
-        title={`${run.scenarioName} · запуск #${run.id}`}
-        description={`${originLabels[run.origin]}`}
-        breadcrumbs={[
-          { label: "Автоматизация" },
-          { label: "Сценарии", to: APP_PATHS.automation.scenarios.index },
-          { label: `Запуск #${run.id}` },
-        ]}
+        title={run.scenarioName}
+        description={`${ORIGIN_LABELS[run.origin]} · запуск #${run.id}`}
+        breadcrumbs={[{ label: "Задачи" }, { label: `Запуск #${run.id}` }]}
       >
-        <Button variant="ghost" onClick={() => goBack()}>
-          <ChevronLeftIcon className="size-4" />
-          Назад
-        </Button>
-        <Button
-          variant="primary"
-          className="px-2"
-          onClick={() =>
-            goTo(
-              APP_PATHS.automation.scenarios.edit.replace(
-                ":scenarioId",
-                run.scenarioId,
-              ),
-            )
-          }
-        >
-          <GraphIcon className="size-4" />
-          Сценарий
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            onClick={() => goBack(APP_PATHS.tasks)}
+            title="Назад к задачам"
+          >
+            <ChevronLeftIcon className="size-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() =>
+              goTo(
+                APP_PATHS.automation.scenarios.edit.replace(
+                  ":scenarioId",
+                  run.scenarioId,
+                ),
+              )
+            }
+          >
+            <GraphIcon className="mr-1.5 size-4" />
+            Открыть сценарий
+          </Button>
+          {active ? (
+            <Button
+              variant="danger"
+              onClick={() =>
+                void window.desktop.automation.cancelScenarioRun(run.id)
+              }
+            >
+              Остановить
+            </Button>
+          ) : null}
+        </div>
       </PageHeader>
 
-      <ScrollArea className="min-h-0 flex-1">
-        <div className="mx-auto max-w-6xl space-y-5 pb-8">
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <Metric
-              label="Статус"
-              value={statusLabels[run.status]}
-              tone={run.status}
-            />
-            <Metric label="Длительность" value={stats!.duration} />
-            <Metric
-              label="Шаги"
-              value={`${stats!.finished} из ${nodes.length}`}
-            />
-            <Metric label="Ошибки" value={String(stats!.failed)} />
+      <div className="mb-3 grid shrink-0 gap-2 sm:grid-cols-4">
+        <Metric
+          label="Состояние"
+          value={
+            <span className={`flex items-center gap-2 ${status.tone}`}>
+              <span className={`size-2 rounded-full ${status.dot}`} />
+              {status.label}
+            </span>
+          }
+        />
+        <Metric
+          label="Прогресс"
+          value={`${stats?.completed ?? 0} из ${stats?.total ?? 0} узлов`}
+        />
+        <Metric
+          label="Идёт"
+          value={
+            stats?.elapsed !== null && stats?.elapsed !== undefined
+              ? formatMs(stats.elapsed)
+              : "—"
+          }
+        />
+        <Metric
+          label="Дольше всего"
+          value={
+            stats?.slowest
+              ? `${NODE_LABELS[stats.slowest.node.nodeKind]} · ${formatMs(stats.slowest.ms)}`
+              : "—"
+          }
+        />
+      </div>
+
+      {run.error ? (
+        <Alert
+          variant="danger"
+          title="Запуск завершился ошибкой"
+          className="mb-3 shrink-0"
+        >
+          {run.error}
+        </Alert>
+      ) : null}
+
+      {pendingQuestion ? (
+        <Alert
+          variant="warning"
+          title={pendingQuestion.header || "Сценарий ждёт ответа"}
+          className="mb-3 shrink-0"
+        >
+          <p className="mb-2 whitespace-pre-wrap">{pendingQuestion.question}</p>
+          <p className="mb-3 text-xs text-main-400">
+            Канал: {CHANNEL_LABELS[pendingQuestion.channel]}
+            {pendingQuestion.recipient ? ` · ${pendingQuestion.recipient}` : ""}
+            {pendingQuestion.expiresAt
+              ? ` · до ${new Date(pendingQuestion.expiresAt).toLocaleTimeString()}`
+              : ""}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {pendingQuestion.options.length ? (
+              pendingQuestion.options.map((option) => (
+                <Button
+                  key={option.label}
+                  disabled={answering}
+                  onClick={() => void answer([option.label])}
+                >
+                  {option.label}
+                </Button>
+              ))
+            ) : (
+              <FreeTextAnswer disabled={answering} onSubmit={answer} />
+            )}
           </div>
+        </Alert>
+      ) : null}
 
-          {run.error ? (
-            <div className="rounded-xl border border-danger-medium/30 bg-danger-medium/10 p-4">
-              <p className="text-sm font-medium text-danger-light">
-                Ошибка выполнения
-              </p>
-              <p className="mt-2 whitespace-pre-wrap text-sm text-main-300">
-                {run.error}
-              </p>
-            </div>
-          ) : null}
-
-          <DataSection
-            title="Вход запуска"
-            value={run.input}
-            fileName="input.json"
-          />
-
-          <section className="rounded-xl border border-main-700/50 bg-main-800/25 p-5">
-            <div className="mb-5">
-              <h2 className="font-semibold text-main-100">Ход выполнения</h2>
-              <p className="mt-1 text-xs text-main-500">
-                Последовательность и данные узлов сценария.
-              </p>
-            </div>
-            <Timeline>
-              {nodes.map((node) => {
-                const isExpanded = expanded.has(node.id);
-                return (
-                  <Timeline.Item key={node.id} icon={nodeIcons[node.nodeKind]}>
-                    <Timeline.ItemTitle className="flex items-center justify-between gap-3">
-                      <span>
-                        {nodeLabels[node.nodeKind]} · {node.nodeId}
+      <ScrollArea className="min-h-0 flex-1" ref={feedRef}>
+        <ol className="space-y-2 pb-4 pr-1">
+          {execution.nodes.map((node) => {
+            const nodeStatus = RUN_STATUS[node.status];
+            const duration = spanMs(node.startedAt, node.completedAt, now);
+            const streaming = liveOutput.get(node.nodeId);
+            const isOpen = expanded.has(node.id);
+            return (
+              <li
+                key={node.id}
+                className="rounded-xl bg-main-800/40 ring-1 ring-main-700/30"
+              >
+                <button
+                  type="button"
+                  aria-expanded={isOpen}
+                  className="flex w-full items-center gap-3 px-4 py-3 text-left"
+                  onClick={() =>
+                    setExpanded((current) => {
+                      const next = new Set(current);
+                      if (next.has(node.id)) next.delete(node.id);
+                      else next.add(node.id);
+                      return next;
+                    })
+                  }
+                >
+                  <span
+                    className={`size-2 shrink-0 rounded-full ${nodeStatus.dot}`}
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm text-main-100">
+                      {NODE_LABELS[node.nodeKind]}
+                      <span className="ml-2 text-xs text-main-500">
+                        {node.nodeId}
                       </span>
-                      <Button
-                        variant="ghost"
-                        className="size-7 p-0"
-                        aria-expanded={isExpanded}
-                        aria-label={
-                          isExpanded
-                            ? "Скрыть данные шага"
-                            : "Показать данные шага"
-                        }
-                        onClick={() =>
-                          setExpanded((current) => toggleSet(current, node.id))
-                        }
-                      >
-                        <ChevronDownIcon
-                          className={`size-4 transition-transform ${isExpanded ? "rotate-180" : ""}`}
-                        />
-                      </Button>
-                    </Timeline.ItemTitle>
-                    <Timeline.ItemSubTitle>
-                      {statusLabels[node.status]} · попытка {node.attempt} ·{" "}
-                      {formatNodeDuration(node)}
-                    </Timeline.ItemSubTitle>
-                    <Timeline.ItemContent>
-                      <div
-                        className={`grid transition-[grid-template-rows,opacity] duration-300 ${isExpanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
-                      >
-                        <div className="min-h-0 overflow-hidden">
-                          <div className="grid gap-4 pt-3 lg:grid-cols-2">
-                            <DataValue
-                              title="Вход"
-                              value={node.input}
-                              fileName={`${node.nodeId}-input.json`}
-                            />
-                            <DataValue
-                              title={node.error ? "Ошибка" : "Результат"}
-                              value={node.error ?? node.output}
-                              fileName={`${node.nodeId}-output.json`}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </Timeline.ItemContent>
-                  </Timeline.Item>
-                );
-              })}
-            </Timeline>
-          </section>
+                    </span>
+                    <span className={`text-xs ${nodeStatus.tone}`}>
+                      {nodeStatus.label}
+                      {node.attempt > 1 ? ` · попытка ${node.attempt}` : ""}
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-xs tabular-nums text-main-500">
+                    {duration === null ? "—" : formatMs(duration)}
+                  </span>
+                  <ChevronDownIcon
+                    className={`size-4 shrink-0 text-main-500 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                  />
+                </button>
 
-          <DataSection
-            title="Итоговый результат"
-            value={run.output}
-            fileName="output.json"
-          />
-        </div>
+                {streaming && node.status === "running" ? (
+                  <pre className="mx-4 mb-3 max-h-40 overflow-auto whitespace-pre-wrap rounded-lg bg-main-900/60 p-3 text-xs leading-5 text-main-300">
+                    {streaming}
+                  </pre>
+                ) : null}
+
+                {node.error ? (
+                  <p className="mx-4 mb-3 rounded-lg bg-red-500/10 p-3 text-xs leading-5 text-red-200">
+                    {node.error}
+                  </p>
+                ) : null}
+
+                {isOpen ? (
+                  <div className="space-y-3 border-t border-main-700/30 p-4">
+                    <LabelledCode label="Вход" value={node.input} />
+                    <LabelledCode label="Выход" value={node.output} />
+                  </div>
+                ) : null}
+              </li>
+            );
+          })}
+        </ol>
+
+        {run.output !== null && run.output !== undefined ? (
+          <div className="mb-4">
+            <p className="mb-2 text-xs font-medium text-main-400">
+              Результат запуска
+            </p>
+            <CodeView
+              code={asText(run.output)}
+              language="json"
+              fileName="output.json"
+              copyable
+              maxContentHeight={320}
+            />
+          </div>
+        ) : null}
       </ScrollArea>
-    </section>
-  );
-}
-
-function Metric({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: string;
-  tone?: ScenarioRun["status"];
-}) {
-  const color =
-    tone === "completed"
-      ? "text-success-light"
-      : tone === "failed"
-        ? "text-danger-light"
-        : tone === "running"
-          ? "text-accent-light"
-          : "text-main-100";
-  return (
-    <div className="rounded-xl border border-main-700/40 bg-main-800/35 p-4">
-      <p className="text-xs text-main-500">{label}</p>
-      <p className={`mt-2 font-medium ${color}`}>{value}</p>
     </div>
   );
 }
 
-function DataSection({
-  title,
-  value,
-  fileName,
-}: {
-  title: string;
-  value: unknown;
-  fileName: string;
-}) {
+const CHANNEL_LABELS: Record<UserQuestion["channel"], string> = {
+  ui: "окно приложения",
+  telegram: "Telegram",
+  email: "почта",
+};
+
+function Metric({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <section className="rounded-xl border border-main-700/50 bg-main-800/25 p-5">
-      <h2 className="mb-4 font-semibold text-main-100">{title}</h2>
-      <DataValue title={title} value={value} fileName={fileName} />
-    </section>
+    <div className="rounded-xl bg-main-800/40 px-4 py-3 ring-1 ring-main-700/30">
+      <p className="text-[11px] uppercase tracking-wide text-main-500">
+        {label}
+      </p>
+      <p className="mt-1 text-sm text-main-100">{value}</p>
+    </div>
   );
 }
 
-function DataValue({
-  title,
-  value,
-  fileName,
-}: {
-  title: string;
-  value: unknown;
-  fileName: string;
-}) {
-  const json =
-    typeof value === "string" ? value : JSON.stringify(value ?? null, null, 2);
+function LabelledCode({ label, value }: { label: string; value: unknown }) {
+  if (value === null || value === undefined)
+    return (
+      <div>
+        <p className="mb-1 text-xs font-medium text-main-400">{label}</p>
+        <p className="text-xs text-main-600">пусто</p>
+      </div>
+    );
   return (
-    <div className="min-w-0">
-      <p className="mb-2 text-xs text-main-500">{title}</p>
+    <div>
+      <p className="mb-1 text-xs font-medium text-main-400">{label}</p>
       <CodeView
-        code={json}
-        language={typeof value === "string" ? "text" : "json"}
-        fileName={fileName}
+        code={asText(value)}
+        language="json"
+        fileName={`${label.toLowerCase()}.json`}
         copyable
-        defaultActions
-        maxContentHeight={320}
+        maxContentHeight={220}
       />
     </div>
   );
 }
 
-function toggleSet(current: Set<number>, id: number) {
-  const next = new Set(current);
-  if (next.has(id)) next.delete(id);
-  else next.add(id);
-  return next;
-}
-
-function parseDate(value: string | null) {
-  if (!value) return null;
-  const date = new Date(
-    value.includes("T") ? value : `${value.replace(" ", "T")}Z`,
+function FreeTextAnswer({
+  disabled,
+  onSubmit,
+}: {
+  disabled: boolean;
+  onSubmit: (answer: string[]) => void | Promise<void>;
+}) {
+  const [value, setValue] = useState("");
+  return (
+    <form
+      className="flex w-full gap-2"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (value.trim()) void onSubmit([value.trim()]);
+      }}
+    >
+      <input
+        aria-label="Ответ сценарию"
+        className="min-w-0 flex-1 rounded-lg bg-main-900/60 px-3 py-2 text-sm text-main-100 ring-1 ring-main-700/40 outline-none focus:ring-accent-medium/50"
+        value={value}
+        placeholder="Ваш ответ"
+        onChange={(event) => setValue(event.target.value)}
+      />
+      <Button type="submit" disabled={disabled || !value.trim()}>
+        Ответить
+      </Button>
+    </form>
   );
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
-function formatDuration(run: ScenarioRun) {
-  const start = parseDate(run.startedAt ?? run.createdAt);
-  const end =
-    parseDate(run.completedAt) ??
-    (run.status === "running" ? new Date() : null);
-  return start && end
-    ? formatMilliseconds(end.getTime() - start.getTime())
-    : "—";
-}
-
-function formatNodeDuration(node: ScenarioNodeRun) {
-  const start = parseDate(node.startedAt);
-  const end = parseDate(node.completedAt);
-  return start && end
-    ? formatMilliseconds(end.getTime() - start.getTime())
-    : "—";
-}
-
-function formatMilliseconds(value: number) {
-  const seconds = Math.max(0, Math.round(value / 1000));
-  if (seconds < 60) return `${seconds} сек.`;
-  const minutes = Math.floor(seconds / 60);
-  return `${minutes} мин. ${seconds % 60} сек.`;
 }

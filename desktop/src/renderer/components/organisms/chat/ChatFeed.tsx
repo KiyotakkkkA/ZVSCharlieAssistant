@@ -1,5 +1,12 @@
 import { ScrollArea, useToasts } from "@kiyotakkkka/zvs-uikit-lib";
-import { memo, useLayoutEffect, useRef, useState, type UIEvent } from "react";
+import {
+  memo,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+  type UIEvent,
+} from "react";
 import {
   ChatIcon,
   RobotIcon,
@@ -63,6 +70,7 @@ const suggestions = [
 
 interface ChatFeedProps {
   title: string;
+  headerActions?: ReactNode;
   messages: ChatMessage[];
   onSuggestionSelect: (prompt: string) => void;
   conversationId: number | null;
@@ -81,6 +89,7 @@ interface ChatFeedProps {
 
 export function ChatFeed({
   title,
+  headerActions,
   messages,
   onSuggestionSelect,
   conversationId,
@@ -141,13 +150,18 @@ export function ChatFeed({
   };
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <header className="flex h-14 shrink-0 items-center border-b border-main-700/35 px-5">
-        <span className="mr-3 grid size-8 place-items-center rounded-lg bg-accent-medium/10 text-accent-light">
-          <ChatIcon className="size-4" />
-        </span>
-        <div>
-          <h1 className="text-sm font-semibold text-main-100">{title}</h1>
+      <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-main-700/35 px-5">
+        <div className="flex min-w-0 items-center">
+          <span className="mr-3 grid size-8 shrink-0 place-items-center rounded-lg bg-accent-medium/10 text-accent-light">
+            <ChatIcon className="size-4" />
+          </span>
+          <h1 className="truncate text-sm font-semibold text-main-100">
+            {title}
+          </h1>
         </div>
+        {headerActions ? (
+          <div className="flex shrink-0 items-center gap-2">{headerActions}</div>
+        ) : null}
       </header>
       <ScrollArea
         ref={scrollRef}

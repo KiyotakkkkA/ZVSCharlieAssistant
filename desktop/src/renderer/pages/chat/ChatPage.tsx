@@ -9,12 +9,23 @@ import {
 import {
   ChatComposer,
   ChatFeed,
+  ChatMemoryModal,
+  ChatQuestionCard,
   ChatSidebar,
+  ChatTaskPanel,
   type ChatDialog,
   type ChatMode,
   type ChatModel,
 } from "../../components/organisms/chat";
-import { automationStore, chatStore, textProviderStore } from "../../stores";
+import {
+  automationStore,
+  chatStore,
+  memoryStore,
+  questionStore,
+  taskPlanStore,
+  textProviderStore,
+} from "../../stores";
+import { BrainIcon } from "@renderer/components/atoms";
 import { PrimaryButton } from "@renderer/components/atoms/buttons";
 import { DangerModal } from "@renderer/components/organisms/modals";
 import {
@@ -34,6 +45,7 @@ export const ChatPage = observer(function ChatPage() {
   const [dialogToDelete, setDialogToDelete] = useState<ChatDialog | null>(null);
   const [dialogTitle, setDialogTitle] = useState("");
   const [renaming, setRenaming] = useState(false);
+  const [memoryOpen, setMemoryOpen] = useState(false);
   const nextModelOptions = textProviderStore.enabledModels.map((item) => ({
     value: String(item.id),
   }));
@@ -70,6 +82,10 @@ export const ChatPage = observer(function ChatPage() {
     if (!scenarioOptions.some((item) => item.value === scenarioId))
       setScenarioId(scenarioOptions[0]?.value ?? "");
   }, [scenarioId, scenarioOptions]);
+  useEffect(() => {
+    void taskPlanStore.load(chatStore.activeConversationId);
+    void questionStore.load(chatStore.activeConversationId);
+  }, [chatStore.activeConversationId, chatStore.activeRunId]);
   const dialogs = useMemo(
     () =>
       chatStore.conversations
@@ -149,9 +165,27 @@ export const ChatPage = observer(function ChatPage() {
         }}
         onDelete={setDialogToDelete}
       />
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="relative flex min-w-0 flex-1 flex-col">
+        <ChatTaskPanel />
         <ChatFeed
           title={active?.title ?? "Новый диалог"}
+          headerActions={
+            <button
+              type="button"
+              title="Открыть память"
+              aria-label={`Открыть память${memoryStore.total ? `, записей: ${memoryStore.total}` : ""}`}
+              className="flex h-8 items-center gap-2 rounded-lg px-2.5 text-xs text-main-400 transition-colors hover:bg-main-700/45 hover:text-main-100"
+              onClick={() => setMemoryOpen(true)}
+            >
+              <BrainIcon className="size-4" />
+              <span className="hidden sm:inline">Память</span>
+              {memoryStore.total ? (
+                <span className="rounded-full bg-accent-medium/10 px-1.5 py-0.5 text-[10px] tabular-nums text-accent-light">
+                  {memoryStore.total}
+                </span>
+              ) : null}
+            </button>
+          }
           conversationId={chatStore.activeConversationId}
           messages={chatStore.messages
             .filter((item) => item.role === "user" || item.role === "assistant")
@@ -231,6 +265,7 @@ export const ChatPage = observer(function ChatPage() {
           scenarioNodeOutput={new Map(chatStore.scenarioNodeOutput.entries())}
         />
         <ChatComposer
+          topContent={<ChatQuestionCard />}
           text={text}
           mode={mode}
           model={model}
@@ -256,6 +291,10 @@ export const ChatPage = observer(function ChatPage() {
         confirmLabel="Продолжить"
         onCancel={() => void chatStore.approveScenario(false)}
         onConfirm={() => chatStore.approveScenario(true)}
+      />
+      <ChatMemoryModal
+        open={memoryOpen}
+        onClose={() => setMemoryOpen(false)}
       />
       <DangerModal
         open={dialogToDelete !== null}
