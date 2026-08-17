@@ -4,7 +4,7 @@ import type { StartRunInput } from "../../../shared/dto";
 import { ChatRepository } from "../database/chat.repository";
 import { ProviderRegistry } from "./provider.registry";
 import { ToolRegistry } from "../tools/tool.registry";
-import type { ScenarioRunEngine } from "../automation/scenario-run-engine";
+import type { ScenarioRuntimeEngine } from "../automation/engine/scenario-runtime-engine";
 import type { MemoryService } from "../../application/services/memory.service";
 type Emit = (event: RunEvent) => void;
 
@@ -21,7 +21,7 @@ export class RunEngine {
     private readonly providers: ProviderRegistry,
     private readonly tools: ToolRegistry,
     private readonly memory: MemoryService,
-    private readonly scenarios?: ScenarioRunEngine,
+    private readonly scenarios?: ScenarioRuntimeEngine,
   ) {}
   async start(
     input: StartRunInput,
@@ -104,7 +104,7 @@ export class RunEngine {
   ): { runId: number; conversationId: number } {
     if (!this.scenarios) throw new Error("Движок сценариев недоступен");
     if (!input.scenarioId) throw new Error("Сценарий не выбран");
-    this.scenarios.assertRunnable(input.scenarioId, "chat");
+    this.scenarios.assertRunnable(input.scenarioId);
     const conversationId =
       input.conversationId ??
       this.data.createConversation("scenario", undefined, undefined);

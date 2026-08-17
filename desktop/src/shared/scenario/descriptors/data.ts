@@ -367,6 +367,7 @@ export const knowledgeStoreDescriptor: ScenarioNodeDescriptor<
   outputs: [knowledgeOutput()],
   itemMode: "collection",
   idempotent: true,
+  isTrigger: true,
   validate: ({ node, outgoing }) => {
     const config = node.config as { vectorStoreId?: number };
     const issues = [];

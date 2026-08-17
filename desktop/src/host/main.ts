@@ -25,8 +25,6 @@ import { TextProviderRepository } from "./infrastructure/database/text-provider.
 import { ChatRepository } from "./infrastructure/database/chat.repository";
 import { ProviderRegistry } from "./infrastructure/text-generation/provider.registry";
 import { RunEngine } from "./infrastructure/text-generation/run-engine";
-import { ScenarioCompiler } from "./infrastructure/automation/scenario-compiler";
-import { ScenarioRunEngine } from "./infrastructure/automation/scenario-run-engine";
 import { ScenarioExecutionRepository } from "./infrastructure/database/scenario-execution.repository";
 import { ToolRegistry } from "./infrastructure/tools/tool.registry";
 import { OllamaWebService } from "./infrastructure/tools/ollama-web.service";
@@ -102,6 +100,12 @@ import {
   registerAssistantHandlers,
   removeAssistantHandlers,
 } from "../ipc/main/register-assistant-handlers";
+import { ScenarioGraphRepository } from "./infrastructure/database/scenario-graph.repository";
+import { SqliteRuntimePersistence } from "./infrastructure/automation/engine/sqlite-runtime-persistence";
+import { HostScenarioEngineServices } from "./infrastructure/automation/engine/host-services.adapter";
+import { createExecutorMap } from "./infrastructure/automation/engine/executors";
+import { ScenarioRuntimeEngine } from "./infrastructure/automation/engine/scenario-runtime-engine";
+import { createLogger } from "./infrastructure/observability/logger";
 
 let database: ReturnType<typeof createSqliteDatabase> | undefined;
 let scenarioJobWorker: ScenarioJobWorker | undefined;
@@ -218,23 +222,45 @@ app.whenReady().then(() => {
     commandExecutionService,
   );
   registerDirectoryPolicyHandlers(directoryPolicyRepository);
-  const scenarioEngine = new ScenarioRunEngine(
+  const scenarioGraphs = new ScenarioGraphRepository(database);
+  const runtimePersistence = new SqliteRuntimePersistence(
+    database,
+    join(app.getPath("userData"), "executions"),
+  );
+  let scenarioRuntimeEngine: ScenarioRuntimeEngine;
+  const engineServices = new HostScenarioEngineServices(
     scenarioExecutions,
     providerRegistry,
-    new ScenarioCompiler(),
-    vectorService,
     toolRegistry,
+    vectorService,
     integrationRepository,
+    secretRepository,
     scenarioFileDownloads,
     new ScenarioFileReaderService(scenarioDownloadsRoot, textExtraction),
     new ScenarioResponseService(scenarioDeliveries),
+    questionService,
+    () => scenarioRuntimeEngine,
+  );
+  const engineLogger = createLogger({
+    directory: join(app.getPath("userData"), "logs"),
+    fileName: "scenario-engine",
+  });
+  scenarioRuntimeEngine = new ScenarioRuntimeEngine(
+    scenarioGraphs,
+    scenarioExecutions,
+    runtimePersistence,
+    engineServices,
+    createExecutorMap(engineServices),
+    engineLogger,
     questionService,
   );
   registerAutomationHandlers(
     automationRepository,
     scenarioExecutions,
-    scenarioEngine,
+    scenarioGraphs,
+    scenarioRuntimeEngine,
     integrationRepository,
+    questionService,
   );
   registerChatHandlers(
     chatRepository,
@@ -243,13 +269,17 @@ app.whenReady().then(() => {
       providerRegistry,
       toolRegistry,
       memoryService,
-      scenarioEngine,
+      scenarioRuntimeEngine,
     ),
   );
   registerCoreInteractorHandlers(new CoreInteractorService());
   registerAssistantHandlers(memoryService, taskPlans, questionService);
+
   createMainWindow();
-  scenarioJobWorker = new ScenarioJobWorker(automationJobs, scenarioEngine);
+  scenarioJobWorker = new ScenarioJobWorker(
+    automationJobs,
+    scenarioRuntimeEngine,
+  );
   intervalScheduleWorker = new IntervalScheduleWorker(
     automationJobs,
     integrationRepository,

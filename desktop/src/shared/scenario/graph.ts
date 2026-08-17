@@ -11,13 +11,13 @@ export type NodeErrorMode = z.infer<typeof nodeErrorModeSchema>;
 export const nodeRetryPolicySchema = z.object({
   maxTries: z.int().min(1).max(10).default(1),
   backoffMs: z.int().min(0).max(600_000).default(1_000),
-  backoffFactor: z.number().min(1).max(10).default(2),
+  backoffFactor: z.number().min(0).max(10).default(2),
   maxBackoffMs: z.int().min(0).max(3_600_000).default(60_000),
 });
 export type NodeRetryPolicy = z.infer<typeof nodeRetryPolicySchema>;
 
 export const nodeRuntimeSchema = z.object({
-  retry: nodeRetryPolicySchema.optional(),
+  retry: nodeRetryPolicySchema.partial().optional(),
   onError: nodeErrorModeSchema.optional(),
   timeoutSeconds: z.int().min(1).max(86_400).optional(),
   itemMode: z.enum(["collection", "each"]).optional(),

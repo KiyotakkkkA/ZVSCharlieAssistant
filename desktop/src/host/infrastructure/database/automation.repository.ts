@@ -46,18 +46,6 @@ interface AgentRow {
   memory_write: number;
 }
 
-interface ScenarioRow {
-  id: string;
-  name: string;
-  description: string;
-  status: AutomationScenario["status"];
-  revision_id: number;
-  version: number;
-  graph_json: string;
-  tool_settings_json: string;
-  last_run_at: string | null;
-  updated_at: string;
-}
 
 const STATUSES = new Set<AutomationStatus>(["draft", "active", "disabled"]);
 
@@ -107,11 +95,10 @@ export class AutomationRepository {
     this.toolsById = new Map(tools.map((tool) => [tool.id, tool]));
   }
 
-  getSnapshot(): AutomationSnapshot {
+  getSnapshot(): Omit<AutomationSnapshot, "scenarios"> {
     return {
       tools: this.tools.map((tool) => this.mapTool(tool)),
       agents: this.listAgents(),
-      scenarios: this.listScenarios(),
       skills: this.listSkillsFull(),
     };
   }
@@ -441,108 +428,6 @@ export class AutomationRepository {
     );
   }
 
-  listScenarios(): AutomationScenario[] {
-    const rows = this.database
-      .prepare(
-        `SELECT s.id, s.name, s.description, s.status, r.id AS revision_id,
-                r.version, r.graph_json, r.tool_settings_json,
-                s.last_run_at, s.updated_at
-         FROM automation_scenarios s
-         JOIN automation_scenario_revisions r ON r.id = s.active_revision_id
-         ORDER BY updated_at DESC, name ASC`,
-      )
-      .all() as ScenarioRow[];
-    return rows.map((row) => this.mapScenario(row));
-  }
-
-  findScenario(id: string): AutomationScenario | undefined {
-    const row = this.database
-      .prepare(
-        `SELECT s.id, s.name, s.description, s.status, r.id AS revision_id,
-                r.version, r.graph_json, r.tool_settings_json,
-                s.last_run_at, s.updated_at
-         FROM automation_scenarios s
-         JOIN automation_scenario_revisions r ON r.id = s.active_revision_id
-         WHERE s.id = ?`,
-      )
-      .get(id) as ScenarioRow | undefined;
-    return row ? this.mapScenario(row) : undefined;
-  }
-
-  upsertScenario(input: UpsertAutomationScenarioInput): AutomationScenario {
-    if (!STATUSES.has(input.status))
-      throw new Error("Недопустимый статус сценария");
-    this.validateGraph(input.graph);
-
-    const seenTools = new Set<string>();
-    const toolSettings = input.toolSettings.map((setting) => {
-      const toolId = normalizeText(setting.toolId, "Инструмент", 120);
-      this.assertToolsExist([toolId]);
-      if (seenTools.has(toolId))
-        throw new Error("Настройки инструмента продублированы");
-      seenTools.add(toolId);
-      this.assertJsonSerializable(setting.settings, "Настройки инструмента");
-      return { toolId, settings: setting.settings };
-    });
-
-    const id = input.id ?? randomUUID();
-    if (input.id && !this.findScenario(input.id))
-      throw new Error("Сценарий не найден");
-
-    const name = normalizeText(input.name, "Название", 120);
-    const description = normalizeText(input.description, "Описание", 1000);
-
-    this.database.transaction(() => {
-      this.database
-        .prepare(
-          `INSERT INTO automation_scenarios (id, name, description, status)
-           VALUES (?, ?, ?, ?)
-           ON CONFLICT(id) DO UPDATE SET
-             name = excluded.name, description = excluded.description,
-             status = excluded.status, updated_at = CURRENT_TIMESTAMP`,
-        )
-        .run(id, name, description, input.status);
-
-      const version = (
-        this.database
-          .prepare(
-            "SELECT COALESCE(MAX(version), 0) + 1 AS version FROM automation_scenario_revisions WHERE scenario_id = ?",
-          )
-          .get(id) as { version: number }
-      ).version;
-
-      const revisionId = Number(
-        this.database
-          .prepare(
-            `INSERT INTO automation_scenario_revisions
-               (scenario_id, version, graph_json, tool_settings_json)
-             VALUES (?, ?, ?, ?)`,
-          )
-          .run(
-            id,
-            version,
-            JSON.stringify(input.graph),
-            JSON.stringify(toolSettings),
-          ).lastInsertRowid,
-      );
-
-      this.database
-        .prepare(
-          "UPDATE automation_scenarios SET active_revision_id=?, updated_at=CURRENT_TIMESTAMP WHERE id=?",
-        )
-        .run(revisionId, id);
-    })();
-
-    return this.findScenario(id)!;
-  }
-
-  deleteScenario(id: string): void {
-    const result = this.database
-      .prepare("DELETE FROM automation_scenarios WHERE id = ?")
-      .run(normalizeText(id, "Идентификатор", 120));
-    if (result.changes === 0) throw new Error("Сценарий не найден");
-  }
-
   listSkills(): Omit<AutomationSkill, "instructions">[] {
     return (
       this.database
@@ -743,35 +628,6 @@ export class AutomationRepository {
     }
   }
 
-  private validateGraph(graph: AutomationScenarioGraph): void {
-    if (!graph || !Array.isArray(graph.nodes) || !Array.isArray(graph.edges))
-      throw new Error("Граф сценария имеет некорректный формат");
-    if (graph.nodes.length > 1000 || graph.edges.length > 5000)
-      throw new Error("Граф сценария превышает допустимый размер");
-
-    const nodeIds = new Set<string>();
-    for (const node of graph.nodes) {
-      const nodeId = normalizeText(node.id, "Идентификатор узла", 120);
-      if (nodeIds.has(nodeId)) throw new Error("В графе есть дубликаты узлов");
-      nodeIds.add(nodeId);
-      normalizeText(node.title, "Название узла", 120);
-      if (!Number.isFinite(node.x) || !Number.isFinite(node.y))
-        throw new Error("Координаты узла имеют некорректный формат");
-      if (node.config)
-        this.assertJsonSerializable(node.config, "Конфигурация узла");
-    }
-
-    const edgeIds = new Set<string>();
-    for (const edge of graph.edges) {
-      const edgeId = normalizeText(edge.id, "Идентификатор связи", 120);
-      if (edgeIds.has(edgeId)) throw new Error("В графе есть дубликаты связей");
-      edgeIds.add(edgeId);
-      if (!nodeIds.has(edge.source) || !nodeIds.has(edge.target))
-        throw new Error("Связь ссылается на отсутствующий узел");
-    }
-    this.assertJsonSerializable(graph, "Граф сценария");
-  }
-
   private assertJsonSerializable(value: unknown, label: string): void {
     try {
       JSON.stringify(value);
@@ -866,28 +722,4 @@ export class AutomationRepository {
     };
   }
 
-  private mapScenario(row: ScenarioRow): AutomationScenario {
-    const graph = parseJsonDto(
-      automationScenarioGraphDtoSchema,
-      row.graph_json,
-    );
-    const toolSettings = parseJsonDto(
-      automationScenarioToolSettingDtoSchema.array(),
-      row.tool_settings_json,
-    );
-
-    return {
-      id: row.id,
-      name: row.name,
-      description: row.description,
-      status: row.status,
-      graph,
-      toolSettings,
-      revisionId: row.revision_id,
-      version: row.version,
-      nodesCount: graph.nodes.length,
-      lastRunAt: row.last_run_at,
-      updatedAt: row.updated_at,
-    };
-  }
 }

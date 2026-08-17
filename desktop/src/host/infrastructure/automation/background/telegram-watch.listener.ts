@@ -229,10 +229,18 @@ function matchesBinding(
   binding: DueTriggerBinding,
   message: NonNullable<TelegramUpdate["message"]>,
 ): boolean {
-  const allowed = binding.config.allowedChatIds as string[] | undefined;
-  if (allowed?.length && !allowed.includes(String(message.chat.id)))
-    return false;
-  const command = String(binding.config.command ?? "").trim();
+  const config = binding.config as {
+    allowedChatIds?: string[];
+    allowAnyChat?: boolean;
+    command?: string;
+    ignoreBots?: boolean;
+  };
+  if (config.ignoreBots !== false && message.from?.is_bot) return false;
+  if (!config.allowAnyChat) {
+    const allowed = config.allowedChatIds ?? [];
+    if (!allowed.includes(String(message.chat.id))) return false;
+  }
+  const command = String(config.command ?? "").trim();
   return (
     !command || (message.text ?? message.caption ?? "").startsWith(command)
   );

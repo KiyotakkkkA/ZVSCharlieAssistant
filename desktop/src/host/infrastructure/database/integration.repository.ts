@@ -36,6 +36,10 @@ export interface DueTriggerBinding {
 export class IntegrationRepository {
   constructor(private readonly db: Database.Database) {}
 
+  transaction<T>(fn: () => T): T {
+    return this.db.transaction(fn)();
+  }
+
   snapshot(): IntegrationSnapshot {
     return { profiles: this.listProfiles() };
   }
@@ -205,6 +209,82 @@ export class IntegrationRepository {
           JSON.stringify(item),
           nextRunAt,
         );
+      }
+    })();
+  }
+
+
+  syncTriggerNodeBindings(
+    scenarioId: string,
+    revisionId: number,
+    nodes: Array<{ id: string; kind: string; config: Record<string, unknown> }>,
+  ): void {
+    this.db.transaction(() => {
+      this.db
+        .prepare("DELETE FROM scenario_trigger_bindings WHERE scenario_id=?")
+        .run(scenarioId);
+      const insert = this.db.prepare(
+        `INSERT INTO scenario_trigger_bindings
+         (id,scenario_id,scenario_revision_id,trigger_node_id,kind,integration_profile_id,enabled,config_json,next_run_at)
+         VALUES(?,?,?,?,?,?,?,?,?)`,
+      );
+      for (const node of nodes) {
+        if (node.kind === "trigger.manual") {
+          if (node.config.fromChat)
+            insert.run(
+              `${scenarioId}:${node.id}:manual_chat`,
+              scenarioId,
+              revisionId,
+              node.id,
+              "manual_chat",
+              null,
+              1,
+              "{}",
+              null,
+            );
+          if (node.config.fromEditor)
+            insert.run(
+              `${scenarioId}:${node.id}:manual_editor`,
+              scenarioId,
+              revisionId,
+              node.id,
+              "manual_editor",
+              null,
+              1,
+              "{}",
+              null,
+            );
+          continue;
+        }
+        if (node.kind === "trigger.interval") {
+          const intervalSeconds = Number(node.config.intervalSeconds) || 3_600;
+          insert.run(
+            `${scenarioId}:${node.id}`,
+            scenarioId,
+            revisionId,
+            node.id,
+            "interval",
+            null,
+            1,
+            JSON.stringify(node.config),
+            new Date(Date.now() + intervalSeconds * 1_000).toISOString(),
+          );
+          continue;
+        }
+        if (node.kind === "trigger.telegram" || node.kind === "trigger.email") {
+          const integrationProfileId = Number(node.config.integrationProfileId) || null;
+          insert.run(
+            `${scenarioId}:${node.id}`,
+            scenarioId,
+            revisionId,
+            node.id,
+            node.kind === "trigger.telegram" ? "telegram" : "email",
+            integrationProfileId,
+            integrationProfileId ? 1 : 0,
+            JSON.stringify(node.config),
+            null,
+          );
+        }
       }
     })();
   }

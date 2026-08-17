@@ -286,7 +286,7 @@ export class ScenarioExecutionRepository {
     )?.id;
   }
 
-  private nodeRun(id: number): ScenarioNodeRun | undefined {
+  nodeRun(id: number): ScenarioNodeRun | undefined {
     const row = this.db
       .prepare("SELECT * FROM scenario_node_runs WHERE id=?")
       .get(id) as Record<string, unknown> | undefined;

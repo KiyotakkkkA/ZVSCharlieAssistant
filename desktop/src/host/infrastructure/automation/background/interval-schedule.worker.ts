@@ -43,6 +43,10 @@ export class IntervalScheduleWorker {
       const plannedAt = binding.nextRunAt ?? now.toISOString();
       const preventOverlap = Boolean(binding.config.preventOverlap);
       const misfire = String(binding.config.misfirePolicy ?? "run_once");
+      const catchUpLimit = Math.max(
+        1,
+        Math.min(50, Number(binding.config.catchUpLimit) || 3),
+      );
       const elapsed = Math.max(
         0,
         now.getTime() - new Date(plannedAt).getTime(),
@@ -50,37 +54,41 @@ export class IntervalScheduleWorker {
       const missedCount = Math.floor(elapsed / (intervalSeconds * 1_000));
       const occurrences =
         misfire === "catch_up"
-          ? Math.min(missedCount + 1, 100)
+          ? Math.min(missedCount + 1, catchUpLimit)
           : misfire === "skip" && missedCount > 0
             ? 0
             : 1;
 
-      if (!(
-        preventOverlap &&
-        this.integrations.scenarioHasActiveRun(binding.scenarioId)
-      )) {
-        for (let index = 0; index < occurrences; index++) {
-          const occurrenceAt = new Date(
-            new Date(plannedAt).getTime() + index * intervalSeconds * 1_000,
-          ).toISOString();
-          this.jobs.enqueue(
-            "scenario_run",
-            `schedule:${binding.id}:${occurrenceAt}`,
-            {
-              scenarioId: binding.scenarioId,
-              scenarioRevisionId: binding.scenarioRevisionId,
-              triggerBindingId: binding.id,
-              input: { trigger: "interval", plannedAt: occurrenceAt },
-            },
-          );
+      this.integrations.transaction(() => {
+        if (
+          !(
+            preventOverlap &&
+            this.integrations.scenarioHasActiveRun(binding.scenarioId)
+          )
+        ) {
+          for (let index = 0; index < occurrences; index++) {
+            const occurrenceAt = new Date(
+              new Date(plannedAt).getTime() + index * intervalSeconds * 1_000,
+            ).toISOString();
+            this.jobs.enqueue(
+              "scenario_run",
+              `schedule:${binding.id}:${occurrenceAt}`,
+              {
+                scenarioId: binding.scenarioId,
+                scenarioRevisionId: binding.scenarioRevisionId,
+                triggerBindingId: binding.id,
+                input: { trigger: "interval", plannedAt: occurrenceAt },
+              },
+            );
+          }
         }
-      }
 
-      this.integrations.advanceInterval(
-        binding.id,
-        intervalSeconds,
-        now.getTime(),
-      );
+        this.integrations.advanceInterval(
+          binding.id,
+          intervalSeconds,
+          now.getTime(),
+        );
+      });
     }
   }
 }

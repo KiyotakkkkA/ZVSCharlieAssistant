@@ -717,8 +717,6 @@ const migrations: readonly Migration[] = [
     version: 17,
     up: (database) => {
       database.exec(`
-        -- Долговременная память ассистента. Общая на приложение; доступ
-        -- ограничивается флагами на карточке агента (memory_read/memory_write).
         CREATE TABLE memory_entries (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           kind TEXT NOT NULL DEFAULT 'fact'
@@ -742,8 +740,6 @@ const migrations: readonly Migration[] = [
         CREATE INDEX idx_memory_entries_lookup ON memory_entries(pinned DESC, updated_at DESC);
         CREATE UNIQUE INDEX idx_memory_entries_title ON memory_entries(title);
 
-        -- Полнотекстовый поиск по памяти. FTS5 входит в сборку better-sqlite3,
-        -- отдельная зависимость не нужна.
         CREATE VIRTUAL TABLE memory_search USING fts5(
           title, content, tags,
           content='memory_entries', content_rowid='id',
@@ -776,11 +772,9 @@ const migrations: readonly Migration[] = [
         );
         INSERT INTO memory_policy(id) VALUES(1);
 
-        -- Разрешения агента на память, по образцу существующих флагов доступа.
         ALTER TABLE automation_agents ADD COLUMN memory_read INTEGER NOT NULL DEFAULT 0 CHECK(memory_read IN (0,1));
         ALTER TABLE automation_agents ADD COLUMN memory_write INTEGER NOT NULL DEFAULT 0 CHECK(memory_write IN (0,1));
 
-        -- План задач. Привязан либо к диалогу (чат), либо к запуску сценария.
         CREATE TABLE task_plans (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           conversation_id INTEGER,
@@ -807,9 +801,6 @@ const migrations: readonly Migration[] = [
         );
         CREATE INDEX idx_task_items_plan ON task_items(plan_id, position);
 
-        -- Вопросы к пользователю. Обобщает execution_approvals: подтверждение —
-        -- это вопрос с двумя вариантами. Живёт в БД, поэтому переживает
-        -- перезапуск и не требует держать промис в памяти.
         CREATE TABLE user_questions (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           scope TEXT NOT NULL CHECK(scope IN ('chat','scenario')),
@@ -831,8 +822,6 @@ const migrations: readonly Migration[] = [
           answered_by TEXT,
           answered_via TEXT
             CHECK(answered_via IN ('ui','telegram','email','default')),
-          -- Куда отправлен вопрос и как узнать ответ. Для Telegram здесь
-          -- message_id заданного вопроса и chat_id, для почты — Message-ID.
           channel TEXT NOT NULL DEFAULT 'ui'
             CHECK(channel IN ('ui','telegram','email')),
           integration_profile_id INTEGER,
@@ -850,11 +839,78 @@ const migrations: readonly Migration[] = [
         CREATE INDEX idx_user_questions_execution ON user_questions(execution_id, node_id);
         CREATE INDEX idx_user_questions_correlation ON user_questions(channel, correlation_id) WHERE status='pending';
         CREATE INDEX idx_user_questions_conversation ON user_questions(conversation_id, status);
+      `);
+    },
+  },
+  {
+    version: 18,
+    up(database) {
+      database.exec(`
+        PRAGMA foreign_keys = OFF;
 
-        -- Статус ожидания намеренно переиспользует существующий
-        -- 'waiting_for_approval': он ограничен CHECK в execution_runs и
-        -- scenario_node_runs, а перестройка таблиц с внешними ключами ради
-        -- переименования не оправдана. Семантика та же — пауза на человеке.
+        ALTER TABLE execution_runs ADD COLUMN checkpoint_json TEXT;
+        ALTER TABLE execution_runs ADD COLUMN engine_version INTEGER NOT NULL DEFAULT 1;
+
+        CREATE TABLE scenario_node_runs_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          execution_id INTEGER NOT NULL,
+          node_id TEXT NOT NULL,
+          node_kind TEXT NOT NULL,
+          iteration INTEGER NOT NULL DEFAULT 1,
+          attempt INTEGER NOT NULL DEFAULT 1,
+          status TEXT NOT NULL CHECK (status IN (
+            'queued','running','waiting_for_approval','completed','failed','cancelled','skipped'
+          )),
+          input_json TEXT NOT NULL DEFAULT '{}',
+          input_ref TEXT,
+          output_json TEXT,
+          output_ref TEXT,
+          diagnostics_json TEXT,
+          error_message TEXT,
+          error_code TEXT,
+          partial_output TEXT,
+          duration_ms INTEGER,
+          started_at TEXT,
+          completed_at TEXT,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(execution_id, node_id, iteration, attempt),
+          FOREIGN KEY (execution_id) REFERENCES execution_runs(id) ON DELETE CASCADE
+        );
+
+        INSERT INTO scenario_node_runs_new (
+          id, execution_id, node_id, node_kind, iteration, attempt, status,
+          input_json, output_json, error_message, started_at, completed_at, created_at
+        )
+        SELECT
+          id, execution_id, node_id, node_kind, 1, attempt, status,
+          input_json, output_json, error_message, started_at, completed_at, created_at
+        FROM scenario_node_runs;
+
+        DROP TABLE scenario_node_runs;
+        ALTER TABLE scenario_node_runs_new RENAME TO scenario_node_runs;
+
+        CREATE INDEX idx_scenario_node_runs_execution ON scenario_node_runs(execution_id, id);
+
+        CREATE TABLE llm_calls (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          execution_id INTEGER NOT NULL,
+          node_run_id INTEGER NOT NULL,
+          model_id INTEGER,
+          system_prompt TEXT,
+          prompt_json TEXT,
+          output_text TEXT,
+          prompt_tokens INTEGER,
+          completion_tokens INTEGER,
+          latency_ms INTEGER,
+          finish_reason TEXT,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (execution_id) REFERENCES execution_runs(id) ON DELETE CASCADE,
+          FOREIGN KEY (node_run_id) REFERENCES scenario_node_runs(id) ON DELETE CASCADE
+        );
+        CREATE INDEX idx_llm_calls_execution ON llm_calls(execution_id, id);
+        CREATE INDEX idx_llm_calls_node_run ON llm_calls(node_run_id);
+
+        PRAGMA foreign_keys = ON;
       `);
     },
   },
