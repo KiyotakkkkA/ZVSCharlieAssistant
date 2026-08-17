@@ -12,13 +12,87 @@ export interface AutomationJob {
 export class AutomationJobRepository {
   constructor(private readonly db: Database.Database) {}
 
-  recoverExpiredLeases(): void {
-    this.db
+  recoverExpiredLeases(): number {
+    const result = this.db
       .prepare(
         `UPDATE automation_jobs SET status='queued',lease_owner=NULL,lease_expires_at=NULL,
-       available_at=CURRENT_TIMESTAMP WHERE status='leased'`,
+       available_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP
+       WHERE status='leased' AND (lease_expires_at IS NULL OR lease_expires_at < CURRENT_TIMESTAMP)`,
       )
       .run();
+    if (result.changes > 0) notifyWork("scenario-job");
+    return result.changes;
+  }
+
+  recoverAllLeases(): number {
+    return this.db
+      .prepare(
+        `UPDATE automation_jobs SET status='queued',lease_owner=NULL,lease_expires_at=NULL,
+       available_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP WHERE status='leased'`,
+      )
+      .run().changes;
+  }
+
+  renewLease(id: number, workerId: string, seconds = 120): boolean {
+    return (
+      this.db
+        .prepare(
+          `UPDATE automation_jobs SET lease_expires_at=datetime('now','+' || ? || ' seconds'),
+         updated_at=CURRENT_TIMESTAMP WHERE id=? AND lease_owner=? AND status='leased'`,
+        )
+        .run(seconds, id, workerId).changes > 0
+    );
+  }
+
+  depth(): Record<string, number> {
+    const rows = this.db
+      .prepare(
+        "SELECT status, COUNT(*) AS count FROM automation_jobs GROUP BY status",
+      )
+      .all() as Array<{ status: string; count: number }>;
+    return Object.fromEntries(rows.map((row) => [row.status, row.count]));
+  }
+
+  list(
+    input: { status?: string; limit?: number } = {},
+  ): Array<Record<string, unknown>> {
+    const limit = Math.min(500, Math.max(1, input.limit ?? 100));
+    return input.status
+      ? (this.db
+          .prepare(
+            `SELECT id,kind,status,attempt,max_attempts,priority,last_error,available_at,created_at,updated_at,payload_json
+             FROM automation_jobs WHERE status=? ORDER BY id DESC LIMIT ?`,
+          )
+          .all(input.status, limit) as Array<Record<string, unknown>>)
+      : (this.db
+          .prepare(
+            `SELECT id,kind,status,attempt,max_attempts,priority,last_error,available_at,created_at,updated_at,payload_json
+             FROM automation_jobs ORDER BY id DESC LIMIT ?`,
+          )
+          .all(limit) as Array<Record<string, unknown>>);
+  }
+
+  retry(id: number): boolean {
+    const changed = this.db
+      .prepare(
+        `UPDATE automation_jobs SET status='queued',attempt=0,last_error=NULL,lease_owner=NULL,
+       lease_expires_at=NULL,available_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP
+       WHERE id=? AND status IN ('failed','cancelled')`,
+      )
+      .run(id).changes;
+    if (changed) notifyWork("scenario-job");
+    return changed > 0;
+  }
+
+  cancel(id: number): boolean {
+    return (
+      this.db
+        .prepare(
+          `UPDATE automation_jobs SET status='cancelled',lease_owner=NULL,lease_expires_at=NULL,
+         updated_at=CURRENT_TIMESTAMP WHERE id=? AND status IN ('queued','waiting','failed')`,
+        )
+        .run(id).changes > 0
+    );
   }
 
   enqueue(
@@ -88,8 +162,8 @@ export class AutomationJobRepository {
       .run(JSON.stringify(payload), id);
   }
 
-  fail(job: AutomationJob, error: string): void {
-    const terminal = job.attempt >= job.maxAttempts;
+  fail(job: AutomationJob, error: string, retryable = true): void {
+    const terminal = !retryable || job.attempt >= job.maxAttempts;
     this.db
       .prepare(
         `UPDATE automation_jobs SET status=?,last_error=?,lease_owner=NULL,lease_expires_at=NULL,

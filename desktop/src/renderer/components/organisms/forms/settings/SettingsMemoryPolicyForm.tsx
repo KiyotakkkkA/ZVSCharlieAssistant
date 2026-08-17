@@ -144,7 +144,6 @@ export const SettingsMemoryPolicyForm = observer(
             />
           </Field>
         </div>
-
       </form>
     );
   },

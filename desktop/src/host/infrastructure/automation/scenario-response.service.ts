@@ -7,6 +7,7 @@ export class ScenarioResponseService {
 
   enqueue(input: {
     executionId: number;
+    nodeId: string;
     nodeRunId: number;
     config: unknown;
     triggerInput: unknown;
@@ -50,7 +51,7 @@ export class ScenarioResponseService {
         integrationProfileId: profileId,
         recipient,
         payload,
-        idempotencyKey: `${input.executionId}:${input.nodeRunId}:${channel.channel}:${profileId}:${recipient}`,
+        idempotencyKey: `${input.executionId}:${input.nodeId}:${channel.channel}:${profileId}:${recipient}`,
       });
     }
   }

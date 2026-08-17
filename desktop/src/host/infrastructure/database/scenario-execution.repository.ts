@@ -227,8 +227,9 @@ export class ScenarioExecutionRepository {
   agent(id: string) {
     const agent = this.db
       .prepare(
-        `SELECT id,name,description,instructions,text_model_id,retrieval_limit,terminal_policy_json,directory_policy_json FROM automation_agents
-       WHERE id=? AND status!='disabled'`,
+        `SELECT id,name,description,instructions,text_model_id,retrieval_limit,
+               max_tool_calls,timeout_seconds,terminal_policy_json,directory_policy_json
+       FROM automation_agents WHERE id=? AND status!='disabled'`,
       )
       .get(id) as
       | {
@@ -238,6 +239,8 @@ export class ScenarioExecutionRepository {
           instructions: string;
           text_model_id: number;
           retrieval_limit: number;
+          max_tool_calls: number;
+          timeout_seconds: number;
           terminal_policy_json: string;
           directory_policy_json: string;
         }

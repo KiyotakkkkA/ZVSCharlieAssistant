@@ -291,6 +291,7 @@ export class ScenarioRunEngine {
     if (node.kind === "output") {
       this.responses.enqueue({
         executionId: runId,
+        nodeId: node.id,
         nodeRunId,
         config: node.config?.response,
         triggerInput,

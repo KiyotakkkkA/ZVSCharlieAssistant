@@ -160,7 +160,9 @@ export function ChatFeed({
           </h1>
         </div>
         {headerActions ? (
-          <div className="flex shrink-0 items-center gap-2">{headerActions}</div>
+          <div className="flex shrink-0 items-center gap-2">
+            {headerActions}
+          </div>
         ) : null}
       </header>
       <ScrollArea

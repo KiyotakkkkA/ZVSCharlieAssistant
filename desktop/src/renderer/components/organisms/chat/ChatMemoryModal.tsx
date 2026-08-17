@@ -88,7 +88,9 @@ export const ChatMemoryModal = observer(function ChatMemoryModal({
                     <div className="flex shrink-0 items-center gap-1">
                       <button
                         type="button"
-                        aria-label={entry.pinned ? "Открепить запись" : "Закрепить запись"}
+                        aria-label={
+                          entry.pinned ? "Открепить запись" : "Закрепить запись"
+                        }
                         title={entry.pinned ? "Открепить" : "Закрепить"}
                         className={`grid size-8 place-items-center rounded-lg text-sm transition-colors hover:bg-main-700/50 ${entry.pinned ? "text-accent-light" : "text-main-500"}`}
                         onClick={() =>
@@ -131,7 +133,11 @@ export const ChatMemoryModal = observer(function ChatMemoryModal({
         title="Удалить запись из памяти?"
         description={(entry) => (
           <>
-            Запись «<strong className="font-medium text-main-100">{humanizeTitle(entry.title)}</strong>» будет удалена без возможности восстановления.
+            Запись «
+            <strong className="font-medium text-main-100">
+              {humanizeTitle(entry.title)}
+            </strong>
+            » будет удалена без возможности восстановления.
           </>
         )}
         onCancel={() => setEntryToDelete(null)}
@@ -145,5 +151,7 @@ export const ChatMemoryModal = observer(function ChatMemoryModal({
 });
 
 function humanizeTitle(value: string) {
-  return value.replaceAll("_", " ").replace(/^./, (letter) => letter.toUpperCase());
+  return value
+    .replaceAll("_", " ")
+    .replace(/^./, (letter) => letter.toUpperCase());
 }

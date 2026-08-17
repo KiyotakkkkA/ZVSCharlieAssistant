@@ -40,13 +40,59 @@ export class ScenarioDeliveryRepository {
     notifyWork("scenario-delivery");
   }
 
-  recoverExpiredLeases() {
-    this.db
+  recoverExpiredLeases(): number {
+    const changed = this.db
       .prepare(
         `UPDATE scenario_delivery_outbox SET status='queued',lease_owner=NULL,lease_expires_at=NULL
-      WHERE status='leased' AND lease_expires_at<CURRENT_TIMESTAMP`,
+      WHERE status='leased' AND (lease_expires_at IS NULL OR lease_expires_at < CURRENT_TIMESTAMP)`,
       )
-      .run();
+      .run().changes;
+    if (changed > 0) notifyWork("scenario-delivery");
+    return changed;
+  }
+
+  recoverAllLeases(): number {
+    return this.db
+      .prepare(
+        `UPDATE scenario_delivery_outbox SET status='queued',lease_owner=NULL,lease_expires_at=NULL
+      WHERE status='leased'`,
+      )
+      .run().changes;
+  }
+
+  depth(): Record<string, number> {
+    const rows = this.db
+      .prepare(
+        "SELECT status, COUNT(*) AS count FROM scenario_delivery_outbox GROUP BY status",
+      )
+      .all() as Array<{ status: string; count: number }>;
+    return Object.fromEntries(rows.map((row) => [row.status, row.count]));
+  }
+
+  list(
+    input: { status?: string; limit?: number } = {},
+  ): Array<Record<string, unknown>> {
+    const limit = Math.min(500, Math.max(1, input.limit ?? 100));
+    const where = input.status ? "WHERE status=?" : "";
+    const parameters = input.status ? [input.status, limit] : [limit];
+    return this.db
+      .prepare(
+        `SELECT id,execution_id,channel,recipient,status,attempt,max_attempts,last_error,available_at,created_at,completed_at
+         FROM scenario_delivery_outbox ${where} ORDER BY id DESC LIMIT ?`,
+      )
+      .all(...parameters) as Array<Record<string, unknown>>;
+  }
+
+  retry(id: number): boolean {
+    const changed = this.db
+      .prepare(
+        `UPDATE scenario_delivery_outbox SET status='queued',attempt=0,last_error=NULL,
+       lease_owner=NULL,lease_expires_at=NULL,available_at=CURRENT_TIMESTAMP
+       WHERE id=? AND status='failed'`,
+      )
+      .run(id).changes;
+    if (changed) notifyWork("scenario-delivery");
+    return changed > 0;
   }
 
   leaseNext(owner: string): ScenarioDeliveryJob | undefined {

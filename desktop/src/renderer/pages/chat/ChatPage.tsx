@@ -292,10 +292,7 @@ export const ChatPage = observer(function ChatPage() {
         onCancel={() => void chatStore.approveScenario(false)}
         onConfirm={() => chatStore.approveScenario(true)}
       />
-      <ChatMemoryModal
-        open={memoryOpen}
-        onClose={() => setMemoryOpen(false)}
-      />
+      <ChatMemoryModal open={memoryOpen} onClose={() => setMemoryOpen(false)} />
       <DangerModal
         open={dialogToDelete !== null}
         model={dialogToDelete}
