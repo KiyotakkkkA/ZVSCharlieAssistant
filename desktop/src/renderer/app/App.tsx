@@ -1,8 +1,9 @@
 import {
   Alert,
   Button,
+  StyleProvider,
   ToastProvider,
-  useToasts,
+  type StyleThemePalette,
 } from "@kiyotakkkka/zvs-uikit-lib";
 import { useCallback, useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
@@ -37,7 +38,11 @@ const DEFERRED_STORES = [
   ["Память", () => memoryStore.bootstrap()],
 ] as const;
 
-export function App() {
+interface AppProps {
+  initialPalette?: StyleThemePalette;
+}
+
+export function App({ initialPalette }: AppProps) {
   const [failed, setFailed] = useState<string[]>([]);
   const [retrying, setRetrying] = useState(false);
 
@@ -73,27 +78,29 @@ export function App() {
   }, [load]);
 
   return (
-    <ToastProvider>
-      {failed.length ? (
-        <Alert
-          variant="danger"
-          title="Не удалось загрузить данные"
-          className="m-3 mb-0"
-        >
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <span>Разделы недоступны: {failed.join(", ")}.</span>
-            <Button
-              variant="ghost"
-              loading={retrying}
-              onClick={() => void retry()}
-            >
-              Повторить
-            </Button>
-          </div>
-        </Alert>
-      ) : null}
-      <Outlet />
-      <TerminalApprovalModal />
-    </ToastProvider>
+    <StyleProvider initialPalette={initialPalette}>
+      <ToastProvider>
+        {failed.length ? (
+          <Alert
+            variant="danger"
+            title="Не удалось загрузить данные"
+            className="m-3 mb-0"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <span>Разделы недоступны: {failed.join(", ")}.</span>
+              <Button
+                variant="ghost"
+                loading={retrying}
+                onClick={() => void retry()}
+              >
+                Повторить
+              </Button>
+            </div>
+          </Alert>
+        ) : null}
+        <Outlet />
+        <TerminalApprovalModal />
+      </ToastProvider>
+    </StyleProvider>
   );
 }
