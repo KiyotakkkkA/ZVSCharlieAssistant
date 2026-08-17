@@ -113,9 +113,8 @@ export const SettingsTerminalPolicyForm = observer(
         <div className="flex items-center justify-between gap-3">
           <Button
             type="button"
-            variant="ghost"
-            rounded="rounded-lg"
-            className="hover:bg-main-700/40 px-2"
+            variant="primary"
+            className="px-2"
             onClick={() => setRecommendOpen(true)}
           >
             Установить рекомендуемое

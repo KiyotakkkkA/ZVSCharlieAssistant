@@ -10,6 +10,10 @@ import {
 } from "react-router-dom";
 import { Loader, ScrollArea } from "@kiyotakkkka/zvs-uikit-lib";
 import { App } from "./app/App";
+import {
+  applyThemePaletteToDocument,
+  loadThemePaletteFromStorage,
+} from "./app/theme";
 import { APP_PATHS } from "./app/routes";
 import { Header, NavigationSidebar } from "./components/layouts";
 import { RoutePage } from "./pages/RoutePage";
@@ -143,6 +147,11 @@ function AppLayout() {
 }
 
 const root = document.getElementById("root");
+const initialPalette = loadThemePaletteFromStorage();
+
+if (initialPalette) {
+  applyThemePaletteToDocument(initialPalette);
+}
 
 if (!root) throw new Error("Root element was not found");
 
@@ -150,7 +159,7 @@ createRoot(root).render(
   <StrictMode>
     <HashRouter>
       <Routes>
-        <Route element={<App />}>
+        <Route element={<App initialPalette={initialPalette ?? undefined} />}>
           <Route element={<AppLayout />}>
             <Route
               index
