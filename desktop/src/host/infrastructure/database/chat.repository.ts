@@ -7,14 +7,20 @@ import type {
   ChatToolCall,
   RunStatus,
 } from "../../../shared/models/chat";
-import { chatMessageContentDtoSchema, parseJsonDto } from "../../../shared/dto";
-import type { ChatMessageContentPart, ChatMode } from "../../../shared/dto";
+import {
+  chatMessageContentDtoSchema,
+  chatUsageDtoSchema,
+  parseJsonDto,
+} from "../../../shared/dto";
+import type {
+  ChatMessageContentPart,
+  ChatMode,
+  ChatUsage,
+} from "../../../shared/dto";
 interface ConversationRow {
   id: number;
   title: string;
-  mode: ChatMode;
-  agent_id: string | null;
-  model_id: number | null;
+  last_usage: string;
   updated_at: string;
 }
 interface MessageRow {
@@ -25,6 +31,7 @@ interface MessageRow {
   role: ChatMessage["role"];
   status: ChatMessage["status"];
   content_json: string;
+  last_usage: string;
   created_at: string;
 }
 export class ChatRepository {
@@ -33,7 +40,7 @@ export class ChatRepository {
     const conversations = (
       this.db
         .prepare(
-          "SELECT id,title,mode,agent_id,model_id,updated_at FROM chat_conversations ORDER BY updated_at DESC",
+          "SELECT id,title,last_usage,updated_at FROM chat_conversations ORDER BY updated_at DESC",
         )
         .all() as ConversationRow[]
     ).map(mapConversation);
@@ -84,17 +91,28 @@ export class ChatRepository {
     ).map((row) => this.mapMessage(row));
   }
   createConversation(
-    mode: ChatMode,
-    agentId: string | undefined,
-    modelId: number | undefined,
+    usage: ChatUsage,
   ): number {
     return Number(
       this.db
         .prepare(
-          "INSERT INTO chat_conversations(mode,agent_id,model_id) VALUES(?,?,?)",
+          "INSERT INTO chat_conversations(mode,agent_id,last_usage) VALUES(?,?,?)",
         )
-        .run(mode, agentId ?? null, modelId ?? null).lastInsertRowid,
+        .run(usage.mode, usage.agentId ?? null, JSON.stringify(usage))
+        .lastInsertRowid,
     );
+  }
+  updateLastUsage(conversationId: number, usage: ChatUsage) {
+    this.db
+      .prepare(
+        "UPDATE chat_conversations SET mode=?,agent_id=?,last_usage=?,updated_at=CURRENT_TIMESTAMP WHERE id=?",
+      )
+      .run(
+        usage.mode,
+        usage.agentId ?? null,
+        JSON.stringify(usage),
+        conversationId,
+      );
   }
   createRun(
     conversationId: number,
@@ -117,11 +135,12 @@ export class ChatRepository {
     role: ChatMessage["role"],
     text: string,
     status: ChatMessage["status"],
+    usage: ChatUsage,
   ): ChatMessage {
     const id = Number(
       this.db
         .prepare(
-          "INSERT INTO chat_messages(conversation_id,run_id,role,status,content_json) VALUES(?,?,?,?,?)",
+          "INSERT INTO chat_messages(conversation_id,run_id,role,status,content_json,last_usage) VALUES(?,?,?,?,?,?)",
         )
         .run(
           conversationId,
@@ -129,6 +148,7 @@ export class ChatRepository {
           role,
           status,
           JSON.stringify([{ type: "text", text }]),
+          JSON.stringify(usage),
         ).lastInsertRowid,
     );
     return this.mapMessage(
@@ -431,9 +451,7 @@ export class ChatRepository {
 const mapConversation = (r: ConversationRow): ChatConversation => ({
   id: r.id,
   title: r.title,
-  mode: r.mode,
-  agentId: r.agent_id,
-  modelId: r.model_id,
+  lastUsage: parseJsonDto(chatUsageDtoSchema, r.last_usage),
   updatedAt: r.updated_at,
 });
 const mapMessage = (r: MessageRow): ChatMessage => {
@@ -455,6 +473,7 @@ const mapMessage = (r: MessageRow): ChatMessage => {
       .join(""),
     error: null,
     toolCalls: [],
+    lastUsage: parseJsonDto(chatUsageDtoSchema, r.last_usage),
     createdAt: r.created_at,
   };
 };

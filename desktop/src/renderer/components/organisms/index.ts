@@ -1,4 +1,5 @@
 export { PageHeader } from "./PageHeader";
+export { GlobalSettingsSidebar } from "./GlobalSettingsSidebar";
 
 export {
   ScenarioGraphCanvas,

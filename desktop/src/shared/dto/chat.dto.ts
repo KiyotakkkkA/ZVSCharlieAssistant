@@ -1,6 +1,32 @@
 import { z } from "zod";
 
 export const chatModeSchema = z.enum(["chat", "planner", "agent", "scenario"]);
+export type ChatMode = z.infer<typeof chatModeSchema>;
+export interface ChatUsage {
+  mode: ChatMode;
+  modelId?: number;
+  agentId?: string;
+  scenarioId?: string;
+}
+export const chatUsageDtoSchema: z.ZodType<ChatUsage> = z.object({
+  mode: chatModeSchema,
+  modelId: z
+    .int()
+    .positive()
+    .nullable()
+    .optional()
+    .transform((value) => value ?? undefined),
+  agentId: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((value) => value ?? undefined),
+  scenarioId: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((value) => value ?? undefined),
+});
 export const chatMessageContentPartDtoSchema = z.object({
   type: z.enum(["text", "reasoning"]),
   text: z.string(),
@@ -17,7 +43,6 @@ export const startRunDtoSchema = z.object({
   text: z.string(),
 });
 
-export type ChatMode = z.infer<typeof chatModeSchema>;
 export type ChatMessageContentPart = z.infer<
   typeof chatMessageContentPartDtoSchema
 >;

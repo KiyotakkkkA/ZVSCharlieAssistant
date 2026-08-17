@@ -46,9 +46,15 @@ export class RunEngine {
       );
     this.providers.resolve(modelId);
     const executionInput: StartRunInput = { ...input, modelId };
+    const usage = {
+      mode: input.mode,
+      modelId,
+      ...(input.agentId ? { agentId: input.agentId } : {}),
+    };
     const conversationId =
       input.conversationId ??
-      this.data.createConversation(input.mode, input.agentId, modelId);
+      this.data.createConversation(usage);
+    this.data.updateLastUsage(conversationId, usage);
     const maxSteps =
       input.mode === "agent" ? Math.min(agent?.max_tool_calls ?? 8, 20) : 1;
     const runId = this.data.createRun(
@@ -63,6 +69,7 @@ export class RunEngine {
       "user",
       text,
       "completed",
+      usage,
     );
     const assistantMessage = this.data.addMessage(
       conversationId,
@@ -70,6 +77,7 @@ export class RunEngine {
       "assistant",
       "",
       "streaming",
+      usage,
     );
     this.data.updateTitle(conversationId, text);
     emit({
@@ -105,15 +113,17 @@ export class RunEngine {
     if (!this.scenarios) throw new Error("Движок сценариев недоступен");
     if (!input.scenarioId) throw new Error("Сценарий не выбран");
     this.scenarios.assertRunnable(input.scenarioId);
+    const usage = { mode: "scenario" as const, scenarioId: input.scenarioId };
     const conversationId =
-      input.conversationId ??
-      this.data.createConversation("scenario", undefined, undefined);
+      input.conversationId ?? this.data.createConversation(usage);
+    this.data.updateLastUsage(conversationId, usage);
     const userMessage = this.data.addMessage(
       conversationId,
       null,
       "user",
       text,
       "completed",
+      usage,
     );
     const assistantMessage = this.data.addMessage(
       conversationId,
@@ -121,6 +131,7 @@ export class RunEngine {
       "assistant",
       "",
       "streaming",
+      usage,
     );
     this.data.updateTitle(conversationId, text);
     let scenarioRunId = 0;

@@ -24,7 +24,7 @@ import { TerminalApprovalModal } from "../components/organisms/modals/TerminalAp
 
 const CRITICAL_STORES = [
   ["Секреты", () => secretStorageStore.bootstrap()],
-  ["Диалоги", () => chatStore.bootstrap()],
+  ["Чат", () => chatStore.bootstrap()],
   ["Политики терминала", () => terminalPolicyStore.bootstrap()],
   ["Политики директорий", () => directoryPolicyStore.bootstrap()],
 ] as const;

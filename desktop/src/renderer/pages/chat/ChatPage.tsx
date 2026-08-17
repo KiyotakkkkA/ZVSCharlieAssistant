@@ -104,6 +104,14 @@ export const ChatPage = observer(function ChatPage() {
   const active = chatStore.conversations.find(
     (item) => item.id === chatStore.activeConversationId,
   );
+  useEffect(() => {
+    if (!active) return;
+    const usage = active.lastUsage;
+    setMode(usage.mode);
+    if (usage.modelId) setModel(String(usage.modelId));
+    if (usage.agentId) setAgentId(usage.agentId);
+    if (usage.scenarioId) setScenarioId(usage.scenarioId);
+  }, [active?.id, active?.lastUsage]);
   const selectedAgent = automationStore.agents.find(
     (agent) => agent.id === agentId,
   );
@@ -198,6 +206,7 @@ export const ChatPage = observer(function ChatPage() {
               toolCalls: item.toolCalls,
               scenarioRunId: item.scenarioRunId,
               status: item.status,
+              usageLabel: formatUsageLabel(item.lastUsage),
             }))}
           onSuggestionSelect={setText}
           hasMore={chatStore.hasMoreMessages}
@@ -210,48 +219,8 @@ export const ChatPage = observer(function ChatPage() {
           }}
           onEditMessage={async (messageId, nextText) => {
             try {
-              const messageIndex = chatStore.messages.findIndex(
-                (item) => item.id === messageId,
-              );
-              const nextAssistant = chatStore.messages
-                .slice(messageIndex + 1)
-                .find((item) => item.role === "assistant");
-              const editRunOptions: Omit<
-                StartRunInput,
-                "conversationId" | "text"
-              > =
-                active?.mode === "scenario"
-                  ? {
-                      mode: "scenario",
-                      scenarioId: nextAssistant?.scenarioRunId
-                        ? chatStore.scenarioExecutions.get(
-                            nextAssistant.scenarioRunId,
-                          )?.run.scenarioId
-                        : scenarioId,
-                    }
-                  : {
-                      mode: active?.mode ?? mode,
-                      modelId:
-                        (active?.mode ?? mode) === "agent"
-                          ? (automationStore.agents.find(
-                              (agent) =>
-                                agent.id === (active?.agentId ?? agentId),
-                            )?.textModelId ?? undefined)
-                          : (active?.modelId ?? Number(model)),
-                      agentId:
-                        active?.mode === "agent"
-                          ? (active.agentId ?? undefined)
-                          : undefined,
-                    };
-              if (
-                editRunOptions.mode === "scenario" &&
-                !editRunOptions.scenarioId
-              )
-                throw new Error(
-                  "Не удалось определить сценарий исходного сообщения",
-                );
               await chatStore.truncateMessages(messageId);
-              await startMessage(nextText, editRunOptions);
+              await startMessage(nextText);
               toasts.success({ title: "Сообщение успешно изменено!" });
             } catch (error) {
               toasts.danger({
@@ -370,6 +339,17 @@ export const ChatPage = observer(function ChatPage() {
 function readableError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
   return message.replace(/^Error invoking remote method '[^']+':\s*/i, "");
+}
+
+function formatUsageLabel(usage: import("../../../shared/dto").ChatUsage) {
+  if (usage.modelId) return textProviderStore.modelLabel(usage.modelId);
+  if (usage.scenarioId) {
+    const scenario = automationStore.scenarios.find(
+      (item) => item.id === usage.scenarioId,
+    );
+    return `Сценарий: ${scenario?.name ?? usage.scenarioId}`;
+  }
+  return usage.mode === "agent" ? "Агент" : "Модель не указана";
 }
 
 function useStableOptions<T>(options: T[]): T[] {

@@ -4,12 +4,14 @@ import { ControlButton } from "../atoms/buttons";
 
 export const ChatUserMsgBlock = memo(function ChatUserMsgBlock({
   text,
+  usageLabel,
   disabled = false,
   onCopy,
   onEdit,
   onDelete,
 }: {
   text: string;
+  usageLabel?: string;
   disabled?: boolean;
   onCopy?: () => void;
   onEdit?: (text: string) => void | Promise<void>;
@@ -73,7 +75,12 @@ export const ChatUserMsgBlock = memo(function ChatUserMsgBlock({
         <div className="rounded-2xl rounded-br-md bg-main-700/65 px-4 py-3 text-[14px] leading-6 text-main-100">
           {text}
         </div>
-        <div className="flex justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+        <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+          {usageLabel ? (
+            <span className="mr-1 max-w-64 truncate text-[11px] text-main-500" title={usageLabel}>
+              {usageLabel}
+            </span>
+          ) : null}
           <ControlButton icon="copy" title="Копировать" onClick={onCopy} />
           <ControlButton
             icon="edit"

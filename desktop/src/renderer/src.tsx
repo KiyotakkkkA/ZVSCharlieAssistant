@@ -14,6 +14,10 @@ import {
   applyThemePaletteToDocument,
   loadThemePaletteFromStorage,
 } from "./app/theme";
+import {
+  applyTypographyToDocument,
+  loadTypographyFromStorage,
+} from "./app/typography";
 import { APP_PATHS } from "./app/routes";
 import { Header, NavigationSidebar } from "./components/layouts";
 import { RoutePage } from "./pages/RoutePage";
@@ -152,6 +156,7 @@ const initialPalette = loadThemePaletteFromStorage();
 if (initialPalette) {
   applyThemePaletteToDocument(initialPalette);
 }
+applyTypographyToDocument(loadTypographyFromStorage());
 
 if (!root) throw new Error("Root element was not found");
 

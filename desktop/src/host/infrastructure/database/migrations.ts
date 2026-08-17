@@ -2,6 +2,7 @@ import type Database from "better-sqlite3";
 
 interface Migration {
   version: number;
+  transactional?: boolean;
   up: (database: Database.Database) => void;
 }
 
@@ -914,6 +915,66 @@ const migrations: readonly Migration[] = [
       `);
     },
   },
+  {
+    version: 19,
+    transactional: false,
+    up(database) {
+      database.pragma("foreign_keys = OFF");
+      try {
+        database.transaction(() => database.exec(`
+        CREATE TABLE chat_conversations_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          title TEXT NOT NULL DEFAULT 'Новый диалог',
+          mode TEXT NOT NULL DEFAULT 'chat' CHECK (mode IN ('chat', 'planner', 'agent', 'scenario')),
+          agent_id TEXT,
+          last_usage TEXT NOT NULL DEFAULT '{"mode":"chat"}',
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (agent_id) REFERENCES automation_agents(id) ON DELETE SET NULL
+        );
+        INSERT INTO chat_conversations_new (
+          id, title, mode, agent_id, last_usage, created_at, updated_at
+        )
+        SELECT
+          id, title, mode, agent_id,
+          json_object('mode', mode, 'modelId', model_id, 'agentId', agent_id),
+          created_at, updated_at
+        FROM chat_conversations;
+        DROP TABLE chat_conversations;
+        ALTER TABLE chat_conversations_new RENAME TO chat_conversations;
+
+        ALTER TABLE chat_messages ADD COLUMN last_usage TEXT NOT NULL DEFAULT '{"mode":"chat"}';
+        UPDATE chat_messages
+        SET last_usage = CASE
+          WHEN execution_run_id IS NOT NULL THEN COALESCE(
+            (SELECT json_object('mode', 'scenario', 'scenarioId', scenario_id)
+             FROM execution_runs WHERE id = chat_messages.execution_run_id),
+            '{"mode":"scenario"}'
+          )
+          WHEN run_id IS NOT NULL THEN COALESCE(
+            (SELECT json_object(
+               'mode', CASE WHEN r.agent_id IS NOT NULL THEN 'agent' ELSE c.mode END,
+               'modelId', r.model_id,
+               'agentId', r.agent_id
+             )
+             FROM generation_runs r
+             JOIN chat_conversations c ON c.id = chat_messages.conversation_id
+             WHERE r.id = chat_messages.run_id),
+            '{"mode":"chat"}'
+          )
+          ELSE COALESCE(
+            (SELECT c.last_usage FROM chat_conversations c WHERE c.id = chat_messages.conversation_id),
+            '{"mode":"chat"}'
+          )
+        END;
+      `))();
+        const violation = database.prepare("PRAGMA foreign_key_check").get();
+        if (violation) throw new Error("Миграция 19 нарушила внешние ключи");
+      } finally {
+        database.pragma("foreign_keys = ON");
+      }
+    },
+  },
 ];
 
 export function runMigrations(database: Database.Database): void {
@@ -939,6 +1000,12 @@ export function runMigrations(database: Database.Database): void {
   });
 
   for (const migration of migrations) {
-    if (!appliedVersions.has(migration.version)) applyMigration(migration);
+    if (appliedVersions.has(migration.version)) continue;
+    if (migration.transactional === false) {
+      migration.up(database);
+      database
+        .prepare("INSERT INTO schema_migrations (version) VALUES (?)")
+        .run(migration.version);
+    } else applyMigration(migration);
   }
 }

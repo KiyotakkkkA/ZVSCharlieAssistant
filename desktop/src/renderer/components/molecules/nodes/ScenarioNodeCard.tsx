@@ -5,7 +5,7 @@ import {
   PlayCircleIcon,
   RobotIcon,
   StorageIcon,
-  SettingsIcon,
+  CogIcon,
   TasksIcon,
   SendIcon,
   MoreIcon,
@@ -68,7 +68,7 @@ export const scenarioNodeVariants: Record<
   },
   condition: {
     label: "Условие",
-    icon: SettingsIcon,
+    icon: CogIcon,
     iconClassName: "bg-sky-400/10 text-sky-200",
   },
   approval: {

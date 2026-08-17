@@ -10,7 +10,7 @@ import {
   Switcher,
   useToasts,
 } from "@kiyotakkkka/zvs-uikit-lib";
-import { SecretOrientedSelect, SettingsIcon } from "../../../components/atoms";
+import { SecretOrientedSelect, CogIcon } from "../../../components/atoms";
 import { PageHeader } from "../../../components/organisms";
 import { AutomationToolCard } from "../../../components/molecules";
 import type { AutomationTool } from "../../../../ipc/contracts";
@@ -76,7 +76,7 @@ export const ToolsListPage = observer(function ToolsListPage() {
         ) : (
           <div className="grid min-h-80 place-items-center">
             <EmptyState
-              icon={<SettingsIcon className="size-6" />}
+              icon={<CogIcon className="size-6" />}
               title="Инструменты не найдены"
               description={
                 query

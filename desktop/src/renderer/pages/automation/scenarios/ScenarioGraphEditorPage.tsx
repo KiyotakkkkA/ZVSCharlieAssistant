@@ -29,7 +29,7 @@ import {
   RobotIcon,
   SaveIcon,
   SendIcon,
-  SettingsIcon,
+  CogIcon,
   TasksIcon,
   StorageIcon,
   PlayCircleIcon,
@@ -151,7 +151,7 @@ const nodeMeta: Record<
     label: "Условие",
     color: "text-sky-200 bg-sky-400/10",
     dot: "bg-sky-300",
-    icon: (props) => <SettingsIcon {...props} />,
+    icon: (props) => <CogIcon {...props} />,
   },
   approval: {
     label: "Подтверждение",
@@ -845,7 +845,7 @@ export const ScenarioGraphEditorPage = observer(
                 <h2 className="text-sm font-semibold text-main-200">
                   Настройки
                 </h2>
-                <SettingsIcon className="size-4 text-main-500" />
+                <CogIcon className="size-4 text-main-500" />
               </div>
               {selectedNode ? (
                 <div className="space-y-5 p-4">

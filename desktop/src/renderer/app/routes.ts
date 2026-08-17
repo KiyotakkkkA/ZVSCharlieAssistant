@@ -9,7 +9,7 @@ import {
   RobotIcon,
   ScriptIcon,
   SkillIcon,
-  SettingsIcon,
+  CogIcon,
   StorageIcon,
   TasksIcon,
   ToolsIcon,
@@ -129,14 +129,8 @@ export const NAVIGATION_ROUTES: readonly NavigationRoute[] = [
   {
     id: "settings",
     label: "Настройки",
-    icon: SettingsIcon,
+    icon: CogIcon,
     children: [
-      {
-        id: "settings-appearance",
-        label: "Внешний вид",
-        path: APP_PATHS.settings.appearance,
-        icon: PaletteIcon,
-      },
       {
         id: "settings-providers",
         label: "Провайдеры",

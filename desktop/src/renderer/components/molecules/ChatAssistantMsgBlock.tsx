@@ -22,6 +22,7 @@ import { CompactToolStatus } from "./CompactToolStatus";
 
 export interface ChatAssistantMsgBlockProps {
   text: string;
+  usageLabel?: string;
   reasoning?: string;
   status?: "streaming" | "completed" | "failed" | "cancelled";
   error?: string | null;
@@ -35,6 +36,7 @@ export interface ChatAssistantMsgBlockProps {
 
 export const ChatAssistantMsgBlock = memo(function ChatAssistantMsgBlock({
   text,
+  usageLabel,
   reasoning,
   status,
   error,
@@ -89,15 +91,25 @@ export const ChatAssistantMsgBlock = memo(function ChatAssistantMsgBlock({
           </MarkdownContent>
         )}
         {actions}
-        <div className="mt-1 flex gap-1 opacity-0 transition-opacity group-hover/message:opacity-100">
-          <ControlButton icon="copy" title="Копировать" onClick={onCopy} />
-          <ControlButton
-            variant="delete"
-            icon="trash"
-            title="Удалить"
-            disabled={disabled}
-            onClick={onDelete}
-          />
+        <div className="mt-1 flex justify-between items-center opacity-0 transition-opacity group-hover/message:opacity-100">
+          <div className="flex gap-1">
+            <ControlButton icon="copy" title="Копировать" onClick={onCopy} />
+            <ControlButton
+              variant="delete"
+              icon="trash"
+              title="Удалить"
+              disabled={disabled}
+              onClick={onDelete}
+            />
+          </div>
+          {usageLabel ? (
+            <span
+              className="mr-1 truncate text-[11px] text-main-500"
+              title={usageLabel}
+            >
+              {usageLabel}
+            </span>
+          ) : null}
         </div>
       </div>
     </div>

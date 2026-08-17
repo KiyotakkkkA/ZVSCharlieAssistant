@@ -48,6 +48,7 @@ interface ChatMessage {
   toolCalls?: ChatToolCall[];
   scenarioRunId?: number | null;
   status?: "streaming" | "completed" | "failed" | "cancelled";
+  usageLabel: string;
 }
 
 const suggestions = [
@@ -218,6 +219,7 @@ export function ChatFeed({
                   <ChatUserMsgBlock
                     key={message.id}
                     text={message.text}
+                    usageLabel={message.usageLabel}
                     disabled={actionsDisabled}
                     onCopy={() => void copyMessage(message.text)}
                     onEdit={(text) => onEditMessage(message.id, text)}
@@ -227,6 +229,7 @@ export function ChatFeed({
                   <ChatAssistantMsgBlock
                     key={message.id}
                     text={message.text}
+                    usageLabel={message.usageLabel}
                     reasoning={message.reasoning}
                     status={message.status}
                     error={message.error}

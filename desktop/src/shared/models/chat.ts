@@ -1,14 +1,12 @@
 import type { ScenarioNodeRun, ScenarioRun } from "./automation";
 import type { RunStatus as SharedRunStatus } from "./run";
-import type { ChatMode } from "../dto";
+import type { ChatMode, ChatUsage } from "../dto";
 
 export type RunStatus = SharedRunStatus;
 export interface ChatConversation {
   id: number;
   title: string;
-  mode: ChatMode;
-  agentId: string | null;
-  modelId: number | null;
+  lastUsage: ChatUsage;
   updatedAt: string;
 }
 export interface ChatToolCall {
@@ -30,6 +28,7 @@ export interface ChatMessage {
   reasoning: string;
   error: string | null;
   toolCalls: ChatToolCall[];
+  lastUsage: ChatUsage;
   createdAt: string;
 }
 export interface ChatSnapshot {

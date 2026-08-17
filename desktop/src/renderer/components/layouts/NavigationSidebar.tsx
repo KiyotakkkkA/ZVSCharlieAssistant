@@ -91,7 +91,7 @@ export const NavigationSidebar = () => {
           </Button>
         </Tooltip>
       </div>
-      <Separator className="my-2 opacity-70" />
+      <Separator className="my-4 opacity-70" />
       <div
         className={[
           "transition-opacity duration-150",
