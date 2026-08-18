@@ -134,6 +134,9 @@ interface MistralModelsResponse {
     object?: string;
     created?: number;
     owned_by?: string;
+    name?: string;
+    description?: string;
+    type?: string;
     root?: string;
     max_context_length?: number;
     aliases?: string[];
@@ -205,7 +208,7 @@ class MistralConnectionChecker implements ProviderConnectionChecker {
 
       return {
         id,
-        name: id,
+        name: model.name?.trim() || id,
         modifiedAt: model.created
           ? new Date(model.created * 1000).toISOString()
           : "",
@@ -228,15 +231,11 @@ class MistralConnectionChecker implements ProviderConnectionChecker {
             ...(model.capabilities?.function_calling ? ["tools"] : []),
             ...(model.capabilities?.completion_fim ? ["fim"] : []),
             ...(model.capabilities?.vision ? ["vision"] : []),
+            ...(model.capabilities?.classification ? ["classification"] : []),
+            ...(model.capabilities?.fine_tuning ? ["fine-tuning"] : []),
           ],
-          description: [
-            model.capabilities?.function_calling ? "Function calling" : null,
-            model.capabilities?.vision ? "Vision" : null,
-            model.capabilities?.completion_fim ? "FIM" : null,
-            model.capabilities?.fine_tuning ? "Fine-tuning" : null,
-          ]
-            .filter(Boolean)
-            .join(", "),
+          aliases: model.aliases ?? [],
+          description: model.description?.trim() || "",
         },
       };
     });

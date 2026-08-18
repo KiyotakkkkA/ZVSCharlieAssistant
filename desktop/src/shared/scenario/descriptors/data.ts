@@ -341,7 +341,47 @@ export const readFilesDescriptor: ScenarioNodeDescriptor<
   outputs: [mainOutput({ label: "Текст" }), errorOutput()],
   itemMode: "collection",
   defaults: { onError: "continue", timeoutSeconds: 600 },
+  validate: ({ node, graph }) => {
+    const feedsFromTrigger = walkUpstream(graph, node.id);
+    if (feedsFromTrigger.trigger && !feedsFromTrigger.download)
+      return [
+        {
+          nodeId: node.id,
+          severity: "warning",
+          message: `Перед узлом «${node.name}» нет узла «Скачать файлы» — вложения из триггера не будут прочитаны`,
+        },
+      ];
+    return [];
+  },
 };
+
+function walkUpstream(
+  graph: {
+    nodes: Array<{ id: string; kind: string }>;
+    edges: Array<{ source: string; target: string }>;
+  },
+  nodeId: string,
+): { trigger: boolean; download: boolean } {
+  const kindById = new Map(graph.nodes.map((node) => [node.id, node.kind]));
+  const seen = new Set<string>([nodeId]);
+  const queue = [nodeId];
+  let trigger = false;
+  let download = false;
+
+  while (queue.length) {
+    const current = queue.shift()!;
+    for (const edge of graph.edges) {
+      if (edge.target !== current || seen.has(edge.source)) continue;
+      seen.add(edge.source);
+      queue.push(edge.source);
+      const kind = kindById.get(edge.source) ?? "";
+      if (kind.startsWith("trigger.")) trigger = true;
+      if (kind === "downloadFiles") download = true;
+    }
+  }
+
+  return { trigger, download };
+}
 
 const knowledgeStoreConfigSchema = z.object({
   vectorStoreId: z.int().positive(),

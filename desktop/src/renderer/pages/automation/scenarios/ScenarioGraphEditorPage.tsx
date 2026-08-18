@@ -22,6 +22,7 @@ import {
   SendIcon,
 } from "../../../components/atoms";
 import {
+  ResizableSidePanel,
   ScenarioGraphCanvas,
   type ScenarioFlowEdge,
   type ScenarioFlowNode,
@@ -737,14 +738,12 @@ export const ScenarioGraphEditorPage = observer(
             onDrop={(kind, position) => addNode(kind, position)}
           />
 
-          <aside className="w-96 shrink-0 border-l border-main-800 bg-main-900/90">
-            <ScrollArea className="min-h-0 max-h-full">
-              <div className="flex h-12 items-center justify-between border-b border-main-800 px-4">
-                <h2 className="text-sm font-semibold text-main-200">
-                  Настройки
-                </h2>
-                <CogIcon className="size-4 text-main-500" />
-              </div>
+          <ResizableSidePanel
+            title="Настройки"
+            storageKey="zvs.scenario-editor.inspector"
+            headerAction={<CogIcon className="size-4 shrink-0 text-main-500" />}
+          >
+            <ScrollArea className="max-h-full min-h-0">
               {selectedNode && selectedVisual ? (
                 <div className="space-y-5 p-4">
                   <div className="flex items-center gap-3">
@@ -838,7 +837,7 @@ export const ScenarioGraphEditorPage = observer(
                 </div>
               ) : null}
             </ScrollArea>
-          </aside>
+          </ResizableSidePanel>
         </div>
 
         <DangerModal

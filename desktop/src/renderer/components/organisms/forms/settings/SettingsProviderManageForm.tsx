@@ -25,6 +25,7 @@ import {
 } from "../../../atoms";
 import {
   ProvidedEntityManageHeader,
+  SettingsProviderMistralModelCard,
   SettingsProviderOllamaModelCard,
   SettingsProviderOpenrouterModelCard,
 } from "../../../molecules";
@@ -65,6 +66,21 @@ const BASE_URLS: Record<TextProviderKind, string> = {
   openrouter: "https://openrouter.ai/api/v1",
   ollama: "https://ollama.com",
   mistral: "https://api.mistral.ai/v1",
+};
+
+interface ModelCardProps {
+  model: ProviderModelDraft;
+  enabled: boolean;
+  onEnabledChange: (enabled: boolean) => void;
+}
+
+const PROVIDER_CARDS: Record<
+  TextProviderKind,
+  React.ComponentType<ModelCardProps>
+> = {
+  ollama: SettingsProviderOllamaModelCard,
+  openrouter: SettingsProviderOpenrouterModelCard,
+  mistral: SettingsProviderMistralModelCard,
 };
 
 export function SettingsProviderManageForm({
@@ -387,9 +403,12 @@ export function SettingsProviderManageForm({
             ) : null}
             {visibleModels.length ? (
               <div className="space-y-2">
-                {visibleModels.map((item) =>
-                  model.kind === "openrouter" ? (
-                    <SettingsProviderOpenrouterModelCard
+                {visibleModels.map((item) => {
+                  const CardComponent = PROVIDER_CARDS[model.kind];
+                  if (!CardComponent) return null;
+
+                  return (
+                    <CardComponent
                       key={item.id}
                       model={item}
                       enabled={item.enabled}
@@ -397,17 +416,8 @@ export function SettingsProviderManageForm({
                         onModelChange(item.id, enabled)
                       }
                     />
-                  ) : (
-                    <SettingsProviderOllamaModelCard
-                      key={item.id}
-                      model={item}
-                      enabled={item.enabled}
-                      onEnabledChange={(enabled) =>
-                        onModelChange(item.id, enabled)
-                      }
-                    />
-                  ),
-                )}
+                  );
+                })}
               </div>
             ) : (
               <div className="grid min-h-36 place-items-center rounded-lg border border-dashed border-main-700 px-6 text-center text-sm text-main-500">

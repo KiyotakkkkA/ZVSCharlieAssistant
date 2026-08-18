@@ -181,6 +181,11 @@ export function ScenarioGraphCanvas({
           position="bottom-right"
           pannable
           zoomable
+          style={{ width: 220, height: 150 }}
+          nodeBorderRadius={3}
+          nodeStrokeWidth={3}
+          nodeStrokeColor={canvasColors.dots}
+          offsetScale={4}
           className="rounded-lg! bg-main-800! ring-1 ring-main-700"
           maskColor={canvasColors.mask}
           nodeColor={(node) => {

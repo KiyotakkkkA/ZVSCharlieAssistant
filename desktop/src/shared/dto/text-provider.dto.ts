@@ -31,6 +31,7 @@ export const textProviderModelDetailsDtoSchema = z.object({
   completionPrice: z.string().optional(),
   requestPrice: z.string().optional(),
   supportedParameters: z.array(z.string()).optional(),
+  aliases: z.array(z.string()).optional(),
   description: z.string().optional(),
 });
 export const textProviderLimitsDtoSchema = z.object({

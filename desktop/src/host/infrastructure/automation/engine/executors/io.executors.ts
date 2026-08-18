@@ -227,7 +227,18 @@ export const createReadFilesExecutor = (
   kind: "readFiles",
   async execute(context) {
     const config = context.config;
-    const files = collectFiles(context.items.map((item) => item.json));
+    const values = context.items.map((item) => item.json);
+    const files = collectFiles(values);
+
+    if (files.length === 0) {
+      const pending = countPendingAttachments(values);
+      if (pending > 0)
+        throw new PermanentError(
+          `Вложения (${pending}) ещё не скачаны: между триггером и узлом «${context.node.name}» нужен узел «Скачать файлы».`,
+          { context: { nodeId: context.node.id } },
+        );
+    }
+
     const result = await services.readFiles({
       files,
       maxCharactersPerFile: config.maxCharactersPerFile,
@@ -268,6 +279,29 @@ export const createReadFilesExecutor = (
     };
   },
 });
+
+function countPendingAttachments(values: unknown[]): number {
+  const seen = new Set<string>();
+  const visit = (candidate: unknown) => {
+    if (Array.isArray(candidate)) {
+      candidate.forEach(visit);
+      return;
+    }
+    if (!isRecord(candidate)) return;
+    if (
+      typeof candidate.id === "string" &&
+      typeof candidate.kind === "string" &&
+      "uniqueId" in candidate &&
+      candidate.storageKey === undefined
+    ) {
+      seen.add(candidate.id);
+      return;
+    }
+    Object.values(candidate).forEach(visit);
+  };
+  values.forEach(visit);
+  return seen.size;
+}
 
 function collectFiles(values: unknown[]): ScenarioFileReference[] {
   const files = new Map<number, ScenarioFileReference>();

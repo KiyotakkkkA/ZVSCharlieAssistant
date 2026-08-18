@@ -8,6 +8,7 @@ export { AppBreadcrumbs, type AppBreadcrumbItem } from "./AppBreadcrumbs";
 export { NavigationTreeItem } from "./NavigationTreeItem";
 export { SettingsProviderOllamaModelCard } from "./SettingsProviderOllamaModelCard";
 export { SettingsProviderOpenrouterModelCard } from "./SettingsProviderOpenrouterModelCard";
+export { SettingsProviderMistralModelCard } from "./SettingsProviderMistralModelCard";
 export {
   CompactEntitySelector,
   type CompactEntitySelectorItem,
