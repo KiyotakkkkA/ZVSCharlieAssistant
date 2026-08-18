@@ -190,7 +190,39 @@ export class SecretStorageRepository {
     return this.findSecret(input.id)!;
   }
 
+  /**
+   * Integrations hold their token through a RESTRICT foreign key, so deleting
+   * such a secret fails at the database level. Report which connections are in
+   * the way instead of letting a raw constraint error reach the interface.
+   */
+  private integrationsUsingSecret(secretIds: number[]): string[] {
+    if (secretIds.length === 0) return [];
+    const placeholders = secretIds.map(() => "?").join(",");
+    return (
+      this.database
+        .prepare(
+          `SELECT DISTINCT p.name
+           FROM integration_secret_bindings b
+           JOIN integration_profiles p ON p.id = b.profile_id
+           WHERE b.secret_id IN (${placeholders})
+           ORDER BY p.name`,
+        )
+        .all(...secretIds) as Array<{ name: string }>
+    ).map((row) => row.name);
+  }
+
   deleteCategory(id: number): void {
+    const secretIds = (
+      this.database
+        .prepare("SELECT id FROM secret_entities WHERE category_id = ?")
+        .all(id) as Array<{ id: number }>
+    ).map((row) => row.id);
+    const blocking = this.integrationsUsingSecret(secretIds);
+    if (blocking.length)
+      throw new Error(
+        `Секреты этой категории используются подключениями: ${blocking.join(", ")}. Отвяжите их перед удалением категории.`,
+      );
+
     const result = this.database
       .prepare("DELETE FROM secret_categories WHERE id = ? AND builtin = 0")
       .run(id);
@@ -199,6 +231,12 @@ export class SecretStorageRepository {
   }
 
   deleteSecret(id: number): void {
+    const blocking = this.integrationsUsingSecret([id]);
+    if (blocking.length)
+      throw new Error(
+        `Секрет используется подключениями: ${blocking.join(", ")}. Отвяжите его перед удалением.`,
+      );
+
     const result = this.database
       .prepare("DELETE FROM secret_entities WHERE id = ? AND builtin = 0")
       .run(id);

@@ -1,121 +1,58 @@
-import { AutomationScenarioNodeKind } from "@ipc/contracts";
 import { Dropdown, Floating } from "@kiyotakkkka/zvs-uikit-lib";
-import {
-  SvgIcon,
-  PlayCircleIcon,
-  RobotIcon,
-  StorageIcon,
-  CogIcon,
-  TasksIcon,
-  SendIcon,
-  MoreIcon,
-  TrashIcon,
-  DownloadIcon,
-  FileIcon,
-} from "@renderer/components/atoms";
-import { ReactNode } from "react";
-import { AutomationScenarioNode } from "src/shared/dto";
+import { MoreIcon, TrashIcon, BlockIcon } from "@renderer/components/atoms";
+import type { ReactNode } from "react";
+import type { ScenarioNode } from "../../../../shared/scenario/graph";
+import { nodeVisual } from "./node-visuals";
 
 interface ScenarioNodeCardProps {
-  node: AutomationScenarioNode;
-  variant: ScenarioNodeVariant;
+  node: ScenarioNode;
   selected: boolean;
   showDescription: boolean;
   runStatus?: string;
+  issue?: "error" | "warning";
   onDelete?: (nodeId: string) => void;
+  onToggleDisabled?: (nodeId: string) => void;
   children?: ReactNode;
 }
 
-export interface ScenarioNodeVariant {
-  label: string;
-  icon: SvgIcon;
-  iconClassName: string;
-}
-
-export const scenarioNodeVariants: Record<
-  AutomationScenarioNodeKind,
-  ScenarioNodeVariant
-> = {
-  trigger: {
-    label: "Триггер",
-    icon: PlayCircleIcon,
-    iconClassName: "bg-amber-400/10 text-amber-200",
-  },
-  orchestrator: {
-    label: "Оркестратор",
-    icon: RobotIcon,
-    iconClassName: "bg-violet-400/10 text-violet-200",
-  },
-  agent: {
-    label: "Агент",
-    icon: RobotIcon,
-    iconClassName: "bg-violet-400/10 text-violet-200",
-  },
-  knowledge_store: {
-    label: "Хранилище",
-    icon: StorageIcon,
-    iconClassName: "bg-cyan-400/10 text-cyan-200",
-  },
-  download_files: {
-    label: "Файлы",
-    icon: DownloadIcon,
-    iconClassName: "bg-pink-400/10 text-pink-200",
-  },
-  read_files: {
-    label: "Чтение файлов",
-    icon: FileIcon,
-    iconClassName: "bg-pink-400/10 text-pink-200",
-  },
-  condition: {
-    label: "Условие",
-    icon: CogIcon,
-    iconClassName: "bg-sky-400/10 text-sky-200",
-  },
-  approval: {
-    label: "Подтверждение",
-    icon: TasksIcon,
-    iconClassName: "bg-lime-400/10 text-lime-200",
-  },
-  output: {
-    label: "Результат",
-    icon: SendIcon,
-    iconClassName: "bg-emerald-400/10 text-emerald-200",
-  },
-};
-
 export function ScenarioNodeCard({
   node,
-  variant,
   selected,
   showDescription,
   runStatus,
+  issue,
   onDelete,
+  onToggleDisabled,
   children,
 }: ScenarioNodeCardProps) {
-  const Icon = variant.icon;
-  const isTrigger = node.kind === "trigger";
+  const visual = nodeVisual(node.kind);
+  const Icon = visual.icon;
+
   const card = (
     <div className="group/node relative h-full w-full select-none">
       {children}
       <div
-        className={`relative flex items-center gap-2.5 rounded-lg bg-main-800 px-2.5 py-2 ring-1 transition-[box-shadow,background-color] ${isTrigger ? "h-15" : "h-full"} ${nodeRingClassName(runStatus, selected)}`}
+        className={`relative flex h-full items-center gap-2.5 rounded-lg bg-main-800 px-2.5 py-2 ring-1 transition-[box-shadow,background-color,opacity] ${node.disabled ? "opacity-45" : ""} ${nodeRingClassName(runStatus, selected, issue)}`}
       >
         <span
-          className={`grid size-7 shrink-0 place-items-center rounded-md ${variant.iconClassName}`}
+          className={`grid size-7 shrink-0 place-items-center rounded-md ${visual.iconClassName}`}
         >
           <Icon className="size-3.5" />
         </span>
         <div className="min-w-0 flex-1 pr-4">
           <p className="truncate text-xs font-medium text-main-100">
-            {node.title}
+            {node.name}
           </p>
-          <p className="mt-0.5 text-[9px] uppercase tracking-wider text-main-500">
-            {variant.label}
+          <p className="mt-0.5 truncate text-[9px] uppercase tracking-wider text-main-500">
+            {visual.label}
           </p>
         </div>
+        {node.disabled ? (
+          <BlockIcon className="absolute right-2 bottom-1.5 size-3 text-main-500" />
+        ) : null}
         {onDelete ? (
           <Dropdown
-            menuWidth={170}
+            menuWidth={180}
             menuPlacement="bottom-right"
             className="absolute right-2 top-0"
           >
@@ -128,6 +65,18 @@ export function ScenarioNodeCard({
               <span className="sr-only">Настроить узел</span>
             </Dropdown.Trigger>
             <Dropdown.Menu rounded="rounded-xl" className="p-1.5">
+              {onToggleDisabled ? (
+                <Dropdown.Item
+                  icon={<BlockIcon className="size-4" />}
+                  className="rounded-lg"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onToggleDisabled(node.id);
+                  }}
+                >
+                  {node.disabled ? "Включить узел" : "Отключить узел"}
+                </Dropdown.Item>
+              ) : null}
               <Dropdown.Item
                 icon={<TrashIcon className="size-4" />}
                 className="rounded-lg text-danger-light"
@@ -144,24 +93,30 @@ export function ScenarioNodeCard({
       </div>
     </div>
   );
-  if (isTrigger || !showDescription) return card;
+
+  if (!showDescription) return card;
   return (
     <Floating anchor="bottom-center" className="h-full w-full">
       <Floating.Trigger className="h-full w-full">{card}</Floating.Trigger>
       <Floating.Content className="nodrag nopan w-64 text-xs leading-5 text-main-300">
-        <p className="mb-1 font-medium text-main-100">{node.title}</p>
-        {node.description || "Описание не задано"}
+        <p className="mb-1 font-medium text-main-100">{node.name}</p>
+        {node.description || visual.description || "Описание не задано"}
       </Floating.Content>
     </Floating>
   );
 }
 
-function nodeRingClassName(runStatus: string | undefined, selected: boolean) {
+function nodeRingClassName(
+  runStatus: string | undefined,
+  selected: boolean,
+  issue: "error" | "warning" | undefined,
+) {
   if (runStatus === "running" || runStatus === "waiting_for_approval")
     return "ring-accent-medium/90";
   if (runStatus === "completed") return "ring-success-medium/60";
   if (runStatus === "failed") return "ring-danger-medium/70";
-  return selected
-    ? "ring-accent-medium/80"
-    : "ring-main-700 hover:ring-main-500";
+  if (selected) return "ring-accent-medium/80";
+  if (issue === "error") return "ring-danger-medium/60";
+  if (issue === "warning") return "ring-amber-400/50";
+  return "ring-main-700 hover:ring-main-500";
 }

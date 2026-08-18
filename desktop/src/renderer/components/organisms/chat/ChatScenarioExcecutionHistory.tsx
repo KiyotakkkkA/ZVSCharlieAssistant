@@ -1,7 +1,10 @@
 import { ScenarioNodeRun, ScenarioRun } from "@ipc/contracts";
 import { Button, Timeline } from "@kiyotakkkka/zvs-uikit-lib";
 import { ChevronDownIcon } from "@renderer/components/atoms";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { observer } from "mobx-react-lite";
+import { automationStore } from "../../../stores";
+import { scenarioDescriptors } from "../../../../shared/scenario/descriptors";
 
 function formatNodeValue(value: unknown) {
   if (value === null || value === undefined) return "";
@@ -13,32 +16,54 @@ function formatNodeValue(value: unknown) {
   return typeof value === "string" ? value : JSON.stringify(value, null, 2);
 }
 
-function resolveNodeLabel(node: ScenarioNodeRun) {
-  return {
-    trigger: "Начало исполнения",
-    orchestrator: "Оркестрирование",
-    agent: `Вызов агента : ${node.nodeId}`,
-    knowledge_store: "Хранилище",
-    download_files: "Скачивание файлов",
-    read_files: "Чтение файлов",
-    condition: "Условие",
-    approval: "Подтверждение",
-    output: "Результат",
-  }[node.nodeKind];
+/**
+ * Shows the name the author gave the node on the canvas. Falls back to the
+ * node kind, then to the raw id — generated ids like `agent-14dc6024` mean
+ * nothing to the person reading the run.
+ */
+function resolveNodeLabel(
+  node: ScenarioNodeRun,
+  names: Map<string, string>,
+): string {
+  return (
+    names.get(node.nodeId) ??
+    scenarioDescriptors.get(node.nodeKind)?.label ??
+    node.nodeId
+  );
 }
 
+const NODE_ICONS: Record<string, string> = {
+  play: "mdi:play-circle-outline",
+  clock: "mdi:clock-outline",
+  telegram: "mdi:send-circle-outline",
+  mail: "mdi:email-outline",
+  agent: "mdi:account-cog-outline",
+  orchestrator: "mdi:robot-outline",
+  classify: "mdi:shape-outline",
+  fields: "mdi:form-textbox",
+  aggregate: "mdi:chart-box-outline",
+  split: "mdi:call-split",
+  sort: "mdi:sort",
+  dedupe: "mdi:content-duplicate",
+  http: "mdi:web",
+  download: "mdi:download-outline",
+  read: "mdi:file-document-outline",
+  knowledge: "mdi:database-search-outline",
+  branch: "mdi:source-branch",
+  switch: "mdi:directions-fork",
+  filter: "mdi:filter-outline",
+  merge: "mdi:merge",
+  loop: "mdi:sync",
+  limit: "mdi:numeric",
+  question: "mdi:check-decagram-outline",
+  subflow: "mdi:sitemap-outline",
+  output: "mdi:send-outline",
+  dot: "mdi:circle-small",
+};
+
 function nodeKindIcon(kind: ScenarioNodeRun["nodeKind"]) {
-  return {
-    trigger: "mdi:message-outline",
-    orchestrator: "mdi:robot-outline",
-    agent: "mdi:account-cog-outline",
-    knowledge_store: "mdi:database-search-outline",
-    download_files: "mdi:download-outline",
-    read_files: "mdi:file-document-outline",
-    condition: "mdi:source-branch",
-    approval: "mdi:check-decagram-outline",
-    output: "mdi:send-outline",
-  }[kind];
+  const icon = scenarioDescriptors.get(kind)?.icon;
+  return NODE_ICONS[icon ?? ""] ?? "mdi:circle-small";
 }
 
 function scenarioStatusLabel(status: ScenarioRun["status"]) {
@@ -52,13 +77,19 @@ function scenarioStatusLabel(status: ScenarioRun["status"]) {
   }[status];
 }
 
-export const ScenarioExecutionHistory = ({
+export const ScenarioExecutionHistory = observer(function ScenarioExecutionHistory({
   execution,
   liveOutput,
 }: {
   execution: { run: ScenarioRun; nodes: ScenarioNodeRun[] };
   liveOutput: Map<string, string>;
-}) => {
+}) {
+  const nodeNames = useMemo(() => {
+    const scenario = automationStore.getScenario(execution.run.scenarioId);
+    return new Map(
+      (scenario?.graph.nodes ?? []).map((node) => [node.id, node.name]),
+    );
+  }, [execution.run.scenarioId]);
   const [expandedNodes, setExpandedNodes] = useState<Set<number>>(new Set());
   const running = ["queued", "running", "waiting_for_approval"].includes(
     execution.run.status,
@@ -109,7 +140,7 @@ export const ScenarioExecutionHistory = ({
               <Timeline.Item key={node.id} icon={nodeKindIcon(node.nodeKind)}>
                 <Timeline.ItemTitle className="flex min-w-0 items-center justify-between gap-3">
                   <span className="min-w-0 truncate">
-                    {resolveNodeLabel(node)}
+                    {resolveNodeLabel(node, nodeNames)}
                   </span>
                   {hasContent ? (
                     <Button
@@ -154,4 +185,4 @@ export const ScenarioExecutionHistory = ({
       </div>
     </section>
   );
-};
+});

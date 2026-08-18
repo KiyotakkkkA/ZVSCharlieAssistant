@@ -156,7 +156,11 @@ export class ScenarioRuntimeEngine {
         });
         return;
       }
-      this.executions.setRunStatus(runId, "completed", result.outputs);
+      this.executions.setRunStatus(
+        runId,
+        "completed",
+        finalOutput(graph, result.outputs),
+      );
       const finished = this.executions.run(runId)!;
       emit({ type: "run.completed", run: finished });
     } catch (error) {
@@ -191,4 +195,43 @@ export class ScenarioRuntimeEngine {
       });
     }
   }
+}
+
+/**
+ * The runtime collects the output of every node so expressions can reference
+ * them by name. That whole map is useful for debugging a run, but it is not
+ * what "the result of the scenario" means to a person reading a chat reply —
+ * dumping it verbatim shows them the trigger payload and every intermediate
+ * step. Narrow it down to the terminal nodes, and to their plain text when
+ * they produced any.
+ */
+function finalOutput(
+  graph: ScenarioGraph,
+  outputs: Record<string, unknown>,
+): unknown {
+  const terminalNames = graph.nodes
+    .filter((node) => scenarioDescriptors.get(node.kind)?.isTerminal)
+    .map((node) => node.name)
+    .filter((name) => name in outputs);
+
+  if (terminalNames.length === 0) return outputs;
+
+  const picked = terminalNames.map((name) => ({
+    name,
+    value: textOf(outputs[name]) ?? outputs[name],
+  }));
+
+  if (picked.length === 1) return picked[0]!.value;
+  return Object.fromEntries(picked.map((item) => [item.name, item.value]));
+}
+
+/** Pulls a human-readable string out of one node's recorded output. */
+function textOf(entry: unknown): string | undefined {
+  const json = (entry as { json?: unknown } | undefined)?.json;
+  if (typeof json === "string") return json;
+  if (json && typeof json === "object") {
+    const text = (json as { text?: unknown }).text;
+    if (typeof text === "string") return text;
+  }
+  return undefined;
 }

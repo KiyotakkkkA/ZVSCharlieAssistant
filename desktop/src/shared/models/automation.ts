@@ -1,5 +1,4 @@
 import type { RunOrigin, RunStatus } from "./run";
-import type { ScenarioNodeKind } from "../scenario-ports";
 import type {
   AgentTerminalPolicy,
   AgentDirectoryPolicy,
@@ -65,7 +64,8 @@ export interface AutomationSkill {
   builtin: boolean;
   updatedAt: string;
 }
-export type AutomationScenarioNodeKind = ScenarioNodeKind;
+/** Node kinds are open-ended in v2 — they come from the descriptor registry. */
+export type AutomationScenarioNodeKind = string;
 export interface AutomationScenario {
   id: string;
   name: string;
@@ -129,7 +129,7 @@ export type ScenarioRunEvent =
   | { type: "run.completed"; run: ScenarioRun }
   | { type: "run.failed"; run: ScenarioRun }
   | { type: "run.cancelled"; run: ScenarioRun };
-export interface ScenarioValidationResult {
-  valid: boolean;
-  issues: Array<{ nodeId?: string; message: string }>;
-}
+export type {
+  ScenarioValidationResult,
+  ScenarioValidationIssue,
+} from "../scenario/graph";

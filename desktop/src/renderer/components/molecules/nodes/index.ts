@@ -1,10 +1,6 @@
+export { ScenarioNodeCard } from "./ScenarioNodeCard";
 export {
-  ScenarioTriggerNodeSummary,
-  getScenarioTriggerEventChannels,
-  type ScenarioTriggerEventChannel,
-} from "./ScenarioTriggerNodeSummary";
-export {
-  scenarioNodeVariants,
-  type ScenarioNodeVariant,
-  ScenarioNodeCard,
-} from "./ScenarioNodeCard";
+  nodeVisual,
+  CATEGORY_STYLES,
+  type ScenarioNodeVisual,
+} from "./node-visuals";

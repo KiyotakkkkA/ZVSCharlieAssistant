@@ -1,10 +1,11 @@
-import { memo, useMemo, type CSSProperties } from "react";
+import { memo, useCallback, useMemo } from "react";
 import {
   Background,
   BaseEdge,
   Controls,
   EdgeLabelRenderer,
   Handle,
+  MiniMap,
   Panel,
   Position,
   ReactFlow,
@@ -20,32 +21,27 @@ import {
 import "@xyflow/react/dist/style.css";
 import { Dropdown } from "@kiyotakkkka/zvs-uikit-lib";
 import { TrashIcon } from "../atoms";
-import type {
-  AutomationScenarioEdge as GraphEdge,
-  AutomationScenarioNode as GraphNode,
-} from "../../../shared/dto";
+import type { ScenarioNode } from "../../../shared/scenario/graph";
+import { scenarioDescriptors } from "../../../shared/scenario/descriptors";
 import {
-  SCENARIO_PORTS,
-  isScenarioConnectionValid,
-  type ScenarioPortDefinition,
-} from "../../../shared/scenario-ports";
-import {
-  ScenarioNodeCard,
-  ScenarioTriggerNodeSummary,
-  scenarioNodeVariants,
-} from "../molecules/nodes";
+  resolvePorts,
+  type PortSpec,
+} from "../../../shared/scenario/node-descriptor";
+import { ScenarioNodeCard, nodeVisual } from "../molecules/nodes";
 
 type ScenarioNodeData = {
-  node: GraphNode;
+  node: ScenarioNode;
   showDescription: boolean;
   runStatus?: string;
+  issue?: "error" | "warning";
   onDelete?: (nodeId: string) => void;
+  onToggleDisabled?: (nodeId: string) => void;
 } & Record<string, unknown>;
 export type ScenarioFlowNode = FlowNode<ScenarioNodeData, "scenario">;
 
 type ScenarioEdgeData = {
   edgeId: string;
-  kind: GraphEdge["kind"];
+  dataKind: "main" | "knowledge";
   onDelete: (edgeId: string) => void;
 } & Record<string, unknown>;
 export type ScenarioFlowEdge = FlowEdge<ScenarioEdgeData, "scenario">;
@@ -57,7 +53,19 @@ type ScenarioGraphCanvasProps = {
   onEdgesChange: OnEdgesChange<ScenarioFlowEdge>;
   onConnect: (connection: Connection) => void;
   onNodeSelect: (nodeId: string) => void;
+  onDrop?: (kind: string, position: { x: number; y: number }) => void;
 };
+
+/** Reads the port list of a node straight from its descriptor. */
+function portsOf(node: ScenarioNode): { inputs: PortSpec[]; outputs: PortSpec[] } {
+  const descriptor = scenarioDescriptors.get(node.kind);
+  if (!descriptor) return { inputs: [], outputs: [] };
+  const config = (node.config ?? {}) as Record<string, unknown>;
+  return {
+    inputs: resolvePorts(descriptor.inputs, config),
+    outputs: resolvePorts(descriptor.outputs, config),
+  };
+}
 
 export function ScenarioGraphCanvas({
   nodes,
@@ -66,13 +74,52 @@ export function ScenarioGraphCanvas({
   onEdgesChange,
   onConnect,
   onNodeSelect,
+  onDrop,
 }: ScenarioGraphCanvasProps) {
-  const nodeKinds = useMemo(
-    () => new Map(nodes.map((node) => [node.id, node.data.node.kind])),
+  const nodesById = useMemo(
+    () => new Map(nodes.map((item) => [item.id, item.data.node])),
     [nodes],
   );
+
+  /**
+   * A connection is valid when both ends exist, carry the same data kind and
+   * the target port is not already taken by a single-connection port.
+   */
+  const isValidConnection = useCallback(
+    (connection: Connection | FlowEdge) => {
+      const source = nodesById.get(connection.source ?? "");
+      const target = nodesById.get(connection.target ?? "");
+      if (!source || !target || source.id === target.id) return false;
+      const sourcePort = portsOf(source).outputs.find(
+        (port) => port.id === connection.sourceHandle,
+      );
+      const targetPort = portsOf(target).inputs.find(
+        (port) => port.id === connection.targetHandle,
+      );
+      if (!sourcePort || !targetPort) return false;
+      if (sourcePort.dataKind !== targetPort.dataKind) return false;
+      if (!targetPort.multiple) {
+        const taken = edges.some(
+          (edge) =>
+            edge.target === connection.target &&
+            edge.targetHandle === connection.targetHandle,
+        );
+        if (taken) return false;
+      }
+      return true;
+    },
+    [edges, nodesById],
+  );
+
   return (
-    <div className="relative min-w-0 flex-1 overflow-hidden bg-main-900">
+    <div
+      className="relative min-w-0 flex-1 overflow-hidden bg-main-900"
+      onDragOver={(event) => {
+        if (!onDrop) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "copy";
+      }}
+    >
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -81,18 +128,27 @@ export function ScenarioGraphCanvas({
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
-        isValidConnection={(connection) =>
-          isScenarioConnectionValid(connection, nodeKinds)
-        }
+        isValidConnection={isValidConnection}
         onNodeClick={(_event, node) => onNodeSelect(node.id)}
+        onDrop={(event) => {
+          if (!onDrop) return;
+          event.preventDefault();
+          const kind = event.dataTransfer.getData("application/scenario-node");
+          if (!kind) return;
+          const bounds = event.currentTarget.getBoundingClientRect();
+          onDrop(kind, {
+            x: event.clientX - bounds.left,
+            y: event.clientY - bounds.top,
+          });
+        }}
         onInit={(instance) => {
           requestAnimationFrame(() => {
             void instance.fitView({ padding: 0.2, duration: 0 });
           });
         }}
         fitView
-        minZoom={0.35}
-        maxZoom={1.5}
+        minZoom={0.2}
+        maxZoom={1.6}
         deleteKeyCode={["Backspace", "Delete"]}
         className="bg-main-900"
         colorMode="dark"
@@ -104,23 +160,24 @@ export function ScenarioGraphCanvas({
           showInteractive={false}
           className="overflow-hidden rounded-lg! border-0! bg-main-800! shadow-none! ring-1 ring-main-700"
         />
-        <Panel position="bottom-center">
+        <MiniMap
+          position="bottom-right"
+          pannable
+          zoomable
+          className="rounded-lg! bg-main-800! ring-1 ring-main-700"
+          maskColor="rgba(10, 10, 10, 0.65)"
+          nodeColor={(node) => {
+            const data = node.data as ScenarioNodeData | undefined;
+            const category = data?.node ? nodeVisual(data.node.kind).category : "data";
+            return MINIMAP_COLORS[category] ?? "#64748b";
+          }}
+        />
+        <Panel position="top-right">
           <div className="flex items-center gap-3 rounded-md bg-main-800/90 px-2.5 py-1.5 text-[10px] text-main-500 ring-1 ring-main-700/80">
-            <PortLegend
-              shape="size-2.5 rounded-full bg-lime-300"
-              label="Текст"
-            />
-            <PortLegend
-              shape="h-2.5 w-4 rounded bg-violet-300"
-              label="Исполнители"
-            />
+            <PortLegend shape="size-2.5 rounded-full bg-lime-300" label="Данные" />
             <PortLegend
               shape="size-2.5 rounded-[2px] bg-cyan-300"
-              label="Хранилище"
-            />
-            <PortLegend
-              shape="size-2.5 rounded-full bg-pink-300"
-              label="Файлы"
+              label="База знаний"
             />
           </div>
         </Panel>
@@ -128,6 +185,15 @@ export function ScenarioGraphCanvas({
     </div>
   );
 }
+
+const MINIMAP_COLORS: Record<string, string> = {
+  trigger: "#fcd34d",
+  ai: "#c4b5fd",
+  data: "#67e8f9",
+  flow: "#7dd3fc",
+  io: "#93c5fd",
+  output: "#6ee7b7",
+};
 
 const ScenarioFlowEdgeView = memo(function ScenarioFlowEdgeView({
   sourceX,
@@ -167,7 +233,9 @@ const ScenarioFlowEdgeView = memo(function ScenarioFlowEdgeView({
             <Dropdown.Trigger
               icon={
                 <span
-                  className={`block size-1.5 rounded-full ${edgeDotClasses[data?.kind ?? "text"]}`}
+                  className={`block size-1.5 rounded-full ${
+                    data?.dataKind === "knowledge" ? "bg-cyan-300" : "bg-lime-300"
+                  }`}
                 />
               }
               aria-label="Настроить связь"
@@ -200,81 +268,35 @@ const ScenarioFlowNodeView = memo(function ScenarioFlowNodeView({
   selected,
 }: NodeProps<ScenarioFlowNode>) {
   const node = data.node;
+  const { inputs, outputs } = portsOf(node);
   return (
     <ScenarioNodeCard
       node={node}
-      variant={scenarioNodeVariants[node.kind]}
       selected={selected}
       showDescription={data.showDescription}
       runStatus={data.runStatus}
+      issue={data.issue}
       onDelete={data.onDelete}
+      onToggleDisabled={data.onToggleDisabled}
     >
-      {node.kind === "orchestrator" ? (
-        <ScenarioPort port={SCENARIO_PORTS.textIn} />
-      ) : node.kind === "agent" ? (
-        <>
-          <ScenarioPort port={SCENARIO_PORTS.workerIn} />
-          <ScenarioPort port={SCENARIO_PORTS.knowledgeIn} />
-        </>
-      ) : node.kind === "download_files" || node.kind === "read_files" ? (
-        <ScenarioPort port={SCENARIO_PORTS.filesIn} />
-      ) : node.kind !== "trigger" && node.kind !== "knowledge_store" ? (
-        <ScenarioPort port={SCENARIO_PORTS.textIn} />
-      ) : null}
-      {node.kind === "trigger" ? (
-        <ScenarioTriggerNodeSummary
-          node={node}
-          renderPort={(channel) => (
-            <>
-              <ScenarioPort
-                key={channel.portId}
-                port={
-                  channel.portId === SCENARIO_PORTS.telegramMessageOut.id
-                    ? SCENARIO_PORTS.telegramMessageOut
-                    : SCENARIO_PORTS.emailMessageOut
-                }
-                style={{ right: -5, top: "25%" }}
-              />
-              <ScenarioPort
-                key={`${channel.portId}-attachments`}
-                port={
-                  channel.portId === SCENARIO_PORTS.telegramMessageOut.id
-                    ? SCENARIO_PORTS.telegramAttachmentsOut
-                    : SCENARIO_PORTS.emailAttachmentsOut
-                }
-                style={{ right: -5, top: "75%" }}
-              />
-            </>
-          )}
+      {inputs.map((port, index) => (
+        <ScenarioPort
+          key={`in-${port.id}`}
+          port={port}
+          direction="target"
+          index={index}
+          total={inputs.length}
         />
-      ) : null}
-      {node.kind === "orchestrator" ? (
-        <>
-          <ScenarioPort port={SCENARIO_PORTS.textOut} />
-          <ScenarioPort port={SCENARIO_PORTS.workerOut} />
-        </>
-      ) : node.kind === "agent" ? (
-        <ScenarioPort port={SCENARIO_PORTS.workerOut} />
-      ) : node.kind === "knowledge_store" ? (
-        <ScenarioPort port={SCENARIO_PORTS.knowledgeOut} />
-      ) : node.kind === "download_files" ? (
-        <ScenarioPort port={SCENARIO_PORTS.filesOut} />
-      ) : node.kind === "read_files" ? (
-        <ScenarioPort port={SCENARIO_PORTS.textOut} />
-      ) : node.kind === "trigger" ? (
-        <>
-          <ScenarioPort
-            port={SCENARIO_PORTS.textOut}
-            style={{ right: -5, top: 22 }}
-          />
-          <ScenarioPort
-            port={SCENARIO_PORTS.chatAttachmentsOut}
-            style={{ right: -5, top: 40 }}
-          />
-        </>
-      ) : node.kind !== "output" ? (
-        <ScenarioPort port={SCENARIO_PORTS.textOut} />
-      ) : null}
+      ))}
+      {outputs.map((port, index) => (
+        <ScenarioPort
+          key={`out-${port.id}`}
+          port={port}
+          direction="source"
+          index={index}
+          total={outputs.length}
+        />
+      ))}
     </ScenarioNodeCard>
   );
 }, areScenarioNodePropsEqual);
@@ -288,6 +310,7 @@ function areScenarioNodePropsEqual(
     previous.selected === next.selected &&
     previous.dragging === next.dragging &&
     previous.data.node === next.data.node &&
+    previous.data.issue === next.data.issue &&
     previous.data.showDescription === next.data.showDescription &&
     previous.data.runStatus === next.data.runStatus
   );
@@ -296,13 +319,6 @@ function areScenarioNodePropsEqual(
 const scenarioNodeTypes = { scenario: ScenarioFlowNodeView };
 const scenarioEdgeTypes = { scenario: ScenarioFlowEdgeView };
 
-const edgeDotClasses: Record<GraphEdge["kind"], string> = {
-  text: "bg-lime-300",
-  worker: "bg-violet-300",
-  knowledge: "bg-cyan-300",
-  files: "bg-pink-300",
-};
-
 const portPositions = {
   top: Position.Top,
   right: Position.Right,
@@ -310,36 +326,39 @@ const portPositions = {
   left: Position.Left,
 } as const;
 
-const portClasses: Record<ScenarioPortDefinition["kind"], string> = {
-  "text-input": "size-2.5! rounded-full! bg-lime-300! ring-2 ring-main-900",
-  "text-output": "size-2.5! rounded-full! bg-lime-300! ring-2 ring-main-900",
-  "event-output": "size-2.5! rounded-full! bg-lime-300! ring-2 ring-main-900",
-  "worker-input": "h-2! w-3.5! rounded-sm! bg-violet-300! ring-2 ring-main-900",
-  "worker-output":
-    "h-2! w-3.5! rounded-sm! bg-violet-300! ring-2 ring-main-900",
-  "knowledge-input":
-    "size-2.5! rounded-none! bg-cyan-300! ring-2 ring-main-900",
-  "knowledge-output":
-    "size-2.5! rounded-none! bg-cyan-300! ring-2 ring-main-900",
-  "files-input": "size-2.5! rounded-full! bg-pink-300! ring-2 ring-main-900",
-  "files-output": "size-2.5! rounded-full! bg-pink-300! ring-2 ring-main-900",
-};
-
+/**
+ * Ports of the same side are spread along that side so nodes with several
+ * outputs (switch, if, classify) stay readable at any zoom level.
+ */
 function ScenarioPort({
   port,
-  style,
+  direction,
+  index,
+  total,
 }: {
-  port: ScenarioPortDefinition;
-  style?: CSSProperties;
+  port: PortSpec;
+  direction: "source" | "target";
+  index: number;
+  total: number;
 }) {
+  const sameSide = port.side === "left" || port.side === "right";
+  const offset = total <= 1 ? 50 : ((index + 1) / (total + 1)) * 100;
+  const style = sameSide
+    ? { top: `${offset}%` }
+    : { left: `${offset}%` };
+  const shape =
+    port.dataKind === "knowledge"
+      ? "size-2.5! rounded-[2px]! bg-cyan-300!"
+      : "size-2.5! rounded-full! bg-lime-300!";
   return (
     <Handle
       id={port.id}
-      type={port.direction}
+      type={direction}
       position={portPositions[port.side]}
+      title={port.label}
       aria-label={port.label}
       style={style}
-      className={`z-20! border-2! border-main-800! ${portClasses[port.kind]}`}
+      className={`z-20! border-2! border-main-800! ring-2 ring-main-900 ${shape} ${port.optional ? "opacity-70" : ""}`}
     >
       <span className="block size-full" />
     </Handle>

@@ -5,7 +5,6 @@ import type {
   IntegrationSnapshot,
 } from "../../../shared/models/integration";
 import type {
-  ScenarioTriggerConfig,
   UpsertIntegrationProfileInput,
 } from "../../../shared/dto";
 
@@ -128,7 +127,44 @@ export class IntegrationRepository {
     return this.findProfile(id)!;
   }
 
+  /**
+   * Trigger bindings, queued file jobs and the delivery outbox all reference a
+   * profile through RESTRICT foreign keys. Name what is holding the profile so
+   * the interface can show something actionable instead of a raw constraint
+   * error from SQLite.
+   */
   deleteProfile(id: number): void {
+    const scenarios = (
+      this.db
+        .prepare(
+          `SELECT DISTINCT s.name
+           FROM scenario_trigger_bindings b
+           JOIN automation_scenarios s ON s.id = b.scenario_id
+           WHERE b.integration_profile_id = ?
+           ORDER BY s.name`,
+        )
+        .all(id) as Array<{ name: string }>
+    ).map((row) => row.name);
+    if (scenarios.length)
+      throw new Error(
+        `Подключение используется сценариями: ${scenarios.join(", ")}. Уберите его из триггеров перед удалением.`,
+      );
+
+    const pending =
+      (
+        this.db
+          .prepare(
+            `SELECT
+               (SELECT COUNT(*) FROM scenario_file_jobs WHERE integration_profile_id=?) jobs,
+               (SELECT COUNT(*) FROM scenario_delivery_outbox WHERE integration_profile_id=?) deliveries`,
+          )
+          .get(id, id) as { jobs: number; deliveries: number }
+      ) ?? { jobs: 0, deliveries: 0 };
+    if (pending.jobs || pending.deliveries)
+      throw new Error(
+        "Подключение занято незавершёнными задачами сценариев. Дождитесь их завершения или очистите историю запусков.",
+      );
+
     const result = this.db
       .prepare("DELETE FROM integration_profiles WHERE id=?")
       .run(id);
@@ -153,66 +189,6 @@ export class IntegrationRepository {
         id,
       );
   }
-
-  syncScenarioBindings(
-    scenarioId: string,
-    revisionId: number,
-    triggerNodeId: string,
-    config: ScenarioTriggerConfig,
-  ): void {
-    this.db.transaction(() => {
-      this.db
-        .prepare("DELETE FROM scenario_trigger_bindings WHERE scenario_id=?")
-        .run(scenarioId);
-      const insert = this.db.prepare(
-        `INSERT INTO scenario_trigger_bindings
-         (id,scenario_id,scenario_revision_id,trigger_node_id,kind,integration_profile_id,enabled,config_json,next_run_at)
-         VALUES(?,?,?,?,?,?,?,?,?)`,
-      );
-      if (config.manual.chatEnabled)
-        insert.run(
-          `${scenarioId}:manual_chat`,
-          scenarioId,
-          revisionId,
-          triggerNodeId,
-          "manual_chat",
-          null,
-          1,
-          "{}",
-          null,
-        );
-      if (config.manual.editorEnabled)
-        insert.run(
-          `${scenarioId}:manual_editor`,
-          scenarioId,
-          revisionId,
-          triggerNodeId,
-          "manual_editor",
-          null,
-          1,
-          "{}",
-          null,
-        );
-      for (const item of config.automatic) {
-        const nextRunAt =
-          item.kind === "interval"
-            ? new Date(Date.now() + item.intervalSeconds * 1000).toISOString()
-            : null;
-        insert.run(
-          `${scenarioId}:${item.id}`,
-          scenarioId,
-          revisionId,
-          triggerNodeId,
-          item.kind,
-          "integrationProfileId" in item ? item.integrationProfileId : null,
-          Number(item.enabled),
-          JSON.stringify(item),
-          nextRunAt,
-        );
-      }
-    })();
-  }
-
 
   syncTriggerNodeBindings(
     scenarioId: string,

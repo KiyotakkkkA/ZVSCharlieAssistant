@@ -28,10 +28,7 @@ import {
 import { BrainIcon } from "@renderer/components/atoms";
 import { PrimaryButton } from "@renderer/components/atoms/buttons";
 import { DangerModal } from "@renderer/components/organisms/modals";
-import {
-  scenarioTriggerConfigDtoSchema,
-  type StartRunInput,
-} from "../../../shared/dto";
+import type { StartRunInput } from "../../../shared/dto";
 
 export const ChatPage = observer(function ChatPage() {
   const toasts = useToasts();
@@ -59,13 +56,14 @@ export const ChatPage = observer(function ChatPage() {
   const nextScenarioOptions = automationStore.scenarios
     .filter((scenario) => {
       if (scenario.status !== "active") return false;
-      const trigger = scenario.graph.nodes.find(
-        (node) => node.kind === "trigger",
+      // A scenario is offered in chat when it has an enabled manual trigger
+      // that allows chat launches.
+      return scenario.graph.nodes.some(
+        (node) =>
+          node.kind === "trigger.manual" &&
+          !node.disabled &&
+          (node.config as { fromChat?: boolean }).fromChat !== false,
       );
-      const parsed = scenarioTriggerConfigDtoSchema.safeParse(
-        trigger?.config?.trigger,
-      );
-      return parsed.success ? parsed.data.manual.chatEnabled : true;
     })
     .map((scenario) => ({ value: scenario.id, label: scenario.name }));
   const modelOptions = useStableOptions(nextModelOptions);

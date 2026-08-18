@@ -44,8 +44,11 @@ export function createOutputExecutor(
         context.logger.info("scenario.output.artifact_requested", { fileName });
       }
 
+      // The node is terminal, so nothing downstream consumes these items —
+      // they are what gets recorded as the result of the run. Report the text
+      // that was actually delivered, not the raw input that produced it.
       return {
-        items: context.items,
+        items: [{ json: { text } }],
         diagnostics: {
           textLength: text.length,
           channels: config.channels.filter((channel) => channel.enabled).length,

@@ -1,6 +1,7 @@
 import type Database from "better-sqlite3";
 import { randomUUID } from "node:crypto";
 import {
+  emptyScenarioGraph,
   scenarioGraphSchema,
   type ScenarioGraph,
 } from "../../../shared/scenario/graph";
@@ -136,8 +137,22 @@ export class ScenarioGraphRepository {
   }
 }
 
+/**
+ * Reads a stored graph. A revision saved before the v2 cutover no longer
+ * parses — in that case the scenario is still listed (so it can be found and
+ * rebuilt) but opens as an empty canvas. The original JSON stays untouched in
+ * the revisions table, nothing is destroyed on disk.
+ */
+function readGraph(graphJson: string): ScenarioGraph {
+  try {
+    return scenarioGraphSchema.parse(JSON.parse(graphJson));
+  } catch {
+    return emptyScenarioGraph();
+  }
+}
+
 function mapRow(row: ScenarioRow): ScenarioDefinitionV2 {
-  const graph = scenarioGraphSchema.parse(JSON.parse(row.graph_json));
+  const graph = readGraph(row.graph_json);
   return {
     id: row.id,
     name: row.name,

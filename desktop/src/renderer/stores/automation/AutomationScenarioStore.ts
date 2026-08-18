@@ -7,12 +7,14 @@ import type {
   ScenarioValidationResult,
 } from "../../../ipc/contracts";
 import {
-  automationScenarioGraphDtoSchema,
   parseIpcDto,
   upsertAutomationScenarioDtoSchema,
-  type AutomationScenarioGraph,
   type UpsertAutomationScenarioInput,
 } from "../../../shared/dto";
+import {
+  scenarioGraphSchema,
+  type ScenarioGraph,
+} from "../../../shared/scenario/graph";
 export class AutomationScenarioStore {
   items: AutomationScenario[] = [];
   activeRun: ScenarioRun | null = null;
@@ -50,9 +52,9 @@ export class AutomationScenarioStore {
       this.items = this.items.filter((item) => item.id !== id);
     });
   }
-  validate(graph: AutomationScenarioGraph): Promise<ScenarioValidationResult> {
+  validate(graph: ScenarioGraph): Promise<ScenarioValidationResult> {
     return window.desktop.automation.validateScenario(
-      parseIpcDto(automationScenarioGraphDtoSchema, graph),
+      parseIpcDto(scenarioGraphSchema, graph),
     );
   }
   async start(id: string, input: unknown) {

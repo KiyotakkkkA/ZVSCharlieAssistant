@@ -7,7 +7,6 @@ import type {
   ScenarioRunStatus,
 } from "../../../shared/models/automation";
 import {
-  automationScenarioGraphDtoSchema,
   parseJsonDto,
 } from "../../../shared/dto";
 
@@ -40,32 +39,6 @@ export class ScenarioExecutionRepository {
         )
         .run();
     })();
-  }
-
-  definition(id: string, revisionId?: number) {
-    const row = this.db
-      .prepare(
-        `SELECT s.id, s.name, s.status, r.id revision_id, r.graph_json
-       FROM automation_scenarios s
-       JOIN automation_scenario_revisions r
-         ON r.scenario_id=s.id AND r.id=COALESCE(?,s.active_revision_id)
-       WHERE s.id=?`,
-      )
-      .get(revisionId ?? null, id) as
-      | {
-          id: string;
-          name: string;
-          status: string;
-          revision_id: number;
-          graph_json: string;
-        }
-      | undefined;
-    return row
-      ? {
-          ...row,
-          graph: parseJsonDto(automationScenarioGraphDtoSchema, row.graph_json),
-        }
-      : undefined;
   }
 
   createRun(

@@ -10,7 +10,6 @@ import type {
 import {
   agentTerminalPolicyDtoSchema,
   agentDirectoryPolicyDtoSchema,
-  automationScenarioGraphDtoSchema,
   automationScenarioToolSettingDtoSchema,
   parseJsonDto,
   stringArrayDtoSchema,
@@ -21,7 +20,6 @@ import {
   type AutomationStatus,
   type TerminalConfirmationMode,
   type DirectoryGrant,
-  type AutomationScenarioGraph,
 } from "../../../shared/dto";
 
 import type { SkillContentStore } from "../../application/ports/automation-runtime.ports";

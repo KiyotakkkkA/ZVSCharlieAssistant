@@ -525,3 +525,84 @@ collapsed into one path:
 - Steps 4 (event bus) and 5 (editor big-graph UX) from the original roadmap.
 - `_to_delete/` at the repo root holds the files this session removed; delete that folder once
   you've confirmed nothing needs it.
+
+## Переход интерфейса на нативный v2 (выполнено)
+
+Редактор сценариев больше не говорит на старом формате графа. Слой-переходник
+(`scenario-template.mapper.ts`) удалён: и хранилище, и исполнение, и интерфейс
+работают с одним и тем же `ScenarioGraph`.
+
+### Что появилось
+
+- **`node-fields.types.ts` / `node-fields.registry.ts`** — декларативное описание
+  формы конфигурации для всех типов узлов. Конфиг-схемы v2 построены на
+  `z.unknown().transform(...)` (чтобы поле принимало и значение, и выражение
+  `{{ }}`), поэтому вывести форму прямо из zod-схемы невозможно — структура
+  стирается трансформацией. Поля описаны отдельно, как в n8n.
+- **`DynamicNodeConfigForm.tsx`** — один рендерер форм для всех узлов: текст,
+  многострочный текст, число, чекбокс, селект, модель, агент, сценарий,
+  векторное хранилище, секрет, профиль интеграции, список строк, список
+  объектов и редактор условий. Поддерживает `showIf` (условные поля) и
+  двухколоночную раскладку.
+- **`ConditionGroupEditor.tsx`** — редактор условий для `if`, `filter`,
+  `switch`; унарные операторы (`isEmpty` и т.п.) сами прячут правую часть.
+- **`node-visuals.ts`** — иконка, цвет и подпись узла берутся из дескриптора,
+  цвет — из категории. Регистрация узла в движке автоматически даёт ему
+  внешний вид, палитру и форму.
+
+### Что переписано
+
+- **`ScenarioGraphCanvas.tsx`** — порты рендерятся из `descriptor.inputs/outputs`
+  через `resolvePorts()`, а не из захардкоженного списка девяти типов. Узлы с
+  несколькими выходами (`switch`, `if`, `classify`, `loop`) раскладывают порты
+  по стороне автоматически. Валидация связи — по `dataKind` и признаку
+  `multiple` целевого порта. Добавлены миникарта и drag-and-drop из палитры.
+- **`ScenarioNodeCard.tsx`** — работает с `ScenarioNode`, показывает отключённые
+  узлы и подсветку ошибок/предупреждений валидации.
+- **`ScenarioGraphEditorPage.tsx`** — палитра строится из
+  `scenarioDescriptors.byCategory()` (доступны все ~24 типа узлов вместо девяти),
+  инспектор использует `DynamicNodeConfigForm`, добавлены undo/redo (Ctrl+Z /
+  Ctrl+Y), поиск по узлам, показ проблем валидации прямо на узле и в инспекторе,
+  переключение «узел отключён».
+- **Контракт IPC** — `AutomationScenario.graph`, `UpsertAutomationScenarioInput.graph`
+  и `validateScenario()` теперь принимают и возвращают `ScenarioGraph` (v2).
+  `ScenarioValidationResult` переехал на версию с `severity`.
+
+### Что удалено
+
+Старые формы узлов и триггеров (15 файлов), `ScenarioTriggerNodeSummary`,
+`shared/scenario-ports.ts` (старый словарь портов `text-in`/`worker-in`/…),
+`scenario-template.mapper.ts`, легаси-схемы DTO графа
+(`automationScenarioNodeDtoSchema`, `automationScenarioEdgeDtoSchema`,
+`automationScenarioGraphDtoSchema`, `scenarioTriggerConfigDtoSchema`),
+`AutomationRepository.validateGraph()` и мёртвый
+`IntegrationRepository.syncScenarioBindings()` (заменён на
+`syncTriggerNodeBindings`), `ScenarioExecutionRepository.definition()`.
+Всё перенесено в `_to_delete/` в корне репозитория — удалите папку сами
+(мост к устройству не умеет `rm`).
+
+### Исправления в схеме
+
+- `nodeRetryPolicySchema.backoffFactor` требовал `min(1)`, из-за чего падали
+  4 теста рантайма, использующие `backoffFactor: 0` для мгновенных повторов.
+  Ослаблено до `min(0)`; дефолт (`2`) не изменился.
+- `NodeRuntime.retry` типизировался как полный `NodeRetryPolicy`, хотя
+  компилятор всегда мержит его как частичный оверрайд поверх дефолтов узла и
+  дескриптора. Теперь `nodeRetryPolicySchema.partial()`, и `{ maxTries: 7 }`
+  проходит валидацию, как и ожидают тесты компилятора.
+
+### Проверка
+
+`npx tsc` чист по всем трём конфигурациям (`tsconfig.web.json`,
+`tsconfig.node.json`, `tsconfig.test.json`). `vitest` в этой среде не
+запускается из-за отсутствующего нативного модуля
+`@rollup/rollup-linux-x64-gnu` (известный баг npm с optional-зависимостями) —
+прогоните тесты у себя после `rm -rf node_modules package-lock.json && npm i`.
+
+### Осталось
+
+- Шаг 4 исходного плана — шина событий.
+- Ручная проверка редактора на реальных сценариях: маппер удалён, поэтому
+  сценарии, сохранённые в старом формате, при чтении не пройдут
+  `scenarioGraphSchema.parse` — нужна либо ручная пересборка сценариев, либо
+  разовая миграция `graph_json` в БД.

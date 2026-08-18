@@ -1,18 +1,8 @@
 import { ipcMain } from "electron";
-import type {
-  AutomationScenario,
-  ScenarioRunOrigin,
-} from "../../shared/models/automation";
+import type { ScenarioRunOrigin } from "../../shared/models/automation";
 import type { ScenarioExecutionRepository } from "../../host/infrastructure/database/scenario-execution.repository";
 import type { ScenarioRuntimeEngine } from "../../host/infrastructure/automation/engine/scenario-runtime-engine";
-import type {
-  ScenarioGraphRepository,
-  ScenarioDefinitionV2,
-} from "../../host/infrastructure/database/scenario-graph.repository";
-import {
-  legacyGraphToScenarioGraph,
-  scenarioGraphToLegacyGraph,
-} from "../../host/infrastructure/automation/engine/scenario-template.mapper";
+import type { ScenarioGraphRepository } from "../../host/infrastructure/database/scenario-graph.repository";
 import type { IntegrationRepository } from "../../host/infrastructure/database/integration.repository";
 import type { UserQuestionService } from "../../host/application/services/user-question.service";
 import {
@@ -20,7 +10,6 @@ import {
   type ScenarioRunOrigin as ContractScenarioRunOrigin,
 } from "../contracts";
 import {
-  automationScenarioGraphDtoSchema,
   booleanFlagSchema,
   entityIdSchema,
   entityKeySchema,
@@ -29,7 +18,6 @@ import {
   upsertAutomationScenarioDtoSchema,
   upsertAutomationSkillDtoSchema,
   upsertAutomationToolSecretBindingDtoSchema,
-  type AutomationScenarioGraph,
   type UpsertAutomationAgentInput,
   type UpsertAutomationScenarioInput,
   type UpsertAutomationSkillInput,
@@ -38,27 +26,10 @@ import {
 import { scenarioTriggerInputDtoSchema } from "../../shared/dto/scenario-trigger-event.dto";
 import { ScenarioCompiler } from "../../shared/scenario/compiler";
 import { scenarioDescriptors } from "../../shared/scenario/descriptors";
+import { scenarioGraphSchema, type ScenarioGraph } from "../../shared/scenario/graph";
 import { AutomationRepository } from "@host/infrastructure/database/automation.repository";
 
 const compiler = new ScenarioCompiler(scenarioDescriptors);
-
-function toAutomationScenario(
-  definition: ScenarioDefinitionV2,
-): AutomationScenario {
-  return {
-    id: definition.id,
-    name: definition.name,
-    description: definition.description,
-    status: definition.status,
-    graph: scenarioGraphToLegacyGraph(definition.graph),
-    toolSettings: definition.toolSettings,
-    revisionId: definition.revisionId,
-    version: definition.version,
-    nodesCount: definition.nodesCount,
-    lastRunAt: definition.lastRunAt,
-    updatedAt: definition.updatedAt,
-  };
-}
 
 export function registerAutomationHandlers(
   repository: AutomationRepository,
@@ -70,10 +41,7 @@ export function registerAutomationHandlers(
 ): void {
   ipcMain.handle(AUTOMATION_IPC_CHANNELS.getSnapshot, () => {
     const base = repository.getSnapshot();
-    return {
-      ...base,
-      scenarios: graphs.list().map(toAutomationScenario),
-    };
+    return { ...base, scenarios: graphs.list() };
   });
   ipcMain.handle(
     AUTOMATION_IPC_CHANNELS.upsertAgent,
@@ -106,7 +74,7 @@ export function registerAutomationHandlers(
     AUTOMATION_IPC_CHANNELS.upsertScenario,
     (_event, input: UpsertAutomationScenarioInput) => {
       const dto = parseIpcDto(upsertAutomationScenarioDtoSchema, input);
-      const graph = legacyGraphToScenarioGraph(dto.graph);
+      const graph = dto.graph;
       if (dto.status === "active") compiler.compile(graph);
       const saved = graphs.upsert({
         id: dto.id,
@@ -128,7 +96,7 @@ export function registerAutomationHandlers(
         saved.revisionId,
         triggerNodes,
       );
-      return toAutomationScenario(saved);
+      return saved;
     },
   );
   ipcMain.handle(AUTOMATION_IPC_CHANNELS.deleteScenario, (_event, id: string) =>
@@ -136,12 +104,8 @@ export function registerAutomationHandlers(
   );
   ipcMain.handle(
     AUTOMATION_IPC_CHANNELS.validateScenario,
-    (_event, graph: AutomationScenarioGraph) =>
-      compiler.validate(
-        legacyGraphToScenarioGraph(
-          parseIpcDto(automationScenarioGraphDtoSchema, graph),
-        ),
-      ),
+    (_event, graph: ScenarioGraph) =>
+      compiler.validate(parseIpcDto(scenarioGraphSchema, graph)),
   );
   ipcMain.handle(
     AUTOMATION_IPC_CHANNELS.startScenario,
