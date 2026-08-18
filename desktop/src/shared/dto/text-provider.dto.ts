@@ -1,6 +1,10 @@
 import { z } from "zod";
 
-export const textProviderKindSchema = z.enum(["ollama", "openrouter"]);
+export const textProviderKindSchema = z.enum([
+  "ollama",
+  "openrouter",
+  "mistral",
+]);
 export const textProviderTypeSchema = z.enum(["text", "embedding"]);
 export const textProviderGenerationSettingsDtoSchema = z.object({
   maxOutputTokens: z.int().positive(),

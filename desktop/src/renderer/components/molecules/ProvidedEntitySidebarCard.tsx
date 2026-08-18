@@ -4,6 +4,7 @@ import {
   GithubIcon,
   GitlabIcon,
   MailIcon,
+  MistralIcon,
   OllamaIcon,
   OpenrouterIcon,
   StorageIcon,
@@ -26,6 +27,7 @@ export interface SettingsProvidedEntitySidebarModel {
 const MAPPING: Record<SupportedKind, SvgIcon> = {
   ollama: OllamaIcon,
   openrouter: OpenrouterIcon,
+  mistral: MistralIcon,
   telegram_bot: TelegramIcon,
   email_imap: MailIcon,
   github_connector: GithubIcon,

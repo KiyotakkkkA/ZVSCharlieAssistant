@@ -128,6 +128,123 @@ interface OpenRouterKeyResponse {
   };
 }
 
+interface MistralModelsResponse {
+  data?: Array<{
+    id?: string;
+    object?: string;
+    created?: number;
+    owned_by?: string;
+    root?: string;
+    max_context_length?: number;
+    aliases?: string[];
+    archived?: boolean;
+    capabilities?: {
+      completion_chat?: boolean;
+      completion_fim?: boolean;
+      function_calling?: boolean;
+      fine_tuning?: boolean;
+      vision?: boolean;
+      classification?: boolean;
+    };
+  }>;
+}
+
+class MistralConnectionChecker implements ProviderConnectionChecker {
+  async test({
+    baseUrl,
+    apiKey,
+    providerType,
+  }: ProviderConnectionRequest): Promise<{
+    models: TextProviderModelInfo[];
+    limits: null;
+  }> {
+    if (!apiKey?.trim()) throw new Error("Для Mistral требуется API-ключ");
+
+    const root = normalizeBaseUrl(baseUrl);
+    const response = await fetch(`${root}/models`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${apiKey.trim()}`,
+        Accept: "application/json",
+      },
+      signal: AbortSignal.timeout(20_000),
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        describeProviderHttpError("Mistral (список моделей)", response.status),
+      );
+    }
+
+    const payload = (await response.json()) as MistralModelsResponse;
+
+    if (!Array.isArray(payload.data)) {
+      throw new Error("Mistral вернул ответ без массива data");
+    }
+
+    const availableModels = payload.data.filter((model) => {
+      if (model.archived) return false;
+
+      const id = model.id?.trim().toLowerCase() ?? "";
+      const rootModel = model.root?.trim().toLowerCase() ?? "";
+      const isEmbeddingModel =
+        id.includes("embed") || rootModel.includes("embed");
+
+      if (providerType === "embedding") {
+        return isEmbeddingModel;
+      }
+
+      return model.capabilities?.completion_chat === true && !isEmbeddingModel;
+    });
+
+    const models = availableModels.map((model, index) => {
+      const id = model.id?.trim();
+      if (!id) {
+        throw new Error(`Модель Mistral под индексом ${index} не имеет id`);
+      }
+
+      return {
+        id,
+        name: id,
+        modifiedAt: model.created
+          ? new Date(model.created * 1000).toISOString()
+          : "",
+        size: 0,
+        digest: "",
+        details: {
+          parentModel: model.root ?? "",
+          format: "",
+          family: model.owned_by ?? "mistral",
+          families: null,
+          parameterSize: "",
+          quantizationLevel: "",
+          contextLength: model.max_context_length,
+          inputModalities: model.capabilities?.vision
+            ? ["text", "image"]
+            : ["text"],
+          outputModalities:
+            providerType === "embedding" ? ["embeddings"] : ["text"],
+          supportedParameters: [
+            ...(model.capabilities?.function_calling ? ["tools"] : []),
+            ...(model.capabilities?.completion_fim ? ["fim"] : []),
+            ...(model.capabilities?.vision ? ["vision"] : []),
+          ],
+          description: [
+            model.capabilities?.function_calling ? "Function calling" : null,
+            model.capabilities?.vision ? "Vision" : null,
+            model.capabilities?.completion_fim ? "FIM" : null,
+            model.capabilities?.fine_tuning ? "Fine-tuning" : null,
+          ]
+            .filter(Boolean)
+            .join(", "),
+        },
+      };
+    });
+
+    return { models, limits: null };
+  }
+}
+
 class OpenRouterConnectionChecker implements ProviderConnectionChecker {
   async test({ baseUrl, apiKey, providerType }: ProviderConnectionRequest) {
     if (!apiKey?.trim()) throw new Error("Для OpenRouter требуется API-ключ");
@@ -257,6 +374,7 @@ export class ProviderConnectionService {
   > = {
     ollama: new OllamaConnectionChecker(),
     openrouter: new OpenRouterConnectionChecker(),
+    mistral: new MistralConnectionChecker(),
   };
 
   constructor(

@@ -21,6 +21,7 @@ import { ProvidedEntitySidebarCard } from "@renderer/components/molecules";
 const PROVIDER_LABELS = {
   ollama: "Ollama",
   openrouter: "OpenRouter",
+  mistral: "Mistral",
 } as const;
 
 export const SettingsProvidersPage = observer(function SettingsProvidersPage() {
@@ -109,10 +110,10 @@ export const SettingsProvidersPage = observer(function SettingsProvidersPage() {
       ...items.filter((item) => item.id !== null),
       {
         id: null,
-        name: "Новое подключение Ollama",
+        name: "Новое подключение",
         kind: "ollama",
         providerType: activeType,
-        baseUrl: "http://127.0.0.1:11434",
+        baseUrl: "https://ollama.com",
         apiKeySecretId: "",
         enabled: true,
         status: "unchecked",

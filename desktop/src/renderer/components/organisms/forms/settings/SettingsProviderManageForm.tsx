@@ -1,6 +1,5 @@
 import { useState } from "react";
 import {
-  Badge,
   Alert,
   Button,
   InputCheckSlided,
@@ -22,8 +21,6 @@ import {
   SecretOrientedSelect,
   Field,
   Lead,
-  OllamaIcon,
-  OpenrouterIcon,
   ParameterLabel,
 } from "../../../atoms";
 import {
@@ -32,13 +29,13 @@ import {
   SettingsProviderOpenrouterModelCard,
 } from "../../../molecules";
 import { textProviderStore } from "../../../../stores";
-import { PrimaryButton } from "@renderer/components/atoms/buttons";
 
 const API_KEYS_CATEGORY_ID = 1;
 export type ProviderStatus = "connected" | "unchecked" | "error";
 interface ProviderModelDraft extends TextProviderModelInfo {
   enabled: boolean;
 }
+
 export interface SettingsProviderDraft {
   id: number | null;
   name: string;
@@ -64,19 +61,10 @@ interface SettingsProviderManageFormProps {
   onTestConnection: () => void | Promise<void>;
 }
 
-const ICONS = {
-  ollama: OllamaIcon,
-  openrouter: OpenrouterIcon,
-} as const;
-
-const PROVIDER_LABELS: Record<TextProviderKind, string> = {
-  ollama: "Ollama",
-  openrouter: "OpenRouter",
-};
-
-const IconResolver = (icon: keyof typeof ICONS) => {
-  const IconComponent = ICONS[icon];
-  return <IconComponent className="size-5" />;
+const BASE_URLS: Record<TextProviderKind, string> = {
+  openrouter: "https://openrouter.ai/api/v1",
+  ollama: "https://ollama.com",
+  mistral: "https://api.mistral.ai/v1",
 };
 
 export function SettingsProviderManageForm({
@@ -187,10 +175,7 @@ export function SettingsProviderManageForm({
                   const kind = value as TextProviderKind;
                   onConnectionChange({
                     kind,
-                    baseUrl:
-                      kind === "openrouter"
-                        ? "https://openrouter.ai/api/v1"
-                        : "http://127.0.0.1:11434",
+                    baseUrl: BASE_URLS[kind],
                     apiKeySecretId: "",
                     limits: null,
                   });
@@ -198,12 +183,14 @@ export function SettingsProviderManageForm({
                 options={[
                   { value: "ollama", label: "Ollama" },
                   { value: "openrouter", label: "OpenRouter" },
+                  { value: "mistral", label: "Mistral" },
                 ]}
               >
                 <Select.Trigger className="w-full" />
                 <Select.Menu>
                   <Select.Option value="ollama" label="Ollama" />
                   <Select.Option value="openrouter" label="OpenRouter" />
+                  <Select.Option value="mistral" label="Mistral" />
                 </Select.Menu>
               </Select>
             </Field>
@@ -213,7 +200,7 @@ export function SettingsProviderManageForm({
                 onChange={(event) =>
                   onConnectionChange({ baseUrl: event.target.value })
                 }
-                placeholder="http://127.0.0.1:11434"
+                placeholder="Введите URL..."
               />
             </Field>
             <Field
@@ -226,11 +213,7 @@ export function SettingsProviderManageForm({
                 onChange={(apiKeySecretId) =>
                   onConnectionChange({ apiKeySecretId })
                 }
-                placeholder={
-                  model.kind === "openrouter"
-                    ? "Выберите OpenRouter API key"
-                    : "Выберите ключ или оставьте поле пустым..."
-                }
+                placeholder="Выберите ключ или оставьте поле пустым..."
                 searchable
                 searchPlaceholder="Найти ключ"
                 className="w-full"

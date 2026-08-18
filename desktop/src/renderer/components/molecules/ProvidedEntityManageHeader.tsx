@@ -9,6 +9,7 @@ import {
   StorageIcon,
   GithubIcon,
   GitlabIcon,
+  MistralIcon,
 } from "../atoms";
 import { PrimaryButton } from "../atoms/buttons";
 
@@ -19,9 +20,10 @@ export interface SettingsProvidedEntityManageModel {
   name: string;
 }
 
-const LABELS: Record<SupportedKind, string> = {
+const PROVIDER_LABELS: Record<SupportedKind, string> = {
   ollama: "Ollama",
   openrouter: "OpenRouter",
+  mistral: "Mistral",
   telegram_bot: "Telegram Bot",
   email_imap: "Email",
   github_connector: "GitHub",
@@ -32,6 +34,7 @@ const LABELS: Record<SupportedKind, string> = {
 const MAPPING: Record<SupportedKind, SvgIcon> = {
   ollama: OllamaIcon,
   openrouter: OpenrouterIcon,
+  mistral: MistralIcon,
   telegram_bot: TelegramIcon,
   email_imap: MailIcon,
   github_connector: GithubIcon,
@@ -65,7 +68,7 @@ export const ProvidedEntityManageHeader = ({
 }) => {
   if (model === null) return null;
 
-  const label = LABELS[model.kind] ?? null;
+  const label = PROVIDER_LABELS[model.kind] ?? null;
 
   return (
     <div className="flex flex-wrap items-start justify-between gap-4 border-b border-main-700/35 pb-5">
@@ -81,7 +84,7 @@ export const ProvidedEntityManageHeader = ({
                 rounded="rounded-full"
                 className="bg-main-700/60 text-main-300"
               >
-                {LABELS[model.kind]}
+                {PROVIDER_LABELS[model.kind]}
               </Badge>
             )}
           </div>

@@ -17,6 +17,7 @@ interface ModelOrientedSelectProps extends Omit<
 const PROVIDER_LABELS = {
   ollama: "Ollama",
   openrouter: "OpenRouter",
+  mistral: "Mistral",
 } as const;
 
 export const ModelOrientedSelect = observer(function ModelOrientedSelect({
