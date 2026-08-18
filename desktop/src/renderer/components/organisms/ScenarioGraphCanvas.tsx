@@ -56,8 +56,10 @@ type ScenarioGraphCanvasProps = {
   onDrop?: (kind: string, position: { x: number; y: number }) => void;
 };
 
-/** Reads the port list of a node straight from its descriptor. */
-function portsOf(node: ScenarioNode): { inputs: PortSpec[]; outputs: PortSpec[] } {
+function portsOf(node: ScenarioNode): {
+  inputs: PortSpec[];
+  outputs: PortSpec[];
+} {
   const descriptor = scenarioDescriptors.get(node.kind);
   if (!descriptor) return { inputs: [], outputs: [] };
   const config = (node.config ?? {}) as Record<string, unknown>;
@@ -81,10 +83,6 @@ export function ScenarioGraphCanvas({
     [nodes],
   );
 
-  /**
-   * A connection is valid when both ends exist, carry the same data kind and
-   * the target port is not already taken by a single-connection port.
-   */
   const isValidConnection = useCallback(
     (connection: Connection | FlowEdge) => {
       const source = nodesById.get(connection.source ?? "");
@@ -168,13 +166,18 @@ export function ScenarioGraphCanvas({
           maskColor="rgba(10, 10, 10, 0.65)"
           nodeColor={(node) => {
             const data = node.data as ScenarioNodeData | undefined;
-            const category = data?.node ? nodeVisual(data.node.kind).category : "data";
+            const category = data?.node
+              ? nodeVisual(data.node.kind).category
+              : "data";
             return MINIMAP_COLORS[category] ?? "#64748b";
           }}
         />
         <Panel position="top-right">
           <div className="flex items-center gap-3 rounded-md bg-main-800/90 px-2.5 py-1.5 text-[10px] text-main-500 ring-1 ring-main-700/80">
-            <PortLegend shape="size-2.5 rounded-full bg-lime-300" label="Данные" />
+            <PortLegend
+              shape="size-2.5 rounded-full bg-lime-300"
+              label="Данные"
+            />
             <PortLegend
               shape="size-2.5 rounded-[2px] bg-cyan-300"
               label="База знаний"
@@ -234,7 +237,9 @@ const ScenarioFlowEdgeView = memo(function ScenarioFlowEdgeView({
               icon={
                 <span
                   className={`block size-1.5 rounded-full ${
-                    data?.dataKind === "knowledge" ? "bg-cyan-300" : "bg-lime-300"
+                    data?.dataKind === "knowledge"
+                      ? "bg-cyan-300"
+                      : "bg-lime-300"
                   }`}
                 />
               }
@@ -326,10 +331,6 @@ const portPositions = {
   left: Position.Left,
 } as const;
 
-/**
- * Ports of the same side are spread along that side so nodes with several
- * outputs (switch, if, classify) stay readable at any zoom level.
- */
 function ScenarioPort({
   port,
   direction,
@@ -343,9 +344,7 @@ function ScenarioPort({
 }) {
   const sameSide = port.side === "left" || port.side === "right";
   const offset = total <= 1 ? 50 : ((index + 1) / (total + 1)) * 100;
-  const style = sameSide
-    ? { top: `${offset}%` }
-    : { left: `${offset}%` };
+  const style = sameSide ? { top: `${offset}%` } : { left: `${offset}%` };
   const shape =
     port.dataKind === "knowledge"
       ? "size-2.5! rounded-[2px]! bg-cyan-300!"

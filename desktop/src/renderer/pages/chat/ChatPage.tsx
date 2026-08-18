@@ -56,8 +56,6 @@ export const ChatPage = observer(function ChatPage() {
   const nextScenarioOptions = automationStore.scenarios
     .filter((scenario) => {
       if (scenario.status !== "active") return false;
-      // A scenario is offered in chat when it has an enabled manual trigger
-      // that allows chat launches.
       return scenario.graph.nodes.some(
         (node) =>
           node.kind === "trigger.manual" &&

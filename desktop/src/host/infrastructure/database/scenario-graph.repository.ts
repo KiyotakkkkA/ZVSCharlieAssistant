@@ -137,12 +137,6 @@ export class ScenarioGraphRepository {
   }
 }
 
-/**
- * Reads a stored graph. A revision saved before the v2 cutover no longer
- * parses — in that case the scenario is still listed (so it can be found and
- * rebuilt) but opens as an empty canvas. The original JSON stays untouched in
- * the revisions table, nothing is destroyed on disk.
- */
 function readGraph(graphJson: string): ScenarioGraph {
   try {
     return scenarioGraphSchema.parse(JSON.parse(graphJson));

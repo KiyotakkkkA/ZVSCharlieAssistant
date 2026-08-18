@@ -197,14 +197,6 @@ export class ScenarioRuntimeEngine {
   }
 }
 
-/**
- * The runtime collects the output of every node so expressions can reference
- * them by name. That whole map is useful for debugging a run, but it is not
- * what "the result of the scenario" means to a person reading a chat reply —
- * dumping it verbatim shows them the trigger payload and every intermediate
- * step. Narrow it down to the terminal nodes, and to their plain text when
- * they produced any.
- */
 function finalOutput(
   graph: ScenarioGraph,
   outputs: Record<string, unknown>,
@@ -225,7 +217,6 @@ function finalOutput(
   return Object.fromEntries(picked.map((item) => [item.name, item.value]));
 }
 
-/** Pulls a human-readable string out of one node's recorded output. */
 function textOf(entry: unknown): string | undefined {
   const json = (entry as { json?: unknown } | undefined)?.json;
   if (typeof json === "string") return json;

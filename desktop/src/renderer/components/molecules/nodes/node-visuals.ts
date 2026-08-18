@@ -26,7 +26,6 @@ import {
 import { scenarioDescriptors } from "../../../../shared/scenario/descriptors";
 import type { NodeCategory } from "../../../../shared/scenario/node-descriptor";
 
-/** Maps the descriptor's abstract icon name to a concrete icon component. */
 const ICONS: Record<string, SvgIcon> = {
   play: PlayCircleIcon,
   clock: ClockIcon,
@@ -56,7 +55,6 @@ const ICONS: Record<string, SvgIcon> = {
   dot: CheckIcon,
 };
 
-/** Tailwind classes per node category — one visual language across the canvas. */
 export const CATEGORY_STYLES: Record<
   NodeCategory,
   { icon: string; dot: string; chip: string }
@@ -111,10 +109,6 @@ const FALLBACK: ScenarioNodeVisual = {
   dotClassName: CATEGORY_STYLES.data.dot,
 };
 
-/**
- * Resolves how a node kind should look. Everything comes from the descriptor
- * registry, so registering a node in the engine is enough for it to render.
- */
 export function nodeVisual(kind: string): ScenarioNodeVisual {
   const descriptor = scenarioDescriptors.get(kind);
   if (!descriptor) return FALLBACK;

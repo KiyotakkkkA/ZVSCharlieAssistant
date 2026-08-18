@@ -190,11 +190,6 @@ export class SecretStorageRepository {
     return this.findSecret(input.id)!;
   }
 
-  /**
-   * Integrations hold their token through a RESTRICT foreign key, so deleting
-   * such a secret fails at the database level. Report which connections are in
-   * the way instead of letting a raw constraint error reach the interface.
-   */
   private integrationsUsingSecret(secretIds: number[]): string[] {
     if (secretIds.length === 0) return [];
     const placeholders = secretIds.map(() => "?").join(",");

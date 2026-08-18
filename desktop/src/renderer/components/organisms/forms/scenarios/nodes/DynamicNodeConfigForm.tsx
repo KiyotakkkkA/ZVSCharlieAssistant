@@ -14,7 +14,12 @@ import {
   secretStorageStore,
   vectorStoreStore,
 } from "../../../../../stores";
-import { Field, FieldGroup, ModelOrientedSelect, PlusIcon } from "../../../../atoms";
+import {
+  Field,
+  FieldGroup,
+  ModelOrientedSelect,
+  PlusIcon,
+} from "../../../../atoms";
 import { ControlButton } from "../../../../atoms/buttons";
 import { ConditionGroupEditor } from "./ConditionGroupEditor";
 import { NODE_FIELDS } from "./node-fields.registry";
@@ -27,11 +32,6 @@ interface DynamicNodeConfigFormProps {
   onChange(patch: Partial<ScenarioNode>): void;
 }
 
-/**
- * Renders the configuration form of any scenario node from its declarative
- * field spec, so adding a node kind to the engine does not require writing a
- * bespoke React form for it.
- */
 export const DynamicNodeConfigForm = observer(function DynamicNodeConfigForm({
   node,
   onChange,
@@ -49,13 +49,7 @@ export const DynamicNodeConfigForm = observer(function DynamicNodeConfigForm({
       </p>
     );
 
-  return (
-    <FieldList
-      specs={specs}
-      config={config}
-      onSet={setValue}
-    />
-  );
+  return <FieldList specs={specs} config={config} onSet={setValue} />;
 });
 
 function FieldList({

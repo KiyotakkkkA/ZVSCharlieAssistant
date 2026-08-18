@@ -64,7 +64,6 @@ export interface AutomationSkill {
   builtin: boolean;
   updatedAt: string;
 }
-/** Node kinds are open-ended in v2 — they come from the descriptor registry. */
 export type AutomationScenarioNodeKind = string;
 export interface AutomationScenario {
   id: string;

@@ -4,9 +4,7 @@ import type {
   IntegrationProfile,
   IntegrationSnapshot,
 } from "../../../shared/models/integration";
-import type {
-  UpsertIntegrationProfileInput,
-} from "../../../shared/dto";
+import type { UpsertIntegrationProfileInput } from "../../../shared/dto";
 
 type ProfileRow = {
   id: number;
@@ -127,12 +125,6 @@ export class IntegrationRepository {
     return this.findProfile(id)!;
   }
 
-  /**
-   * Trigger bindings, queued file jobs and the delivery outbox all reference a
-   * profile through RESTRICT foreign keys. Name what is holding the profile so
-   * the interface can show something actionable instead of a raw constraint
-   * error from SQLite.
-   */
   deleteProfile(id: number): void {
     const scenarios = (
       this.db
@@ -150,16 +142,16 @@ export class IntegrationRepository {
         `Подключение используется сценариями: ${scenarios.join(", ")}. Уберите его из триггеров перед удалением.`,
       );
 
-    const pending =
-      (
-        this.db
-          .prepare(
-            `SELECT
+    const pending = (this.db
+      .prepare(
+        `SELECT
                (SELECT COUNT(*) FROM scenario_file_jobs WHERE integration_profile_id=?) jobs,
                (SELECT COUNT(*) FROM scenario_delivery_outbox WHERE integration_profile_id=?) deliveries`,
-          )
-          .get(id, id) as { jobs: number; deliveries: number }
-      ) ?? { jobs: 0, deliveries: 0 };
+      )
+      .get(id, id) as { jobs: number; deliveries: number }) ?? {
+      jobs: 0,
+      deliveries: 0,
+    };
     if (pending.jobs || pending.deliveries)
       throw new Error(
         "Подключение занято незавершёнными задачами сценариев. Дождитесь их завершения или очистите историю запусков.",
@@ -248,7 +240,8 @@ export class IntegrationRepository {
           continue;
         }
         if (node.kind === "trigger.telegram" || node.kind === "trigger.email") {
-          const integrationProfileId = Number(node.config.integrationProfileId) || null;
+          const integrationProfileId =
+            Number(node.config.integrationProfileId) || null;
           insert.run(
             `${scenarioId}:${node.id}`,
             scenarioId,

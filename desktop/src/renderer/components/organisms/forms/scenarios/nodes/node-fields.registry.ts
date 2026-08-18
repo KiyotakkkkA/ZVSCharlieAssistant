@@ -32,13 +32,7 @@ const valueTypeOptions: FieldOption[] = [
   { value: "json", label: "JSON" },
 ];
 
-/**
- * Field layout for every scenario node kind. A kind missing from this map
- * renders with base fields only (name/description/notes) — that is a safe
- * fallback, not an error.
- */
 export const NODE_FIELDS: Record<string, NodeFieldSpec[]> = {
-  // ── Триггеры ──────────────────────────────────────────────────────────
   "trigger.manual": [
     { type: "boolean", key: "fromEditor", label: "Запуск из редактора" },
     { type: "boolean", key: "fromChat", label: "Запуск из чата" },
@@ -161,7 +155,6 @@ export const NODE_FIELDS: Record<string, NodeFieldSpec[]> = {
     { type: "boolean", key: "includeAttachments", label: "Забирать вложения" },
   ],
 
-  // ── Модели и агенты ───────────────────────────────────────────────────
   agent: [
     { type: "agent", key: "agentId", label: "Агент" },
     {
@@ -312,7 +305,6 @@ export const NODE_FIELDS: Record<string, NodeFieldSpec[]> = {
     { type: "boolean", key: "fallbackOutput", label: "Выход «Иначе»" },
   ],
 
-  // ── Данные ────────────────────────────────────────────────────────────
   set: [
     {
       type: "list",
@@ -668,7 +660,6 @@ export const NODE_FIELDS: Record<string, NodeFieldSpec[]> = {
     },
   ],
 
-  // ── Поток управления ──────────────────────────────────────────────────
   if: [combinatorField, ...conditionFields],
   filter: [combinatorField, ...conditionFields],
   switch: [
@@ -899,7 +890,6 @@ export const NODE_FIELDS: Record<string, NodeFieldSpec[]> = {
     },
   ],
 
-  // ── Результат ─────────────────────────────────────────────────────────
   output: [
     {
       type: "textarea",

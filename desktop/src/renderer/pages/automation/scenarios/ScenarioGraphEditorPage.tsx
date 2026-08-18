@@ -56,7 +56,6 @@ const scenarioStatusOptions = [
   { value: "disabled", label: "Отключён" },
 ];
 
-/** A brand-new scenario starts from a manual trigger wired to a result node. */
 function starterGraph(): ScenarioGraph {
   return scenarioGraphSchema.parse({
     nodes: [
@@ -66,7 +65,8 @@ function starterGraph(): ScenarioGraph {
         name: "Ручной запуск",
         x: 80,
         y: 220,
-        config: scenarioDescriptors.get("trigger.manual")?.defaultConfig?.() ?? {},
+        config:
+          scenarioDescriptors.get("trigger.manual")?.defaultConfig?.() ?? {},
       },
       {
         id: "result",
@@ -96,11 +96,15 @@ export const ScenarioGraphEditorPage = observer(
     const { scenarioId } = useParams();
     const scenario = automationStore.getScenario(scenarioId);
 
-    const [nodes, setNodes] = useState<ScenarioNode[]>(
-      () => (scenario?.graph.nodes.length ? scenario.graph.nodes : starterGraph().nodes),
+    const [nodes, setNodes] = useState<ScenarioNode[]>(() =>
+      scenario?.graph.nodes.length
+        ? scenario.graph.nodes
+        : starterGraph().nodes,
     );
-    const [edges, setEdges] = useState<ScenarioEdge[]>(
-      () => (scenario?.graph.nodes.length ? scenario.graph.edges : starterGraph().edges),
+    const [edges, setEdges] = useState<ScenarioEdge[]>(() =>
+      scenario?.graph.nodes.length
+        ? scenario.graph.edges
+        : starterGraph().edges,
     );
     const [selectedNodeId, setSelectedNodeId] = useState(nodes[0]?.id ?? "");
     const [status, setStatus] = useState<AutomationStatus>(
@@ -116,13 +120,12 @@ export const ScenarioGraphEditorPage = observer(
     const [pendingExit, setPendingExit] = useState(false);
     const [issues, setIssues] = useState<ScenarioValidationIssue[]>([]);
 
-    // ── history (undo/redo) ────────────────────────────────────────────────
-    const history = useRef<Array<{ nodes: ScenarioNode[]; edges: ScenarioEdge[] }>>(
-      [],
-    );
-    const future = useRef<Array<{ nodes: ScenarioNode[]; edges: ScenarioEdge[] }>>(
-      [],
-    );
+    const history = useRef<
+      Array<{ nodes: ScenarioNode[]; edges: ScenarioEdge[] }>
+    >([]);
+    const future = useRef<
+      Array<{ nodes: ScenarioNode[]; edges: ScenarioEdge[] }>
+    >([]);
     const pushHistory = useCallback(() => {
       history.current = [...history.current.slice(-49), { nodes, edges }];
       future.current = [];
@@ -207,12 +210,14 @@ export const ScenarioGraphEditorPage = observer(
     const runStatusByNode = useMemo(
       () =>
         new Map(
-          automationStore.scenarioNodeRuns.map((run) => [run.nodeId, run.status]),
+          automationStore.scenarioNodeRuns.map((run) => [
+            run.nodeId,
+            run.status,
+          ]),
         ),
       [runStatusVersion],
     );
 
-    // ── graph mutations ────────────────────────────────────────────────────
     const deleteEdge = useCallback((edgeId: string) => {
       setEdges((current) => current.filter((edge) => edge.id !== edgeId));
     }, []);
@@ -261,7 +266,8 @@ export const ScenarioGraphEditorPage = observer(
             description: "",
             x: position?.x ?? 420 + (current.length % 3) * 40,
             y: position?.y ?? 160 + (current.length % 4) * 96,
-            config: (descriptor.defaultConfig?.() ?? {}) as ScenarioNode["config"],
+            config: (descriptor.defaultConfig?.() ??
+              {}) as ScenarioNode["config"],
             runtime: {},
             disabled: false,
             notes: "",
@@ -273,7 +279,6 @@ export const ScenarioGraphEditorPage = observer(
       [pushHistory],
     );
 
-    // ── react-flow plumbing ────────────────────────────────────────────────
     const flowNodes = useMemo<ScenarioFlowNode[]>(
       () =>
         nodes.map((node) => ({
@@ -334,12 +339,18 @@ export const ScenarioGraphEditorPage = observer(
                   ? "rgb(220 100 100)"
                   : "rgb(139 173 77)",
               strokeWidth: 1.25,
-              strokeDasharray: isKnowledge ? "1 5" : isError ? "4 4" : undefined,
+              strokeDasharray: isKnowledge
+                ? "1 5"
+                : isError
+                  ? "4 4"
+                  : undefined,
               strokeLinecap: isKnowledge ? ("round" as const) : undefined,
             },
             data: {
               edgeId: edge.id,
-              dataKind: isKnowledge ? ("knowledge" as const) : ("main" as const),
+              dataKind: isKnowledge
+                ? ("knowledge" as const)
+                : ("main" as const),
               onDelete: deleteEdge,
             },
           };
@@ -366,7 +377,9 @@ export const ScenarioGraphEditorPage = observer(
             .filter((node) => !removed.has(node.id))
             .map((node) => {
               const position = positions.get(node.id);
-              return position ? { ...node, x: position.x, y: position.y } : node;
+              return position
+                ? { ...node, x: position.x, y: position.y }
+                : node;
             }),
         );
         if (removed.size)
@@ -423,7 +436,6 @@ export const ScenarioGraphEditorPage = observer(
       [pushHistory],
     );
 
-    // ── persistence ────────────────────────────────────────────────────────
     const buildGraph = useCallback(
       (): ScenarioGraph =>
         scenarioGraphSchema.parse({
@@ -448,15 +460,17 @@ export const ScenarioGraphEditorPage = observer(
         const saved = await automationStore.upsertScenario({
           id: scenario?.id,
           name: scenarioName.trim() || "Новый сценарий",
-          description:
-            scenario?.description ?? "Сценарий автоматизации.",
+          description: scenario?.description ?? "Сценарий автоматизации.",
           status,
           graph: buildGraph(),
           toolSettings: scenario?.toolSettings ?? [],
         });
         if (!scenarioId)
           goTo(
-            APP_PATHS.automation.scenarios.edit.replace(":scenarioId", saved.id),
+            APP_PATHS.automation.scenarios.edit.replace(
+              ":scenarioId",
+              saved.id,
+            ),
             { replace: true },
           );
         setSavedSnapshot(currentSnapshot);
@@ -665,7 +679,9 @@ export const ScenarioGraphEditorPage = observer(
                             }}
                             className="group flex w-full cursor-grab items-center gap-3 rounded-lg px-2 py-2 text-left transition hover:bg-main-800/70 active:cursor-grabbing"
                             onClick={() => addNode(descriptor.kind)}
-                            title={descriptor.documentation ?? descriptor.description}
+                            title={
+                              descriptor.documentation ?? descriptor.description
+                            }
                           >
                             <span
                               className={`grid size-9 shrink-0 place-items-center rounded-lg ${visual.iconClassName}`}
@@ -710,7 +726,9 @@ export const ScenarioGraphEditorPage = observer(
           <aside className="w-96 shrink-0 border-l border-main-800 bg-main-900/90">
             <ScrollArea className="min-h-0 max-h-full">
               <div className="flex h-12 items-center justify-between border-b border-main-800 px-4">
-                <h2 className="text-sm font-semibold text-main-200">Настройки</h2>
+                <h2 className="text-sm font-semibold text-main-200">
+                  Настройки
+                </h2>
                 <CogIcon className="size-4 text-main-500" />
               </div>
               {selectedNode && selectedVisual ? (
