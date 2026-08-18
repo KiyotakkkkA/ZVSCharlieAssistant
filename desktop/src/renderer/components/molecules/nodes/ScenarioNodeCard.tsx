@@ -117,6 +117,6 @@ function nodeRingClassName(
   if (runStatus === "failed") return "ring-danger-medium/70";
   if (selected) return "ring-accent-medium/80";
   if (issue === "error") return "ring-danger-medium/60";
-  if (issue === "warning") return "ring-amber-400/50";
+  if (issue === "warning") return "ring-warning-medium/50";
   return "ring-main-700 hover:ring-main-500";
 }

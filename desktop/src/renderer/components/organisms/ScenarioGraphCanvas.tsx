@@ -27,7 +27,12 @@ import {
   resolvePorts,
   type PortSpec,
 } from "../../../shared/scenario/node-descriptor";
-import { ScenarioNodeCard, nodeVisual } from "../molecules/nodes";
+import {
+  CATEGORY_ACCENT_VARS,
+  ScenarioNodeCard,
+  nodeVisual,
+} from "../molecules/nodes";
+import { readCssColor, useThemeMode } from "../../hooks";
 
 type ScenarioNodeData = {
   node: ScenarioNode;
@@ -109,6 +114,21 @@ export function ScenarioGraphCanvas({
     [edges, nodesById],
   );
 
+  const themeMode = useThemeMode();
+  const canvasColors = useMemo(
+    () => ({
+      dots: readCssColor("--canvas-dots"),
+      mask: readCssColor("--canvas-mask"),
+      categories: Object.fromEntries(
+        Object.entries(CATEGORY_ACCENT_VARS).map(([category, variable]) => [
+          category,
+          readCssColor(variable),
+        ]),
+      ) as Record<string, string>,
+    }),
+    [themeMode],
+  );
+
   return (
     <div
       className="relative min-w-0 flex-1 overflow-hidden bg-main-900"
@@ -148,38 +168,37 @@ export function ScenarioGraphCanvas({
         minZoom={0.2}
         maxZoom={1.6}
         deleteKeyCode={["Backspace", "Delete"]}
-        className="bg-main-900"
-        colorMode="dark"
+        colorMode={themeMode}
         proOptions={{ hideAttribution: true }}
       >
-        <Background color="rgb(55 55 55)" gap={24} size={1} />
+        <Background color={canvasColors.dots} gap={24} size={1} />
         <Controls
           position="bottom-left"
           showInteractive={false}
-          className="overflow-hidden rounded-lg! border-0! bg-main-800! shadow-none! ring-1 ring-main-700"
+          className="overflow-hidden rounded-lg! shadow-none! ring-1 ring-main-700"
         />
         <MiniMap
           position="bottom-right"
           pannable
           zoomable
           className="rounded-lg! bg-main-800! ring-1 ring-main-700"
-          maskColor="rgba(10, 10, 10, 0.65)"
+          maskColor={canvasColors.mask}
           nodeColor={(node) => {
             const data = node.data as ScenarioNodeData | undefined;
             const category = data?.node
               ? nodeVisual(data.node.kind).category
               : "data";
-            return MINIMAP_COLORS[category] ?? "#64748b";
+            return canvasColors.categories[category] ?? "currentColor";
           }}
         />
         <Panel position="top-right">
           <div className="flex items-center gap-3 rounded-md bg-main-800/90 px-2.5 py-1.5 text-[10px] text-main-500 ring-1 ring-main-700/80">
             <PortLegend
-              shape="size-2.5 rounded-full bg-lime-300"
+              shape="size-2.5 rounded-full bg-[var(--port-main)]"
               label="Данные"
             />
             <PortLegend
-              shape="size-2.5 rounded-[2px] bg-cyan-300"
+              shape="size-2.5 rounded-[2px] bg-[var(--port-knowledge)]"
               label="База знаний"
             />
           </div>
@@ -188,15 +207,6 @@ export function ScenarioGraphCanvas({
     </div>
   );
 }
-
-const MINIMAP_COLORS: Record<string, string> = {
-  trigger: "#fcd34d",
-  ai: "#c4b5fd",
-  data: "#67e8f9",
-  flow: "#7dd3fc",
-  io: "#93c5fd",
-  output: "#6ee7b7",
-};
 
 const ScenarioFlowEdgeView = memo(function ScenarioFlowEdgeView({
   sourceX,
@@ -238,8 +248,8 @@ const ScenarioFlowEdgeView = memo(function ScenarioFlowEdgeView({
                 <span
                   className={`block size-1.5 rounded-full ${
                     data?.dataKind === "knowledge"
-                      ? "bg-cyan-300"
-                      : "bg-lime-300"
+                      ? "bg-(--port-knowledge)"
+                      : "bg-(--port-main)"
                   }`}
                 />
               }
@@ -347,8 +357,8 @@ function ScenarioPort({
   const style = sameSide ? { top: `${offset}%` } : { left: `${offset}%` };
   const shape =
     port.dataKind === "knowledge"
-      ? "size-2.5! rounded-[2px]! bg-cyan-300!"
-      : "size-2.5! rounded-full! bg-lime-300!";
+      ? "size-2.5! rounded-[2px]! bg-[var(--port-knowledge)]!"
+      : "size-2.5! rounded-full! bg-[var(--port-main)]!";
   return (
     <Handle
       id={port.id}

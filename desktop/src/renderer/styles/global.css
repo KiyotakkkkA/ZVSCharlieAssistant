@@ -38,6 +38,62 @@
   --color-info-dark: #1e40af;
 }
 
+/*
+ * Palette for the scenario editor.
+ *
+ * Node categories need their own hues — they carry meaning the main palette
+ * cannot express — but a hue that reads well on a near-black canvas is washed
+ * out on a near-white one. So each colour is declared twice: the default block
+ * is tuned for dark backgrounds, the `data-theme="light"` block darkens every
+ * accent enough to stay legible on light ones. `data-theme` is set from the
+ * active palette in applyThemePaletteToDocument.
+ */
+:root {
+  --node-accent-trigger: #fcd34d;
+  --node-accent-ai: #c4b5fd;
+  --node-accent-data: #67e8f9;
+  --node-accent-flow: #7dd3fc;
+  --node-accent-io: #93c5fd;
+  --node-accent-output: #6ee7b7;
+
+  --node-soft-trigger: rgb(251 191 36 / 0.12);
+  --node-soft-ai: rgb(167 139 250 / 0.12);
+  --node-soft-data: rgb(34 211 238 / 0.12);
+  --node-soft-flow: rgb(56 189 248 / 0.12);
+  --node-soft-io: rgb(96 165 250 / 0.12);
+  --node-soft-output: rgb(52 211 153 / 0.12);
+
+  --port-main: #bef264;
+  --port-knowledge: #67e8f9;
+
+  --canvas-dots: rgb(255 255 255 / 0.14);
+  --canvas-mask: rgb(10 10 10 / 0.65);
+  --canvas-edge: rgb(255 255 255 / 0.35);
+}
+
+:root[data-theme="light"] {
+  --node-accent-trigger: #b45309;
+  --node-accent-ai: #6d28d9;
+  --node-accent-data: #0e7490;
+  --node-accent-flow: #0369a1;
+  --node-accent-io: #1d4ed8;
+  --node-accent-output: #047857;
+
+  --node-soft-trigger: rgb(180 83 9 / 0.10);
+  --node-soft-ai: rgb(109 40 217 / 0.10);
+  --node-soft-data: rgb(14 116 144 / 0.10);
+  --node-soft-flow: rgb(3 105 161 / 0.10);
+  --node-soft-io: rgb(29 78 216 / 0.10);
+  --node-soft-output: rgb(4 120 87 / 0.10);
+
+  --port-main: #4d7c0f;
+  --port-knowledge: #0e7490;
+
+  --canvas-dots: rgb(15 23 42 / 0.16);
+  --canvas-mask: rgb(148 163 184 / 0.35);
+  --canvas-edge: rgb(15 23 42 / 0.30);
+}
+
 :root {
   background-color: var(--color-main-900);
   color: var(--color-main-50);

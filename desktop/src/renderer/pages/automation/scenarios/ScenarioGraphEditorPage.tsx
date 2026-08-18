@@ -30,7 +30,7 @@ import { DynamicNodeConfigForm } from "../../../components/organisms/forms";
 import { nodeVisual } from "../../../components/molecules/nodes";
 import { DangerModal } from "@renderer/components/organisms/modals";
 import { APP_PATHS } from "../../../app/routes";
-import { useAppNavigation } from "../../../hooks";
+import { readCssColor, useAppNavigation, useThemeMode } from "../../../hooks";
 import { automationStore } from "../../../stores";
 import {
   emptyScenarioGraph,
@@ -92,6 +92,7 @@ function starterGraph(): ScenarioGraph {
 export const ScenarioGraphEditorPage = observer(
   function ScenarioGraphEditorPage() {
     const { goTo, goBack } = useAppNavigation();
+    const themeMode = useThemeMode();
     const toasts = useToasts();
     const { scenarioId } = useParams();
     const scenario = automationStore.getScenario(scenarioId);
@@ -309,6 +310,15 @@ export const ScenarioGraphEditorPage = observer(
       ],
     );
 
+    const edgeColors = useMemo(
+      () => ({
+        main: readCssColor("--port-main"),
+        knowledge: readCssColor("--port-knowledge"),
+        error: readCssColor("--color-danger-medium"),
+      }),
+      [themeMode],
+    );
+
     const flowEdges = useMemo<ScenarioFlowEdge[]>(
       () =>
         edges.map((edge) => {
@@ -334,10 +344,10 @@ export const ScenarioGraphEditorPage = observer(
             animated: automationStore.activeScenarioRun?.status === "running",
             style: {
               stroke: isKnowledge
-                ? "rgb(70 160 175)"
+                ? edgeColors.knowledge
                 : isError
-                  ? "rgb(220 100 100)"
-                  : "rgb(139 173 77)",
+                  ? edgeColors.error
+                  : edgeColors.main,
               strokeWidth: 1.25,
               strokeDasharray: isKnowledge
                 ? "1 5"
@@ -355,7 +365,13 @@ export const ScenarioGraphEditorPage = observer(
             },
           };
         }),
-      [edges, nodesById, automationStore.activeScenarioRun?.status, deleteEdge],
+      [
+        edges,
+        nodesById,
+        automationStore.activeScenarioRun?.status,
+        deleteEdge,
+        edgeColors,
+      ],
     );
 
     const onNodesChange: OnNodesChange<ScenarioFlowNode> = useCallback(
@@ -557,7 +573,7 @@ export const ScenarioGraphEditorPage = observer(
             >
               <ChevronLeftIcon className="size-4" />
             </Button>
-            <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-violet-400/10 text-violet-200">
+            <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-accent-medium/10 text-accent-light">
               <RobotIcon className="size-4" />
             </span>
             <div className="min-w-0">
@@ -638,7 +654,6 @@ export const ScenarioGraphEditorPage = observer(
         </header>
 
         <div className="flex min-h-0 flex-1">
-          {/* палитра */}
           <aside className="flex w-64 shrink-0 flex-col border-r border-main-800 bg-main-900/80 p-3">
             <InputCheckBox
               checked={showNodeDescriptions}
@@ -722,7 +737,6 @@ export const ScenarioGraphEditorPage = observer(
             onDrop={(kind, position) => addNode(kind, position)}
           />
 
-          {/* инспектор */}
           <aside className="w-96 shrink-0 border-l border-main-800 bg-main-900/90">
             <ScrollArea className="min-h-0 max-h-full">
               <div className="flex h-12 items-center justify-between border-b border-main-800 px-4">
@@ -757,7 +771,7 @@ export const ScenarioGraphEditorPage = observer(
                           className={`rounded-lg px-3 py-2 text-xs leading-5 ${
                             issue.severity === "error"
                               ? "bg-danger-medium/10 text-danger-light"
-                              : "bg-amber-400/10 text-amber-200"
+                              : "bg-warning-medium/10 text-warning-light"
                           }`}
                         >
                           {issue.message}

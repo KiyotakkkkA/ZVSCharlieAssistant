@@ -229,12 +229,7 @@ createRoot(root).render(
             />
             <Route
               path={APP_PATHS.storage.index}
-              element={
-                <RoutePage
-                  title="Хранилище"
-                  description="Выберите «Секреты» или «Векторная БД» в боковом меню."
-                />
-              }
+              element={<Navigate to={APP_PATHS.storage.vectorDb} replace />}
             />
             <Route
               path={APP_PATHS.settings.index}

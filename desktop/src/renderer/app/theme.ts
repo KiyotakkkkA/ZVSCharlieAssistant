@@ -55,8 +55,59 @@ export function loadThemePaletteFromStorage(): StyleThemePalette | null {
   }
 }
 
+export type ThemeMode = "light" | "dark";
+
+export function resolveThemeMode(palette: StyleThemePalette): ThemeMode {
+  return relativeLuminance(palette.main["900"]) > 0.5 ? "light" : "dark";
+}
+
+export function resolveThemeModeFromDocument(): ThemeMode {
+  const background = getComputedStyle(document.documentElement)
+    .getPropertyValue("--color-main-900")
+    .trim();
+  if (!background) return "dark";
+  return relativeLuminance(background) > 0.5 ? "light" : "dark";
+}
+
+function relativeLuminance(color: string): number {
+  const [r, g, b] = parseColor(color);
+  const channel = (value: number) => {
+    const ratio = value / 255;
+    return ratio <= 0.04045 ? ratio / 12.92 : ((ratio + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+}
+
+function parseColor(color: string): [number, number, number] {
+  const value = color.trim();
+
+  const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(value);
+  if (hex) {
+    const digits = hex[1]!;
+    const full =
+      digits.length === 3
+        ? digits
+            .split("")
+            .map((d) => d + d)
+            .join("")
+        : digits;
+    return [
+      Number.parseInt(full.slice(0, 2), 16),
+      Number.parseInt(full.slice(2, 4), 16),
+      Number.parseInt(full.slice(4, 6), 16),
+    ];
+  }
+
+  const numbers = value.match(/\d+(\.\d+)?/g);
+  if (numbers && numbers.length >= 3)
+    return [Number(numbers[0]), Number(numbers[1]), Number(numbers[2])];
+
+  return [0, 0, 0];
+}
+
 export function applyThemePaletteToDocument(palette: StyleThemePalette) {
   const root = document.documentElement;
+  root.dataset.theme = resolveThemeMode(palette);
 
   MAIN_STEPS.forEach((step) => {
     root.style.setProperty(`--color-main-${step}`, palette.main[step]);

@@ -60,35 +60,44 @@ export const CATEGORY_STYLES: Record<
   { icon: string; dot: string; chip: string }
 > = {
   trigger: {
-    icon: "bg-amber-400/10 text-amber-200",
-    dot: "bg-amber-300",
-    chip: "text-amber-200/90",
+    icon: "bg-[var(--node-soft-trigger)] text-[var(--node-accent-trigger)]",
+    dot: "bg-[var(--node-accent-trigger)]",
+    chip: "text-[var(--node-accent-trigger)]",
   },
   ai: {
-    icon: "bg-violet-400/10 text-violet-200",
-    dot: "bg-violet-300",
-    chip: "text-violet-200/90",
+    icon: "bg-[var(--node-soft-ai)] text-[var(--node-accent-ai)]",
+    dot: "bg-[var(--node-accent-ai)]",
+    chip: "text-[var(--node-accent-ai)]",
   },
   data: {
-    icon: "bg-cyan-400/10 text-cyan-200",
-    dot: "bg-cyan-300",
-    chip: "text-cyan-200/90",
+    icon: "bg-[var(--node-soft-data)] text-[var(--node-accent-data)]",
+    dot: "bg-[var(--node-accent-data)]",
+    chip: "text-[var(--node-accent-data)]",
   },
   flow: {
-    icon: "bg-sky-400/10 text-sky-200",
-    dot: "bg-sky-300",
-    chip: "text-sky-200/90",
+    icon: "bg-[var(--node-soft-flow)] text-[var(--node-accent-flow)]",
+    dot: "bg-[var(--node-accent-flow)]",
+    chip: "text-[var(--node-accent-flow)]",
   },
   io: {
-    icon: "bg-blue-400/10 text-blue-200",
-    dot: "bg-blue-300",
-    chip: "text-blue-200/90",
+    icon: "bg-[var(--node-soft-io)] text-[var(--node-accent-io)]",
+    dot: "bg-[var(--node-accent-io)]",
+    chip: "text-[var(--node-accent-io)]",
   },
   output: {
-    icon: "bg-emerald-400/10 text-emerald-200",
-    dot: "bg-emerald-300",
-    chip: "text-emerald-200/90",
+    icon: "bg-[var(--node-soft-output)] text-[var(--node-accent-output)]",
+    dot: "bg-[var(--node-accent-output)]",
+    chip: "text-[var(--node-accent-output)]",
   },
+};
+
+export const CATEGORY_ACCENT_VARS: Record<NodeCategory, string> = {
+  trigger: "--node-accent-trigger",
+  ai: "--node-accent-ai",
+  data: "--node-accent-data",
+  flow: "--node-accent-flow",
+  io: "--node-accent-io",
+  output: "--node-accent-output",
 };
 
 export interface ScenarioNodeVisual {
