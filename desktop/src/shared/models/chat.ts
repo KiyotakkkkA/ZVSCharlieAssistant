@@ -1,6 +1,6 @@
 import type { ScenarioNodeRun, ScenarioRun } from "./automation";
 import type { RunStatus as SharedRunStatus } from "./run";
-import type { ChatMode, ChatUsage } from "../dto";
+import type { ChatUsage } from "../dto";
 
 export type RunStatus = SharedRunStatus;
 export interface ChatConversation {

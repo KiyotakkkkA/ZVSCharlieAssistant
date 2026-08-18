@@ -139,7 +139,7 @@ export class TelegramWatchListener {
           throw new Error(
             payload.description ?? `Telegram HTTP ${response.status}`,
           );
-        this.dispatch(profileId, bindings, payload.result ?? [], token);
+        this.dispatch(profileId, bindings, payload.result ?? []);
         retryDelay = 1_000;
       } catch (error) {
         if (signal.aborted) return;
@@ -157,7 +157,6 @@ export class TelegramWatchListener {
     profileId: number,
     bindings: DueTriggerBinding[],
     updates: TelegramUpdate[],
-    token: string,
   ): void {
     const consumed = new Set<number>();
     for (const update of updates) {

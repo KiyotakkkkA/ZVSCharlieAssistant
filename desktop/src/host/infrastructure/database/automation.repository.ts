@@ -2,7 +2,6 @@ import type Database from "better-sqlite3";
 import { randomUUID } from "node:crypto";
 import type {
   AutomationAgent,
-  AutomationScenario,
   AutomationSnapshot,
   AutomationTool,
   AutomationSkill,
@@ -10,11 +9,9 @@ import type {
 import {
   agentTerminalPolicyDtoSchema,
   agentDirectoryPolicyDtoSchema,
-  automationScenarioToolSettingDtoSchema,
   parseJsonDto,
   stringArrayDtoSchema,
   type UpsertAutomationAgentInput,
-  type UpsertAutomationScenarioInput,
   type UpsertAutomationSkillInput,
   type UpsertAutomationToolSecretBindingInput,
   type AutomationStatus,
@@ -623,14 +620,6 @@ export class AutomationRepository {
       if (!tool) throw new Error(`Инструмент ${toolId} не зарегистрирован`);
       if (!this.mapTool(tool).enabled)
         throw new Error(`Инструмент ${toolId} не настроен или отключён`);
-    }
-  }
-
-  private assertJsonSerializable(value: unknown, label: string): void {
-    try {
-      JSON.stringify(value);
-    } catch {
-      throw new Error(`${label} не может быть сериализован`);
     }
   }
 

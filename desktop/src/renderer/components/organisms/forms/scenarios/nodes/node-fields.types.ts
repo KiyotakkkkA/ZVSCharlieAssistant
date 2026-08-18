@@ -51,11 +51,6 @@ export interface FieldOption {
   label: string;
 }
 
-export interface NodeConfigFormProps {
-  node: ScenarioNode;
-  onChange(patch: Partial<ScenarioNode>): void;
-}
-
 export const equals = (key: string, value: unknown) => (
   config: Record<string, unknown>,
 ) => config[key] === value;
@@ -63,6 +58,3 @@ export const equals = (key: string, value: unknown) => (
 export const notEquals = (key: string, value: unknown) => (
   config: Record<string, unknown>,
 ) => config[key] !== value;
-
-export const isTruthy = (key: string) => (config: Record<string, unknown>) =>
-  Boolean(config[key]);

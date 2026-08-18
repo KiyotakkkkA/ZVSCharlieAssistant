@@ -6,10 +6,6 @@ import type {
   ScenarioRunOrigin,
   ScenarioRunStatus,
 } from "../../../shared/models/automation";
-import {
-  parseJsonDto,
-} from "../../../shared/dto";
-
 const parse = (value: string | null): unknown =>
   value ? JSON.parse(value) : null;
 

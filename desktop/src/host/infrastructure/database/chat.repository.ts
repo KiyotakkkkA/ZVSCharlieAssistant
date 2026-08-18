@@ -14,7 +14,6 @@ import {
 } from "../../../shared/dto";
 import type {
   ChatMessageContentPart,
-  ChatMode,
   ChatUsage,
 } from "../../../shared/dto";
 interface ConversationRow {

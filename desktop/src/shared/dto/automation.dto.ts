@@ -65,12 +65,6 @@ export const upsertAutomationToolSecretBindingDtoSchema = z.object({
 
 export type AutomationStatus = z.infer<typeof automationStatusSchema>;
 export type { ScenarioGraph as AutomationScenarioGraph } from "../scenario/graph";
-export type ScenarioResponseChannel = z.infer<
-  typeof scenarioResponseChannelDtoSchema
->;
-export type ScenarioResponseConfig = z.infer<
-  typeof scenarioResponseConfigDtoSchema
->;
 export type AutomationScenarioToolSetting = z.infer<
   typeof automationScenarioToolSettingDtoSchema
 >;

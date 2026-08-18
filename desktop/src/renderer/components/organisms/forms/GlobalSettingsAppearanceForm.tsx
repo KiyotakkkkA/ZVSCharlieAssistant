@@ -10,8 +10,6 @@ import {
 import { useState } from "react";
 import { GlobalSettingsLabel, PaletteIcon } from "../../atoms";
 import {
-  DARK_THEME_PRESETS,
-  LIGHT_THEME_PRESETS,
   findPresetByPalette,
   saveThemePaletteToStorage,
 } from "../../../app/theme";
@@ -22,6 +20,11 @@ import {
   type FontSizeMode,
   type TypographySettings,
 } from "../../../app/typography";
+import {
+  DARK_THEME_PRESETS,
+  LIGHT_THEME_PRESETS,
+} from "../../../../default/themes";
+import { PrimaryButton } from "@renderer/components/atoms/buttons";
 
 type ThemePreset = {
   value: string;
@@ -131,9 +134,11 @@ export function GlobalSettingsAppearanceForm() {
                 onChange={(event) => setFontDraft(event.target.value)}
                 onKeyDown={(event) => event.key === "Enter" && saveFont()}
               />
-              <Button variant="primary" onClick={saveFont}>
-                Сохранить
-              </Button>
+              <PrimaryButton
+                variant="save"
+                label="Сохранить"
+                onClick={saveFont}
+              />
             </div>
           </div>
           <div className="flex flex-col gap-4 py-5 md:flex-row md:items-center md:justify-between">

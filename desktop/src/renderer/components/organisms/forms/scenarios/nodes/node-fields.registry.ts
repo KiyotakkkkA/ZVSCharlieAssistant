@@ -660,7 +660,7 @@ export const NODE_FIELDS: Record<string, NodeFieldSpec[]> = {
     {
       type: "number",
       key: "minScore",
-      label: "Минимальная релевантность",
+      label: "Мин. релевантность",
       min: 0,
       max: 1,
       step: 0.05,

@@ -23,7 +23,6 @@ export const nodeRuntimeSchema = z.object({
   itemMode: z.enum(["collection", "each"]).optional(),
   concurrency: z.int().min(1).max(32).optional(),
 });
-export type NodeRuntime = z.infer<typeof nodeRuntimeSchema>;
 
 export const jsonValueSchema: z.ZodType<unknown> = z.lazy(() =>
   z.union([
@@ -66,7 +65,6 @@ export const scenarioGroupSchema = z.object({
   collapsed: z.boolean().default(false),
   color: z.string().max(32).default(""),
 });
-export type ScenarioGroup = z.infer<typeof scenarioGroupSchema>;
 
 export const scenarioVariableSchema = z.object({
   key: z
@@ -80,7 +78,6 @@ export const scenarioVariableSchema = z.object({
   value: jsonValueSchema,
   description: z.string().max(500).default(""),
 });
-export type ScenarioVariable = z.infer<typeof scenarioVariableSchema>;
 
 export const scenarioGraphSchema = z.object({
   version: z.literal(SCENARIO_GRAPH_VERSION).default(SCENARIO_GRAPH_VERSION),
@@ -99,13 +96,6 @@ export function emptyScenarioGraph(): ScenarioGraph {
   return scenarioGraphSchema.parse({ version: SCENARIO_GRAPH_VERSION });
 }
 
-export function isScenarioGraphV2(value: unknown): boolean {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    (value as { version?: unknown }).version === SCENARIO_GRAPH_VERSION
-  );
-}
 
 export interface ScenarioValidationIssue {
   nodeId?: string;

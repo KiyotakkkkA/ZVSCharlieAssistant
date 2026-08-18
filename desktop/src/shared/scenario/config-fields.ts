@@ -33,21 +33,6 @@ export const exprNumber = (options: {
       return result;
     }) as unknown as z.ZodType<number>;
 
-export const exprBoolean = (fallback = false): z.ZodType<boolean> =>
-  z
-    .unknown()
-    .optional()
-    .transform((value) => {
-      if (value === undefined || value === null || value === "")
-        return fallback;
-      if (typeof value === "boolean") return value;
-      if (typeof value === "number") return value !== 0;
-      const text = toText(value).trim().toLowerCase();
-      if (text === "true" || text === "1" || text === "да") return true;
-      if (text === "false" || text === "0" || text === "нет") return false;
-      return fallback;
-    }) as unknown as z.ZodType<boolean>;
-
 export const exprStringList = (): z.ZodType<string[]> =>
   z
     .unknown()

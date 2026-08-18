@@ -86,25 +86,6 @@ export class RetryableError extends ScenarioError {
   readonly retryAfterMs?: number;
 }
 
-export class NodeConfigError extends PermanentError {
-  constructor(message: string, context?: ScenarioErrorContext) {
-    super(message, { code: "config", context });
-  }
-}
-
-export class ExpressionError extends PermanentError {
-  constructor(
-    message: string,
-    options: { cause?: unknown; context?: ScenarioErrorContext } = {},
-  ) {
-    super(message, {
-      code: "expression",
-      cause: options.cause,
-      context: options.context,
-    });
-  }
-}
-
 export class NodeTimeoutError extends RetryableError {
   constructor(message: string, context?: ScenarioErrorContext) {
     super(message, { code: "timeout", context });

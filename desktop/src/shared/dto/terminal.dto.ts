@@ -21,9 +21,6 @@ export const upsertTerminalPolicyDtoSchema = z.object({
   allowNetwork: z.boolean(),
   allowedCommands: z.array(z.string()),
 });
-export const terminalPolicyDtoSchema = upsertTerminalPolicyDtoSchema.extend({
-  updatedAt: z.string(),
-});
 
 export type TerminalConfirmationMode = z.infer<
   typeof terminalConfirmationModeSchema

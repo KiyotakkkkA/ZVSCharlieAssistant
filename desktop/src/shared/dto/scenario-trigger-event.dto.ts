@@ -89,18 +89,10 @@ export const scenarioTriggerInputDtoSchema = z.union([
   scenarioMessageTriggerInputDtoSchema,
   jsonValueSchema,
 ]);
-export type ScenarioTriggerInput = z.infer<
-  typeof scenarioTriggerInputDtoSchema
->;
-
 export type TelegramMessageEntity = z.infer<
   typeof telegramMessageEntityDtoSchema
 >;
 export type EmailMessageEntity = z.infer<typeof emailMessageEntityDtoSchema>;
-export type ChatMessageEntity = z.infer<typeof chatMessageEntityDtoSchema>;
-export type ScenarioMessageTriggerInput = z.infer<
-  typeof scenarioMessageTriggerInputDtoSchema
->;
 export type AttachmentReference = z.infer<typeof attachmentReferenceDtoSchema>;
 
 export const scenarioFileReferenceDtoSchema = z.object({

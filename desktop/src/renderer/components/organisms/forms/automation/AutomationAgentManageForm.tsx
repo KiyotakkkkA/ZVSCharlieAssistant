@@ -651,7 +651,7 @@ export const AutomationAgentManageForm = observer(
               !textModelId
             }
             label={model ? "Сохранить" : "Добавить"}
-          ></PrimaryButton>
+          />
         </div>
       </form>
     );

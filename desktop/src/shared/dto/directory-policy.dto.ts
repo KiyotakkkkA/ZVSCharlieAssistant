@@ -23,10 +23,6 @@ export const upsertDirectoryPolicyDtoSchema = z.object({
   grants: z.array(directoryGrantDtoSchema),
 });
 
-export const directoryPolicyDtoSchema = upsertDirectoryPolicyDtoSchema.extend({
-  updatedAt: z.string(),
-});
-
 export type DirectoryPermission = z.infer<typeof directoryPermissionSchema>;
 export type DirectoryGrant = z.infer<typeof directoryGrantDtoSchema>;
 export type AgentDirectoryPolicy = z.infer<

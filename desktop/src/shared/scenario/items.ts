@@ -52,46 +52,16 @@ export function toItems(value: unknown): ScenarioItems {
   return [{ json: value }];
 }
 
-export function emptyItems(): ScenarioItems {
-  return [];
-}
-
-export function singleItem(
-  json: unknown,
-  binary?: Record<string, ScenarioBinaryRef>,
-): ScenarioItems {
-  return [binary ? { json, binary } : { json }];
-}
-
 export function concatItems(...groups: ScenarioItems[]): ScenarioItems {
   const result: ScenarioItems = [];
   for (const group of groups) result.push(...group);
   return result;
 }
 
-export function collectBinary(items: ScenarioItems): ScenarioBinaryRef[] {
-  const byId = new Map<number, ScenarioBinaryRef>();
-  for (const item of items)
-    for (const ref of Object.values(item.binary ?? {})) byId.set(ref.id, ref);
-  return [...byId.values()];
-}
-
 export function itemsToPromptValue(items: ScenarioItems): unknown {
   if (items.length === 0) return null;
   if (items.length === 1) return items[0]!.json;
   return items.map((item) => item.json);
-}
-
-export function itemsToText(items: ScenarioItems): string {
-  const value = itemsToPromptValue(items);
-  if (value === null || value === undefined) return "";
-  if (typeof value === "string") return value;
-  if (isRecord(value) && typeof value.text === "string") return value.text;
-  try {
-    return JSON.stringify(value);
-  } catch {
-    return String(value);
-  }
 }
 
 export function markItemsFailed(

@@ -105,7 +105,11 @@ import { SqliteRuntimePersistence } from "./infrastructure/automation/engine/sql
 import { HostScenarioEngineServices } from "./infrastructure/automation/engine/host-services.adapter";
 import { createExecutorMap } from "./infrastructure/automation/engine/executors";
 import { ScenarioRuntimeEngine } from "./infrastructure/automation/engine/scenario-runtime-engine";
-import { createLogger } from "./infrastructure/observability/logger";
+import {
+  createLogger,
+  disposeLogger,
+  type Logger,
+} from "./infrastructure/observability/logger";
 
 let database: ReturnType<typeof createSqliteDatabase> | undefined;
 let scenarioJobWorker: ScenarioJobWorker | undefined;
@@ -116,6 +120,7 @@ let scenarioFileDownloads: ScenarioFileDownloadService | undefined;
 let scenarioDeliveryWorker: ScenarioDeliveryWorker | undefined;
 let textExtraction: TextExtractionClient | undefined;
 let questionSweeper: NodeJS.Timeout | undefined;
+let engineLogger: Logger | undefined;
 
 app.whenReady().then(() => {
   installContentSecurityPolicy();
@@ -233,7 +238,6 @@ app.whenReady().then(() => {
     providerRegistry,
     toolRegistry,
     vectorService,
-    integrationRepository,
     secretRepository,
     scenarioFileDownloads,
     new ScenarioFileReaderService(scenarioDownloadsRoot, textExtraction),
@@ -241,7 +245,7 @@ app.whenReady().then(() => {
     questionService,
     () => scenarioRuntimeEngine,
   );
-  const engineLogger = createLogger({
+  engineLogger = createLogger({
     directory: join(app.getPath("userData"), "logs"),
     fileName: "scenario-engine",
   });
@@ -345,6 +349,8 @@ app.on("before-quit", () => {
   removeDirectoryPolicyHandlers();
   removeIntegrationHandlers();
   removeAssistantHandlers();
+  if (engineLogger) disposeLogger(engineLogger);
+  engineLogger = undefined;
   database?.close();
   database = undefined;
 });

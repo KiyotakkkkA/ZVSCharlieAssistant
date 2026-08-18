@@ -38,6 +38,9 @@ export function GlobalSettingsSidebar() {
           placeholder="Найти настройку"
           onChange={(event) => setQuery(event.target.value)}
           onClear={() => setQuery("")}
+          classNames={{
+            trailingButton: "rounded-full",
+          }}
         />
         {query ? (
           <NavigationList
@@ -84,7 +87,7 @@ function NavigationList({
     <div
       className={
         floating
-          ? "absolute left-0 right-0 top-[calc(100%+0.35rem)] max-h-80 overflow-y-auto rounded-xl border border-main-700/45 bg-main-900 p-1.5 shadow-2xl shadow-black/45"
+          ? "absolute left-0 right-0 top-[calc(100%+0.35rem)] max-h-80 overflow-y-auto rounded-xl border border-main-700/45 bg-main-900 p-1.5 shadow-2xl shadow-black/45 space-y-1"
           : "space-y-1"
       }
     >
@@ -95,7 +98,7 @@ function NavigationList({
           <button
             key={item.id}
             type="button"
-            className={`flex w-full items-start gap-2.5 rounded-lg text-left transition-colors px-2.5 py-2
+            className={`flex w-full cursor-pointer items-start gap-2.5 rounded-lg text-left transition-colors px-2.5 py-2
             ${
               active
                 ? "bg-main-700/50 text-main-50"

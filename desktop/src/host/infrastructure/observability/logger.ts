@@ -282,12 +282,3 @@ export function disposeLogger(logger: Logger): void {
   if (logger instanceof FileLogger) logger.dispose();
 }
 
-let ambient: Logger = createNullLogger();
-
-export function setAmbientLogger(logger: Logger): void {
-  ambient = logger;
-}
-
-export function log(): Logger {
-  return ambient;
-}

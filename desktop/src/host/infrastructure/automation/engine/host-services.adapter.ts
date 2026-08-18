@@ -1,5 +1,4 @@
 import { generateObject as aiGenerateObject, stepCountIs, streamText, type ToolSet } from "ai";
-import type { z } from "zod";
 import { ScenarioSuspended as SharedScenarioSuspended } from "../../../../shared/scenario/errors";
 import { PermanentError } from "../../../../shared/scenario/errors";
 import type { ScenarioFileReference } from "../../../../shared/dto/scenario-trigger-event.dto";
@@ -7,7 +6,6 @@ import type { ScenarioExecutionRepository } from "../../database/scenario-execut
 import type { ProviderRegistry } from "../../text-generation/provider.registry";
 import type { ToolRegistry } from "../../tools/tool.registry";
 import type { VectorStoreService } from "../../vector-store/vector-store.service";
-import type { IntegrationRepository } from "../../database/integration.repository";
 import type { SecretStorageRepository } from "../../database/secret-storage.repository";
 import type { ScenarioFileDownloadService } from "../scenario-file-download.service";
 import type { ScenarioFileReaderService } from "../scenario-file-reader.service";
@@ -38,7 +36,6 @@ export class HostScenarioEngineServices implements ScenarioEngineServices {
     private readonly providers: ProviderRegistry,
     private readonly toolRegistry: ToolRegistry,
     private readonly vectorStores: VectorStoreService,
-    private readonly integrations: IntegrationRepository,
     private readonly secrets: SecretStorageRepository,
     private readonly fileDownloads: ScenarioFileDownloadService,
     private readonly fileReader: ScenarioFileReaderService,

@@ -229,7 +229,7 @@ export class ScenarioRuntime {
     | { kind: "done"; outputs: Record<string, ScenarioItems> }
     | { kind: "suspended"; questionId: number }
   > {
-    const { node, descriptor, runtime } = compiledNode;
+    const { node, runtime } = compiledNode;
     const iteration = this.state.noteExecution(node.id);
     const mainItems = inputs[MAIN_PORT] ?? [];
 
