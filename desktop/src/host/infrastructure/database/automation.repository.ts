@@ -92,7 +92,9 @@ export class AutomationRepository {
 
   getSnapshot(): Omit<AutomationSnapshot, "scenarios"> {
     return {
-      tools: this.tools.map((tool) => this.mapTool(tool)),
+      tools: this.tools
+        .filter((tool) => !tool.internal)
+        .map((tool) => this.mapTool(tool)),
       agents: this.listAgents(),
       skills: this.listSkillsFull(),
     };
@@ -462,8 +464,11 @@ export class AutomationRepository {
   findSkill(id: number): Omit<AutomationSkill, "instructions"> | undefined {
     const row = this.database
       .prepare(
-        `SELECT id,slug,name,description,status,version,author,instructions,builtin,required_tool_ids_json,updated_at
-         FROM automation_skills WHERE id=?`,
+        `SELECT s.id,s.slug,s.name,s.description,s.status,s.version,s.author,s.builtin,
+                s.required_tool_ids_json,s.updated_at,COUNT(a.agent_id) assigned_agents_count
+         FROM automation_skills s
+         LEFT JOIN automation_agent_skills a ON a.skill_id=s.id
+         WHERE s.id=? GROUP BY s.id`,
       )
       .get(id) as Record<string, unknown> | undefined;
     if (!row) return undefined;

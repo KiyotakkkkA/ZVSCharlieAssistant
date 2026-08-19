@@ -991,6 +991,30 @@ const migrations: readonly Migration[] = [
       `);
     },
   },
+  {
+    version: 21,
+    up(database) {
+      database.exec(`
+        CREATE TABLE entity_generation_runs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          kind TEXT NOT NULL CHECK(kind IN ('agent','skill')),
+          model_id INTEGER NOT NULL,
+          prompt TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'queued'
+            CHECK(status IN ('queued','running','completed','failed','cancelled')),
+          entity_id TEXT,
+          entity_name TEXT,
+          error_message TEXT,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          started_at TEXT,
+          completed_at TEXT
+        );
+
+        CREATE INDEX idx_entity_generation_runs_created_at
+          ON entity_generation_runs(created_at DESC);
+      `);
+    },
+  },
 ];
 
 export function runMigrations(database: Database.Database): void {

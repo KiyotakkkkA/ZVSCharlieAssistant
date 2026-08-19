@@ -65,6 +65,12 @@ import {
   removeDirectoryPolicyHandlers,
 } from "../ipc/main/register-directory-policy-handlers";
 import { UserProfileRepository } from "./infrastructure/database/user-profile.repository";
+import { EntityGenerationRepository } from "./infrastructure/database/entity-generation.repository";
+import { EntityGenerationService } from "./application/services/entity-generation.service";
+import {
+  registerEntityGenerationHandlers,
+  removeEntityGenerationHandlers,
+} from "../ipc/main/register-entity-generation-handlers";
 import {
   registerUserProfileHandlers,
   removeUserProfileHandlers,
@@ -178,6 +184,16 @@ app.whenReady().then(() => {
   const providerRegistry = new ProviderRegistry(
     chatRepository,
     secretRepository,
+  );
+  const entityGenerations = new EntityGenerationRepository(database);
+  entityGenerations.recoverInterrupted();
+  registerEntityGenerationHandlers(
+    new EntityGenerationService(
+      entityGenerations,
+      automationRepository,
+      providerRegistry,
+      BUILTIN_AUTOMATION_TOOLS,
+    ),
   );
   const scenarioExecutions = new ScenarioExecutionRepository(database);
   scenarioExecutions.recoverInterruptedRuns();
@@ -356,6 +372,7 @@ app.on("before-quit", () => {
   removeTerminalPolicyHandlers();
   removeDirectoryPolicyHandlers();
   removeUserProfileHandlers();
+  removeEntityGenerationHandlers();
   removeIntegrationHandlers();
   removeAssistantHandlers();
   if (engineLogger) disposeLogger(engineLogger);

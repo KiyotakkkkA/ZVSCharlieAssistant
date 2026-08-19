@@ -76,6 +76,14 @@ export type {
 } from "./user-profile.contract";
 export { USER_PROFILE_IPC_CHANNELS } from "./user-profile.contract";
 
+export type {
+  EntityGenerationApi,
+  EntityGenerationRun,
+  EntityGenerationStatus,
+  GeneratedEntityKind,
+} from "./entity-generation.contract";
+export { ENTITY_GENERATION_IPC_CHANNELS } from "./entity-generation.contract";
+
 export type { CoreInteractorApi } from "./core-interactor.contract";
 export { CORE_INTERACTOR_IPC_CHANNELS } from "./core-interactor.contract";
 

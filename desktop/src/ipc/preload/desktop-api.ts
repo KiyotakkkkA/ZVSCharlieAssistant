@@ -37,6 +37,8 @@ import {
   DIRECTORY_POLICY_IPC_CHANNELS,
   USER_PROFILE_IPC_CHANNELS,
   type UserProfile,
+  ENTITY_GENERATION_IPC_CHANNELS,
+  type EntityGenerationRun,
   type TerminalPolicy,
   type DirectoryPolicy,
   type TerminalApprovalRequest,
@@ -64,6 +66,7 @@ import type {
   UpsertTerminalPolicyInput,
   UpsertDirectoryPolicyInput,
   UpsertUserProfileInput,
+  StartEntityGenerationInput,
   UpsertTextProviderInput,
   UpsertVectorStoreInput,
   UploadVectorDocumentInput,
@@ -244,6 +247,17 @@ export const desktopApi: DesktopApi = {
         USER_PROFILE_IPC_CHANNELS.upsert,
         input,
       ) as Promise<UserProfile>,
+  },
+  entityGeneration: {
+    list: (): Promise<EntityGenerationRun[]> =>
+      ipcRenderer.invoke(ENTITY_GENERATION_IPC_CHANNELS.list) as Promise<
+        EntityGenerationRun[]
+      >,
+    start: (input: StartEntityGenerationInput): Promise<EntityGenerationRun> =>
+      ipcRenderer.invoke(
+        ENTITY_GENERATION_IPC_CHANNELS.start,
+        input,
+      ) as Promise<EntityGenerationRun>,
   },
   secrets: {
     getSnapshot: (): Promise<SecretStorageSnapshot> =>

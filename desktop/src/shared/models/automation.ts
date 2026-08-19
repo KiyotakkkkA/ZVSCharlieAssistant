@@ -23,6 +23,7 @@ export interface AutomationTool {
   description: string;
   category: string;
   builtin: true;
+  internal?: boolean;
   enabled: boolean;
   requiresConfirmation: boolean;
   inputSchema: Record<string, unknown>;

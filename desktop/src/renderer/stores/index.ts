@@ -11,4 +11,5 @@ export { memoryStore } from "./MemoryStore";
 export { taskPlanStore } from "./TaskPlanStore";
 export { questionStore } from "./QuestionStore";
 export { userProfileStore } from "./UserProfileStore";
+export { entityGenerationStore } from "./EntityGenerationStore";
 export type { VectorDocument, VectorStoreModel } from "./VectorStoreStore";

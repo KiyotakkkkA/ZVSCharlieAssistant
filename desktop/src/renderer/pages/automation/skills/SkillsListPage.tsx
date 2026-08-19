@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { observer } from "mobx-react-lite";
 import {
+  Button,
   EmptyState,
   InputSmall,
   ScrollArea,
@@ -9,7 +10,7 @@ import {
 } from "@kiyotakkkka/zvs-uikit-lib";
 import type { AutomationSkill } from "../../../../ipc/contracts";
 import { APP_PATHS } from "../../../app/routes";
-import { SkillIcon } from "../../../components/atoms";
+import { CreationIcon, SkillIcon } from "../../../components/atoms";
 import { AutomationSkillCard } from "../../../components/molecules";
 import { PrimaryButton } from "../../../components/atoms/buttons";
 import { PageHeader } from "../../../components/organisms";
@@ -17,6 +18,7 @@ import { DangerModal } from "../../../components/organisms/modals";
 import { useAppNavigation } from "../../../hooks";
 import { automationStore } from "../../../stores";
 import { AutomationSkillsListTable } from "@renderer/components/organisms/tables";
+import { AIEntityCreateForm } from "@renderer/components/organisms/forms";
 
 export const SkillsListPage = observer(function SkillsListPage() {
   const { goTo } = useAppNavigation();
@@ -24,6 +26,7 @@ export const SkillsListPage = observer(function SkillsListPage() {
   const [query, setQuery] = useState("");
   const [mode, setMode] = useState<"table" | "cards">("cards");
   const [removing, setRemoving] = useState<AutomationSkill | null>(null);
+  const [generating, setGenerating] = useState(false);
   const items = useMemo(() => {
     const q = query.trim().toLowerCase();
     return q
@@ -40,7 +43,7 @@ export const SkillsListPage = observer(function SkillsListPage() {
         description="Переиспользуемые инструкции и знания, которые можно назначать агентам."
         breadcrumbs={[{ label: "Автоматизация" }, { label: "Навыки" }]}
       >
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <Switcher
             value={mode}
             onChange={(v) => setMode(v as typeof mode)}
@@ -60,6 +63,14 @@ export const SkillsListPage = observer(function SkillsListPage() {
             label="Добавить навык"
             onClick={() => goTo(APP_PATHS.automation.skills.create)}
           />
+          <Button
+            variant="tertiary"
+            rounded="rounded-lg"
+            title="Создать навык с помощью модели"
+            onClick={() => setGenerating(true)}
+          >
+            <CreationIcon />
+          </Button>
         </div>
       </PageHeader>
       <ScrollArea className="min-h-0 flex-1 p-1">
@@ -106,6 +117,12 @@ export const SkillsListPage = observer(function SkillsListPage() {
           </div>
         )}
       </ScrollArea>
+      <AIEntityCreateForm
+        open={generating}
+        kind="skill"
+        onClose={() => setGenerating(false)}
+      />
+
       <DangerModal
         open={!!removing}
         model={removing}

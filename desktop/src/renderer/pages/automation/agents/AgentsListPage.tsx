@@ -1,5 +1,6 @@
 import { observer } from "mobx-react-lite";
 import {
+  Button,
   EmptyState,
   InputSmall,
   ScrollArea,
@@ -7,7 +8,7 @@ import {
   useToasts,
 } from "@kiyotakkkka/zvs-uikit-lib";
 import { APP_PATHS } from "../../../app/routes";
-import { RobotIcon } from "../../../components/atoms";
+import { CreationIcon, RobotIcon } from "../../../components/atoms";
 import { AutomationAgentCard } from "../../../components/molecules";
 import { PageHeader } from "../../../components/organisms";
 import { useAppNavigation } from "../../../hooks";
@@ -17,6 +18,7 @@ import { PrimaryButton } from "@renderer/components/atoms/buttons";
 import type { AutomationAgent } from "../../../../ipc/contracts";
 import { DangerModal } from "@renderer/components/organisms/modals";
 import { AutomationAgentsListTable } from "@renderer/components/organisms/tables";
+import { AIEntityCreateForm } from "@renderer/components/organisms/forms";
 
 type ViewMode = "table" | "cards";
 
@@ -28,6 +30,7 @@ export const AgentsListPage = observer(function AgentsListPage() {
   const [agentToDelete, setAgentToDelete] = useState<AutomationAgent | null>(
     null,
   );
+  const [generating, setGenerating] = useState(false);
   const agents = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase();
     return normalized
@@ -67,6 +70,14 @@ export const AgentsListPage = observer(function AgentsListPage() {
             label="Добавить агента"
             onClick={() => goTo(APP_PATHS.automation.agents.create)}
           />
+          <Button
+            variant="tertiary"
+            rounded="rounded-lg"
+            title="Создать агента с помощью модели"
+            onClick={() => setGenerating(true)}
+          >
+            <CreationIcon />
+          </Button>
         </div>
       </PageHeader>
 
@@ -102,6 +113,12 @@ export const AgentsListPage = observer(function AgentsListPage() {
           </div>
         )}
       </ScrollArea>
+
+      <AIEntityCreateForm
+        open={generating}
+        kind="agent"
+        onClose={() => setGenerating(false)}
+      />
 
       <DangerModal
         open={agentToDelete !== null}

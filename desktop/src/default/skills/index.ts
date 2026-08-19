@@ -1,5 +1,7 @@
 import reportDocxInstructions from "./report-docx-gost/SKILL.md?raw";
 import managedPowerShellInstructions from "./managed-powershell/SKILL.md?raw";
+import createAgentInstructions from "./create-agent/SKILL.md?raw";
+import createSkillInstructions from "./create-skill/SKILL.md?raw";
 
 export interface DefaultSkillDefinition {
   slug: string;
@@ -34,5 +36,25 @@ export const DEFAULT_SKILLS: readonly DefaultSkillDefinition[] = [
     author: "ZVS Assistant",
     requiredToolIds: ["cmd_exec"],
     instructions: stripFrontmatter(managedPowerShellInstructions),
+  },
+  {
+    slug: "create-agent",
+    name: "Создание агента",
+    description:
+      "Проектирует нового агента-исполнителя по описанию задачи от пользователя и сохраняет его черновик.",
+    version: "1.0.0",
+    author: "ZVS Assistant",
+    requiredToolIds: ["agent_create"],
+    instructions: stripFrontmatter(createAgentInstructions),
+  },
+  {
+    slug: "create-skill",
+    name: "Создание навыка",
+    description:
+      "Пишет новый переиспользуемый навык с подробными инструкциями по описанию от пользователя и сохраняет его черновик.",
+    version: "1.0.0",
+    author: "ZVS Assistant",
+    requiredToolIds: ["skill_create"],
+    instructions: stripFrontmatter(createSkillInstructions),
   },
 ] as const;
