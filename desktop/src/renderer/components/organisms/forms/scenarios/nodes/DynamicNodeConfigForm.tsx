@@ -21,7 +21,7 @@ import {
   PlusIcon,
 } from "../../../../atoms";
 import { ControlButton } from "../../../../atoms/buttons";
-import { ExpressionInput } from "../../../../molecules";
+import { ExpressionField } from "../../../../molecules";
 import { ConditionGroupEditor } from "./ConditionGroupEditor";
 import { NODE_FIELDS } from "./node-fields.registry";
 import type { FieldOption, NodeFieldSpec } from "./node-fields.types";
@@ -135,27 +135,27 @@ const NodeField = observer(function NodeField({
       );
 
     case "textarea":
-      return (
+      return spec.expression ? (
+        <ExpressionField
+          multiline
+          label={label}
+          value={value === null || value === undefined ? "" : String(value)}
+          onChange={(next) => onSet(spec.key, next)}
+          placeholder={spec.placeholder}
+          minRows={spec.minRows ?? 3}
+          maxRows={spec.maxRows ?? 8}
+          hint={hint}
+        />
+      ) : (
         <Field label={label} className="w-full">
-          {spec.expression ? (
-            <ExpressionInput
-              multiline
-              value={value === null || value === undefined ? "" : String(value)}
-              onChange={(next) => onSet(spec.key, next)}
-              placeholder={spec.placeholder}
-              minRows={spec.minRows ?? 3}
-              maxRows={spec.maxRows ?? 8}
-            />
-          ) : (
-            <InputBig
-              value={value === null || value === undefined ? "" : String(value)}
-              onChange={(event) => onSet(spec.key, event.target.value)}
-              placeholder={spec.placeholder}
-              minRows={spec.minRows ?? 3}
-              maxRows={spec.maxRows ?? 8}
-              autoResize
-            />
-          )}
+          <InputBig
+            value={value === null || value === undefined ? "" : String(value)}
+            onChange={(event) => onSet(spec.key, event.target.value)}
+            placeholder={spec.placeholder}
+            minRows={spec.minRows ?? 3}
+            maxRows={spec.maxRows ?? 8}
+            autoResize
+          />
           {hint}
         </Field>
       );
@@ -329,27 +329,28 @@ const NodeField = observer(function NodeField({
 
     case "text":
     default:
-      return (
+      return spec.expression ? (
+        <ExpressionField
+          label={label}
+          value={value === null || value === undefined ? "" : String(value)}
+          onChange={(next) => onSet(spec.key, next)}
+          placeholder={spec.placeholder}
+          hint={hint}
+        />
+      ) : (
         <Field label={label}>
-          {spec.expression ? (
-            <ExpressionInput
-              value={value === null || value === undefined ? "" : String(value)}
-              onChange={(next) => onSet(spec.key, next)}
-              placeholder={spec.placeholder}
-            />
-          ) : (
-            <InputSmall
-              value={value === null || value === undefined ? "" : String(value)}
-              onChange={(event) => onSet(spec.key, event.target.value)}
-              placeholder={spec.placeholder}
-              className="w-full"
-            />
-          )}
+          <InputSmall
+            value={value === null || value === undefined ? "" : String(value)}
+            onChange={(event) => onSet(spec.key, event.target.value)}
+            placeholder={spec.placeholder}
+            className="w-full"
+          />
           {hint}
         </Field>
       );
   }
 });
+
 
 function OptionSelect({
   value,

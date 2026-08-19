@@ -57,6 +57,15 @@ export class AutomationScenarioStore {
       parseIpcDto(scenarioGraphSchema, graph),
     );
   }
+  async loadLastRun(scenarioId: string) {
+    const last =
+      await window.desktop.automation.getLatestScenarioRun(scenarioId);
+    runInAction(() => {
+      this.activeRun = last?.run ?? null;
+      this.nodeRuns = last?.nodes ?? [];
+    });
+  }
+
   async start(id: string, input: unknown) {
     const run = await window.desktop.automation.startScenario(
       id,

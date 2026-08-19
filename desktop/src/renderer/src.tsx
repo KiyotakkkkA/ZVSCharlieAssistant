@@ -99,11 +99,6 @@ const SettingsIntegrationsPage = lazy(() =>
     ({ SettingsIntegrationsPage }) => ({ default: SettingsIntegrationsPage }),
   ),
 );
-const SettingsAppearancePage = lazy(() =>
-  import("./pages/settings/appearance").then(({ SettingsAppearancePage }) => ({
-    default: SettingsAppearancePage,
-  })),
-);
 
 function AppLayout() {
   const { pathname } = useLocation();
@@ -118,8 +113,7 @@ function AppLayout() {
     pathname === APP_PATHS.storage.secrets ||
     pathname === APP_PATHS.storage.vectorDb ||
     pathname === APP_PATHS.settings.policies ||
-    pathname === APP_PATHS.settings.integrations ||
-    pathname === APP_PATHS.settings.appearance;
+    pathname === APP_PATHS.settings.integrations;
 
   const content = (
     <Suspense
@@ -246,10 +240,6 @@ createRoot(root).render(
             <Route
               path={APP_PATHS.settings.integrations}
               element={<SettingsIntegrationsPage />}
-            />
-            <Route
-              path={APP_PATHS.settings.appearance}
-              element={<SettingsAppearancePage />}
             />
             <Route
               path={APP_PATHS.storage.secrets}

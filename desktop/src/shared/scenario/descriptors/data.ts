@@ -35,10 +35,9 @@ export const setDescriptor: ScenarioNodeDescriptor<
   kind: "set",
   label: "Поля",
   category: "data",
-  description: "Задаёт, переименовывает и удаляет поля items",
+  description: "Задаёт, переименовывает и удаляет поля записей",
   documentation:
-    "Основной способ переложить данные между узлами без обращения к модели. " +
-    "Значение поля — выражение: `{{ $json.user.email }}`, `Re: {{ $trigger.entity.subject }}`.",
+    "Самый простой способ подготовить данные для следующего шага, не обращаясь к модели. Значение можно взять из предыдущего шага — например, подставить почту отправителя или тему письма.",
   icon: "fields",
   accent: "#0891b2",
   configSchema: setConfigSchema,
@@ -85,7 +84,7 @@ export const aggregateDescriptor: ScenarioNodeDescriptor<
   kind: "aggregate",
   label: "Свёртка",
   category: "data",
-  description: "Собирает коллекцию items в один",
+  description: "Собирает все записи в одну",
   icon: "aggregate",
   accent: "#0891b2",
   configSchema: aggregateConfigSchema,
@@ -115,10 +114,9 @@ export const splitOutDescriptor: ScenarioNodeDescriptor<
   kind: "splitOut",
   label: "Развернуть список",
   category: "data",
-  description: "Превращает массив внутри поля в отдельные items",
+  description: "Превращает список внутри поля в отдельные записи",
   documentation:
-    "Обратная операция к свёртке. Если модель вернула список из десяти задач, " +
-    "этот узел сделает из них десять items, и следующий узел обработает каждую отдельно.",
+    "Разбирает список на отдельные записи. Если модель вернула список из десяти задач, узел превратит его в десять записей, и следующий шаг обработает каждую по отдельности.",
   icon: "split",
   accent: "#0891b2",
   configSchema: splitOutConfigSchema,
@@ -161,7 +159,7 @@ export const sortDescriptor: ScenarioNodeDescriptor<
   kind: "sort",
   label: "Сортировка",
   category: "data",
-  description: "Упорядочивает items по одному или нескольким полям",
+  description: "Упорядочивает записи по одному или нескольким полям",
   icon: "sort",
   accent: "#0891b2",
   configSchema: sortConfigSchema,
@@ -183,7 +181,7 @@ export const deduplicateDescriptor: ScenarioNodeDescriptor<
   kind: "deduplicate",
   label: "Без дубликатов",
   category: "data",
-  description: "Убирает повторяющиеся items",
+  description: "Убирает повторяющиеся записи",
   icon: "dedupe",
   accent: "#0891b2",
   configSchema: dedupeConfigSchema,
@@ -223,8 +221,7 @@ export const httpDescriptor: ScenarioNodeDescriptor<
   category: "io",
   description: "Обращается к внешнему API",
   documentation:
-    "URL, заголовки и тело поддерживают выражения. Токен берётся из хранилища секретов " +
-    "и не попадает ни в граф, ни в логи.",
+    "Обращается к стороннему сервису. Адрес, заголовки и содержимое запроса можно собрать из данных сценария. Ключ доступа берётся из хранилища паролей и нигде больше не сохраняется — ни в сценарии, ни в журнале.",
   icon: "http",
   accent: "#2563eb",
   configSchema: httpConfigSchema,
@@ -285,7 +282,7 @@ export const downloadFilesDescriptor: ScenarioNodeDescriptor<
   kind: "downloadFiles",
   label: "Скачать файлы",
   category: "io",
-  description: "Сохраняет вложения на диск и подставляет ссылки в items",
+  description: "Сохраняет вложения на диск и подставляет ссылки на них",
   icon: "download",
   accent: "#2563eb",
   configSchema: downloadFilesConfigSchema,
@@ -326,8 +323,7 @@ export const readFilesDescriptor: ScenarioNodeDescriptor<
   category: "io",
   description: "Извлекает текст из вложений",
   documentation:
-    "Поддерживаются pdf, docx, txt и другие текстовые форматы. " +
-    "Крупный текст автоматически выносится из базы в файл выгрузки — в истории останется ссылка.",
+    "Читает вложения: pdf, docx, txt и другие текстовые файлы. Если текста окажется очень много, он сохранится отдельным файлом, а в истории запуска останется ссылка на него.",
   icon: "read",
   accent: "#2563eb",
   configSchema: readFilesConfigSchema,
@@ -397,8 +393,7 @@ export const knowledgeStoreDescriptor: ScenarioNodeDescriptor<
   category: "ai",
   description: "Подключает векторное хранилище к агенту",
   documentation:
-    "Соединяется с входом «База знаний» агента. Найденные фрагменты попадают в контекст " +
-    "как недоверенные данные: агенту прямо запрещено выполнять инструкции из документов.",
+    "Подключается ко входу «База знаний» у агента, чтобы тот отвечал, опираясь на ваши документы. Найденные фрагменты агент использует как справку, но выполнять указания, написанные внутри самих документов, ему запрещено.",
   icon: "knowledge",
   accent: "#059669",
   configSchema: knowledgeStoreConfigSchema,

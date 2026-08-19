@@ -10,21 +10,25 @@ import { ArrowExpandLeftIcon, ArrowExpandRightIcon } from "../atoms";
 
 const MIN_WIDTH = 280;
 const MAX_WIDTH = 720;
-const COLLAPSED_WIDTH = 44;
+const COLLAPSED_WIDTH = 56;
 
 interface Props {
   title: string;
   storageKey: string;
+  side?: "left" | "right";
   defaultWidth?: number;
   headerAction?: ReactNode;
+  collapsedContent?: ReactNode;
   children: ReactNode;
 }
 
 export function ResizableSidePanel({
   title,
   storageKey,
+  side = "right",
   defaultWidth = 384,
   headerAction,
+  collapsedContent,
   children,
 }: Props) {
   const [width, setWidth] = useState(() =>
@@ -62,7 +66,11 @@ export function ResizableSidePanel({
       const move = (moveEvent: PointerEvent) => {
         if (frame.current !== null) cancelAnimationFrame(frame.current);
         frame.current = requestAnimationFrame(() => {
-          const next = window.innerWidth - moveEvent.clientX;
+          const next =
+            side === "left"
+              ? moveEvent.clientX -
+                (handle.parentElement?.getBoundingClientRect().left ?? 0)
+              : window.innerWidth - moveEvent.clientX;
           setWidth(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, next)));
         });
       };
@@ -78,13 +86,14 @@ export function ResizableSidePanel({
       handle.addEventListener("pointerup", stop);
       handle.addEventListener("pointercancel", stop);
     },
-    [collapsed],
+    [collapsed, side],
   );
 
   return (
     <aside
       className={[
-        "relative flex shrink-0 flex-col border-l border-main-800 bg-main-900/90",
+        "relative z-20 flex shrink-0 flex-col border-main-800 bg-main-900/90",
+        side === "left" ? "border-r" : "border-l",
         resizing ? "" : "transition-[width] duration-200 ease-out",
       ].join(" ")}
       style={{ width: collapsed ? COLLAPSED_WIDTH : width }}
@@ -96,16 +105,22 @@ export function ResizableSidePanel({
         onPointerDown={startResize}
         onDoubleClick={() => setWidth(defaultWidth)}
         className={[
-          "absolute inset-y-0 -left-px z-10 w-1.5",
+          "absolute inset-y-0 z-10 w-1.5",
+          side === "left" ? "-right-px" : "-left-px",
           collapsed ? "hidden" : "cursor-col-resize",
           resizing ? "bg-accent-medium/60" : "hover:bg-accent-medium/40",
         ].join(" ")}
       />
 
-      <div className="flex h-12 shrink-0 items-center justify-between gap-2 border-b border-main-800 px-2">
+      <div
+        className={[
+          "flex h-12 shrink-0 items-center justify-between gap-2 border-b border-main-800 px-2",
+          side === "left" ? "flex-row-reverse" : "",
+        ].join(" ")}
+      >
         <Tooltip
           label={collapsed ? "Развернуть панель" : "Свернуть панель"}
-          placement="bottom-right"
+          placement={side === "left" ? "bottom-left" : "bottom-right"}
         >
           <Button
             variant="ghost"
@@ -114,10 +129,10 @@ export function ResizableSidePanel({
             className="inline-flex size-8 shrink-0 items-center justify-center border-0! p-0 text-main-400 shadow-none ring-0! hover:bg-main-600/50 hover:text-main-50"
             onClick={() => setCollapsed((value) => !value)}
           >
-            {collapsed ? (
-              <ArrowExpandLeftIcon className="size-4" />
-            ) : (
+            {collapsed === (side === "left") ? (
               <ArrowExpandRightIcon className="size-4" />
+            ) : (
+              <ArrowExpandLeftIcon className="size-4" />
             )}
           </Button>
         </Tooltip>
@@ -131,7 +146,9 @@ export function ResizableSidePanel({
         )}
       </div>
 
-      {collapsed ? null : (
+      {collapsed ? (
+        <div className="min-h-0 flex-1 overflow-visible">{collapsedContent}</div>
+      ) : (
         <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
       )}
     </aside>

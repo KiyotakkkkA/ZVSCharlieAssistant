@@ -52,7 +52,6 @@ export const APP_PATHS = {
     providers: "/settings/providers",
     policies: "/settings/policies",
     integrations: "/settings/integrations",
-    appearance: "/settings/appearance",
   },
 } as const;
 

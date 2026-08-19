@@ -71,6 +71,18 @@ export class ScenarioExecutionRepository {
     return row ? mapRun(row) : undefined;
   }
 
+  latestRun(scenarioId: string): ScenarioRun | undefined {
+    const row = this.db
+      .prepare(
+        `SELECT e.*,s.name scenario_name FROM execution_runs e
+       JOIN automation_scenarios s ON s.id=e.scenario_id
+       WHERE e.scenario_id=? AND e.kind='scenario'
+       ORDER BY e.id DESC LIMIT 1`,
+      )
+      .get(scenarioId) as Record<string, unknown> | undefined;
+    return row ? mapRun(row) : undefined;
+  }
+
   nodeRuns(id: number): ScenarioNodeRun[] {
     return (
       this.db

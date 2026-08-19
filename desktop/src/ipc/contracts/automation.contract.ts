@@ -43,6 +43,9 @@ export interface AutomationApi {
   ): Promise<ScenarioRun>;
   cancelScenarioRun(id: number): Promise<void>;
   approveScenarioRun(id: number, approved: boolean): Promise<void>;
+  getLatestScenarioRun(
+    scenarioId: string,
+  ): Promise<{ run: ScenarioRun; nodes: ScenarioNodeRun[] } | null>;
   getScenarioRun(
     id: number,
   ): Promise<{ run: ScenarioRun; nodes: ScenarioNodeRun[] }>;
@@ -65,5 +68,6 @@ export const AUTOMATION_IPC_CHANNELS = {
   cancelScenarioRun: "automation:cancel-scenario-run",
   approveScenarioRun: "automation:approve-scenario-run",
   getScenarioRun: "automation:get-scenario-run",
+  getLatestScenarioRun: "automation:get-latest-scenario-run",
   scenarioRunEvent: "automation:scenario-run-event",
 } as const;

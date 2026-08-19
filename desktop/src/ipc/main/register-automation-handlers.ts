@@ -149,6 +149,14 @@ export function registerAutomationHandlers(
     },
   );
   ipcMain.handle(
+    AUTOMATION_IPC_CHANNELS.getLatestScenarioRun,
+    (_event, scenarioId: string) => {
+      const run = executions.latestRun(parseIpcDto(entityKeySchema, scenarioId));
+      if (!run) return null;
+      return { run, nodes: executions.nodeRuns(run.id) };
+    },
+  );
+  ipcMain.handle(
     AUTOMATION_IPC_CHANNELS.getScenarioRun,
     (_event, id: number) => {
       const runId = parseIpcDto(entityIdSchema, id);

@@ -8,22 +8,22 @@ import {
   type StyleThemePalette,
 } from "@kiyotakkkka/zvs-uikit-lib";
 import { useState } from "react";
-import { GlobalSettingsLabel, PaletteIcon } from "../../atoms";
+import { GlobalSettingsLabel, PaletteIcon } from "../../../atoms";
 import {
   findPresetByPalette,
   saveThemePaletteToStorage,
-} from "../../../app/theme";
+} from "../../../../app/theme";
 import {
   applyTypographyToDocument,
   loadTypographyFromStorage,
   saveTypographyToStorage,
   type FontSizeMode,
   type TypographySettings,
-} from "../../../app/typography";
+} from "../../../../app/typography";
 import {
   DARK_THEME_PRESETS,
   LIGHT_THEME_PRESETS,
-} from "../../../../default/themes";
+} from "../../../../../default/themes";
 import { PrimaryButton } from "@renderer/components/atoms/buttons";
 
 type ThemePreset = {

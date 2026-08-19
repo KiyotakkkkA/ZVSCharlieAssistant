@@ -270,6 +270,7 @@ export function ScenarioExecHistoryPage() {
           {active ? (
             <Button
               variant="danger"
+              className="px-2"
               onClick={() =>
                 void window.desktop.automation.cancelScenarioRun(run.id)
               }

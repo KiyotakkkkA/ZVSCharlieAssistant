@@ -6,6 +6,7 @@ import { nodeVisual } from "./node-visuals";
 
 interface ScenarioNodeCardProps {
   node: ScenarioNode;
+  summary?: string;
   selected: boolean;
   showDescription: boolean;
   runStatus?: string;
@@ -17,6 +18,7 @@ interface ScenarioNodeCardProps {
 
 export function ScenarioNodeCard({
   node,
+  summary,
   selected,
   showDescription,
   runStatus,
@@ -35,18 +37,30 @@ export function ScenarioNodeCard({
         className={`relative flex h-full items-center gap-2.5 rounded-lg bg-main-800 px-2.5 py-2 ring-1 transition-[box-shadow,background-color,opacity] ${node.disabled ? "opacity-45" : ""} ${nodeRingClassName(runStatus, selected, issue)}`}
       >
         <span
-          className={`grid size-7 shrink-0 place-items-center rounded-md ${visual.iconClassName}`}
+          className={`grid size-8 shrink-0 place-items-center rounded-lg ${visual.iconClassName}`}
         >
-          <Icon className="size-3.5" />
+          <Icon className="size-4" />
         </span>
         <div className="min-w-0 flex-1 pr-4">
-          <p className="truncate text-xs font-medium text-main-100">
+          <p className="truncate text-[13px] font-medium leading-tight text-main-100">
             {node.name}
           </p>
-          <p className="mt-0.5 truncate text-[9px] uppercase tracking-wider text-main-500">
-            {visual.label}
+          <p className="mt-0.5 truncate text-[11px] leading-tight text-main-500">
+            {summary || visual.label}
           </p>
         </div>
+        {issue ? (
+          <span
+            title={
+              issue === "error"
+                ? "Узел настроен с ошибкой"
+                : "Узел требует внимания"
+            }
+            className={`absolute right-2 bottom-2 size-2 rounded-full ring-2 ring-main-800 ${
+              issue === "error" ? "bg-danger-medium" : "bg-warning-medium"
+            }`}
+          />
+        ) : null}
         {node.disabled ? (
           <BlockIcon className="absolute right-2 bottom-1.5 size-3 text-main-500" />
         ) : null}

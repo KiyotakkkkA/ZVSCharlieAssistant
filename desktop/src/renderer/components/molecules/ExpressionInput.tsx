@@ -1,9 +1,11 @@
 import {
   createContext,
+  forwardRef,
   memo,
   useCallback,
   useContext,
   useEffect,
+  useImperativeHandle,
   useMemo,
   useRef,
   useState,
@@ -20,7 +22,8 @@ import {
   type Suggestion,
 } from "./expression/completions";
 
-const ExpressionScopeContext = createContext<ExpressionScope>(EMPTY_SCOPE);
+export const ExpressionScopeContext =
+  createContext<ExpressionScope>(EMPTY_SCOPE);
 
 export function ExpressionScopeProvider({
   scope,
@@ -39,6 +42,10 @@ export function ExpressionScopeProvider({
 const SHARED_TEXT =
   "w-full px-3 py-2 font-mono text-xs leading-5 whitespace-pre-wrap break-words";
 
+export interface ExpressionInputHandle {
+  insert(text: string): void;
+}
+
 interface Props {
   value: string;
   onChange(value: string): void;
@@ -48,14 +55,11 @@ interface Props {
   maxRows?: number;
 }
 
-export function ExpressionInput({
-  value,
-  onChange,
-  placeholder,
-  multiline = false,
-  minRows = 3,
-  maxRows = 8,
-}: Props) {
+export const ExpressionInput = forwardRef<ExpressionInputHandle, Props>(
+  function ExpressionInput(
+    { value, onChange, placeholder, multiline = false, minRows = 3, maxRows = 8 },
+    handleRef,
+  ) {
   const scope = useContext(ExpressionScopeContext);
   const areaRef = useRef<HTMLTextAreaElement | null>(null);
   const layerRef = useRef<HTMLPreElement | null>(null);
@@ -68,6 +72,27 @@ export function ExpressionInput({
   const suggestions = useMemo(() => suggest(context, scope), [context, scope]);
 
   const close = useCallback(() => setContext(null), []);
+
+  useImperativeHandle(
+    handleRef,
+    () => ({
+      insert(text: string) {
+        const element = areaRef.current;
+        const current = element?.value ?? value;
+        const caret = element?.selectionStart ?? current.length;
+        const next = current.slice(0, caret) + text + current.slice(caret);
+        onChange(next);
+        const position = caret + text.length;
+        requestAnimationFrame(() => {
+          const target = areaRef.current;
+          if (!target) return;
+          target.focus();
+          target.setSelectionRange(position, position);
+        });
+      },
+    }),
+    [onChange, value],
+  );
 
   const refresh = useCallback((element: HTMLTextAreaElement) => {
     setContext(readContext(element.value, element.selectionStart ?? 0));
@@ -238,7 +263,8 @@ export function ExpressionInput({
       ) : null}
     </div>
   );
-}
+  },
+);
 
 const HighlightedText = memo(function HighlightedText({
   value,

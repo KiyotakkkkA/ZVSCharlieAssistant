@@ -1,4 +1,11 @@
-import { memo, useCallback, useMemo } from "react";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   Background,
   BaseEdge,
@@ -20,7 +27,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { Dropdown } from "@kiyotakkkka/zvs-uikit-lib";
-import { TrashIcon } from "../atoms";
+import { GridIcon, HoverTooltip, MagnetIcon, TrashIcon } from "../atoms";
 import type { ScenarioNode } from "../../../shared/scenario/graph";
 import { scenarioDescriptors } from "../../../shared/scenario/descriptors";
 import {
@@ -36,6 +43,7 @@ import { readCssColor, useThemeMode } from "../../hooks";
 
 type ScenarioNodeData = {
   node: ScenarioNode;
+  summary?: string;
   showDescription: boolean;
   runStatus?: string;
   issue?: "error" | "warning";
@@ -114,6 +122,21 @@ export function ScenarioGraphCanvas({
     [edges, nodesById],
   );
 
+  const [showGrid, setShowGrid] = useState(
+    () => localStorage.getItem("zvs.scenario-editor.grid") !== "0",
+  );
+  const [snapToGrid, setSnapToGrid] = useState(
+    () => localStorage.getItem("zvs.scenario-editor.snap") === "1",
+  );
+
+  useEffect(() => {
+    localStorage.setItem("zvs.scenario-editor.grid", showGrid ? "1" : "0");
+  }, [showGrid]);
+
+  useEffect(() => {
+    localStorage.setItem("zvs.scenario-editor.snap", snapToGrid ? "1" : "0");
+  }, [snapToGrid]);
+
   const themeMode = useThemeMode();
   const canvasColors = useMemo(
     () => ({
@@ -168,15 +191,43 @@ export function ScenarioGraphCanvas({
         minZoom={0.2}
         maxZoom={1.6}
         deleteKeyCode={["Backspace", "Delete"]}
+        snapToGrid={snapToGrid}
+        snapGrid={[24, 24]}
         colorMode={themeMode}
         proOptions={{ hideAttribution: true }}
       >
-        <Background color={canvasColors.dots} gap={24} size={1} />
-        <Controls
-          position="bottom-left"
-          showInteractive={false}
-          className="overflow-hidden rounded-lg! shadow-none! ring-1 ring-main-700"
-        />
+        {showGrid ? (
+          <Background color={canvasColors.dots} gap={24} size={1} />
+        ) : null}
+        <Panel position="bottom-left" className="flex flex-col gap-2">
+          <Controls
+            showInteractive={false}
+            style={{ position: "relative", inset: "auto", margin: 0 }}
+            className="overflow-hidden rounded-lg! shadow-none! ring-1 ring-main-700"
+          />
+          <div className="flex w-fit flex-col rounded-lg ring-1 ring-main-700">
+            <CanvasToggle
+              rounded="rounded-t-lg border-b border-main-700"
+              active={showGrid}
+              label={showGrid ? "Скрыть сетку" : "Показать сетку"}
+              onClick={() => setShowGrid((value) => !value)}
+            >
+              <GridIcon className="size-3.5" />
+            </CanvasToggle>
+            <CanvasToggle
+              rounded="rounded-b-lg"
+              active={snapToGrid}
+              label={
+                snapToGrid
+                  ? "Выключить привязку к сетке"
+                  : "Включить привязку к сетке"
+              }
+              onClick={() => setSnapToGrid((value) => !value)}
+            >
+              <MagnetIcon className="size-3.5" />
+            </CanvasToggle>
+          </div>
+        </Panel>
         <MiniMap
           position="bottom-right"
           pannable
@@ -210,6 +261,38 @@ export function ScenarioGraphCanvas({
         </Panel>
       </ReactFlow>
     </div>
+  );
+}
+
+function CanvasToggle({
+  active,
+  label,
+  rounded,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  label: string;
+  rounded: string;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <HoverTooltip label={label} className="block">
+      <button
+        type="button"
+        aria-label={label}
+        aria-pressed={active}
+        onClick={onClick}
+        className={`grid size-6.5 place-items-center transition ${rounded} ${
+          active
+            ? "bg-accent-medium/25 text-accent-medium"
+            : "bg-main-800 text-main-400 hover:bg-main-700 hover:text-main-100"
+        }`}
+      >
+        {children}
+      </button>
+    </HoverTooltip>
   );
 }
 
@@ -292,6 +375,7 @@ const ScenarioFlowNodeView = memo(function ScenarioFlowNodeView({
   return (
     <ScenarioNodeCard
       node={node}
+      summary={data.summary}
       selected={selected}
       showDescription={data.showDescription}
       runStatus={data.runStatus}
@@ -330,6 +414,7 @@ function areScenarioNodePropsEqual(
     previous.selected === next.selected &&
     previous.dragging === next.dragging &&
     previous.data.node === next.data.node &&
+    previous.data.summary === next.data.summary &&
     previous.data.issue === next.data.issue &&
     previous.data.showDescription === next.data.showDescription &&
     previous.data.runStatus === next.data.runStatus

@@ -79,8 +79,7 @@ export const ifDescriptor: ScenarioNodeDescriptor<
   category: "flow",
   description: "Разделяет поток на две ветки по набору условий",
   documentation:
-    "Каждый item проверяется независимо и уходит либо в выход «Да», либо в выход «Нет». " +
-    "Ветка, в которую не попал ни один item, дальше не выполняется — узлы за ней пропускаются.",
+    "Каждая запись проверяется отдельно и уходит либо в выход «Да», либо в выход «Нет». Если в какую-то ветку не попало ничего, дальше она не выполняется — шаги за ней пропускаются.",
   icon: "branch",
   accent: "#d97706",
   configSchema: ifConfigSchema,
@@ -149,8 +148,7 @@ export const switchDescriptor: ScenarioNodeDescriptor<
   category: "flow",
   description: "Разводит поток по нескольким веткам",
   documentation:
-    "В режиме правил каждый выход соответствует своему набору условий. В режиме выражения " +
-    "вычисленное значение сравнивается с меткой ветки. Выход «Иначе» получает всё, что не подошло.",
+    "То же, что «Условие», только веток может быть сколько угодно. Можно задать каждой ветке свои условия либо сравнивать одно вычисленное значение с названиями веток. Всё, что никуда не подошло, уходит в выход «Иначе».",
   icon: "switch",
   accent: "#d97706",
   configSchema: switchConfigSchema,
@@ -213,7 +211,7 @@ export const filterDescriptor: ScenarioNodeDescriptor<ConditionGroup> = {
   kind: "filter",
   label: "Фильтр",
   category: "flow",
-  description: "Пропускает дальше только подходящие items",
+  description: "Пропускает дальше только подходящие записи",
   icon: "filter",
   accent: "#d97706",
   configSchema: conditionGroupSchema,
@@ -242,9 +240,7 @@ export const mergeDescriptor: ScenarioNodeDescriptor<
   category: "flow",
   description: "Объединяет несколько веток в одну",
   documentation:
-    "«Дописать» складывает items друг за другом. «По ключу» соединяет их как join по полю. " +
-    "«По позиции» склеивает первый с первым, второй со вторым. " +
-    "Если снять «ждать все входы», узел отдаст первую пришедшую ветку и не будет ждать остальные.",
+    "«Дописать» сложит записи одну за другой. «По ключу» соединит записи из разных веток, у которых совпадает выбранное поле. «По позиции» склеит первую с первой, вторую со второй. Если снять «ждать все входы», узел не станет дожидаться остальные ветки и продолжит с той, что пришла первой.",
   icon: "merge",
   accent: "#d97706",
   configSchema: mergeConfigSchema,
@@ -297,11 +293,9 @@ export const loopDescriptor: ScenarioNodeDescriptor<
   kind: "loop",
   label: "Цикл по батчам",
   category: "flow",
-  description: "Отдаёт items порциями и повторяет ветку, пока они не кончатся",
+  description: "Отдаёт записи частями и повторяет ветку, пока они не кончатся",
   documentation:
-    "Выход «Батч» отдаёт очередную порцию, конец ветки нужно вернуть обратно во вход узла — " +
-    "это единственная разрешённая обратная связь в графе. Когда items кончатся, сработает выход «Готово» " +
-    "со всеми накопленными результатами.",
+    "Обрабатывает записи частями. Выход «Порция» отдаёт очередную часть, а конец ветки нужно вернуть стрелкой обратно во вход этого узла — это единственное место в схеме, где стрелка может идти назад. Когда записи закончатся, сработает выход «Готово» со всем, что накопилось.",
   icon: "loop",
   accent: "#d97706",
   configSchema: loopConfigSchema,
@@ -310,7 +304,7 @@ export const loopDescriptor: ScenarioNodeDescriptor<
   outputs: [
     {
       id: "batch",
-      label: "Батч",
+      label: "Порция",
       dataKind: "main",
       side: "right",
       multiple: true,
@@ -331,7 +325,7 @@ export const loopDescriptor: ScenarioNodeDescriptor<
         {
           nodeId: node.id,
           severity: "warning",
-          message: `У цикла «${node.name}» не подключён выход «Батч» — тело цикла пусто`,
+          message: `У цикла «${node.name}» не подключён выход «Порция» — цикл ничего не делает`,
         },
       ];
     return [];
@@ -349,7 +343,7 @@ export const limitDescriptor: ScenarioNodeDescriptor<
   kind: "limit",
   label: "Ограничение",
   category: "flow",
-  description: "Оставляет только первые или последние N items",
+  description: "Оставляет только первые или последние несколько записей",
   icon: "limit",
   accent: "#d97706",
   configSchema: limitConfigSchema,
@@ -387,9 +381,6 @@ export const approvalDescriptor: ScenarioNodeDescriptor<
   label: "Вопрос человеку",
   category: "flow",
   description: "Приостанавливает сценарий до ответа пользователя",
-  documentation:
-    "Ран сохраняется на диск и снимается с исполнения, а не держит поток. " +
-    "После ответа он продолжится с этого же узла — в том числе после перезапуска приложения.",
   icon: "question",
   accent: "#7c3aed",
   configSchema: approvalConfigSchema,
@@ -467,8 +458,7 @@ export const subScenarioDescriptor: ScenarioNodeDescriptor<
   category: "flow",
   description: "Вызывает другой сценарий как подпрограмму",
   documentation:
-    "Позволяет переиспользовать общую логику и не раздувать один граф. " +
-    "Вложенный сценарий исполняется на своей сохранённой ревизии.",
+    "Вызывает другой сценарий как часть этого. Удобно, когда одна и та же последовательность шагов нужна в нескольких местах и не хочется повторять её. Вложенный сценарий выполняется в том виде, в каком он был сохранён.",
   icon: "subflow",
   accent: "#7c3aed",
   configSchema: subScenarioConfigSchema,

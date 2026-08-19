@@ -337,6 +337,13 @@ export const desktopApi: DesktopApi = {
         id,
         approved,
       ) as Promise<void>,
+    getLatestScenarioRun: (
+      scenarioId: string,
+    ): Promise<{ run: ScenarioRun; nodes: ScenarioNodeRun[] } | null> =>
+      ipcRenderer.invoke(
+        AUTOMATION_IPC_CHANNELS.getLatestScenarioRun,
+        scenarioId,
+      ) as Promise<{ run: ScenarioRun; nodes: ScenarioNodeRun[] } | null>,
     getScenarioRun: (
       id: number,
     ): Promise<{ run: ScenarioRun; nodes: ScenarioNodeRun[] }> =>

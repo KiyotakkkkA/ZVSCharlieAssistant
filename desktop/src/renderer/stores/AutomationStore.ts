@@ -39,6 +39,9 @@ class AutomationStore {
   get activeScenarioRun() {
     return this.scenarioStore.activeRun;
   }
+  loadLastScenarioRun(scenarioId: string) {
+    return this.scenarioStore.loadLastRun(scenarioId);
+  }
   get scenarioNodeRuns() {
     return this.scenarioStore.nodeRuns;
   }

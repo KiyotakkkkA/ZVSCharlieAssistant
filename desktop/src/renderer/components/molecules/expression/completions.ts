@@ -22,13 +22,10 @@ export interface Suggestion extends CompletionEntry {
 
 export interface ExpressionScope {
   nodeNames: readonly string[];
-  resolve(root: string, nodeName?: string): unknown;
+  values: Record<string, unknown>;
 }
 
-export const EMPTY_SCOPE: ExpressionScope = {
-  nodeNames: [],
-  resolve: () => undefined,
-};
+export const EMPTY_SCOPE: ExpressionScope = { nodeNames: [], values: {} };
 
 const ROOT_ENTRIES = EXPRESSION_COMPLETIONS.filter(
   (entry) => entry.kind === "variable" || entry.kind === "function",
@@ -174,7 +171,9 @@ function resolvePath(
   const receiver = context.receiver;
   if (!receiver) return undefined;
 
-  let value = scope.resolve(receiver.root, receiver.nodeName);
+  let value = scope.values[receiver.root];
+  if (receiver.nodeName)
+    value = isRecord(value) ? value[receiver.nodeName] : undefined;
   for (const key of receiver.path) {
     if (!isRecord(value)) return undefined;
     value = value[key];

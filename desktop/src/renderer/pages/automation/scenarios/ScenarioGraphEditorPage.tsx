@@ -16,6 +16,7 @@ import {
   ChevronLeftIcon,
   CogIcon,
   EditIcon,
+  HoverTooltip,
   PlusIcon,
   RobotIcon,
   SaveIcon,
@@ -29,12 +30,21 @@ import {
 } from "../../../components/organisms";
 import { DynamicNodeConfigForm } from "../../../components/organisms/forms";
 import { nodeVisual } from "../../../components/molecules/nodes";
+import { nodeSummary } from "../../../components/molecules/nodes/node-summary";
 import { ExpressionScopeProvider } from "../../../components/molecules";
 import type { ExpressionScope } from "../../../components/molecules/expression/completions";
+import {
+  inferIncomingShape,
+  inferNodeOutputShape,
+} from "../../../components/molecules/expression/infer";
 import { DangerModal } from "@renderer/components/organisms/modals";
 import { APP_PATHS } from "../../../app/routes";
 import { readCssColor, useAppNavigation, useThemeMode } from "../../../hooks";
-import { automationStore } from "../../../stores";
+import {
+  automationStore,
+  textProviderStore,
+  vectorStoreStore,
+} from "../../../stores";
 import {
   emptyScenarioGraph,
   scenarioGraphSchema,
@@ -114,32 +124,70 @@ export const ScenarioGraphEditorPage = observer(
 
     const [selectedNodeId, setSelectedNodeId] = useState(nodes[0]?.id ?? "");
 
+    const summaryNames = useMemo(
+      () => ({
+        agents: new Map(
+          automationStore.agents.map((agent) => [agent.id, agent.name]),
+        ),
+        vectorStores: new Map(
+          vectorStoreStore.stores.map((store) => [store.id, store.name]),
+        ),
+        scenarios: new Map(
+          automationStore.scenarios.map((item) => [item.id, item.name]),
+        ),
+        models: new Map(
+          textProviderStore.models.map((model) => [model.id, model.name]),
+        ),
+      }),
+      [
+        automationStore.agents,
+        automationStore.scenarios,
+        vectorStoreStore.stores,
+        textProviderStore.models,
+      ],
+    );
+
     const runVersion = automationStore.scenarioNodeRuns
       .map((run) => `${run.nodeId}:${run.status}`)
       .join("|");
     const expressionScope = useMemo<ExpressionScope>(() => {
       const runs = automationStore.scenarioNodeRuns;
-      const idByName = new Map(nodes.map((node) => [node.name, node.id]));
+      const nameById = new Map(nodes.map((node) => [node.id, node.name]));
       const runByNodeId = new Map(runs.map((run) => [run.nodeId, run]));
       const selectedRun = selectedNodeId
         ? runByNodeId.get(selectedNodeId)
         : undefined;
 
+      const graph: ScenarioGraph = { ...emptyScenarioGraph(), nodes, edges };
+      const triggerNode = nodes.find((node) =>
+        node.kind.startsWith("trigger."),
+      );
+
+      const byName: Record<string, unknown> = {};
+      for (const node of nodes)
+        byName[node.name] = { json: inferNodeOutputShape(node.id, graph) };
+      for (const run of runs) {
+        const name = nameById.get(run.nodeId);
+        if (name) byName[name] = { json: firstItem(run.output) };
+      }
+      const inferred = selectedNodeId
+        ? inferIncomingShape(selectedNodeId, graph)
+        : undefined;
+
       return {
         nodeNames,
-        resolve(root, nodeName) {
-          if (root === "$node") {
-            const id = nodeName ? idByName.get(nodeName) : undefined;
-            return id ? firstItem(runByNodeId.get(id)?.output) : undefined;
-          }
-          if (root === "$json") return firstItem(selectedRun?.input);
-          if (root === "$items") return selectedRun?.input;
-          if (root === "$trigger")
-            return firstItem(automationStore.activeScenarioRun?.input);
-          return undefined;
+        values: {
+          $json: firstItem(selectedRun?.input) ?? inferred,
+          $items: itemsOf(selectedRun?.input),
+          $node: byName,
+          $trigger:
+            firstItem(automationStore.activeScenarioRun?.input) ??
+            (triggerNode
+              ? inferNodeOutputShape(triggerNode.id, graph)
+              : undefined),
         },
       };
-    }, [nodeNames, nodes, runVersion, selectedNodeId]);
+    }, [edges, nodeNames, nodes, runVersion, selectedNodeId]);
     const [status, setStatus] = useState<AutomationStatus>(
       scenario?.status ?? "draft",
     );
@@ -177,6 +225,10 @@ export const ScenarioGraphEditorPage = observer(
       setNodes(next.nodes);
       setEdges(next.edges);
     }, [nodes, edges]);
+
+    useEffect(() => {
+      if (scenario?.id) void automationStore.loadLastScenarioRun(scenario.id);
+    }, [scenario?.id]);
 
     useEffect(() => {
       const onKey = (event: KeyboardEvent) => {
@@ -320,6 +372,7 @@ export const ScenarioGraphEditorPage = observer(
           position: { x: node.x, y: node.y },
           data: {
             node,
+            summary: nodeSummary(node, summaryNames),
             showDescription: showNodeDescriptions,
             runStatus: runStatusByNode.get(node.id),
             issue: issueByNode.get(node.id),
@@ -588,6 +641,9 @@ export const ScenarioGraphEditorPage = observer(
     }, [nodeSearch]);
 
     const selectedVisual = selectedNode ? nodeVisual(selectedNode.kind) : null;
+    const selectedDocumentation = selectedNode
+      ? scenarioDescriptors.get(selectedNode.kind)?.documentation
+      : undefined;
     const selectedIssues = issues.filter(
       (issue) => issue.nodeId === selectedNodeId,
     );
@@ -686,37 +742,28 @@ export const ScenarioGraphEditorPage = observer(
         </header>
 
         <div className="flex min-h-0 flex-1">
-          <aside className="flex w-64 shrink-0 flex-col border-r border-main-800 bg-main-900/80 p-3">
-            <InputCheckBox
-              checked={showNodeDescriptions}
-              onChange={setShowNodeDescriptions}
-              className="mb-3 px-1 text-xs text-main-400"
-            >
-              Показывать описание при наведении
-            </InputCheckBox>
-            <InputSmall
-              preset="search"
-              placeholder="Поиск узлов"
-              className="w-full"
-              value={nodeSearch}
-              onChange={(event) => setNodeSearch(event.target.value)}
-            />
-            <ScrollArea className="mt-3 min-h-0 flex-1">
-              <div className="space-y-4 pr-1">
-                {paletteGroups.map((group) => (
-                  <section key={group.category}>
-                    <h3 className="mb-1 px-2 text-[10px] font-medium uppercase tracking-wider text-main-600">
-                      {CATEGORY_LABELS[group.category] ?? group.category}
-                    </h3>
-                    <div className="space-y-1">
-                      {group.items.map((descriptor) => {
-                        const visual = nodeVisual(descriptor.kind);
-                        const Icon = visual.icon;
-                        return (
+          <ResizableSidePanel
+            title="Узлы"
+            side="left"
+            storageKey="zvs.scenario-editor.node-palette"
+            defaultWidth={288}
+            collapsedContent={
+              <ScrollArea className="h-full min-h-0" showScrollbar={false}>
+                <div className="flex flex-col items-center gap-1.5 py-2">
+                  {paletteGroups.flatMap((group) =>
+                    group.items.map((descriptor) => {
+                      const visual = nodeVisual(descriptor.kind);
+                      const Icon = visual.icon;
+                      return (
+                        <HoverTooltip
+                          key={descriptor.kind}
+                          label={descriptor.label}
+                          className="block"
+                        >
                           <button
-                            key={descriptor.kind}
                             type="button"
                             draggable
+                            aria-label={descriptor.label}
                             onDragStart={(event) => {
                               event.dataTransfer.setData(
                                 "application/scenario-node",
@@ -724,39 +771,94 @@ export const ScenarioGraphEditorPage = observer(
                               );
                               event.dataTransfer.effectAllowed = "copy";
                             }}
-                            className="group flex w-full cursor-grab items-center gap-3 rounded-lg px-2 py-2 text-left transition hover:bg-main-800/70 active:cursor-grabbing"
                             onClick={() => addNode(descriptor.kind)}
-                            title={
-                              descriptor.documentation ?? descriptor.description
-                            }
+                            className={`grid size-9 shrink-0 cursor-grab place-items-center rounded-lg transition active:cursor-grabbing ${visual.iconClassName}`}
                           >
-                            <span
-                              className={`grid size-9 shrink-0 place-items-center rounded-lg ${visual.iconClassName}`}
-                            >
-                              <Icon className="size-4" />
-                            </span>
-                            <span className="min-w-0 flex-1">
-                              <span className="block truncate text-sm font-medium text-main-200">
-                                {descriptor.label}
-                              </span>
-                              <span className="block truncate text-xs text-main-500">
-                                {descriptor.description}
-                              </span>
-                            </span>
-                            <PlusIcon className="size-3.5 shrink-0 text-main-600 group-hover:text-main-300" />
+                            <Icon className="size-4" />
                           </button>
-                        );
-                      })}
-                    </div>
-                  </section>
-                ))}
+                        </HoverTooltip>
+                      );
+                    }),
+                  )}
+                </div>
+              </ScrollArea>
+            }
+          >
+            <div className="flex h-full min-h-0 flex-col p-3">
+              <InputCheckBox
+                checked={showNodeDescriptions}
+                onChange={setShowNodeDescriptions}
+                className="mb-3 px-1 text-xs text-main-400"
+              >
+                Показывать описание при наведении
+              </InputCheckBox>
+              <InputSmall
+                preset="search"
+                placeholder="Поиск узлов"
+                className="w-full"
+                value={nodeSearch}
+                onChange={(event) => setNodeSearch(event.target.value)}
+              />
+
+              <ScrollArea className="mt-3 min-h-0 flex-1">
+                <div className="space-y-4 pr-1">
+                  {paletteGroups.map((group) => (
+                    <section key={group.category}>
+                      <h3 className="mb-1 px-2 text-[10px] font-medium uppercase tracking-wider text-main-600">
+                        {CATEGORY_LABELS[group.category] ?? group.category}
+                      </h3>
+                      <div className="space-y-1">
+                        {group.items.map((descriptor) => {
+                          const visual = nodeVisual(descriptor.kind);
+                          const Icon = visual.icon;
+                          return (
+                            <button
+                              key={descriptor.kind}
+                              type="button"
+                              draggable
+                              onDragStart={(event) => {
+                                event.dataTransfer.setData(
+                                  "application/scenario-node",
+                                  descriptor.kind,
+                                );
+                                event.dataTransfer.effectAllowed = "copy";
+                              }}
+                              className="group flex w-full cursor-grab items-center gap-3 rounded-lg px-2 py-2 text-left transition hover:bg-main-800/70 active:cursor-grabbing"
+                              onClick={() => addNode(descriptor.kind)}
+                              title={
+                                descriptor.documentation ??
+                                descriptor.description
+                              }
+                            >
+                              <span
+                                className={`grid size-9 shrink-0 place-items-center rounded-lg ${visual.iconClassName}`}
+                              >
+                                <Icon className="size-4" />
+                              </span>
+                              <span className="min-w-0 flex-1">
+                                <span className="block truncate text-sm font-medium text-main-200">
+                                  {descriptor.label}
+                                </span>
+                                <span className="block truncate text-xs text-main-500">
+                                  {descriptor.description}
+                                </span>
+                              </span>
+                              <PlusIcon className="size-3.5 shrink-0 text-main-600 group-hover:text-main-300" />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  ))}
+                </div>
+              </ScrollArea>
+
+              <div className="mt-3 rounded-lg bg-main-800/35 p-3 text-[11px] leading-5 text-main-500">
+                Перетащите узел на холст или нажмите на него. Ctrl+Z — отменить,
+                Ctrl+Y — повторить.
               </div>
-            </ScrollArea>
-            <div className="mt-3 rounded-lg bg-main-800/35 p-3 text-[11px] leading-5 text-main-500">
-              Перетащите узел на холст или нажмите на него. Ctrl+Z — отменить,
-              Ctrl+Y — повторить.
             </div>
-          </aside>
+          </ResizableSidePanel>
 
           <ScenarioGraphCanvas
             key={scenario?.revisionId ?? "new-scenario"}
@@ -777,20 +879,27 @@ export const ScenarioGraphEditorPage = observer(
             <ScrollArea className="max-h-full min-h-0">
               {selectedNode && selectedVisual ? (
                 <div className="space-y-5 p-4">
-                  <div className="flex items-center gap-3">
-                    <span
-                      className={`grid size-10 place-items-center rounded-lg ${selectedVisual.iconClassName}`}
-                    >
-                      <selectedVisual.icon className="size-4" />
-                    </span>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-main-100">
-                        {selectedVisual.label}
-                      </p>
-                      <p className="truncate text-xs text-main-500">
-                        {selectedNode.id}
-                      </p>
+                  <div>
+                    <div className="flex items-center gap-3">
+                      <span
+                        className={`grid size-10 place-items-center rounded-lg ${selectedVisual.iconClassName}`}
+                      >
+                        <selectedVisual.icon className="size-4" />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-main-100">
+                          {selectedVisual.label}
+                        </p>
+                        <p className="text-xs leading-4 text-main-500">
+                          {selectedVisual.description}
+                        </p>
+                      </div>
                     </div>
+                    {selectedDocumentation ? (
+                      <p className="mt-3 rounded-lg bg-main-800/60 px-3 py-2 text-[11px] leading-4 text-main-400 ring-1 ring-main-700/60">
+                        {selectedDocumentation}
+                      </p>
+                    ) : null}
                   </div>
 
                   {selectedIssues.length ? (
@@ -849,26 +958,6 @@ export const ScenarioGraphEditorPage = observer(
                   Выберите узел на графе
                 </div>
               )}
-              {automationStore.activeScenarioRun ? (
-                <div className="m-4 rounded-lg bg-main-800/55 p-3 text-xs text-main-300">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-medium">
-                      Запуск #{automationStore.activeScenarioRun.id}
-                    </span>
-                    <span className="text-main-500">
-                      {automationStore.activeScenarioRun.status}
-                    </span>
-                  </div>
-                  <p className="mt-2 text-main-500">
-                    Выполнено узлов:{" "}
-                    {
-                      automationStore.scenarioNodeRuns.filter(
-                        (item) => item.status === "completed",
-                      ).length
-                    }
-                  </p>
-                </div>
-              ) : null}
             </ScrollArea>
           </ResizableSidePanel>
         </div>
@@ -900,11 +989,45 @@ export const ScenarioGraphEditorPage = observer(
 );
 
 function firstItem(payload: unknown): unknown {
-  if (Array.isArray(payload)) return payload[0];
+  const list = itemsOf(payload);
+  if (list) return list[0];
+  if (Array.isArray(payload)) return firstItem(payload[0]);
   if (payload && typeof payload === "object") {
     const record = payload as Record<string, unknown>;
     if ("json" in record) return record.json;
-    if (Array.isArray(record.items)) return record.items[0];
   }
   return payload;
+}
+
+function itemsOf(payload: unknown): unknown[] | undefined {
+  if (payload === null || payload === undefined) return undefined;
+  if (Array.isArray(payload)) return unwrapItems(payload);
+  if (typeof payload !== "object") return undefined;
+  const record = payload as Record<string, unknown>;
+  if (Array.isArray(record.items)) return unwrapItems(record.items);
+  if ("json" in record) return [record.json];
+  const port = portItems(record);
+  return port ? unwrapItems(port) : undefined;
+}
+
+function portItems(record: Record<string, unknown>): unknown[] | undefined {
+  const keys = Object.keys(record);
+  if (keys.length === 0) return undefined;
+  const bundles = keys.map((key) => record[key]);
+  if (!bundles.every((value) => Array.isArray(value))) return undefined;
+  const entries = bundles as unknown[][];
+  if (!entries.flat().every((entry) => isItemEntry(entry))) return undefined;
+  return (record.main as unknown[] | undefined) ?? entries[0];
+}
+
+function isItemEntry(entry: unknown): boolean {
+  return (
+    Boolean(entry) && typeof entry === "object" && "json" in (entry as object)
+  );
+}
+
+function unwrapItems(list: unknown[]): unknown[] {
+  return list.map((entry) =>
+    isItemEntry(entry) ? (entry as { json: unknown }).json : entry,
+  );
 }

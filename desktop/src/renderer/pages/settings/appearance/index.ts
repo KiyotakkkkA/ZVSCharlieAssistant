@@ -1,1 +1,0 @@
-export { SettingsAppearancePage } from "./SettingsAppearancePage";

@@ -38,16 +38,6 @@
   --color-info-dark: #1e40af;
 }
 
-/*
- * Palette for the scenario editor.
- *
- * Node categories need their own hues — they carry meaning the main palette
- * cannot express — but a hue that reads well on a near-black canvas is washed
- * out on a near-white one. So each colour is declared twice: the default block
- * is tuned for dark backgrounds, the `data-theme="light"` block darkens every
- * accent enough to stay legible on light ones. `data-theme` is set from the
- * active palette in applyThemePaletteToDocument.
- */
 :root {
   --node-accent-trigger: #fcd34d;
   --node-accent-ai: #c4b5fd;
