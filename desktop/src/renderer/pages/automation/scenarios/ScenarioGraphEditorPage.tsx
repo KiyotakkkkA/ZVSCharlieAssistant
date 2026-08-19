@@ -29,6 +29,8 @@ import {
 } from "../../../components/organisms";
 import { DynamicNodeConfigForm } from "../../../components/organisms/forms";
 import { nodeVisual } from "../../../components/molecules/nodes";
+import { ExpressionScopeProvider } from "../../../components/molecules";
+import type { ExpressionScope } from "../../../components/molecules/expression/completions";
 import { DangerModal } from "@renderer/components/organisms/modals";
 import { APP_PATHS } from "../../../app/routes";
 import { readCssColor, useAppNavigation, useThemeMode } from "../../../hooks";
@@ -108,7 +110,36 @@ export const ScenarioGraphEditorPage = observer(
         ? scenario.graph.edges
         : starterGraph().edges,
     );
+    const nodeNames = useMemo(() => nodes.map((node) => node.name), [nodes]);
+
     const [selectedNodeId, setSelectedNodeId] = useState(nodes[0]?.id ?? "");
+
+    const runVersion = automationStore.scenarioNodeRuns
+      .map((run) => `${run.nodeId}:${run.status}`)
+      .join("|");
+    const expressionScope = useMemo<ExpressionScope>(() => {
+      const runs = automationStore.scenarioNodeRuns;
+      const idByName = new Map(nodes.map((node) => [node.name, node.id]));
+      const runByNodeId = new Map(runs.map((run) => [run.nodeId, run]));
+      const selectedRun = selectedNodeId
+        ? runByNodeId.get(selectedNodeId)
+        : undefined;
+
+      return {
+        nodeNames,
+        resolve(root, nodeName) {
+          if (root === "$node") {
+            const id = nodeName ? idByName.get(nodeName) : undefined;
+            return id ? firstItem(runByNodeId.get(id)?.output) : undefined;
+          }
+          if (root === "$json") return firstItem(selectedRun?.input);
+          if (root === "$items") return selectedRun?.input;
+          if (root === "$trigger")
+            return firstItem(automationStore.activeScenarioRun?.input);
+          return undefined;
+        },
+      };
+    }, [nodeNames, nodes, runVersion, selectedNodeId]);
     const [status, setStatus] = useState<AutomationStatus>(
       scenario?.status ?? "draft",
     );
@@ -805,10 +836,12 @@ export const ScenarioGraphEditorPage = observer(
                   </div>
 
                   <div className="border-t border-main-800 pt-4">
-                    <DynamicNodeConfigForm
-                      node={selectedNode}
-                      onChange={updateSelectedNode}
-                    />
+                    <ExpressionScopeProvider scope={expressionScope}>
+                      <DynamicNodeConfigForm
+                        node={selectedNode}
+                        onChange={updateSelectedNode}
+                      />
+                    </ExpressionScopeProvider>
                   </div>
                 </div>
               ) : (
@@ -865,3 +898,13 @@ export const ScenarioGraphEditorPage = observer(
     );
   },
 );
+
+function firstItem(payload: unknown): unknown {
+  if (Array.isArray(payload)) return payload[0];
+  if (payload && typeof payload === "object") {
+    const record = payload as Record<string, unknown>;
+    if ("json" in record) return record.json;
+    if (Array.isArray(record.items)) return record.items[0];
+  }
+  return payload;
+}

@@ -1,3 +1,7 @@
+export {
+  ExpressionInput,
+  ExpressionScopeProvider,
+} from "./ExpressionInput";
 export { AutomationAgentCard } from "./AutomationAgentCard";
 export { AutomationScenarioCard } from "./AutomationScenarioCard";
 export { AutomationToolCard } from "./AutomationToolCard";
