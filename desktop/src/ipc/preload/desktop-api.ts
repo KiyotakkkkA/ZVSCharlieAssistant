@@ -35,6 +35,8 @@ import {
   type AgentTaskRun,
   TERMINAL_POLICY_IPC_CHANNELS,
   DIRECTORY_POLICY_IPC_CHANNELS,
+  USER_PROFILE_IPC_CHANNELS,
+  type UserProfile,
   type TerminalPolicy,
   type DirectoryPolicy,
   type TerminalApprovalRequest,
@@ -61,6 +63,7 @@ import type {
   UpsertSecretInput,
   UpsertTerminalPolicyInput,
   UpsertDirectoryPolicyInput,
+  UpsertUserProfileInput,
   UpsertTextProviderInput,
   UpsertVectorStoreInput,
   UploadVectorDocumentInput,
@@ -232,6 +235,15 @@ export const desktopApi: DesktopApi = {
       ipcRenderer.invoke(
         DIRECTORY_POLICY_IPC_CHANNELS.recommended,
       ) as Promise<UpsertDirectoryPolicyInput>,
+  },
+  userProfile: {
+    get: (): Promise<UserProfile> =>
+      ipcRenderer.invoke(USER_PROFILE_IPC_CHANNELS.get) as Promise<UserProfile>,
+    upsert: (input: UpsertUserProfileInput): Promise<UserProfile> =>
+      ipcRenderer.invoke(
+        USER_PROFILE_IPC_CHANNELS.upsert,
+        input,
+      ) as Promise<UserProfile>,
   },
   secrets: {
     getSnapshot: (): Promise<SecretStorageSnapshot> =>

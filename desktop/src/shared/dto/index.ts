@@ -10,3 +10,4 @@ export * from "./chat.dto";
 export * from "./memory.dto";
 export * from "./user-question.dto";
 export * from "./task-plan.dto";
+export * from "./user-profile.dto";

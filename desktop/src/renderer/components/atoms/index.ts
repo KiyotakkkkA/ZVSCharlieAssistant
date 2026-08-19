@@ -12,4 +12,6 @@ export {
   GlobalSettingsProvider,
   useGlobalSettings,
   type GlobalSettingRegistration,
+  type GlobalSettingsFormDescriptor,
+  type GlobalSettingsAnchorDescriptor,
 } from "./GlobalSettingsContext";

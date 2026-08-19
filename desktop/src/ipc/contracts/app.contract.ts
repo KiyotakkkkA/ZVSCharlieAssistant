@@ -23,6 +23,7 @@ export interface DesktopApi {
   terminalPolicy: import("./terminal-policy.contract").TerminalPolicyApi;
   directoryPolicy: import("./directory-policy.contract").DirectoryPolicyApi;
   integrations: import("./integration.contract").IntegrationApi;
+  userProfile: import("./user-profile.contract").UserProfileApi;
   core: import("./core-interactor.contract").CoreInteractorApi;
   assistant: import("./assistant.contract").AssistantApi;
 }

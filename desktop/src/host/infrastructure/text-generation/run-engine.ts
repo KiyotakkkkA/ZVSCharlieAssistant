@@ -6,6 +6,7 @@ import { ProviderRegistry } from "./provider.registry";
 import { ToolRegistry } from "../tools/tool.registry";
 import type { ScenarioRuntimeEngine } from "../automation/engine/scenario-runtime-engine";
 import type { MemoryService } from "../../application/services/memory.service";
+import type { UserProfileRepository } from "../database/user-profile.repository";
 type Emit = (event: RunEvent) => void;
 
 const CONTENT_FLUSH_MS = 400;
@@ -16,13 +17,24 @@ const HISTORY_MAX_CHARACTERS = 60_000;
 export class RunEngine {
   private controllers = new Map<number, AbortController>();
   private scenarioRunIds = new Set<number>();
+  private profileBlocks = new Map<number, string>();
   constructor(
     private readonly data: ChatRepository,
     private readonly providers: ProviderRegistry,
     private readonly tools: ToolRegistry,
     private readonly memory: MemoryService,
+    private readonly userProfile: UserProfileRepository,
     private readonly scenarios?: ScenarioRuntimeEngine,
   ) {}
+
+  private profileBlock(conversationId: number, mode: string): string {
+    if (mode !== "chat" && mode !== "planner") return "";
+    const cached = this.profileBlocks.get(conversationId);
+    if (cached !== undefined) return cached;
+    const block = this.userProfile.promptBlock();
+    this.profileBlocks.set(conversationId, block);
+    return block;
+  }
   async start(
     input: StartRunInput,
     emit: Emit,
@@ -290,7 +302,8 @@ export class RunEngine {
         agentMayRead: Boolean(agentRuntime?.memoryRead),
         query: input.text,
       });
-      const system = `${baseSystem}${this.tools.skillCatalog(agentRuntime?.allowedSkillIds ?? [])}${memoryBlock}`;
+      const profileBlock = this.profileBlock(conversationId, input.mode);
+      const system = `${baseSystem}${profileBlock}${this.tools.skillCatalog(agentRuntime?.allowedSkillIds ?? [])}${memoryBlock}`;
       const generationSettings = this.providers.generationSettings(
         input.modelId,
       );

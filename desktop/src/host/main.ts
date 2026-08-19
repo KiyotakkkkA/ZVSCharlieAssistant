@@ -64,6 +64,11 @@ import {
   registerDirectoryPolicyHandlers,
   removeDirectoryPolicyHandlers,
 } from "../ipc/main/register-directory-policy-handlers";
+import { UserProfileRepository } from "./infrastructure/database/user-profile.repository";
+import {
+  registerUserProfileHandlers,
+  removeUserProfileHandlers,
+} from "../ipc/main/register-user-profile-handlers";
 import { IntegrationRepository } from "./infrastructure/database/integration.repository";
 import { AutomationJobRepository } from "./infrastructure/database/automation-job.repository";
 import { IntegrationProfileService } from "./application/services/integration-profile.service";
@@ -130,6 +135,7 @@ app.whenReady().then(() => {
   textExtraction = new TextExtractionClient();
   const terminalPolicyRepository = new TerminalPolicyRepository(database);
   const directoryPolicyRepository = new DirectoryPolicyRepository(database);
+  const userProfileRepository = new UserProfileRepository(database);
   const skillContent = new FileSystemSkillContentStore(
     join(app.getPath("userData"), "skills"),
   );
@@ -227,6 +233,7 @@ app.whenReady().then(() => {
     commandExecutionService,
   );
   registerDirectoryPolicyHandlers(directoryPolicyRepository);
+  registerUserProfileHandlers(userProfileRepository);
   const scenarioGraphs = new ScenarioGraphRepository(database);
   const runtimePersistence = new SqliteRuntimePersistence(
     database,
@@ -273,6 +280,7 @@ app.whenReady().then(() => {
       providerRegistry,
       toolRegistry,
       memoryService,
+      userProfileRepository,
       scenarioRuntimeEngine,
     ),
   );
@@ -347,6 +355,7 @@ app.on("before-quit", () => {
   removeCoreInteractorHandlers();
   removeTerminalPolicyHandlers();
   removeDirectoryPolicyHandlers();
+  removeUserProfileHandlers();
   removeIntegrationHandlers();
   removeAssistantHandlers();
   if (engineLogger) disposeLogger(engineLogger);

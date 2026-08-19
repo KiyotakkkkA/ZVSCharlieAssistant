@@ -975,6 +975,22 @@ const migrations: readonly Migration[] = [
       }
     },
   },
+  {
+    version: 20,
+    up(database) {
+      database.exec(`
+        CREATE TABLE user_profile (
+          id INTEGER PRIMARY KEY CHECK(id = 1),
+          display_name TEXT NOT NULL DEFAULT '',
+          instructions TEXT NOT NULL DEFAULT '',
+          style TEXT NOT NULL DEFAULT '',
+          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+
+        INSERT INTO user_profile(id) VALUES(1);
+      `);
+    },
+  },
 ];
 
 export function runMigrations(database: Database.Database): void {

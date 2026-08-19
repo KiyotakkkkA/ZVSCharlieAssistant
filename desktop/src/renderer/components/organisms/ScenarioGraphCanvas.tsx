@@ -287,7 +287,7 @@ function CanvasToggle({
         className={`grid size-6.5 place-items-center transition ${rounded} ${
           active
             ? "bg-accent-medium/25 text-accent-medium"
-            : "bg-main-800 text-main-400 hover:bg-main-700 hover:text-main-100"
+            : "bg-main-700/55 text-main-300 hover:bg-main-700 hover:text-main-100"
         }`}
       >
         {children}

@@ -1,11 +1,32 @@
-import { Button, Modal, ScrollArea } from "@kiyotakkkka/zvs-uikit-lib";
+import { Button, Modal } from "@kiyotakkkka/zvs-uikit-lib";
 import { useState } from "react";
-import { CogIcon, GlobalSettingsProvider } from "../atoms";
-import { GlobalSettingsSidebar } from "../organisms";
 import {
+  CogIcon,
+  GlobalSettingsProvider,
+  type GlobalSettingsFormDescriptor,
+} from "../atoms";
+import { GlobalSettingsPanel } from "../organisms";
+import {
+  APPEARANCE_ANCHORS,
+  APPEARANCE_SECTION,
   GlobalSettingsAppearanceForm,
   GlobalSettingsProfileForm,
+  PROFILE_ANCHORS,
+  PROFILE_SECTION,
 } from "../organisms/forms";
+
+const SETTINGS_FORMS: GlobalSettingsFormDescriptor[] = [
+  {
+    ...PROFILE_SECTION,
+    anchors: Object.values(PROFILE_ANCHORS),
+    Component: GlobalSettingsProfileForm,
+  },
+  {
+    ...APPEARANCE_SECTION,
+    anchors: Object.values(APPEARANCE_ANCHORS),
+    Component: GlobalSettingsAppearanceForm,
+  },
+];
 
 export const Header = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -24,7 +45,7 @@ export const Header = () => {
           </Button>
         </div>
       </header>
-      <GlobalSettingsProvider>
+      <GlobalSettingsProvider forms={SETTINGS_FORMS}>
         <Modal
           open={settingsOpen}
           rounded="rounded-3xl"
@@ -40,15 +61,7 @@ export const Header = () => {
             </div>
           </Modal.Header>
           <Modal.Content className="min-h-0 p-0!">
-            <div className="flex h-full min-h-0">
-              <GlobalSettingsSidebar />
-              <ScrollArea className="min-w-0 flex-1">
-                <div className="p-6">
-                  <GlobalSettingsAppearanceForm />
-                  <GlobalSettingsProfileForm />
-                </div>
-              </ScrollArea>
-            </div>
+            <GlobalSettingsPanel />
           </Modal.Content>
         </Modal>
       </GlobalSettingsProvider>

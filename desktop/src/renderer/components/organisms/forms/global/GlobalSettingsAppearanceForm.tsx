@@ -8,7 +8,8 @@ import {
   type StyleThemePalette,
 } from "@kiyotakkkka/zvs-uikit-lib";
 import { useState } from "react";
-import { GlobalSettingsLabel, PaletteIcon } from "../../../atoms";
+import { GlobalSettingsLabel } from "../../../atoms";
+import { APPEARANCE_ANCHORS } from "./settings-sections";
 import {
   findPresetByPalette,
   saveThemePaletteToStorage,
@@ -66,23 +67,7 @@ export function GlobalSettingsAppearanceForm() {
   return (
     <div className="space-y-8">
       <section>
-        <GlobalSettingsLabel
-          id="appearance"
-          label="Внешний вид"
-          description="Цветовые схемы, шрифт и размер интерфейса."
-          keywords={["интерфейс", "оформление", "настройки"]}
-          icon={PaletteIcon}
-          level="form"
-        />
-        <GlobalSettingsLabel
-          id="appearance-colors"
-          parentId="appearance"
-          label="Цветовые схемы"
-          description="Выберите палитру приложения для разных условий освещения."
-          keywords={["цвет", "палитра", "тёмная", "светлая", "тема"]}
-          icon={PaletteIcon}
-          className="mb-4"
-        />
+        <GlobalSettingsLabel {...APPEARANCE_ANCHORS.colors} className="mb-4" />
         <div className="grid gap-6 lg:grid-cols-2">
           <ThemeColumn
             title="Тёмная палитра"
@@ -107,22 +92,13 @@ export function GlobalSettingsAppearanceForm() {
 
       <section>
         <GlobalSettingsLabel
-          id="appearance-typography"
-          parentId="appearance"
-          label="Типографика"
-          description="Настройте шрифт и масштаб всего интерфейса."
-          keywords={["шрифт", "размер", "масштаб", "font"]}
-          icon={PaletteIcon}
+          {...APPEARANCE_ANCHORS.typography}
           className="mb-4"
         />
         <div className="divide-y divide-main-700/35">
           <div className="flex flex-col gap-4 py-5 md:flex-row md:items-center md:justify-between">
             <GlobalSettingsLabel
-              id="appearance-font-family"
-              parentId="appearance"
-              label="Шрифт интерфейса"
-              keywords={["font", "onest", "inter", "семейство"]}
-              icon={PaletteIcon}
+              {...APPEARANCE_ANCHORS.fontFamily}
               presentation="setting"
             />
             <div className="flex w-full gap-2 md:ml-auto md:w-auto md:shrink-0">
@@ -143,11 +119,7 @@ export function GlobalSettingsAppearanceForm() {
           </div>
           <div className="flex flex-col gap-4 py-5 md:flex-row md:items-center md:justify-between">
             <GlobalSettingsLabel
-              id="appearance-font-size"
-              parentId="appearance"
-              label="Размер интерфейса"
-              keywords={["размер", "масштаб", "мелкий", "крупный"]}
-              icon={PaletteIcon}
+              {...APPEARANCE_ANCHORS.fontSize}
               presentation="setting"
             />
             <Switcher
