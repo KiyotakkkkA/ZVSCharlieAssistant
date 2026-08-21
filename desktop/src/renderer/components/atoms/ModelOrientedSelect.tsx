@@ -45,7 +45,7 @@ export const ModelOrientedSelect = observer(function ModelOrientedSelect({
     <Select
       {...selectProps}
       options={options}
-      className={`${ghost ? "w-fit shrink-0" : "w-full"} ${className ?? ""}`}
+      className={`${ghost && "w-fit! shrink-0"} ${className ?? ""}`}
       placeholder={options.length ? placeholder : emptyMessage}
       emptyMessage={emptyMessage}
       disabled={selectProps.disabled || options.length === 0}
@@ -54,9 +54,8 @@ export const ModelOrientedSelect = observer(function ModelOrientedSelect({
       <Select.Trigger
         rounded={ghost ? "rounded-full" : undefined}
         className={`${
-          ghost
-            ? "h-9 border-0! px-3 text-xs shadow-none ring-0! hover:bg-main-600/70"
-            : "w-full"
+          ghost &&
+          "h-9 border-0! px-3 text-xs shadow-none ring-0! hover:bg-main-600/70"
         } ${triggerClassName ?? ""}`}
       />
       <Select.Menu

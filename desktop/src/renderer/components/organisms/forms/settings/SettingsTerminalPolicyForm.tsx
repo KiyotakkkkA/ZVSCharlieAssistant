@@ -143,6 +143,7 @@ export const SettingsTerminalPolicyForm = observer(
                   Режим подтверждения
                 </ParameterLabel>
               }
+              className="w-fit"
             >
               <Select
                 value={model.confirmationMode}

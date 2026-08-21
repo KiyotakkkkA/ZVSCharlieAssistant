@@ -1,7 +1,6 @@
 @import "tailwindcss";
 @import "@kiyotakkkka/zvs-uikit-lib/styles.css";
-
-@source "../../../node_modules/@kiyotakkkka/zvs-uikit-lib/dist/**/*.{js,cjs,mjs,ts,tsx,jsx}";
+@source "../../../node_modules/@kiyotakkkka/zvs-uikit-lib/dist";
 
 @theme {
   --font-sans: "Onest Variable", "Segoe UI", sans-serif;
@@ -69,19 +68,19 @@
   --node-accent-io: #1d4ed8;
   --node-accent-output: #047857;
 
-  --node-soft-trigger: rgb(180 83 9 / 0.10);
-  --node-soft-ai: rgb(109 40 217 / 0.10);
-  --node-soft-data: rgb(14 116 144 / 0.10);
-  --node-soft-flow: rgb(3 105 161 / 0.10);
-  --node-soft-io: rgb(29 78 216 / 0.10);
-  --node-soft-output: rgb(4 120 87 / 0.10);
+  --node-soft-trigger: rgb(180 83 9 / 0.1);
+  --node-soft-ai: rgb(109 40 217 / 0.1);
+  --node-soft-data: rgb(14 116 144 / 0.1);
+  --node-soft-flow: rgb(3 105 161 / 0.1);
+  --node-soft-io: rgb(29 78 216 / 0.1);
+  --node-soft-output: rgb(4 120 87 / 0.1);
 
   --port-main: #4d7c0f;
   --port-knowledge: #0e7490;
 
   --canvas-dots: rgb(15 23 42 / 0.16);
   --canvas-mask: rgb(148 163 184 / 0.35);
-  --canvas-edge: rgb(15 23 42 / 0.30);
+  --canvas-edge: rgb(15 23 42 / 0.3);
 }
 
 :root {

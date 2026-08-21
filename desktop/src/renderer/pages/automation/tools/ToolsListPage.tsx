@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { observer } from "mobx-react-lite";
 import {
   Button,
-  CodeView,
   EmptyState,
   InputSmall,
   Modal,
@@ -16,6 +15,7 @@ import { AutomationToolCard } from "../../../components/molecules";
 import type { AutomationTool } from "../../../../ipc/contracts";
 import { automationStore } from "../../../stores";
 import { AutomationToolsListTable } from "@renderer/components/organisms/tables";
+import { CodeView } from "@kiyotakkkka/zvs-uikit-lib/code-view";
 
 export const ToolsListPage = observer(function ToolsListPage() {
   const toasts = useToasts();

@@ -74,15 +74,15 @@ export function ScenarioNodeCard({
               icon={<MoreIcon className="size-3 text-main-500" />}
               aria-label="Настроить узел"
               rounded="rounded"
-              className="nodrag nopan size-4.5 justify-center gap-0 border-0! bg-transparent px-0 py-0 opacity-0 shadow-none ring-0! transition-opacity group-hover/node:opacity-100 hover:bg-main-600 focus:opacity-100"
+              className="nodrag nopan size-4.5 justify-center gap-0 border-0! bg-transparent px-0 py-0 opacity-0 shadow-none ring-0! transition-opacity group-hover/node:opacity-100 hover:bg-main-700 focus:opacity-100"
             >
               <span className="sr-only">Настроить узел</span>
             </Dropdown.Trigger>
-            <Dropdown.Menu rounded="rounded-xl" className="p-1.5">
+            <Dropdown.Menu rounded="rounded-3xl" className="p-1.5">
               {onToggleDisabled ? (
                 <Dropdown.Item
                   icon={<BlockIcon className="size-4" />}
-                  className="rounded-lg"
+                  rounded="rounded-full"
                   onClick={(event) => {
                     event.stopPropagation();
                     onToggleDisabled(node.id);
@@ -93,7 +93,8 @@ export function ScenarioNodeCard({
               ) : null}
               <Dropdown.Item
                 icon={<TrashIcon className="size-4" />}
-                className="rounded-lg text-danger-light"
+                rounded="rounded-full"
+                className="text-danger-light"
                 onClick={(event) => {
                   event.stopPropagation();
                   onDelete(node.id);

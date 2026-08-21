@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Alert, Button, CodeView, Modal } from "@kiyotakkkka/zvs-uikit-lib";
+import { Alert, Button, Modal } from "@kiyotakkkka/zvs-uikit-lib";
+import { CodeView } from "@kiyotakkkka/zvs-uikit-lib/code-view";
 import type { TerminalApprovalRequest } from "../../../../ipc/contracts";
 
 const RISK_LABELS: Record<TerminalApprovalRequest["risk"], string> = {

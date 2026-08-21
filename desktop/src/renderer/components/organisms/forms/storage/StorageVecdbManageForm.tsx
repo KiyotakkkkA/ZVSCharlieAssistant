@@ -99,9 +99,6 @@ export const StorageVecdbManageForm = observer(function StorageVecdbManageForm({
               files={[]}
               multiple
               accept=".pdf,.docx,.txt"
-              emptyIcon="mdi:file-upload-outline"
-              selectedIcon="mdi:file-check-outline"
-              fileIcon="mdi:file-document-outline"
               emptyTitle="Перетащите документы или выберите файлы"
               emptyDescription="PDF, DOCX и TXT"
               selectedMultipleDescription="Добавьте ещё документы"

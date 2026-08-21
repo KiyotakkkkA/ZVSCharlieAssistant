@@ -51,7 +51,7 @@ export const NavigationSidebar = () => {
     <aside
       className={[
         "relative shrink-0 overflow-visible rounded-xl p-2 shadow-sm",
-        "transition-[width,background-color] duration-300 ease-out bg-main-800/40",
+        "transition-[width,background-color] duration-300 ease-out bg-main-800/40 space-y-2",
         collapsed ? "w-14" : "w-60",
       ].join(" ")}
     >
@@ -91,7 +91,7 @@ export const NavigationSidebar = () => {
           </Button>
         </Tooltip>
       </div>
-      <Separator className="my-4 opacity-70" />
+
       <div
         className={[
           "transition-opacity duration-150",

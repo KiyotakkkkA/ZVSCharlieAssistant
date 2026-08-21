@@ -1,5 +1,5 @@
 import { ScenarioNodeRun, ScenarioRun } from "@ipc/contracts";
-import { Button, Timeline } from "@kiyotakkkka/zvs-uikit-lib";
+import { Button, IconName, Timeline } from "@kiyotakkkka/zvs-uikit-lib";
 import { ChevronDownIcon } from "@renderer/components/atoms";
 import { useMemo, useState } from "react";
 import { observer } from "mobx-react-lite";
@@ -26,39 +26,38 @@ function resolveNodeLabel(
     node.nodeId
   );
 }
-
-const NODE_ICONS: Record<string, string> = {
-  play: "mdi:play-circle-outline",
-  clock: "mdi:clock-outline",
-  telegram: "mdi:send-circle-outline",
-  mail: "mdi:email-outline",
-  agent: "mdi:account-cog-outline",
-  orchestrator: "mdi:robot-outline",
-  classify: "mdi:shape-outline",
-  fields: "mdi:form-textbox",
-  aggregate: "mdi:chart-box-outline",
-  split: "mdi:call-split",
-  sort: "mdi:sort",
-  dedupe: "mdi:content-duplicate",
-  http: "mdi:web",
-  download: "mdi:download-outline",
-  read: "mdi:file-document-outline",
-  knowledge: "mdi:database-search-outline",
-  branch: "mdi:source-branch",
-  switch: "mdi:directions-fork",
-  filter: "mdi:filter-outline",
-  merge: "mdi:merge",
-  loop: "mdi:sync",
-  limit: "mdi:numeric",
-  question: "mdi:check-decagram-outline",
-  subflow: "mdi:sitemap-outline",
-  output: "mdi:send-outline",
-  dot: "mdi:circle-small",
+const NODE_ICONS: Record<string, IconName> = {
+  play: "star-four-points",
+  clock: "information-outline",
+  telegram: "email-outline",
+  mail: "email-outline",
+  agent: "account",
+  orchestrator: "script",
+  classify: "folder-outline",
+  fields: "file-outline",
+  aggregate: "package-variant-closed",
+  split: "chevron-right",
+  sort: "tune-variant",
+  dedupe: "content-copy",
+  http: "link-variant",
+  download: "download",
+  read: "file-outline",
+  knowledge: "shield-account",
+  branch: "chevron-down",
+  switch: "chevron-left",
+  filter: "magnify",
+  merge: "link-variant",
+  loop: "opacity",
+  limit: "close-octagon",
+  question: "check-circle-outline",
+  subflow: "folder-open-outline",
+  output: "email-outline",
+  dot: "check",
 };
 
 function nodeKindIcon(kind: ScenarioNodeRun["nodeKind"]) {
   const icon = scenarioDescriptors.get(kind)?.icon;
-  return NODE_ICONS[icon ?? ""] ?? "mdi:circle-small";
+  return NODE_ICONS[icon ?? ""] ?? "check-circle-outline";
 }
 
 function scenarioStatusLabel(status: ScenarioRun["status"]) {

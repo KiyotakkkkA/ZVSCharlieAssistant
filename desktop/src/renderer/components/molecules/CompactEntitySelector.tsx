@@ -71,22 +71,22 @@ export function CompactEntitySelector({
             onModelChange={onModelChange}
             multiple
             orientation="vertical"
-            className="space-y-0 p-1.5"
+            className="space-y-0"
           >
             {groups.map(([group, entries]) => (
-              <div key={group} className="mb-1 last:mb-0 w-full">
+              <div key={group} className="w-full">
                 {groups.length > 1 || group !== "Все" ? (
                   <div className="sticky top-0 z-10 bg-main-900/95 px-2.5 py-1.5 text-[10px] font-medium uppercase tracking-wide text-main-500 backdrop-blur">
                     {group} · {entries.length}
                   </div>
                 ) : null}
-                <div className="pt-2 space-y-1.5 w-full">
+                <div className="p-2 space-y-1.5 w-full">
                   {entries.map((item) => (
                     <div key={item.id} className="relative w-full">
                       <InputCheckBox
                         modelValue={item.id}
                         disabled={item.disabled}
-                        className="w-full rounded-lg px-2.5 py-2 pr-32 transition-colors hover:bg-main-700/35"
+                        className="w-full rounded-lg transition-colors hover:bg-main-700/35 px-2!"
                       >
                         <span className="block min-w-0 flex-1">
                           <span className="block truncate text-sm font-medium text-main-100">

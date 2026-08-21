@@ -68,7 +68,7 @@ export function GlobalSettingsAppearanceForm() {
     <div className="space-y-8">
       <section>
         <GlobalSettingsLabel {...APPEARANCE_ANCHORS.colors} className="mb-4" />
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid gap-6 grid-cols-2">
           <ThemeColumn
             title="Тёмная палитра"
             hint="Для работы при слабом освещении и повышенного контраста."
@@ -174,9 +174,9 @@ function ThemeColumn({
         onChange={onChange}
         options={options}
         placeholder="Выберите палитру"
-        className="mt-3 w-full"
+        className="my-3! w-full!"
       >
-        <Select.Trigger className="w-full" />
+        <Select.Trigger />
         <Select.Menu>
           {options.map(({ value: optionValue, label }) => (
             <Select.Option

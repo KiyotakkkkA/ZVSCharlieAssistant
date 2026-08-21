@@ -33,7 +33,6 @@ export const ChatUserMsgBlock = memo(function ChatUserMsgBlock({
             minRows={3}
             maxRows={10}
             classNames={{
-              root: "w-full",
               textarea:
                 "resize-none border-0 bg-transparent px-2 py-2 text-main-100 shadow-none outline-none ring-0 focus:ring-0 focus:ring-offset-0",
               footer: "hidden",
@@ -77,7 +76,10 @@ export const ChatUserMsgBlock = memo(function ChatUserMsgBlock({
         </div>
         <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
           {usageLabel ? (
-            <span className="mr-1 max-w-64 truncate text-[11px] text-main-500" title={usageLabel}>
+            <span
+              className="mr-1 max-w-64 truncate text-[11px] text-main-500"
+              title={usageLabel}
+            >
               {usageLabel}
             </span>
           ) : null}

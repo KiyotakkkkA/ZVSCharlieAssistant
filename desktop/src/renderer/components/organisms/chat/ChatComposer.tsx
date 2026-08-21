@@ -117,9 +117,8 @@ export function ChatComposer(props: ChatComposerProps) {
             minRows={2}
             maxRows={7}
             classNames={{
-              root: "w-full",
               textarea:
-                "min-h-14 resize-none border-0 bg-transparent px-3 py-2 text-main-100 shadow-none outline-none ring-0 focus:ring-0 focus:ring-offset-0",
+                "min-h-14 resize-none border-0! bg-transparent px-3 py-2 text-main-100 shadow-none outline-none ring-0! focus:ring-0 focus:ring-offset-0",
               footer: "hidden",
             }}
           />
@@ -131,11 +130,11 @@ export function ChatComposer(props: ChatComposerProps) {
                   menuWidth={240}
                   menuPlacement="top-left"
                 >
-                  <Tooltip label="Прикрепить файлы" placement="top-left">
+                  <Tooltip label="Прикрепить файлы" placement="top-center">
                     <Dropdown.Trigger
                       icon={<PaperclipIcon className="size-4" />}
                       rounded="rounded-full"
-                      className="size-9 justify-center gap-0 border-0! bg-transparent px-0 py-0 text-main-400 shadow-none ring-0! hover:bg-main-600/70 hover:text-main-50"
+                      className="size-9! justify-center! gap-0! border-0! bg-transparent px-0! py-0! text-main-400 shadow-none ring-0! hover:bg-main-600/70! hover:text-main-50"
                       aria-label="Прикрепить"
                     >
                       <span className="sr-only">Прикрепить файлы</span>
@@ -179,7 +178,7 @@ export function ChatComposer(props: ChatComposerProps) {
                 </Dropdown.Trigger>
                 <Dropdown.Menu
                   rounded="rounded-4xl"
-                  className="p-1.5 space-y-2"
+                  className="p-1.5 space-y-1!"
                 >
                   {modes.map((item) => (
                     <Dropdown.Item

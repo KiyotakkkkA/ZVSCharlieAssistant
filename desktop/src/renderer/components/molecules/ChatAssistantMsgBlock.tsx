@@ -1,9 +1,5 @@
-import {
-  Accordion,
-  Alert,
-  CodeView,
-  Skeleton,
-} from "@kiyotakkkka/zvs-uikit-lib";
+import { Accordion, Alert, Skeleton } from "@kiyotakkkka/zvs-uikit-lib";
+import { CodeView } from "@kiyotakkkka/zvs-uikit-lib/code-view";
 import { isValidElement, memo, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";

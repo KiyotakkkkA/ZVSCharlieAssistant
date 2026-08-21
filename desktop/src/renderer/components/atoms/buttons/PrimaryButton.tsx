@@ -42,7 +42,7 @@ export const PrimaryButton = ({
   <Button
     variant="primary"
     rounded="rounded-full"
-    className="px-2"
+    className="px-2!"
     onClick={onClick}
     disabled={disabled}
     type={type}
