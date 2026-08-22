@@ -27,6 +27,18 @@ describe("migration 19", () => {
         agent_id TEXT, model_id INTEGER NOT NULL
       );
       CREATE TABLE execution_runs (id INTEGER PRIMARY KEY, scenario_id TEXT NOT NULL);
+      CREATE TABLE secret_categories (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        label TEXT NOT NULL COLLATE NOCASE UNIQUE,
+        builtin INTEGER NOT NULL DEFAULT 0
+      );
+      CREATE TABLE secret_entities (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        category_id INTEGER NOT NULL,
+        label TEXT NOT NULL,
+        content TEXT NOT NULL,
+        builtin INTEGER NOT NULL DEFAULT 0
+      );
       CREATE TABLE chat_messages (
         id INTEGER PRIMARY KEY, conversation_id INTEGER NOT NULL, run_id INTEGER,
         execution_run_id INTEGER, role TEXT NOT NULL, status TEXT NOT NULL,
@@ -53,5 +65,46 @@ describe("migration 19", () => {
       mode: "chat",
       modelId: 9,
     });
+  });
+});
+
+describe("migration 22", () => {
+  it("adds portable identities and stable keys to secret storage", () => {
+    database = new Database(":memory:");
+    database.exec(`
+      CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY, applied_at TEXT);
+      ${Array.from({ length: 21 }, (_, index) =>
+        `INSERT INTO schema_migrations(version) VALUES(${index + 1});`,
+      ).join("\n")}
+      CREATE TABLE secret_categories (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        label TEXT NOT NULL COLLATE NOCASE UNIQUE,
+        builtin INTEGER NOT NULL DEFAULT 0
+      );
+      CREATE TABLE secret_entities (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        category_id INTEGER NOT NULL,
+        label TEXT NOT NULL,
+        content TEXT NOT NULL,
+        builtin INTEGER NOT NULL DEFAULT 0
+      );
+      INSERT INTO secret_categories(label, builtin)
+      VALUES ('Ключи API', 1), ('Работа', 0);
+      INSERT INTO secret_entities(category_id, label, content)
+      VALUES (2, 'Token', 'value');
+    `);
+
+    runMigrations(database);
+
+    const categories = database
+      .prepare("SELECT portable_id, system_key FROM secret_categories ORDER BY id")
+      .all() as Array<{ portable_id: string; system_key: string | null }>;
+    const secret = database
+      .prepare("SELECT portable_id FROM secret_entities")
+      .get() as { portable_id: string };
+    expect(categories[0]!.portable_id).toMatch(/^[0-9a-f-]{36}$/);
+    expect(categories[0]!.system_key).toBe("api-keys");
+    expect(categories[1]!.system_key).toBeNull();
+    expect(secret.portable_id).toMatch(/^[0-9a-f-]{36}$/);
   });
 });

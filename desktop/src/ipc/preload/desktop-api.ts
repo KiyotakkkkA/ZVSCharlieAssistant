@@ -43,7 +43,12 @@ import {
   type DirectoryPolicy,
   type TerminalApprovalRequest,
   INTEGRATION_IPC_CHANNELS,
+  DATA_TRANSFER_IPC_CHANNELS,
 } from "../contracts";
+import type {
+  ImportPreview,
+  ImportResult,
+} from "../../shared/models/data-transfer";
 import type {
   IntegrationProfile,
   IntegrationSnapshot,
@@ -72,6 +77,9 @@ import type {
   UploadVectorDocumentInput,
   VectorSearchInput,
   UpsertIntegrationProfileInput,
+  ExportDataInput,
+  PrepareImportInput,
+  CommitImportInput,
 } from "../../shared/dto";
 
 export const desktopApi: DesktopApi = {
@@ -84,6 +92,28 @@ export const desktopApi: DesktopApi = {
     ) as Promise<boolean>,
   selectDirectory: (): Promise<string | null> =>
     ipcRenderer.invoke(IPC_CHANNELS.selectDirectory) as Promise<string | null>,
+  dataTransfer: {
+    exportData: (input: ExportDataInput): Promise<boolean> =>
+      ipcRenderer.invoke(
+        DATA_TRANSFER_IPC_CHANNELS.exportData,
+        input,
+      ) as Promise<boolean>,
+    prepareImport: (input: PrepareImportInput): Promise<ImportPreview | null> =>
+      ipcRenderer.invoke(
+        DATA_TRANSFER_IPC_CHANNELS.prepareImport,
+        input,
+      ) as Promise<ImportPreview | null>,
+    commitImport: (input: CommitImportInput): Promise<ImportResult> =>
+      ipcRenderer.invoke(
+        DATA_TRANSFER_IPC_CHANNELS.commitImport,
+        input,
+      ) as Promise<ImportResult>,
+    cancelImport: (sessionId: string): Promise<void> =>
+      ipcRenderer.invoke(
+        DATA_TRANSFER_IPC_CHANNELS.cancelImport,
+        sessionId,
+      ) as Promise<void>,
+  },
   integrations: {
     getSnapshot: (): Promise<IntegrationSnapshot> =>
       ipcRenderer.invoke(

@@ -11,6 +11,11 @@ import {
 } from "../ipc/main/register-secret-storage-handlers";
 import { createSqliteDatabase } from "./infrastructure/database/sqlite.database";
 import { SecretStorageRepository } from "./infrastructure/database/secret-storage.repository";
+import { DataTransferService } from "./infrastructure/data-transfer/data-transfer.service";
+import {
+  registerDataTransferHandlers,
+  removeDataTransferHandlers,
+} from "../ipc/main/register-data-transfer-handlers";
 
 import {
   registerAutomationHandlers,
@@ -165,6 +170,7 @@ app.whenReady().then(() => {
   );
   registerAppHandlers(new ElectronGeneratedArtifactExporter(reportsRoot));
   registerSecretStorageHandlers(secretRepository);
+  registerDataTransferHandlers(new DataTransferService(secretRepository));
   const providerRepository = new TextProviderRepository(database);
   registerTextProviderHandlers(
     new ProviderConnectionService(secretRepository, providerRepository),
@@ -363,6 +369,7 @@ app.on("before-quit", () => {
   scenarioFileDownloads = undefined;
   removeAppHandlers();
   removeSecretStorageHandlers();
+  removeDataTransferHandlers();
   removeAutomationHandlers();
   removeTextProviderHandlers();
   removeChatHandlers();

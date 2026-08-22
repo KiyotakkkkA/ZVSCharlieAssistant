@@ -14,6 +14,7 @@ export interface DesktopApi {
   getAppInfo(): Promise<AppInfo>;
   saveGeneratedArtifact(input: GeneratedArtifactInput): Promise<boolean>;
   selectDirectory(): Promise<string | null>;
+  dataTransfer: import("./data-transfer.contract").DataTransferApi;
   secrets: import("./secrets.contract").SecretStorageApi;
   automation: import("./automation.contract").AutomationApi;
   textProviders: import("./text-provider.contract").TextProviderApi;

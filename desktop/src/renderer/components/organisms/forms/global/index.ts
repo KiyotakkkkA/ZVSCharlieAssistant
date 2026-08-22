@@ -1,3 +1,4 @@
 export { GlobalSettingsAppearanceForm } from "./GlobalSettingsAppearanceForm";
 export { GlobalSettingsProfileForm } from "./GlobalSettingsProfileForm";
+export { GlobalSettingsDataForm } from "./GlobalSettingsDataForm";
 export * from "./settings-sections";

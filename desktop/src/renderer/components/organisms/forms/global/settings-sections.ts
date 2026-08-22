@@ -1,4 +1,4 @@
-import { AccountOutlineIcon, PaletteIcon } from "../../../atoms";
+import { AccountOutlineIcon, PaletteIcon, StorageIcon } from "../../../atoms";
 import type { GlobalSettingsAnchorDescriptor } from "../../../atoms";
 
 export const APPEARANCE_SECTION = {
@@ -61,5 +61,32 @@ export const PROFILE_ANCHORS = {
       "Заполните только то, что действительно важно — короткие формулировки работают лучше длинных.",
     keywords: ["имя", "обращение", "инструкции", "стиль", "тон"],
     icon: AccountOutlineIcon,
+  },
+} satisfies Record<string, GlobalSettingsAnchorDescriptor>;
+
+export const DATA_SECTION = {
+  id: "data",
+  label: "Данные",
+  description: "Перенос и резервное копирование данных приложения.",
+  keywords: ["данные", "импорт", "экспорт", "резервная копия", "секреты"],
+  icon: StorageIcon,
+};
+
+export const DATA_ANCHORS = {
+  export: {
+    id: "data-export",
+    parentId: "data",
+    label: "Экспорт данных",
+    description: "Создайте защищённую паролем копию категорий и секретов.",
+    keywords: ["экспорт", "backup", "копия", "секреты"],
+    icon: StorageIcon,
+  },
+  import: {
+    id: "data-import",
+    parentId: "data",
+    label: "Импорт данных",
+    description: "Проверьте и добавьте данные из ранее созданной копии.",
+    keywords: ["импорт", "восстановление", "секреты"],
+    icon: StorageIcon,
   },
 } satisfies Record<string, GlobalSettingsAnchorDescriptor>;

@@ -34,6 +34,8 @@ export type {
   SecretStorageSnapshot,
 } from "./secrets.contract";
 export { SECRET_IPC_CHANNELS } from "./secrets.contract";
+export type { DataTransferApi } from "./data-transfer.contract";
+export { DATA_TRANSFER_IPC_CHANNELS } from "./data-transfer.contract";
 
 export { TEXT_PROVIDER_IPC_CHANNELS } from "./text-provider.contract";
 

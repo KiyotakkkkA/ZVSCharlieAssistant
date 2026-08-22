@@ -13,6 +13,9 @@ import {
   GlobalSettingsProfileForm,
   PROFILE_ANCHORS,
   PROFILE_SECTION,
+  DATA_ANCHORS,
+  DATA_SECTION,
+  GlobalSettingsDataForm,
 } from "../organisms/forms";
 
 const SETTINGS_FORMS: GlobalSettingsFormDescriptor[] = [
@@ -25,6 +28,11 @@ const SETTINGS_FORMS: GlobalSettingsFormDescriptor[] = [
     ...APPEARANCE_SECTION,
     anchors: Object.values(APPEARANCE_ANCHORS),
     Component: GlobalSettingsAppearanceForm,
+  },
+  {
+    ...DATA_SECTION,
+    anchors: Object.values(DATA_ANCHORS),
+    Component: GlobalSettingsDataForm,
   },
 ];
 

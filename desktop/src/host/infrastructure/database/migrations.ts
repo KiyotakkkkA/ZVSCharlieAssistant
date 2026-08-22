@@ -1015,6 +1015,46 @@ const migrations: readonly Migration[] = [
       `);
     },
   },
+  {
+    version: 22,
+    up(database) {
+      database.exec(`
+        ALTER TABLE secret_categories ADD COLUMN portable_id TEXT;
+        ALTER TABLE secret_categories ADD COLUMN system_key TEXT;
+        ALTER TABLE secret_entities ADD COLUMN portable_id TEXT;
+
+        UPDATE secret_categories
+        SET portable_id = lower(
+          hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' ||
+          substr(hex(randomblob(2)), 2) || '-' ||
+          substr('89ab', abs(random()) % 4 + 1, 1) ||
+          substr(hex(randomblob(2)), 2) || '-' || hex(randomblob(6))
+        )
+        WHERE portable_id IS NULL;
+
+        UPDATE secret_entities
+        SET portable_id = lower(
+          hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' ||
+          substr(hex(randomblob(2)), 2) || '-' ||
+          substr('89ab', abs(random()) % 4 + 1, 1) ||
+          substr(hex(randomblob(2)), 2) || '-' || hex(randomblob(6))
+        )
+        WHERE portable_id IS NULL;
+
+        UPDATE secret_categories SET system_key = 'api-keys'
+        WHERE builtin = 1 AND label = 'Ключи API';
+        UPDATE secret_categories SET system_key = 'personal-data'
+        WHERE builtin = 1 AND label = 'Личные данные';
+
+        CREATE UNIQUE INDEX idx_secret_categories_portable_id
+          ON secret_categories(portable_id);
+        CREATE UNIQUE INDEX idx_secret_categories_system_key
+          ON secret_categories(system_key) WHERE system_key IS NOT NULL;
+        CREATE UNIQUE INDEX idx_secret_entities_portable_id
+          ON secret_entities(portable_id);
+      `);
+    },
+  },
 ];
 
 export function runMigrations(database: Database.Database): void {
