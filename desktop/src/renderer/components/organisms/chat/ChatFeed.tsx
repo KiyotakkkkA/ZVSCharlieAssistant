@@ -1,4 +1,9 @@
-import { ScrollArea, useToasts } from "@kiyotakkkka/zvs-uikit-lib";
+import {
+  Alert,
+  Button,
+  ScrollArea,
+  useToasts,
+} from "@kiyotakkkka/zvs-uikit-lib";
 import {
   memo,
   useLayoutEffect,
@@ -30,6 +35,9 @@ import {
   type ChatArtifact,
 } from "./ChatArtifactPanel";
 import { DangerModal } from "../modals";
+import { textProviderStore } from "@renderer/stores";
+import { APP_PATHS } from "../../../app/routes";
+import { useAppNavigation } from "../../../hooks";
 
 const EMPTY_SCENARIO_EXECUTIONS = new Map<
   string,
@@ -104,6 +112,7 @@ export function ChatFeed({
   scenarioNodeOutput = EMPTY_SCENARIO_OUTPUT,
 }: ChatFeedProps) {
   const toasts = useToasts();
+  const { goTo } = useAppNavigation();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [openedSources, setOpenedSources] =
     useState<ChatSources>(EMPTY_CHAT_SOURCES);
@@ -186,6 +195,31 @@ export function ChatFeed({
                 ваших агентов.
               </p>
               <div className="mt-8 grid w-full gap-3 md:grid-cols-3">
+                {textProviderStore.enabledModels.length === 0 && (
+                  <div className="col-span-3">
+                    <Alert
+                      variant="warning"
+                      className="text-left"
+                      classNames={{
+                        content: "min-w-0 flex-1",
+                        body: "flex w-full items-center justify-between gap-4",
+                      }}
+                    >
+                      <strong className="font-semibold">
+                        Нет доступных моделей для чата
+                      </strong>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="warning-outline"
+                        className="shrink-0"
+                        onClick={() => goTo(APP_PATHS.settings.providers)}
+                      >
+                        Настроить
+                      </Button>
+                    </Alert>
+                  </div>
+                )}
                 {suggestions.map((item) => (
                   <button
                     key={item.title}
@@ -241,9 +275,9 @@ export function ChatFeed({
                       message.scenarioRunId &&
                       scenarioExecutions.get(message.scenarioRunId) ? (
                         <ScenarioExecutionHistory
-                          execution={scenarioExecutions.get(
-                            message.scenarioRunId,
-                          )!}
+                          execution={
+                            scenarioExecutions.get(message.scenarioRunId)!
+                          }
                           liveOutput={scenarioNodeOutput}
                         />
                       ) : null
