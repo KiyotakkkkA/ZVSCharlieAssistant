@@ -19,7 +19,7 @@ export class AutomationScenarioStore {
   items: AutomationScenario[] = [];
   activeRun: ScenarioRun | null = null;
   nodeRuns: ScenarioNodeRun[] = [];
-  pendingApproval: { runId: number; nodeId: string; prompt: string } | null =
+  pendingApproval: { runId: string; nodeId: string; prompt: string } | null =
     null;
   private unsubscribe?: () => void;
   constructor() {

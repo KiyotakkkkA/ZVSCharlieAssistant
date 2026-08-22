@@ -3,7 +3,8 @@ import {
   spawnSync,
   type ChildProcessWithoutNullStreams,
 } from "node:child_process";
-import { createHash, randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
+import { newEntityId } from "../database/entity-id";
 import { isAbsolute, normalize, relative, resolve } from "node:path";
 import type { CommandSessionStatus } from "../../../shared/models/terminal";
 import type {
@@ -198,7 +199,7 @@ export class CommandExecutionService {
       this.assertPath(path, grants, requiredPermission);
     }
     const session: Session = {
-      id: randomUUID(),
+      id: newEntityId(),
       status: "queued",
       stdout: "",
       stderr: "",
@@ -210,7 +211,7 @@ export class CommandExecutionService {
       commands.some((command) => permissionByCommand(command) !== "read");
     if (requiresApproval) {
       session.status = "pending_approval";
-      const approvalId = randomUUID();
+      const approvalId = newEntityId();
       const currentHash = () =>
         createHash("sha256")
           .update(

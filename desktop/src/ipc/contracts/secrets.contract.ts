@@ -14,9 +14,9 @@ export interface SecretStorageApi {
   getSnapshot(): Promise<SecretStorageSnapshot>;
   upsertCategory(input: UpsertSecretCategoryInput): Promise<SecretCategory>;
   upsertSecret(input: UpsertSecretInput): Promise<SecretEntity>;
-  deleteCategory(id: number): Promise<void>;
-  deleteSecret(id: number): Promise<void>;
-  copySecret(id: number): Promise<void>;
+  deleteCategory(id: string): Promise<void>;
+  deleteSecret(id: string): Promise<void>;
+  copySecret(id: string): Promise<void>;
 }
 
 export const SECRET_IPC_CHANNELS = {

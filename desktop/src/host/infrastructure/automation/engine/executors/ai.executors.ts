@@ -15,7 +15,7 @@ interface AgentConfig {
   inputExpression: string;
   outputMode: "text" | "json";
   jsonSchema: string;
-  modelId: number | null;
+  modelId: string | null;
   maxToolCalls: number | null;
   temperature: number | null;
   targetField: string;
@@ -106,7 +106,7 @@ export function createAgentExecutor(
 }
 
 interface OrchestratorConfig {
-  modelId: number | null;
+  modelId: string | null;
   mode: "graph" | "llm";
   objective: string;
   synthesize: boolean;
@@ -344,7 +344,7 @@ export function createOrchestratorExecutor(
 }
 
 interface ClassifyConfig {
-  modelId: number | null;
+  modelId: string | null;
   input: string;
   categories: Array<{ label: string; description: string }>;
   allowMultiple: boolean;

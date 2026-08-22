@@ -18,7 +18,7 @@ export function registerVectorStoreHandlers(service: VectorStoreService) {
   );
   ipcMain.handle(
     VECTOR_STORE_IPC_CHANNELS.getDocuments,
-    (_event, ids: number[]) =>
+    (_event, ids: string[]) =>
       service.documents(parseIpcDto(entityIdSchema.array().max(100), ids)),
   );
   ipcMain.handle(
@@ -26,7 +26,7 @@ export function registerVectorStoreHandlers(service: VectorStoreService) {
     (_event, input: UpsertVectorStoreInput) =>
       service.upsert(parseIpcDto(upsertVectorStoreDtoSchema, input)),
   );
-  ipcMain.handle(VECTOR_STORE_IPC_CHANNELS.deleteStore, (_event, id: number) =>
+  ipcMain.handle(VECTOR_STORE_IPC_CHANNELS.deleteStore, (_event, id: string) =>
     service.deleteStore(parseIpcDto(entityIdSchema, id)),
   );
   ipcMain.handle(
@@ -36,7 +36,7 @@ export function registerVectorStoreHandlers(service: VectorStoreService) {
   );
   ipcMain.handle(
     VECTOR_STORE_IPC_CHANNELS.deleteDocument,
-    (_event, id: number) =>
+    (_event, id: string) =>
       service.deleteDocument(parseIpcDto(entityIdSchema, id)),
   );
   ipcMain.handle(

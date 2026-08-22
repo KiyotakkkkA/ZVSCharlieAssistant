@@ -4,9 +4,9 @@ export type GeneratedEntityKind = "agent" | "skill";
 export type EntityGenerationStatus = RunStatus;
 
 export interface EntityGenerationRun {
-  id: number;
+  id: string;
   kind: GeneratedEntityKind;
-  modelId: number;
+  modelId: string;
   prompt: string;
   status: EntityGenerationStatus;
   entityId: string | null;

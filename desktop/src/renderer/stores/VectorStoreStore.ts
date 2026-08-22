@@ -20,8 +20,8 @@ class VectorStoreStore {
   documents: VectorStoreDocument[] = [];
   initialized = false;
   loading = false;
-  selectedStoreId: number | null = null;
-  private readonly updateVersions = new Map<number, number>();
+  selectedStoreId: string | null = null;
+  private readonly updateVersions = new Map<string, number>();
 
   constructor() {
     makeAutoObservable<this, "updateVersions">(
@@ -59,7 +59,7 @@ class VectorStoreStore {
     return this.stores.find((item) => item.id === this.selectedStoreId);
   }
 
-  documentsFor(storeId: number) {
+  documentsFor(storeId: string) {
     return this.documents.filter((item) => item.vectorStoreId === storeId);
   }
 
@@ -83,7 +83,7 @@ class VectorStoreStore {
     });
   }
 
-  async updateStore(id: number, patch: Partial<VectorStoreConfig>) {
+  async updateStore(id: string, patch: Partial<VectorStoreConfig>) {
     const current = this.stores.find((item) => item.id === id);
     if (!current) return;
     const input: UpsertVectorStoreInput = {
@@ -116,12 +116,12 @@ class VectorStoreStore {
     }
   }
 
-  async deleteStore(id: number) {
+  async deleteStore(id: string) {
     const snapshot = await window.desktop.vectorStores.deleteStore(id);
     runInAction(() => this.apply(snapshot));
   }
 
-  async addFiles(storeId: number, files: File[]) {
+  async addFiles(storeId: string, files: File[]) {
     const input = await Promise.all(
       files.map(async (file) => ({
         vectorStoreId: storeId,
@@ -149,7 +149,7 @@ class VectorStoreStore {
     await this.pollUntilSettled(uploadedIds);
   }
 
-  async deleteDocument(id: number) {
+  async deleteDocument(id: string) {
     const snapshot = await window.desktop.vectorStores.deleteDocument(id);
     runInAction(() => this.apply(snapshot));
   }
@@ -160,7 +160,7 @@ class VectorStoreStore {
     );
   }
 
-  private async pollUntilSettled(documentIds: number[]) {
+  private async pollUntilSettled(documentIds: string[]) {
     for (let attempt = 0; attempt < 300; attempt++) {
       await new Promise((resolve) => setTimeout(resolve, 1000));
       const documents =

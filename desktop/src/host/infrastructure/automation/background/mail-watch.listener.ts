@@ -61,7 +61,7 @@ export class MailWatchListener {
   }
 
   private async watchMailbox(
-    profileId: number,
+    profileId: string,
     mailbox: string,
     signal: AbortSignal,
   ): Promise<void> {
@@ -118,7 +118,7 @@ export class MailWatchListener {
 
   private async consumeAvailable(
     client: MinimalImapClient,
-    profileId: number,
+    profileId: string,
     mailbox: string,
   ): Promise<void> {
     for (const binding of mailboxBindings(
@@ -199,7 +199,7 @@ export class MailWatchListener {
 
 type WatchHandle = { controller: AbortController; task: Promise<void> };
 
-type MailboxGroup = { profileId: number; mailbox: string };
+type MailboxGroup = { profileId: string; mailbox: string };
 
 function groupEmailBindings(
   integrations: IntegrationRepository,
@@ -227,7 +227,7 @@ function groupEmailBindings(
 
 function mailboxBindings(
   integrations: IntegrationRepository,
-  profileId: number,
+  profileId: string,
   mailbox: string,
 ): DueTriggerBinding[] {
   const profile = integrations

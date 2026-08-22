@@ -14,7 +14,7 @@ export class ProviderRegistry {
     private readonly data: ChatRepository,
     private readonly secrets: SecretStorageRepository,
   ) {}
-  resolve(modelId: number): LanguageModel {
+  resolve(modelId: string): LanguageModel {
     const row = this.data.resolveModel(modelId);
     if (!row) throw new Error("Модель отключена или не найдена");
     const apiKey = row.api_key_secret_id
@@ -35,7 +35,7 @@ export class ProviderRegistry {
     return provider.chatModel(row.remote_id);
   }
 
-  generationSettings(modelId: number): TextProviderGenerationSettings {
+  generationSettings(modelId: string): TextProviderGenerationSettings {
     const row = this.data.resolveModel(modelId);
     if (!row) throw new Error("Модель отключена или не найдена");
     const configured = textProviderGenerationSettingsDtoSchema

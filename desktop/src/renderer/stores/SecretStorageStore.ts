@@ -26,7 +26,7 @@ class SecretStorageStore {
     return this.categories.length > 0 || this.secrets.length > 0;
   }
 
-  categoryLabel(categoryId: number): string {
+  categoryLabel(categoryId: string): string {
     return (
       this.categories.find((category) => category.id === categoryId)?.label ??
       "Без категории"
@@ -94,7 +94,7 @@ class SecretStorageStore {
     return secret;
   }
 
-  async deleteCategory(categoryId: number): Promise<void> {
+  async deleteCategory(categoryId: string): Promise<void> {
     await window.desktop.secrets.deleteCategory(categoryId);
     runInAction(() => {
       this.categories = this.categories.filter(
@@ -107,7 +107,7 @@ class SecretStorageStore {
     });
   }
 
-  async deleteSecret(secretId: number): Promise<void> {
+  async deleteSecret(secretId: string): Promise<void> {
     await window.desktop.secrets.deleteSecret(secretId);
     runInAction(() => {
       this.secrets = this.secrets.filter((item) => item.id !== secretId);

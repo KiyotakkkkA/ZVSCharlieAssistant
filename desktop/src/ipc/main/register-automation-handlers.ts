@@ -60,7 +60,7 @@ export function registerAutomationHandlers(
         parseIpcDto(upsertAutomationSkillDtoSchema, input),
       ),
   );
-  ipcMain.handle(AUTOMATION_IPC_CHANNELS.deleteSkill, (_event, id: number) =>
+  ipcMain.handle(AUTOMATION_IPC_CHANNELS.deleteSkill, (_event, id: string) =>
     repository.deleteSkill(parseIpcDto(entityIdSchema, id)),
   );
   ipcMain.handle(
@@ -134,11 +134,11 @@ export function registerAutomationHandlers(
   );
   ipcMain.handle(
     AUTOMATION_IPC_CHANNELS.cancelScenarioRun,
-    (_event, id: number) => engine.cancel(parseIpcDto(entityIdSchema, id)),
+    (_event, id: string) => engine.cancel(parseIpcDto(entityIdSchema, id)),
   );
   ipcMain.handle(
     AUTOMATION_IPC_CHANNELS.approveScenarioRun,
-    (_event, id: number, approved: boolean) => {
+    (_event, id: string, approved: boolean) => {
       const runId = parseIpcDto(entityIdSchema, id);
       const isApproved = parseIpcDto(booleanFlagSchema, approved);
       const question = questions
@@ -158,7 +158,7 @@ export function registerAutomationHandlers(
   );
   ipcMain.handle(
     AUTOMATION_IPC_CHANNELS.getScenarioRun,
-    (_event, id: number) => {
+    (_event, id: string) => {
       const runId = parseIpcDto(entityIdSchema, id);
       const run = executions.run(runId);
       if (!run) throw new Error("Запуск не найден");

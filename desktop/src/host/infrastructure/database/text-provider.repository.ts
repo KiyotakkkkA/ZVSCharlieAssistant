@@ -12,17 +12,18 @@ import {
   textProviderModelDetailsDtoSchema,
   type TextProviderLimits,
 } from "../../../shared/dto";
+import { newEntityId } from "./entity-id";
 import type {
   TextProviderGenerationSettings,
   UpsertTextProviderInput,
 } from "../../../shared/dto";
 interface ProviderRow {
-  id: number;
+  id: string;
   kind: TextProviderConfig["kind"];
   provider_type: TextProviderConfig["providerType"];
   name: string;
   base_url: string;
-  api_key_secret_id: number | null;
+  api_key_secret_id: string | null;
   enabled: number;
   checked_at: string;
   created_at: string;
@@ -31,8 +32,8 @@ interface ProviderRow {
   generation_settings_json: string;
 }
 interface ModelRow {
-  id: number;
-  provider_id: number;
+  id: string;
+  provider_id: string;
   remote_id: string;
   name: string;
   modified_at: string;
@@ -59,31 +60,32 @@ export class TextProviderRepository {
   }
   upsert(
     input: UpsertTextProviderInput,
-    id: number | undefined,
+    id: string | undefined,
     checkedAt: string,
     models: TextProviderModelInfo[],
     limits: TextProviderLimits | null,
   ): TextProviderSnapshot {
     this.database.transaction(() => {
       let providerId = id;
-      if (providerId === undefined)
-        providerId = Number(
-          this.database
-            .prepare(
-              "INSERT INTO text_provider_configs (kind, provider_type, name, base_url, api_key_secret_id, enabled, checked_at, limits_json, generation_settings_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            )
-            .run(
-              input.kind,
-              input.providerType,
-              input.name,
-              input.baseUrl,
-              input.apiKeySecretId ?? null,
-              Number(input.enabled),
-              checkedAt,
-              limits ? JSON.stringify(limits) : null,
-              JSON.stringify(input.generationSettings),
-            ).lastInsertRowid,
-        );
+      if (providerId === undefined) {
+        providerId = newEntityId();
+        this.database
+          .prepare(
+            "INSERT INTO text_provider_configs (id, kind, provider_type, name, base_url, api_key_secret_id, enabled, checked_at, limits_json, generation_settings_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          )
+          .run(
+            providerId,
+            input.kind,
+            input.providerType,
+            input.name,
+            input.baseUrl,
+            input.apiKeySecretId ?? null,
+            Number(input.enabled),
+            checkedAt,
+            limits ? JSON.stringify(limits) : null,
+            JSON.stringify(input.generationSettings),
+          );
+      }
       else {
         const result = this.database
           .prepare(
@@ -110,9 +112,9 @@ export class TextProviderRepository {
         .run(providerId);
       const insert = this.database.prepare(
         `INSERT INTO text_provider_models (
-           provider_id, remote_id, name, modified_at, size, digest,
+           id, provider_id, remote_id, name, modified_at, size, digest,
            details_json, enabled
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(provider_id, remote_id) DO UPDATE SET
            name = excluded.name,
            modified_at = excluded.modified_at,
@@ -123,6 +125,7 @@ export class TextProviderRepository {
       );
       for (const model of models)
         insert.run(
+          newEntityId(),
           providerId,
           model.id,
           model.name,
@@ -135,7 +138,7 @@ export class TextProviderRepository {
     })();
     return this.getSnapshot();
   }
-  delete(id: number): TextProviderSnapshot {
+  delete(id: string): TextProviderSnapshot {
     const result = this.database
       .prepare("DELETE FROM text_provider_configs WHERE id=?")
       .run(id);

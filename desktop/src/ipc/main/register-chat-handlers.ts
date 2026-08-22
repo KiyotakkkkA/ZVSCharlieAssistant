@@ -10,12 +10,12 @@ import {
   type StartRunInput,
 } from "../../shared/dto";
 export function registerChatHandlers(data: ChatRepository, engine: RunEngine) {
-  ipcMain.handle(CHAT_IPC_CHANNELS.getSnapshot, (_event, id?: number) =>
+  ipcMain.handle(CHAT_IPC_CHANNELS.getSnapshot, (_event, id?: string) =>
     data.snapshot(parseIpcDto(entityIdSchema.optional(), id)),
   );
   ipcMain.handle(
     CHAT_IPC_CHANNELS.getMessagesPage,
-    (_event, id: number, beforeId?: number) =>
+    (_event, id: string, beforeId?: string) =>
       data.messagePage(
         parseIpcDto(entityIdSchema, id),
         parseIpcDto(entityIdSchema.optional(), beforeId),
@@ -27,15 +27,15 @@ export function registerChatHandlers(data: ChatRepository, engine: RunEngine) {
         event.sender.send(CHAT_IPC_CHANNELS.event, payload);
     }),
   );
-  ipcMain.handle(CHAT_IPC_CHANNELS.cancelRun, (_event, id: number) =>
+  ipcMain.handle(CHAT_IPC_CHANNELS.cancelRun, (_event, id: string) =>
     engine.cancel(parseIpcDto(entityIdSchema, id)),
   );
-  ipcMain.handle(CHAT_IPC_CHANNELS.deleteConversation, (_event, id: number) =>
+  ipcMain.handle(CHAT_IPC_CHANNELS.deleteConversation, (_event, id: string) =>
     data.deleteConversation(parseIpcDto(entityIdSchema, id)),
   );
   ipcMain.handle(
     CHAT_IPC_CHANNELS.renameConversation,
-    (_event, id: number, title: string) =>
+    (_event, id: string, title: string) =>
       data.renameConversation(
         parseIpcDto(entityIdSchema, id),
         parseIpcDto(entityTitleSchema, title),
@@ -43,7 +43,7 @@ export function registerChatHandlers(data: ChatRepository, engine: RunEngine) {
   );
   ipcMain.handle(
     CHAT_IPC_CHANNELS.truncateMessages,
-    (_event, conversationId: number, fromMessageId: number) =>
+    (_event, conversationId: string, fromMessageId: string) =>
       data.truncateMessages(
         parseIpcDto(entityIdSchema, conversationId),
         parseIpcDto(entityIdSchema, fromMessageId),

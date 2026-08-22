@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { entityIdSchema } from "../../dto/ipc-dto";
 import { exprText } from "../config-fields";
 import {
   errorOutput,
@@ -9,13 +10,13 @@ import {
 } from "../node-descriptor";
 
 const agentConfigSchema = z.object({
-  agentId: z.string().min(1),
+  agentId: entityIdSchema,
   scenarioInstructions: exprText(),
   input: z.enum(["items", "expression"]).default("items"),
   inputExpression: exprText(),
   outputMode: z.enum(["text", "json"]).default("text"),
   jsonSchema: z.string().default(""),
-  modelId: z.int().positive().nullable().default(null),
+  modelId: entityIdSchema.nullable().default(null),
   maxToolCalls: z.int().min(1).max(100).nullable().default(null),
   temperature: z.number().min(0).max(2).nullable().default(null),
   targetField: z.string().default("text"),
@@ -88,7 +89,7 @@ export const agentDescriptor: ScenarioNodeDescriptor<
 };
 
 const orchestratorConfigSchema = z.object({
-  modelId: z.int().positive().nullable().default(null),
+  modelId: entityIdSchema.nullable().default(null),
   mode: z.enum(["graph", "llm"]).default("llm"),
   objective: exprText(),
   synthesize: z.boolean().default(true),
@@ -146,7 +147,7 @@ export const orchestratorDescriptor: ScenarioNodeDescriptor<
 };
 
 const classifyConfigSchema = z.object({
-  modelId: z.int().positive().nullable().default(null),
+  modelId: entityIdSchema.nullable().default(null),
   input: exprText(),
   categories: z
     .array(

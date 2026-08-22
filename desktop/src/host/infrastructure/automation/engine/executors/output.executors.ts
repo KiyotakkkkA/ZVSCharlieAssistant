@@ -7,7 +7,7 @@ interface ResponseChannelConfig {
   channel: "telegram" | "email";
   enabled: boolean;
   mode: "reply_to_trigger" | "explicit_recipient";
-  integrationProfileId: number | null;
+  integrationProfileId: string | null;
   recipient: string;
   subject: string;
   attachFiles: boolean;

@@ -2,7 +2,7 @@ export type TaskItemStatus =
   "pending" | "in_progress" | "completed" | "skipped";
 
 export interface TaskItem {
-  id: number;
+  id: string;
   position: number;
   subject: string;
   detail: string;
@@ -11,9 +11,9 @@ export interface TaskItem {
 }
 
 export interface TaskPlan {
-  id: number;
-  conversationId: number | null;
-  executionId: number | null;
+  id: string;
+  conversationId: string | null;
+  executionId: string | null;
   items: TaskItem[];
   updatedAt: string;
 }

@@ -17,7 +17,7 @@ import { SecretStorageRepository } from "../database/secret-storage.repository";
 
 type TriggerEnvelope = {
   trigger: "telegram" | "email" | "chat";
-  integrationProfileId?: number;
+  integrationProfileId?: string;
   triggerBindingId: string;
   entity: Record<string, unknown> & { attachments?: AttachmentReference[] };
 };
@@ -54,8 +54,8 @@ export class ScenarioFileDownloadService {
   }
 
   async downloadForNode(input: {
-    executionId: number;
-    nodeRunId: number;
+    executionId: string;
+    nodeRunId: string;
     nodeId: string;
     value: unknown;
     cleanupOnFinish: boolean;
@@ -102,7 +102,7 @@ export class ScenarioFileDownloadService {
     }
   }
 
-  async cleanupExecution(executionId: number): Promise<void> {
+  async cleanupExecution(executionId: string): Promise<void> {
     await this.cleanup(this.data.cleanupCandidates(executionId));
   }
 
@@ -124,7 +124,7 @@ export class ScenarioFileDownloadService {
     }
   }
 
-  private async cleanup(files: Array<{ id: number; localPath: string }>) {
+  private async cleanup(files: Array<{ id: string; localPath: string }>) {
     for (const file of files) {
       try {
         await rm(file.localPath, { force: true });
@@ -185,16 +185,16 @@ export class ScenarioFileDownloadService {
   }
 
   private async downloadChatAttachment(job: ScenarioFileJob) {
-    const attachmentId = Number(job.sourceExternalId);
-    const conversationId = Number(job.input.entity.conversationId);
-    if (!Number.isInteger(attachmentId) || !Number.isInteger(conversationId))
+    const attachmentId = job.sourceExternalId;
+    const conversationId = String(job.input.entity.conversationId ?? "");
+    if (!attachmentId || !conversationId)
       throw new Error("Некорректная ссылка на вложение из чата");
     const attachment = this.data.chatAttachment(attachmentId, conversationId);
     if (!attachment) throw new Error("Вложение из чата не найдено");
     return readFile(attachment.localPath);
   }
 
-  private async downloadTelegram(job: ScenarioFileJob, secretId?: number) {
+  private async downloadTelegram(job: ScenarioFileJob, secretId?: string) {
     const token = secretId
       ? this.secrets.findSecret(secretId)?.content
       : undefined;
@@ -220,7 +220,7 @@ export class ScenarioFileDownloadService {
 
   private async downloadEmail(
     job: ScenarioFileJob,
-    secretId: number | undefined,
+    secretId: string | undefined,
     profileConfig: Record<string, unknown>,
   ) {
     const password = secretId
@@ -259,7 +259,7 @@ function collectTriggerEnvelopes(
       candidate.trigger === "email" ||
       candidate.trigger === "chat") &&
     (candidate.trigger === "chat" ||
-      Number.isInteger(candidate.integrationProfileId)) &&
+      typeof candidate.integrationProfileId === "string") &&
     typeof candidate.triggerBindingId === "string" &&
     candidate.entity &&
     typeof candidate.entity === "object"

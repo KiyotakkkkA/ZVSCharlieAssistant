@@ -1,23 +1,24 @@
 import { z } from "zod";
+import { entityIdSchema } from "./ipc-dto";
 
 export const vectorSearchModeSchema = z.enum(["vector", "hybrid"]);
 export const upsertVectorStoreDtoSchema = z.object({
-  id: z.int().positive().optional(),
+  id: entityIdSchema.optional(),
   name: z.string(),
   description: z.string(),
-  embeddingModelId: z.int().positive().nullable(),
+  embeddingModelId: entityIdSchema.nullable(),
   searchMode: vectorSearchModeSchema,
   chunkSizeTokens: z.int().positive(),
   chunkOverlapTokens: z.int().nonnegative(),
 });
 export const uploadVectorDocumentDtoSchema = z.object({
-  vectorStoreId: z.int().positive(),
+  vectorStoreId: entityIdSchema,
   fileName: z.string(),
   mimeType: z.string(),
   data: z.instanceof(ArrayBuffer),
 });
 export const vectorSearchDtoSchema = z.object({
-  vectorStoreIds: z.array(z.int().positive()),
+  vectorStoreIds: z.array(entityIdSchema),
   query: z.string(),
   limit: z.int().positive().optional(),
   scoreThreshold: z.number().optional(),

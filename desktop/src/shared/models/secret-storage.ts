@@ -1,16 +1,14 @@
 export type SecretCategorySystemKey = "api-keys" | "personal-data";
 
 export interface SecretCategory {
-  id: number;
-  portableId: string;
+  id: string;
   systemKey?: SecretCategorySystemKey;
   label: string;
   builtin: boolean;
 }
 export interface SecretEntity {
-  id: number;
-  portableId: string;
-  categoryId: number;
+  id: string;
+  categoryId: string;
   label: string;
   builtin: boolean;
 }

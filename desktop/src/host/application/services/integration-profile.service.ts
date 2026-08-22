@@ -46,7 +46,7 @@ export class IntegrationProfileService {
     return this.data.upsertProfile(input);
   }
 
-  delete(id: number) {
+  delete(id: string) {
     this.data.deleteProfile(id);
   }
 

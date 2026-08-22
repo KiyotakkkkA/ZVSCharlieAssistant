@@ -8,7 +8,7 @@ import type { UpsertIntegrationProfileInput } from "../../shared/dto";
 export interface IntegrationApi {
   getSnapshot(): Promise<IntegrationSnapshot>;
   upsert(input: UpsertIntegrationProfileInput): Promise<IntegrationProfile>;
-  delete(id: number): Promise<void>;
+  delete(id: string): Promise<void>;
   test(
     input: UpsertIntegrationProfileInput,
   ): Promise<IntegrationConnectionResult>;

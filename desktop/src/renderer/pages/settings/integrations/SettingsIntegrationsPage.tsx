@@ -93,7 +93,7 @@ export const SettingsIntegrationsPage = observer(
     const profiles = integrationStore.profiles.filter((item) =>
       TAB_KINDS[tab].includes(item.kind),
     );
-    const [selectedId, setSelectedId] = useState<number | "draft" | null>(null);
+    const [selectedId, setSelectedId] = useState<string | "draft" | null>(null);
     const [checking, setChecking] = useState(false);
     const [saving, setSaving] = useState(false);
     const [draftStatus, setDraftStatus] =

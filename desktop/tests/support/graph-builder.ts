@@ -7,7 +7,8 @@ import {
 } from "../../src/shared/scenario/graph";
 
 let counter = 0;
-const nextId = (prefix: string): string => `${prefix}_${++counter}`;
+const nextId = (_prefix: string): string =>
+  `019cba09-8f30-7000-8000-${String(++counter).padStart(12, "0")}`;
 
 export function resetIds(): void {
   counter = 0;

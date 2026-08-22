@@ -1,18 +1,19 @@
 import { notifyWork } from "../automation/background/work-signal";
 import type Database from "better-sqlite3";
+import { newEntityId } from "./entity-id";
 import type {
   AttachmentReference,
   ScenarioFileReference,
 } from "../../../shared/dto/scenario-trigger-event.dto";
 
 export interface ScenarioFileJob {
-  id: number;
-  executionId: number;
-  nodeRunId: number;
+  id: string;
+  executionId: string;
+  nodeRunId: string;
   nodeId: string;
   sourceKind: string;
   sourceExternalId: string;
-  integrationProfileId: number | null;
+  integrationProfileId: string | null;
   sourceScope: string;
   input: {
     attachment: AttachmentReference;
@@ -37,12 +38,12 @@ export class ScenarioFileRepository {
   }
 
   enqueue(input: {
-    executionId: number;
-    nodeRunId: number;
+    executionId: string;
+    nodeRunId: string;
     nodeId: string;
     sourceKind: string;
     sourceExternalId: string;
-    integrationProfileId: number | null;
+    integrationProfileId: string | null;
     sourceScope: string;
     payload: ScenarioFileJob["input"];
     cleanupOnFinish: boolean;
@@ -50,14 +51,15 @@ export class ScenarioFileRepository {
     this.db
       .prepare(
         `INSERT INTO scenario_file_jobs(
-        execution_id,node_run_id,node_id,source_kind,source_external_id,
+        id,execution_id,node_run_id,node_id,source_kind,source_external_id,
         integration_profile_id,source_scope,input_json,cleanup_on_finish
-      ) VALUES(?,?,?,?,?,?,?,?,?)
+      ) VALUES(?,?,?,?,?,?,?,?,?,?)
       ON CONFLICT
       DO UPDATE SET node_run_id=excluded.node_run_id,input_json=excluded.input_json,
         cleanup_on_finish=excluded.cleanup_on_finish,updated_at=CURRENT_TIMESTAMP`,
       )
       .run(
+        newEntityId(),
         input.executionId,
         input.nodeRunId,
         input.nodeId,
@@ -116,11 +118,12 @@ export class ScenarioFileRepository {
       this.db
         .prepare(
           `INSERT INTO execution_files(
-          execution_id,node_run_id,job_id,source_kind,source_external_id,
+          id,execution_id,node_run_id,job_id,source_kind,source_external_id,
           file_name,mime_type,size,sha256,storage_key,local_path
-        ) VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
+        ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`,
         )
         .run(
+          newEntityId(),
           job.executionId,
           job.nodeRunId,
           job.id,
@@ -151,7 +154,7 @@ export class ScenarioFileRepository {
       .run(job.attempt >= job.maxAttempts ? "failed" : "queued", error, job.id);
   }
 
-  status(executionId: number, nodeRunId: number) {
+  status(executionId: string, nodeRunId: string) {
     return this.db
       .prepare(
         `SELECT status,last_error FROM scenario_file_jobs
@@ -163,7 +166,7 @@ export class ScenarioFileRepository {
     }>;
   }
 
-  files(executionId: number, nodeRunId: number): ScenarioFileReference[] {
+  files(executionId: string, nodeRunId: string): ScenarioFileReference[] {
     return (
       this.db
         .prepare(
@@ -172,7 +175,7 @@ export class ScenarioFileRepository {
         )
         .all(executionId, nodeRunId) as Array<Record<string, unknown>>
     ).map((row) => ({
-      id: Number(row.id),
+      id: String(row.id),
       fileName: String(row.file_name),
       mimeType: row.mime_type === null ? null : String(row.mime_type),
       size: Number(row.size),
@@ -182,8 +185,8 @@ export class ScenarioFileRepository {
   }
 
   cleanupCandidates(
-    executionId: number,
-  ): Array<{ id: number; localPath: string }> {
+    executionId: string,
+  ): Array<{ id: string; localPath: string }> {
     return (
       this.db
         .prepare(
@@ -191,14 +194,14 @@ export class ScenarioFileRepository {
        JOIN scenario_file_jobs j ON j.id=f.job_id
        WHERE f.execution_id=? AND f.deleted_at IS NULL AND j.cleanup_on_finish=1`,
         )
-        .all(executionId) as Array<{ id: number; local_path: string }>
+        .all(executionId) as Array<{ id: string; local_path: string }>
     ).map((row) => ({
       id: row.id,
       localPath: row.local_path,
     }));
   }
 
-  terminalCleanupCandidates(): Array<{ id: number; localPath: string }> {
+  terminalCleanupCandidates(): Array<{ id: string; localPath: string }> {
     return (
       this.db
         .prepare(
@@ -209,14 +212,14 @@ export class ScenarioFileRepository {
          AND r.status IN ('completed','failed','cancelled')
        ORDER BY f.id LIMIT 100`,
         )
-        .all() as Array<{ id: number; local_path: string }>
+        .all() as Array<{ id: string; local_path: string }>
     ).map((row) => ({
       id: row.id,
       localPath: row.local_path,
     }));
   }
 
-  markDeleted(id: number): void {
+  markDeleted(id: string): void {
     this.db
       .prepare(
         "UPDATE execution_files SET deleted_at=CURRENT_TIMESTAMP WHERE id=?",
@@ -224,7 +227,7 @@ export class ScenarioFileRepository {
       .run(id);
   }
 
-  chatAttachment(id: number, conversationId: number) {
+  chatAttachment(id: string, conversationId: string) {
     const row = this.db
       .prepare(
         `SELECT local_path FROM chat_attachments
@@ -237,16 +240,16 @@ export class ScenarioFileRepository {
 
 function mapJob(row: Record<string, unknown>): ScenarioFileJob {
   return {
-    id: Number(row.id),
-    executionId: Number(row.execution_id),
-    nodeRunId: Number(row.node_run_id),
+    id: String(row.id),
+    executionId: String(row.execution_id),
+    nodeRunId: String(row.node_run_id),
     nodeId: String(row.node_id),
     sourceKind: String(row.source_kind),
     sourceExternalId: String(row.source_external_id),
     integrationProfileId:
       row.integration_profile_id === null
         ? null
-        : Number(row.integration_profile_id),
+        : String(row.integration_profile_id),
     sourceScope: String(row.source_scope),
     input: JSON.parse(String(row.input_json)) as ScenarioFileJob["input"],
     attempt: Number(row.attempt),

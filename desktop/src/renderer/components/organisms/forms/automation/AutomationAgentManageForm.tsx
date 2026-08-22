@@ -102,7 +102,7 @@ export const AutomationAgentManageForm = observer(
       );
     }, [terminalPolicyStore.policy?.confirmationMode]);
     const vectorDocumentCounts = useMemo(() => {
-      const counts = new Map<number, number>();
+      const counts = new Map<string, number>();
       for (const document of vectorStoreStore.documents)
         counts.set(
           document.vectorStoreId,
@@ -242,17 +242,17 @@ export const AutomationAgentManageForm = observer(
         name: name.trim(),
         description: description.trim(),
         instructions: instructions.trim(),
-        textModelId: Number(textModelId),
+        textModelId,
         status,
         allowedToolIds: selectedToolIds,
         allowedVectorStoreIds: vectorSearchEnabled
           ? Object.entries(vectorStoreModel)
               .filter(([, selected]) => selected)
-              .map(([id]) => Number(id))
+              .map(([id]) => id)
           : [],
         allowedSkillIds: Object.entries(skillModel)
           .filter(([, selected]) => selected)
-          .map(([id]) => Number(id)),
+          .map(([id]) => id),
         memoryRead:
           memorySearchEnabled &&
           Boolean(memoryStore.policy?.enabled) &&

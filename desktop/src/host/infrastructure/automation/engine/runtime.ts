@@ -48,7 +48,7 @@ export interface RuntimeNodeEvent {
     | "node.retrying"
     | "node.output.delta";
   nodeId: string;
-  nodeRunId?: number;
+  nodeRunId?: string;
   attempt?: number;
   iteration?: number;
   status?: string;
@@ -62,15 +62,15 @@ export interface RuntimeNodeEvent {
 
 export interface RuntimePersistence {
   startNode(input: {
-    executionId: number;
+    executionId: string;
     nodeId: string;
     nodeKind: string;
     attempt: number;
     iteration: number;
     inputs: Record<string, ScenarioItems>;
-  }): Promise<number> | number;
+  }): Promise<string> | string;
   finishNode(input: {
-    nodeRunId: number;
+    nodeRunId: string;
     status:
       "completed" | "failed" | "cancelled" | "skipped" | "waiting_for_approval";
     outputs?: Record<string, ScenarioItems>;
@@ -81,15 +81,15 @@ export interface RuntimePersistence {
     durationMs?: number;
   }): Promise<void> | void;
   saveCheckpoint(
-    executionId: number,
+    executionId: string,
     state: SerializedSchedulerState,
   ): Promise<void> | void;
 }
 
 export interface RunRuntimeOptions {
-  executionId: number;
+  executionId: string;
   scenarioId: string;
-  scenarioRevisionId: number;
+  scenarioRevisionId: string;
   graph: ScenarioGraph;
   compiled: CompiledScenario;
   input: unknown;
@@ -108,7 +108,7 @@ export interface RunRuntimeResult {
   status: "completed" | "suspended";
   outputs: Record<string, unknown>;
   checkpoint?: SerializedSchedulerState;
-  suspension?: { nodeId: string; questionId: number };
+  suspension?: { nodeId: string; questionId: string };
   executedNodes: number;
 }
 
@@ -227,7 +227,7 @@ export class ScenarioRuntime {
     inputs: Record<string, ScenarioItems>,
   ): Promise<
     | { kind: "done"; outputs: Record<string, ScenarioItems> }
-    | { kind: "suspended"; questionId: number }
+    | { kind: "suspended"; questionId: string }
   > {
     const { node, runtime } = compiledNode;
     const iteration = this.state.noteExecution(node.id);
@@ -452,7 +452,7 @@ export class ScenarioRuntime {
     executor: NodeExecutor<never, never>,
     inputs: Record<string, ScenarioItems>,
     meta: {
-      nodeRunId: number;
+      nodeRunId: string;
       attempt: number;
       iteration: number;
       logger: Logger;
@@ -501,7 +501,7 @@ export class ScenarioRuntime {
     executor: NodeExecutor<never, never>,
     inputs: Record<string, ScenarioItems>,
     meta: {
-      nodeRunId: number;
+      nodeRunId: string;
       attempt: number;
       iteration: number;
       logger: Logger;
@@ -562,7 +562,7 @@ export class ScenarioRuntime {
     compiledNode: CompiledNode,
     inputs: Record<string, ScenarioItems>,
     meta: {
-      nodeRunId: number;
+      nodeRunId: string;
       attempt: number;
       iteration: number;
       logger: Logger;

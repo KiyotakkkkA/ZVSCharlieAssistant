@@ -8,20 +8,20 @@ import type { StartRunInput } from "../../shared/dto";
 export type * from "../../shared/models/chat";
 
 export interface ChatApi {
-  getSnapshot(conversationId?: number): Promise<ChatSnapshot>;
+  getSnapshot(conversationId?: string): Promise<ChatSnapshot>;
   getMessagesPage(
-    conversationId: number,
-    beforeId?: number,
+    conversationId: string,
+    beforeId?: string,
   ): Promise<ChatMessagePage>;
   startRun(
     input: StartRunInput,
-  ): Promise<{ runId: number; conversationId: number }>;
-  cancelRun(runId: number): Promise<void>;
-  deleteConversation(id: number): Promise<void>;
-  renameConversation(id: number, title: string): Promise<void>;
+  ): Promise<{ runId: string; conversationId: string }>;
+  cancelRun(runId: string): Promise<void>;
+  deleteConversation(id: string): Promise<void>;
+  renameConversation(id: string, title: string): Promise<void>;
   truncateMessages(
-    conversationId: number,
-    fromMessageId: number,
+    conversationId: string,
+    fromMessageId: string,
   ): Promise<void>;
   subscribe(listener: (event: RunEvent) => void): () => void;
 }

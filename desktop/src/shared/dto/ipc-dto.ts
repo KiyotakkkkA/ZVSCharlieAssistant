@@ -28,7 +28,10 @@ export function parseJsonDto<TSchema extends z.ZodType>(
   return parseIpcDto(schema, JSON.parse(value) as unknown);
 }
 
-export const entityIdSchema = z.int().positive();
+/** Public identity of every persisted entity. */
+export const entityIdSchema = z
+  .uuid()
+  .refine((value) => value[14] === "7", "Expected UUIDv7");
 export const entityKeySchema = z.string().trim().min(1).max(64);
 export const entityTitleSchema = z.string().trim().min(1).max(200);
 export const booleanFlagSchema = z.boolean();

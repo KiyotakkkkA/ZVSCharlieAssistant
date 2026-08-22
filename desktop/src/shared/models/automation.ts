@@ -10,12 +10,12 @@ import type {
 export interface AutomationToolSecretRequirement {
   key: string;
   label: string;
-  categoryId: number;
+  categoryId: string;
   required: boolean;
 }
 export interface AutomationToolSecretBinding {
   key: string;
-  secretId: number;
+  secretId: string;
 }
 export interface AutomationTool {
   id: string;
@@ -36,11 +36,11 @@ export interface AutomationAgent {
   name: string;
   description: string;
   instructions: string;
-  textModelId: number | null;
+  textModelId: string | null;
   status: AutomationStatus;
   allowedToolIds: string[];
-  allowedVectorStoreIds: number[];
-  allowedSkillIds: number[];
+  allowedVectorStoreIds: string[];
+  allowedSkillIds: string[];
   memoryRead: boolean;
   memoryWrite: boolean;
   retrievalLimit: number;
@@ -52,7 +52,7 @@ export interface AutomationAgent {
   updatedAt: string;
 }
 export interface AutomationSkill {
-  id: number;
+  id: string;
   slug: string;
   name: string;
   description: string;
@@ -73,7 +73,7 @@ export interface AutomationScenario {
   status: AutomationStatus;
   graph: AutomationScenarioGraph;
   toolSettings: AutomationScenarioToolSetting[];
-  revisionId: number;
+  revisionId: string;
   version: number;
   nodesCount: number;
   lastRunAt: string | null;
@@ -88,9 +88,9 @@ export interface AutomationSnapshot {
 export type ScenarioRunStatus = RunStatus;
 export type ScenarioRunOrigin = RunOrigin;
 export interface ScenarioRun {
-  id: number;
+  id: string;
   scenarioId: string;
-  scenarioRevisionId: number;
+  scenarioRevisionId: string;
   scenarioName: string;
   origin: ScenarioRunOrigin;
   status: ScenarioRunStatus;
@@ -102,8 +102,8 @@ export interface ScenarioRun {
   completedAt: string | null;
 }
 export interface ScenarioNodeRun {
-  id: number;
-  executionId: number;
+  id: string;
+  executionId: string;
   nodeId: string;
   nodeKind: AutomationScenarioNodeKind;
   attempt: number;
@@ -116,16 +116,16 @@ export interface ScenarioNodeRun {
 }
 export type ScenarioRunEvent =
   | { type: "run.started"; run: ScenarioRun }
-  | { type: "node.started"; runId: number; node: ScenarioNodeRun }
-  | { type: "node.output.delta"; runId: number; nodeId: string; delta: string }
-  | { type: "approval.required"; runId: number; nodeId: string; prompt: string }
+  | { type: "node.started"; runId: string; node: ScenarioNodeRun }
+  | { type: "node.output.delta"; runId: string; nodeId: string; delta: string }
+  | { type: "approval.required"; runId: string; nodeId: string; prompt: string }
   | {
       type: "run.suspended";
-      runId: number;
+      runId: string;
       nodeId: string;
-      questionId: number;
+      questionId: string;
     }
-  | { type: "node.completed"; runId: number; node: ScenarioNodeRun }
+  | { type: "node.completed"; runId: string; node: ScenarioNodeRun }
   | { type: "run.completed"; run: ScenarioRun }
   | { type: "run.failed"; run: ScenarioRun }
   | { type: "run.cancelled"; run: ScenarioRun };

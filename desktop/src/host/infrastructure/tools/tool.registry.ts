@@ -1,5 +1,6 @@
 import { tool, type ToolSet } from "ai";
 import { z } from "zod";
+import { entityIdSchema } from "../../../shared/dto/ipc-dto";
 import type { RunEvent } from "../../../shared/models/chat";
 import type {
   AutomationRuntimeCatalog,
@@ -45,14 +46,14 @@ interface ToolExecutionObserver<TReference = unknown> {
 interface ToolRegistryOptions {
   signal: AbortSignal;
   allowedToolIds: string[];
-  conversationId?: number;
-  runId?: number;
+  conversationId?: string;
+  runId?: string;
   agentId?: string;
   memoryRead?: boolean;
   memoryWrite?: boolean;
-  allowedVectorStoreIds?: number[];
+  allowedVectorStoreIds?: string[];
   retrievalLimit?: number;
-  allowedSkillIds?: number[];
+  allowedSkillIds?: string[];
   terminalPolicy?: AgentTerminalPolicy;
   directoryPolicy?: AgentDirectoryPolicy;
   observer?: ToolExecutionObserver;
@@ -220,7 +221,7 @@ export class ToolRegistry {
           "Ищет релевантные фрагменты в разрешённых агенту векторных базах знаний.",
         inputSchema: z.object({
           query: z.string().trim().min(1).max(2000),
-          storeIds: z.array(z.int().positive()).optional(),
+          storeIds: z.array(entityIdSchema).optional(),
           limit: z.int().min(1).max(20).optional(),
           scoreThreshold: z.number().min(0).max(1).optional(),
         }),
@@ -254,7 +255,7 @@ export class ToolRegistry {
       "skills.load": tool({
         description:
           "Загружает полные инструкции назначенного агенту навыка. Используй перед применением навыка.",
-        inputSchema: z.object({ skillId: z.int().positive() }),
+        inputSchema: z.object({ skillId: entityIdSchema }),
         execute: (input, { toolCallId }) =>
           this.execute(
             toolCallId,
@@ -505,7 +506,7 @@ export class ToolRegistry {
     return Object.keys(available).length ? available : undefined;
   }
 
-  skillCatalog(ids: number[]): string {
+  skillCatalog(ids: string[]): string {
     const allowed = new Set(ids);
     const skills = this.automationCatalog
       .listSkills()
@@ -515,7 +516,7 @@ export class ToolRegistry {
   }
 
   createForChat(
-    runId: number,
+    runId: string,
     emit: Emit,
     options: Omit<ToolRegistryOptions, "observer">,
   ) {
@@ -562,7 +563,7 @@ export class ToolRegistry {
             error,
           });
         },
-      } satisfies ToolExecutionObserver<number>,
+      } satisfies ToolExecutionObserver<string>,
     });
   }
 

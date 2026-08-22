@@ -4,13 +4,13 @@ import type { ChatUsage } from "../dto";
 
 export type RunStatus = SharedRunStatus;
 export interface ChatConversation {
-  id: number;
+  id: string;
   title: string;
   lastUsage: ChatUsage;
   updatedAt: string;
 }
 export interface ChatToolCall {
-  id: number;
+  id: string;
   toolId: string;
   status: "requested" | "running" | "completed" | "failed";
   input: unknown;
@@ -18,10 +18,10 @@ export interface ChatToolCall {
   error: string | null;
 }
 export interface ChatMessage {
-  id: number;
-  conversationId: number;
-  runId: number | null;
-  scenarioRunId: number | null;
+  id: string;
+  conversationId: string;
+  runId: string | null;
+  scenarioRunId: string | null;
   role: "system" | "user" | "assistant" | "tool";
   status: "streaming" | "completed" | "failed" | "cancelled";
   text: string;
@@ -43,39 +43,39 @@ export interface ChatMessagePage {
 export type RunEvent =
   | {
       type: "run.started";
-      runId: number;
-      conversationId: number;
+      runId: string;
+      conversationId: string;
       userMessage: ChatMessage;
       assistantMessage: ChatMessage;
     }
   | {
       type: "text.delta" | "reasoning.delta";
-      runId: number;
-      messageId: number;
+      runId: string;
+      messageId: string;
       delta: string;
     }
   | { type: "scenario.run"; run: ScenarioRun }
-  | { type: "scenario.node"; runId: number; node: ScenarioNodeRun }
+  | { type: "scenario.node"; runId: string; node: ScenarioNodeRun }
   | {
       type: "scenario.node.delta";
-      runId: number;
+      runId: string;
       nodeId: string;
       delta: string;
     }
   | {
       type: "scenario.approval.required";
-      runId: number;
+      runId: string;
       nodeId: string;
       prompt: string;
     }
   | {
       type: "tool.requested" | "tool.running" | "tool.completed";
-      runId: number;
-      toolCallId: number;
+      runId: string;
+      toolCallId: string;
       toolId: string;
       input?: unknown;
       output?: unknown;
       error?: string;
     }
-  | { type: "run.completed" | "run.cancelled"; runId: number }
-  | { type: "run.failed"; runId: number; message: string };
+  | { type: "run.completed" | "run.cancelled"; runId: string }
+  | { type: "run.failed"; runId: string; message: string };

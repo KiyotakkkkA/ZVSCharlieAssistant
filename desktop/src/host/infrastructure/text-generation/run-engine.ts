@@ -7,6 +7,7 @@ import { ToolRegistry } from "../tools/tool.registry";
 import type { ScenarioRuntimeEngine } from "../automation/engine/scenario-runtime-engine";
 import type { MemoryService } from "../../application/services/memory.service";
 import type { UserProfileRepository } from "../database/user-profile.repository";
+import { newEntityId } from "../database/entity-id";
 type Emit = (event: RunEvent) => void;
 
 const CONTENT_FLUSH_MS = 400;
@@ -15,9 +16,9 @@ const HISTORY_MAX_MESSAGES = 80;
 const HISTORY_MAX_CHARACTERS = 60_000;
 
 export class RunEngine {
-  private controllers = new Map<number, AbortController>();
-  private scenarioRunIds = new Set<number>();
-  private profileBlocks = new Map<number, string>();
+  private controllers = new Map<string, AbortController>();
+  private scenarioRunIds = new Set<string>();
+  private profileBlocks = new Map<string, string>();
   constructor(
     private readonly data: ChatRepository,
     private readonly providers: ProviderRegistry,
@@ -27,7 +28,7 @@ export class RunEngine {
     private readonly scenarios?: ScenarioRuntimeEngine,
   ) {}
 
-  private profileBlock(conversationId: number, mode: string): string {
+  private profileBlock(conversationId: string, mode: string): string {
     if (mode !== "chat" && mode !== "planner") return "";
     const cached = this.profileBlocks.get(conversationId);
     if (cached !== undefined) return cached;
@@ -38,7 +39,7 @@ export class RunEngine {
   async start(
     input: StartRunInput,
     emit: Emit,
-  ): Promise<{ runId: number; conversationId: number }> {
+  ): Promise<{ runId: string; conversationId: string }> {
     const text = input.text.trim();
     if (!text) throw new Error("Сообщение не может быть пустым");
     if (input.mode === "scenario") return this.startScenario(input, text, emit);
@@ -113,7 +114,7 @@ export class RunEngine {
     );
     return { runId, conversationId };
   }
-  cancel(runId: number) {
+  cancel(runId: string) {
     if (this.scenarioRunIds.has(runId)) this.scenarios?.cancel(runId);
     else this.controllers.get(runId)?.abort();
   }
@@ -121,7 +122,7 @@ export class RunEngine {
     input: StartRunInput,
     text: string,
     emit: Emit,
-  ): { runId: number; conversationId: number } {
+  ): { runId: string; conversationId: string } {
     if (!this.scenarios) throw new Error("Движок сценариев недоступен");
     if (!input.scenarioId) throw new Error("Сценарий не выбран");
     this.scenarios.assertRunnable(input.scenarioId);
@@ -146,12 +147,12 @@ export class RunEngine {
       usage,
     );
     this.data.updateTitle(conversationId, text);
-    let scenarioRunId = 0;
+    let scenarioRunId = "";
     const run = this.scenarios.start(
       input.scenarioId,
       {
         trigger: "chat",
-        triggerBindingId: "manual-chat",
+        triggerBindingId: newEntityId(),
         entity: {
           type: "chat_message",
           conversationId,
@@ -235,9 +236,9 @@ export class RunEngine {
     return { runId: scenarioRunId || run.id, conversationId };
   }
   private async execute(
-    runId: number,
-    conversationId: number,
-    assistantMessageId: number,
+    runId: string,
+    conversationId: string,
+    assistantMessageId: string,
     input: StartRunInput,
     agentInstructions: string | undefined,
     maxSteps: number,

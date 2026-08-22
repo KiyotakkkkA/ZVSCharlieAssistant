@@ -1,5 +1,5 @@
 export interface ScenarioBinaryRef {
-  id: number;
+  id: string;
   fileName: string;
   mimeType: string | null;
   size: number;

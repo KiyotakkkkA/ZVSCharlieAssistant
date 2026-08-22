@@ -14,12 +14,12 @@ export interface TextProviderModelInfo {
   details: TextProviderModelDetails;
 }
 export interface TextProviderConfig {
-  id: number;
+  id: string;
   kind: TextProviderKind;
   providerType: TextProviderType;
   name: string;
   baseUrl: string;
-  apiKeySecretId: number | null;
+  apiKeySecretId: string | null;
   enabled: boolean;
   checkedAt: string;
   limits: TextProviderLimits | null;
@@ -28,9 +28,9 @@ export interface TextProviderConfig {
   updatedAt: string;
 }
 export interface TextProviderModel extends Omit<TextProviderModelInfo, "id"> {
-  id: number;
+  id: string;
   remoteId: string;
-  providerId: number;
+  providerId: string;
   enabled: boolean;
 }
 export interface TextProviderSnapshot {

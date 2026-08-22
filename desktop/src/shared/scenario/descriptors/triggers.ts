@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { entityIdSchema } from "../../dto/ipc-dto";
 import { mainOutput, type ScenarioNodeDescriptor } from "../node-descriptor";
 
 const manualConfigSchema = z.object({
@@ -68,7 +69,7 @@ export const intervalTriggerDescriptor: ScenarioNodeDescriptor<
 };
 
 const telegramConfigSchema = z.object({
-  integrationProfileId: z.int().positive(),
+  integrationProfileId: entityIdSchema,
   allowedChatIds: z.array(z.string()).default([]),
   allowAnyChat: z.boolean().default(false),
   command: z.string().max(64).default(""),
@@ -87,7 +88,7 @@ export const telegramTriggerDescriptor: ScenarioNodeDescriptor<
   accent: "#475569",
   configSchema: telegramConfigSchema,
   defaultConfig: () => ({
-    integrationProfileId: 0,
+    integrationProfileId: "",
     allowedChatIds: [],
     allowAnyChat: false,
     command: "",
@@ -100,7 +101,7 @@ export const telegramTriggerDescriptor: ScenarioNodeDescriptor<
   isTrigger: true,
   validate: ({ node }) => {
     const config = node.config as {
-      integrationProfileId?: number;
+      integrationProfileId?: string;
       allowedChatIds?: string[];
       allowAnyChat?: boolean;
     };
@@ -122,7 +123,7 @@ export const telegramTriggerDescriptor: ScenarioNodeDescriptor<
 };
 
 const emailConfigSchema = z.object({
-  integrationProfileId: z.int().positive(),
+  integrationProfileId: entityIdSchema,
   mailbox: z.string().default("INBOX"),
   from: z.string().max(320).default(""),
   subjectContains: z.string().max(320).default(""),
@@ -142,7 +143,7 @@ export const emailTriggerDescriptor: ScenarioNodeDescriptor<
   accent: "#475569",
   configSchema: emailConfigSchema,
   defaultConfig: () => ({
-    integrationProfileId: 0,
+    integrationProfileId: "",
     mailbox: "INBOX",
     from: "",
     subjectContains: "",
@@ -156,7 +157,7 @@ export const emailTriggerDescriptor: ScenarioNodeDescriptor<
   isTrigger: true,
   validate: ({ node }) => {
     if (
-      !(node.config as { integrationProfileId?: number }).integrationProfileId
+      !(node.config as { integrationProfileId?: string }).integrationProfileId
     )
       return [
         {

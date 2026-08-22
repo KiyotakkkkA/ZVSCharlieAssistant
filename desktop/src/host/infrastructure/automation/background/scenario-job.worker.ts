@@ -104,7 +104,10 @@ export class ScenarioJobWorker {
             );
           }
         };
-        const executionId = Number(job.payload.executionId);
+        const executionId =
+          typeof job.payload.executionId === "string"
+            ? job.payload.executionId
+            : undefined;
         if (executionId) {
           this.scenarios.resume(executionId, onEvent);
           return;
@@ -115,7 +118,9 @@ export class ScenarioJobWorker {
           "background",
           onEvent,
           undefined,
-          Number(job.payload.scenarioRevisionId) || undefined,
+          typeof job.payload.scenarioRevisionId === "string"
+            ? job.payload.scenarioRevisionId
+            : undefined,
         );
         job.payload.executionId = run.id;
         this.jobs.updatePayload(job.id, job.payload);

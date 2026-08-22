@@ -13,7 +13,7 @@ export interface TextProviderApi {
     input: TestTextProviderConnectionInput,
   ): Promise<TestTextProviderConnectionResult>;
   upsertProvider(input: UpsertTextProviderInput): Promise<TextProviderSnapshot>;
-  deleteProvider(id: number): Promise<TextProviderSnapshot>;
+  deleteProvider(id: string): Promise<TextProviderSnapshot>;
 }
 
 export const TEXT_PROVIDER_IPC_CHANNELS = {

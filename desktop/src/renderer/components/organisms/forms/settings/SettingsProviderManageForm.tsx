@@ -30,15 +30,15 @@ import {
   SettingsProviderOpenrouterModelCard,
 } from "../../../molecules";
 import { textProviderStore } from "../../../../stores";
+import { SYSTEM_SECRET_CATEGORY_IDS } from "../../../../../shared/entity-ids";
 
-const API_KEYS_CATEGORY_ID = 1;
 export type ProviderStatus = "connected" | "unchecked" | "error";
 interface ProviderModelDraft extends TextProviderModelInfo {
   enabled: boolean;
 }
 
 export interface SettingsProviderDraft {
-  id: number | null;
+  id: string | null;
   name: string;
   kind: TextProviderKind;
   providerType: TextProviderType;
@@ -127,7 +127,7 @@ export function SettingsProviderManageForm({
         name: model.name,
         baseUrl: model.baseUrl,
         apiKeySecretId: model.apiKeySecretId
-          ? Number(model.apiKeySecretId)
+          ? model.apiKeySecretId
           : undefined,
         enabled: model.enabled,
         enabledModelIds: model.models
@@ -224,7 +224,7 @@ export function SettingsProviderManageForm({
               className="md:col-span-2"
             >
               <SecretOrientedSelect
-                categoryId={API_KEYS_CATEGORY_ID}
+                categoryId={SYSTEM_SECRET_CATEGORY_IDS.apiKeys}
                 value={model.apiKeySecretId}
                 onChange={(apiKeySecretId) =>
                   onConnectionChange({ apiKeySecretId })

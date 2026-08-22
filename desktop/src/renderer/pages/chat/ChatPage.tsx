@@ -119,7 +119,7 @@ export const ChatPage = observer(function ChatPage() {
         mode === "agent"
           ? (selectedAgent?.textModelId ?? undefined)
           : mode === "chat" || mode === "planner"
-            ? Number(model)
+            ? model
             : undefined,
       agentId: mode === "agent" ? agentId : undefined,
       scenarioId: mode === "scenario" ? scenarioId : undefined,
@@ -162,7 +162,7 @@ export const ChatPage = observer(function ChatPage() {
         query={query}
         onQueryChange={setQuery}
         onCreate={() => chatStore.newConversation()}
-        onSelect={(dialog) => void chatStore.select(Number(dialog.id))}
+        onSelect={(dialog) => void chatStore.select(dialog.id)}
         onEdit={(dialog) => {
           setDialogToEdit(dialog);
           setDialogTitle(dialog.title);
@@ -273,7 +273,7 @@ export const ChatPage = observer(function ChatPage() {
         )}
         onCancel={() => setDialogToDelete(null)}
         onConfirm={async (dialog) => {
-          await chatStore.deleteConversation(Number(dialog.id));
+          await chatStore.deleteConversation(dialog.id);
           setDialogToDelete(null);
         }}
       />
@@ -297,7 +297,7 @@ export const ChatPage = observer(function ChatPage() {
                 if (!dialogTitle.trim()) return;
                 setRenaming(true);
                 void chatStore
-                  .renameConversation(Number(dialogToEdit.id), dialogTitle)
+                  .renameConversation(dialogToEdit.id, dialogTitle)
                   .then(() => setDialogToEdit(null))
                   .finally(() => setRenaming(false));
               }}

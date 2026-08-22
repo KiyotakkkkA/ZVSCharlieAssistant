@@ -6,6 +6,7 @@ import type {
   VectorDocumentStatus,
 } from "../../../shared/models/vector-store";
 import type { UpsertVectorStoreInput } from "../../../shared/dto";
+import { newEntityId } from "./entity-id";
 
 export class VectorStoreRepository {
   constructor(readonly db: Database.Database) {}
@@ -25,7 +26,7 @@ export class VectorStoreRepository {
       ).map(mapDocument),
     };
   }
-  documents(ids: number[]) {
+  documents(ids: string[]) {
     if (!ids.length) return [];
     const placeholders = ids.map(() => "?").join(",");
     return (
@@ -36,29 +37,31 @@ export class VectorStoreRepository {
         .all(...ids) as Record<string, unknown>[]
     ).map(mapDocument);
   }
-  store(id: number) {
+  store(id: string) {
     const row = this.db
       .prepare("SELECT * FROM vector_stores WHERE id=?")
       .get(id) as Record<string, unknown> | undefined;
     return row ? mapStore(row) : undefined;
   }
   upsert(input: UpsertVectorStoreInput) {
-    if (input.id === undefined)
-      return Number(
-        this.db
-          .prepare(
-            "INSERT INTO vector_stores(name,description,embedding_model_id,search_mode,chunk_size_tokens,chunk_overlap_tokens,status) VALUES(?,?,?,?,?,?,CASE WHEN ? IS NULL THEN 'disabled' ELSE 'ready' END)",
-          )
-          .run(
-            input.name,
-            input.description,
-            input.embeddingModelId,
-            input.searchMode,
-            input.chunkSizeTokens,
-            input.chunkOverlapTokens,
-            input.embeddingModelId,
-          ).lastInsertRowid,
-      );
+    if (input.id === undefined) {
+      const id = newEntityId();
+      this.db
+        .prepare(
+          "INSERT INTO vector_stores(id,name,description,embedding_model_id,search_mode,chunk_size_tokens,chunk_overlap_tokens,status) VALUES(?,?,?,?,?,?,?,CASE WHEN ? IS NULL THEN 'disabled' ELSE 'ready' END)",
+        )
+        .run(
+          id,
+          input.name,
+          input.description,
+          input.embeddingModelId,
+          input.searchMode,
+          input.chunkSizeTokens,
+          input.chunkOverlapTokens,
+          input.embeddingModelId,
+        );
+      return id;
+    }
     const current = this.store(input.id);
     if (!current) throw new Error("Векторное хранилище не найдено");
     if (
@@ -88,10 +91,10 @@ export class VectorStoreRepository {
     if (!result.changes) throw new Error("Векторное хранилище не найдено");
     return input.id;
   }
-  deleteStore(id: number) {
+  deleteStore(id: string) {
     this.db.prepare("DELETE FROM vector_stores WHERE id=?").run(id);
   }
-  hasDocuments(storeId: number) {
+  hasDocuments(storeId: string) {
     return Boolean(
       this.db
         .prepare(
@@ -100,7 +103,7 @@ export class VectorStoreRepository {
         .get(storeId),
     );
   }
-  hasProcessingDocuments(storeId: number) {
+  hasProcessingDocuments(storeId: string) {
     return Boolean(
       this.db
         .prepare(
@@ -115,7 +118,7 @@ export class VectorStoreRepository {
         .prepare(
           "SELECT DISTINCT vector_store_id FROM vector_store_documents WHERE status IN ('queued','extracting','embedding')",
         )
-        .all() as Array<{ vector_store_id: number }>
+        .all() as Array<{ vector_store_id: string }>
     ).map((item) => item.vector_store_id);
     this.db
       .prepare(
@@ -125,7 +128,7 @@ export class VectorStoreRepository {
     for (const storeId of storeIds) this.refreshStoreState(storeId);
   }
   createDocument(
-    storeId: number,
+    storeId: string,
     fileName: string,
     mimeType: string,
     path: string,
@@ -143,32 +146,32 @@ export class VectorStoreRepository {
         .run(fileName, mimeType, path, size, existing.id);
       return existing.id;
     }
-    return Number(
-      this.db
-        .prepare(
-          "INSERT INTO vector_store_documents(vector_store_id,file_name,mime_type,local_path,content_hash,size) VALUES(?,?,?,?,?,?)",
-        )
-        .run(storeId, fileName, mimeType, path, hash, size).lastInsertRowid,
-    );
+    const id = newEntityId();
+    this.db
+      .prepare(
+        "INSERT INTO vector_store_documents(id,vector_store_id,file_name,mime_type,local_path,content_hash,size) VALUES(?,?,?,?,?,?,?)",
+      )
+      .run(id, storeId, fileName, mimeType, path, hash, size);
+    return id;
   }
-  documentByHash(storeId: number, hash: string) {
+  documentByHash(storeId: string, hash: string) {
     return this.db
       .prepare(
         "SELECT id,status FROM vector_store_documents WHERE vector_store_id=? AND content_hash=?",
       )
       .get(storeId, hash) as
-      { id: number; status: VectorDocumentStatus } | undefined;
+      { id: string; status: VectorDocumentStatus } | undefined;
   }
-  document(id: number) {
+  document(id: string) {
     return this.db
       .prepare("SELECT * FROM vector_store_documents WHERE id=?")
       .get(id) as Record<string, unknown> | undefined;
   }
-  deleteDocument(id: number) {
+  deleteDocument(id: string) {
     this.db.prepare("DELETE FROM vector_store_documents WHERE id=?").run(id);
   }
   updateDocument(
-    id: number,
+    id: string,
     status: VectorDocumentStatus,
     progress: number,
     chunkCount = 0,
@@ -181,7 +184,7 @@ export class VectorStoreRepository {
       .run(status, progress, chunkCount, error ?? null, id);
   }
   setStoreState(
-    id: number,
+    id: string,
     status: VectorStoreConfig["status"],
     dimension?: number,
   ) {
@@ -191,7 +194,7 @@ export class VectorStoreRepository {
       )
       .run(status, dimension ?? null, id);
   }
-  refreshStoreState(id: number, dimension?: number) {
+  refreshStoreState(id: string, dimension?: number) {
     const statuses = this.db
       .prepare(
         "SELECT status FROM vector_store_documents WHERE vector_store_id=?",
@@ -208,7 +211,7 @@ export class VectorStoreRepository {
           : "disabled";
     this.setStoreState(id, status, dimension);
   }
-  embeddingModel(id: number) {
+  embeddingModel(id: string) {
     return this.db
       .prepare(
         `SELECT m.remote_id,p.kind,p.base_url,p.api_key_secret_id FROM text_provider_models m JOIN text_provider_configs p ON p.id=m.provider_id WHERE m.id=? AND m.enabled=1 AND p.enabled=1 AND p.provider_type='embedding'`,
@@ -218,17 +221,17 @@ export class VectorStoreRepository {
           remote_id: string;
           kind: "ollama" | "openrouter";
           base_url: string;
-          api_key_secret_id: number | null;
+          api_key_secret_id: string | null;
         }
       | undefined;
   }
 }
 const mapStore = (r: Record<string, unknown>): VectorStoreConfig => ({
-  id: Number(r.id),
+  id: String(r.id),
   name: String(r.name),
   description: String(r.description),
   embeddingModelId:
-    r.embedding_model_id === null ? null : Number(r.embedding_model_id),
+    r.embedding_model_id === null ? null : String(r.embedding_model_id),
   status: r.status as VectorStoreConfig["status"],
   searchMode: r.search_mode as VectorStoreConfig["searchMode"],
   chunkSizeTokens: Number(r.chunk_size_tokens),
@@ -239,8 +242,8 @@ const mapStore = (r: Record<string, unknown>): VectorStoreConfig => ({
   updatedAt: String(r.updated_at),
 });
 const mapDocument = (r: Record<string, unknown>): VectorStoreDocument => ({
-  id: Number(r.id),
-  vectorStoreId: Number(r.vector_store_id),
+  id: String(r.id),
+  vectorStoreId: String(r.vector_store_id),
   fileName: String(r.file_name),
   mimeType: String(r.mime_type),
   size: Number(r.size),

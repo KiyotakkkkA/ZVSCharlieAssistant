@@ -23,7 +23,7 @@ export function registerSecretStorageHandlers(
         parseIpcDto(upsertSecretCategoryDtoSchema, input),
       ),
   );
-  ipcMain.handle(SECRET_IPC_CHANNELS.copySecret, (_event, id: number) => {
+  ipcMain.handle(SECRET_IPC_CHANNELS.copySecret, (_event, id: string) => {
     const secret = repository.findSecret(parseIpcDto(entityIdSchema, id));
     if (!secret) throw new Error("Секрет не найден");
     clipboard.writeText(secret.content);
@@ -33,10 +33,10 @@ export function registerSecretStorageHandlers(
     (_event, input: UpsertSecretInput) =>
       repository.upsertSecret(parseIpcDto(upsertSecretDtoSchema, input)),
   );
-  ipcMain.handle(SECRET_IPC_CHANNELS.deleteCategory, (_event, id: number) =>
+  ipcMain.handle(SECRET_IPC_CHANNELS.deleteCategory, (_event, id: string) =>
     repository.deleteCategory(parseIpcDto(entityIdSchema, id)),
   );
-  ipcMain.handle(SECRET_IPC_CHANNELS.deleteSecret, (_event, id: number) =>
+  ipcMain.handle(SECRET_IPC_CHANNELS.deleteSecret, (_event, id: string) =>
     repository.deleteSecret(parseIpcDto(entityIdSchema, id)),
   );
 }

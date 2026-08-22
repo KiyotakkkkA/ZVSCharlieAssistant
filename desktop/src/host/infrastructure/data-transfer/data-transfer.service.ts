@@ -73,13 +73,12 @@ export class DataTransferService {
     }
     if (input.entities.includes("skills")) {
       sections.skills = {
-        version: 1,
+        version: 2,
         items: this.automation
           .getSnapshot()
           .skills.filter((skill) => !skill.builtin)
           .map(
             ({
-              id: _id,
               builtin: _builtin,
               assignedAgentsCount: _assignedAgentsCount,
               updatedAt: _updatedAt,
@@ -177,15 +176,18 @@ export class DataTransferService {
         const existing = new Map(
           this.automation.getSnapshot().skills.map((skill) => [skill.slug, skill]),
         );
+        const existingById = new Map(
+          this.automation.getSnapshot().skills.map((skill) => [skill.id, skill]),
+        );
         for (const skill of sections.skills.items) {
-          const current = existing.get(skill.slug);
+          const current = existingById.get(skill.id) ?? existing.get(skill.slug);
           if (current?.builtin || (current && input.conflictPolicy === "skip")) {
             result.skipped++;
             continue;
           }
           this.automation.upsertSkill({
             ...skill,
-            ...(current ? { id: current.id } : {}),
+            id: current?.id ?? skill.id,
           });
           if (current) result.skills.update++;
           else result.skills.create++;
@@ -214,8 +216,11 @@ export class DataTransferService {
     const existing = new Map(
       this.automation.getSnapshot().skills.map((skill) => [skill.slug, skill]),
     );
+    const existingById = new Map(
+      this.automation.getSnapshot().skills.map((skill) => [skill.id, skill]),
+    );
     for (const skill of section.items) {
-      const current = existing.get(skill.slug);
+      const current = existingById.get(skill.id) ?? existing.get(skill.slug);
       if (!current) counts.create++;
       else if (current.builtin) counts.conflict++;
       else counts.update++;

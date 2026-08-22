@@ -1,13 +1,14 @@
 import { z } from "zod";
 import {
   automationStatusSchema,
+  entityIdSchema,
   upsertMemoryPolicyDtoSchema,
   upsertTerminalPolicyDtoSchema,
 } from "../../../shared/dto";
 
 const portableCategorySchema = z
   .object({
-    portableId: z.uuid(),
+    id: entityIdSchema,
     systemKey: z.enum(["api-keys", "personal-data"]).optional(),
     label: z.string().trim().min(1).max(200),
   })
@@ -15,8 +16,8 @@ const portableCategorySchema = z
 
 const portableSecretSchema = z
   .object({
-    portableId: z.uuid(),
-    categoryPortableId: z.uuid(),
+    id: entityIdSchema,
+    categoryId: entityIdSchema,
     label: z.string().trim().min(1).max(200),
     content: z.string().max(1_000_000),
   })
@@ -28,7 +29,7 @@ export const dataTransferPayloadSchema = z
       .object({
         secretStorage: z
           .object({
-            version: z.literal(1),
+            version: z.literal(2),
             categories: z.array(portableCategorySchema).max(10_000),
             secrets: z.array(portableSecretSchema).max(100_000),
           })
@@ -50,11 +51,12 @@ export const dataTransferPayloadSchema = z
           .optional(),
         skills: z
           .object({
-            version: z.literal(1),
+            version: z.literal(2),
             items: z
               .array(
                 z
                   .object({
+                    id: entityIdSchema,
                     slug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
                     name: z.string().trim().min(1).max(120),
                     description: z.string().max(500),
@@ -82,25 +84,25 @@ export const dataTransferPayloadSchema = z
     const categoryIds = new Set<string>();
     const secretIds = new Set<string>();
     for (const category of section.categories) {
-      if (categoryIds.has(category.portableId))
+      if (categoryIds.has(category.id))
         context.addIssue({
           code: "custom",
-          message: `Повторяющийся ID категории: ${category.portableId}`,
+          message: `Повторяющийся ID категории: ${category.id}`,
         });
-      categoryIds.add(category.portableId);
+      categoryIds.add(category.id);
     }
     for (const secret of section.secrets) {
-      if (secretIds.has(secret.portableId))
+      if (secretIds.has(secret.id))
         context.addIssue({
           code: "custom",
-          message: `Повторяющийся ID секрета: ${secret.portableId}`,
+          message: `Повторяющийся ID секрета: ${secret.id}`,
         });
-      if (!categoryIds.has(secret.categoryPortableId))
+      if (!categoryIds.has(secret.categoryId))
         context.addIssue({
           code: "custom",
           message: `Категория секрета «${secret.label}» отсутствует`,
         });
-      secretIds.add(secret.portableId);
+      secretIds.add(secret.id);
     }
   });
 

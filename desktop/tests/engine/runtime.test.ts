@@ -516,7 +516,11 @@ describe("приостановка и продолжение", () => {
     const asking: NodeExecutor<never, never> = {
       kind: "noop",
       async execute(context: { items: unknown }) {
-        if (!answered) throw new ScenarioSuspended(42, "ask");
+        if (!answered)
+          throw new ScenarioSuspended(
+            "019cba09-8f30-7000-8000-000000000304",
+            "ask",
+          );
         return { items: context.items };
       },
     } as unknown as NodeExecutor<never, never>;
@@ -528,7 +532,10 @@ describe("приостановка и продолжение", () => {
     });
 
     expect(first.status).toBe("suspended");
-    expect(first.suspension).toEqual({ nodeId: ask.id, questionId: 42 });
+    expect(first.suspension).toEqual({
+      nodeId: ask.id,
+      questionId: "019cba09-8f30-7000-8000-000000000304",
+    });
     expect(first.checkpoint).toBeDefined();
     expect(persistence.statusesFor(ask.id)).toEqual(["waiting_for_approval"]);
     expect(persistence.countFor(after.id)).toBe(0);

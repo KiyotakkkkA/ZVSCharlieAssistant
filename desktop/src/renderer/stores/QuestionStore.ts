@@ -4,7 +4,7 @@ import { parseIpcDto, answerQuestionDtoSchema } from "../../shared/dto";
 
 export class QuestionStore {
   pending: UserQuestion[] = [];
-  conversationId: number | null = null;
+  conversationId: string | null = null;
   answering = false;
 
   private unsubscribe?: () => void;
@@ -35,7 +35,7 @@ export class QuestionStore {
     );
   }
 
-  async load(conversationId: number | null) {
+  async load(conversationId: string | null) {
     runInAction(() => (this.conversationId = conversationId));
     if (!conversationId) {
       runInAction(() => (this.pending = []));
@@ -50,7 +50,7 @@ export class QuestionStore {
     });
   }
 
-  async answer(questionId: number, answer: string[]) {
+  async answer(questionId: string, answer: string[]) {
     this.answering = true;
     try {
       await window.desktop.assistant.questions.answer(

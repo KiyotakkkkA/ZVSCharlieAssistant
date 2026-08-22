@@ -44,7 +44,7 @@ export class HostScenarioEngineServices implements ScenarioEngineServices {
     private readonly runSubScenarioEngine?: () => ScenarioRuntimeEngine,
   ) {}
 
-  defaultModelId(): number | null {
+  defaultModelId(): string | null {
     return this.data.defaultModelId() ?? null;
   }
 
@@ -133,7 +133,7 @@ export class HostScenarioEngineServices implements ScenarioEngineServices {
   }
 
   async searchKnowledge(input: {
-    vectorStoreIds: number[];
+    vectorStoreIds: string[];
     query: string;
     limit: number;
     minScore?: number;
@@ -156,7 +156,7 @@ export class HostScenarioEngineServices implements ScenarioEngineServices {
 
   httpFetch: typeof fetch = (...args) => fetch(...args);
 
-  secret(secretId: number): string | undefined {
+  secret(secretId: string): string | undefined {
     return this.secrets.findSecret(secretId)?.content;
   }
 

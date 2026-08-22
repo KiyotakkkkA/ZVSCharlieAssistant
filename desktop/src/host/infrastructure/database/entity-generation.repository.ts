@@ -5,11 +5,12 @@ import type {
   GeneratedEntityKind,
 } from "../../../shared/models/entity-generation";
 import type { StartEntityGenerationInput } from "../../../shared/dto";
+import { newEntityId } from "./entity-id";
 
 interface EntityGenerationRow {
-  id: number;
+  id: string;
   kind: GeneratedEntityKind;
-  model_id: number;
+  model_id: string;
   prompt: string;
   status: EntityGenerationStatus;
   entity_id: string | null;
@@ -35,7 +36,7 @@ export class EntityGenerationRepository {
     return rows.map(mapRun);
   }
 
-  find(id: number): EntityGenerationRun | undefined {
+  find(id: string): EntityGenerationRun | undefined {
     const row = this.database
       .prepare(`SELECT ${COLUMNS} FROM entity_generation_runs WHERE id=?`)
       .get(id) as EntityGenerationRow | undefined;
@@ -43,17 +44,16 @@ export class EntityGenerationRepository {
   }
 
   create(input: StartEntityGenerationInput): EntityGenerationRun {
-    const id = Number(
-      this.database
-        .prepare(
-          `INSERT INTO entity_generation_runs(kind,model_id,prompt) VALUES(?,?,?)`,
-        )
-        .run(input.kind, input.modelId, input.prompt).lastInsertRowid,
-    );
+    const id = newEntityId();
+    this.database
+      .prepare(
+        `INSERT INTO entity_generation_runs(id,kind,model_id,prompt) VALUES(?,?,?,?)`,
+      )
+      .run(id, input.kind, input.modelId, input.prompt);
     return this.find(id)!;
   }
 
-  markRunning(id: number): void {
+  markRunning(id: string): void {
     this.database
       .prepare(
         `UPDATE entity_generation_runs
@@ -62,7 +62,7 @@ export class EntityGenerationRepository {
       .run(id);
   }
 
-  markCompleted(id: number, entityId: string, entityName: string): void {
+  markCompleted(id: string, entityId: string, entityName: string): void {
     this.database
       .prepare(
         `UPDATE entity_generation_runs
@@ -72,7 +72,7 @@ export class EntityGenerationRepository {
       .run(entityId, entityName, id);
   }
 
-  markFailed(id: number, message: string): void {
+  markFailed(id: string, message: string): void {
     this.database
       .prepare(
         `UPDATE entity_generation_runs

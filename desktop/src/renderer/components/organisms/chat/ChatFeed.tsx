@@ -32,7 +32,7 @@ import {
 import { DangerModal } from "../modals";
 
 const EMPTY_SCENARIO_EXECUTIONS = new Map<
-  number,
+  string,
   { run: ScenarioRun; nodes: ScenarioNodeRun[] }
 >();
 const EMPTY_SCENARIO_OUTPUT = new Map<string, string>();
@@ -40,13 +40,13 @@ const EMPTY_CHAT_SOURCES: ChatSources = { internal: [], web: [] };
 const EMPTY_CHAT_ARTIFACTS: ChatArtifact[] = [];
 
 interface ChatMessage {
-  id: number;
+  id: string;
   role: "user" | "assistant";
   text: string;
   reasoning?: string;
   error?: string | null;
   toolCalls?: ChatToolCall[];
-  scenarioRunId?: number | null;
+  scenarioRunId?: string | null;
   status?: "streaming" | "completed" | "failed" | "cancelled";
   usageLabel: string;
 }
@@ -74,15 +74,15 @@ interface ChatFeedProps {
   headerActions?: ReactNode;
   messages: ChatMessage[];
   onSuggestionSelect: (prompt: string) => void;
-  conversationId: number | null;
+  conversationId: string | null;
   hasMore: boolean;
   loadingEarlier: boolean;
   onLoadEarlier: () => Promise<void>;
   actionsDisabled?: boolean;
-  onEditMessage: (messageId: number, text: string) => void | Promise<void>;
-  onDeleteMessage: (messageId: number) => void | Promise<void>;
+  onEditMessage: (messageId: string, text: string) => void | Promise<void>;
+  onDeleteMessage: (messageId: string) => void | Promise<void>;
   scenarioExecutions?: Map<
-    number,
+    string,
     { run: ScenarioRun; nodes: ScenarioNodeRun[] }
   >;
   scenarioNodeOutput?: Map<string, string>;

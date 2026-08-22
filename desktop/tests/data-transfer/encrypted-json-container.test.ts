@@ -90,9 +90,10 @@ describe("encrypted data transfer container", () => {
           },
         },
         skills: {
-          version: 1,
+          version: 2,
           items: [
             {
+              id: "019cba09-8f30-7000-8000-000000000401",
               slug: "user-skill",
               name: "Пользовательский навык",
               description: "Описание",

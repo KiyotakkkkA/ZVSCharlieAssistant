@@ -13,8 +13,8 @@ import type {
 
 export interface MemoryWriteContext {
   source: MemorySource;
-  conversationId?: number | null;
-  executionId?: number | null;
+  conversationId?: string | null;
+  executionId?: string | null;
   agentId?: string | null;
   agentMayWrite?: boolean;
 }
@@ -126,12 +126,12 @@ export class MemoryService {
     return this.snapshot();
   }
 
-  setPinned(id: number, pinned: boolean): MemorySnapshot {
+  setPinned(id: string, pinned: boolean): MemorySnapshot {
     this.data.setPinned(id, pinned);
     return this.snapshot();
   }
 
-  remove(id: number): MemorySnapshot {
+  remove(id: string): MemorySnapshot {
     const entry = this.data.find(id);
     this.data.remove(id);
     if (entry)
@@ -171,7 +171,7 @@ const KIND_LABELS: Record<MemoryKind, string> = {
 };
 
 const dedupe = (entries: MemoryEntry[]): MemoryEntry[] => {
-  const seen = new Set<number>();
+  const seen = new Set<string>();
   return entries.filter((entry) =>
     seen.has(entry.id) ? false : (seen.add(entry.id), true),
   );

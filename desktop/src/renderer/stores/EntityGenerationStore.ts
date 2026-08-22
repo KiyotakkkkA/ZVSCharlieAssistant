@@ -7,7 +7,7 @@ import {
   type StartEntityGenerationInput,
 } from "../../shared/dto";
 
-const settled = new Set<number>();
+const settled = new Set<string>();
 let timer: number | null = null;
 
 class EntityGenerationStore {

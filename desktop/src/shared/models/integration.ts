@@ -8,7 +8,7 @@ export interface IntegrationProfile extends Omit<
   UpsertIntegrationProfileInput,
   "id"
 > {
-  id: number;
+  id: string;
   status: ProvidedEntityStatus;
   checkedAt: string | null;
   lastError: string | null;

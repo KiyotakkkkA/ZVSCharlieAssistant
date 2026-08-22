@@ -41,24 +41,24 @@ export function registerAssistantHandlers(
   );
   ipcMain.handle(
     ASSISTANT_IPC_CHANNELS.memorySetPinned,
-    (_event, id: number, pinned: boolean) =>
+    (_event, id: string, pinned: boolean) =>
       memory.setPinned(parseIpcDto(entityIdSchema, id), Boolean(pinned)),
   );
-  ipcMain.handle(ASSISTANT_IPC_CHANNELS.memoryRemove, (_event, id: number) =>
+  ipcMain.handle(ASSISTANT_IPC_CHANNELS.memoryRemove, (_event, id: string) =>
     memory.remove(parseIpcDto(entityIdSchema, id)),
   );
   ipcMain.handle(ASSISTANT_IPC_CHANNELS.memoryClear, () => memory.clear());
 
   ipcMain.handle(
     ASSISTANT_IPC_CHANNELS.tasksForConversation,
-    (_event, conversationId: number) =>
+    (_event, conversationId: string) =>
       taskPlans.find({
         conversationId: parseIpcDto(entityIdSchema, conversationId),
       }) ?? null,
   );
   ipcMain.handle(
     ASSISTANT_IPC_CHANNELS.tasksSetStatus,
-    (_event, conversationId: number, position: number, status: string) =>
+    (_event, conversationId: string, position: number, status: string) =>
       taskPlans.updateItemStatus(
         { conversationId: parseIpcDto(entityIdSchema, conversationId) },
         Number(position),
@@ -67,7 +67,7 @@ export function registerAssistantHandlers(
   );
   ipcMain.handle(
     ASSISTANT_IPC_CHANNELS.tasksClear,
-    (_event, conversationId: number) =>
+    (_event, conversationId: string) =>
       taskPlans.clear({
         conversationId: parseIpcDto(entityIdSchema, conversationId),
       }),
@@ -75,14 +75,14 @@ export function registerAssistantHandlers(
 
   ipcMain.handle(
     ASSISTANT_IPC_CHANNELS.questionsPending,
-    (_event, conversationId: number) =>
+    (_event, conversationId: string) =>
       questions.pendingForConversation(
         parseIpcDto(entityIdSchema, conversationId),
       ),
   );
   ipcMain.handle(
     ASSISTANT_IPC_CHANNELS.questionsForExecution,
-    (_event, executionId: number) =>
+    (_event, executionId: string) =>
       questions.forExecution(parseIpcDto(entityIdSchema, executionId)),
   );
   ipcMain.handle(ASSISTANT_IPC_CHANNELS.questionsAnswer, (_event, input) => {

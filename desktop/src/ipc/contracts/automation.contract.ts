@@ -25,7 +25,7 @@ export interface AutomationApi {
   upsertAgent(input: UpsertAutomationAgentInput): Promise<AutomationAgent>;
   deleteAgent(id: string): Promise<void>;
   upsertSkill(input: UpsertAutomationSkillInput): Promise<AutomationSkill>;
-  deleteSkill(id: number): Promise<void>;
+  deleteSkill(id: string): Promise<void>;
   upsertToolSecretBinding(
     input: UpsertAutomationToolSecretBindingInput,
   ): Promise<AutomationTool>;
@@ -41,13 +41,13 @@ export interface AutomationApi {
     input: unknown,
     origin?: ScenarioRunOrigin,
   ): Promise<ScenarioRun>;
-  cancelScenarioRun(id: number): Promise<void>;
-  approveScenarioRun(id: number, approved: boolean): Promise<void>;
+  cancelScenarioRun(id: string): Promise<void>;
+  approveScenarioRun(id: string, approved: boolean): Promise<void>;
   getLatestScenarioRun(
     scenarioId: string,
   ): Promise<{ run: ScenarioRun; nodes: ScenarioNodeRun[] } | null>;
   getScenarioRun(
-    id: number,
+    id: string,
   ): Promise<{ run: ScenarioRun; nodes: ScenarioNodeRun[] }>;
   subscribeScenarioRuns(
     listener: (event: ScenarioRunEvent) => void,

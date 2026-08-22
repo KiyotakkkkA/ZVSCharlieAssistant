@@ -3,7 +3,7 @@ import type { TaskItemStatus, TaskPlan } from "../../ipc/contracts";
 
 export class TaskPlanStore {
   plan: TaskPlan | null = null;
-  conversationId: number | null = null;
+  conversationId: string | null = null;
 
   constructor() {
     makeAutoObservable(this, {}, { autoBind: true });
@@ -21,7 +21,7 @@ export class TaskPlanStore {
     return { done, total: items.length };
   }
 
-  async load(conversationId: number | null) {
+  async load(conversationId: string | null) {
     runInAction(() => (this.conversationId = conversationId));
     if (!conversationId) {
       runInAction(() => (this.plan = null));

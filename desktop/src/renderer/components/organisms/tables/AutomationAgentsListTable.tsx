@@ -9,7 +9,7 @@ interface Row extends AutomationAgent {
 
 interface Props {
   agents: AutomationAgent[];
-  modelLabel: (id: number) => string;
+  modelLabel: (id: string) => string;
   onEdit: (agent: AutomationAgent) => void;
   onDelete: (agent: AutomationAgent) => void;
 }

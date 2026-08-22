@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { entityIdSchema } from "../../dto/ipc-dto";
 import { exprText } from "../config-fields";
 import { mainInput, type ScenarioNodeDescriptor } from "../node-descriptor";
 
@@ -8,7 +9,7 @@ export const responseChannelSchema = z.object({
   mode: z
     .enum(["reply_to_trigger", "explicit_recipient"])
     .default("reply_to_trigger"),
-  integrationProfileId: z.int().positive().nullable().default(null),
+  integrationProfileId: entityIdSchema.nullable().default(null),
   recipient: exprText(),
   subject: exprText(),
   attachFiles: z.boolean().default(false),

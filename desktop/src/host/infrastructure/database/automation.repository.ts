@@ -1,5 +1,5 @@
 import type Database from "better-sqlite3";
-import { randomUUID } from "node:crypto";
+import { newEntityId } from "./entity-id";
 import type {
   AutomationAgent,
   AutomationSnapshot,
@@ -28,7 +28,7 @@ interface AgentRow {
   name: string;
   description: string;
   instructions: string;
-  text_model_id: number | null;
+  text_model_id: string | null;
   status: AutomationAgent["status"];
   max_tool_calls: number;
   timeout_seconds: number;
@@ -106,7 +106,7 @@ export class AutomationRepository {
         `SELECT binding_key, secret_id
          FROM automation_tool_secret_bindings WHERE tool_id=? ORDER BY binding_key`,
       )
-      .all(toolId) as Array<{ binding_key: string; secret_id: number }>;
+      .all(toolId) as Array<{ binding_key: string; secret_id: string }>;
   }
 
   toolSecretId(toolId: string, key: string) {
@@ -115,7 +115,7 @@ export class AutomationRepository {
         .prepare(
           "SELECT secret_id FROM automation_tool_secret_bindings WHERE tool_id=? AND binding_key=?",
         )
-        .get(toolId, key) as { secret_id: number } | undefined
+        .get(toolId, key) as { secret_id: string } | undefined
     )?.secret_id;
   }
 
@@ -158,7 +158,7 @@ export class AutomationRepository {
     return this.mapTool(tool);
   }
 
-  secretExistsInCategory(id: number, categoryId: number): boolean {
+  secretExistsInCategory(id: string, categoryId: string): boolean {
     return Boolean(
       this.database
         .prepare("SELECT 1 FROM secret_entities WHERE id=? AND category_id=?")
@@ -188,23 +188,23 @@ export class AutomationRepository {
       toolsByAgent.set(item.agent_id, values);
     }
 
-    const storesByAgent = new Map<string, number[]>();
+    const storesByAgent = new Map<string, string[]>();
     for (const item of this.database
       .prepare(
         "SELECT agent_id,vector_store_id FROM automation_agent_vector_stores ORDER BY vector_store_id",
       )
-      .all() as Array<{ agent_id: string; vector_store_id: number }>) {
+      .all() as Array<{ agent_id: string; vector_store_id: string }>) {
       const values = storesByAgent.get(item.agent_id) ?? [];
       values.push(item.vector_store_id);
       storesByAgent.set(item.agent_id, values);
     }
 
-    const skillsByAgent = new Map<string, number[]>();
+    const skillsByAgent = new Map<string, string[]>();
     for (const item of this.database
       .prepare(
         "SELECT agent_id,skill_id FROM automation_agent_skills ORDER BY skill_id",
       )
-      .all() as Array<{ agent_id: string; skill_id: number }>) {
+      .all() as Array<{ agent_id: string; skill_id: string }>) {
       const values = skillsByAgent.get(item.agent_id) ?? [];
       values.push(item.skill_id);
       skillsByAgent.set(item.agent_id, values);
@@ -240,8 +240,6 @@ export class AutomationRepository {
     assertPositiveInteger(input.retrievalLimit, "Лимит поиска", 20);
 
     const textModelId = input.textModelId;
-    if (!Number.isInteger(textModelId) || textModelId <= 0)
-      throw new Error("Некорректная модель");
     if (!this.textModelExists(textModelId))
       throw new Error("Выбранная модель недоступна");
 
@@ -252,8 +250,6 @@ export class AutomationRepository {
       ? [...new Set(input.allowedVectorStoreIds)]
       : [];
     for (const storeId of allowedVectorStoreIds) {
-      if (!Number.isInteger(storeId) || storeId < 1)
-        throw new Error("Некорректный идентификатор векторного хранилища");
       if (!this.vectorStoreExists(storeId))
         throw new Error(`Векторное хранилище #${storeId} недоступно`);
     }
@@ -262,7 +258,7 @@ export class AutomationRepository {
     const skillsById = new Map(this.listSkillsFull().map((s) => [s.id, s]));
     for (const skillId of allowedSkillIds) {
       const skill = skillsById.get(skillId);
-      if (!Number.isInteger(skillId) || !skill)
+      if (!skill)
         throw new Error(`Навык #${skillId} не найден`);
       if (skill.status !== "active")
         throw new Error(`Навык «${skill.name}» не активен`);
@@ -275,7 +271,7 @@ export class AutomationRepository {
         );
     }
 
-    const id = input.id ?? randomUUID();
+    const id = input.id ?? newEntityId();
     if (input.id && !this.findAgent(input.id))
       throw new Error("Агент не найден");
 
@@ -405,7 +401,7 @@ export class AutomationRepository {
     if (result.changes === 0) throw new Error("Агент не найден");
   }
 
-  textModelExists(id: number): boolean {
+  textModelExists(id: string): boolean {
     return Boolean(
       this.database
         .prepare(
@@ -415,7 +411,7 @@ export class AutomationRepository {
     );
   }
 
-  vectorStoreExists(id: number): boolean {
+  vectorStoreExists(id: string): boolean {
     return Boolean(
       this.database
         .prepare(
@@ -437,7 +433,7 @@ export class AutomationRepository {
         )
         .all() as Array<Record<string, unknown>>
     ).map((row) => ({
-      id: Number(row.id),
+      id: String(row.id),
       slug: String(row.slug),
       name: String(row.name),
       description: String(row.description),
@@ -461,7 +457,7 @@ export class AutomationRepository {
     }));
   }
 
-  findSkill(id: number): Omit<AutomationSkill, "instructions"> | undefined {
+  findSkill(id: string): Omit<AutomationSkill, "instructions"> | undefined {
     const row = this.database
       .prepare(
         `SELECT s.id,s.slug,s.name,s.description,s.status,s.version,s.author,s.builtin,
@@ -473,7 +469,7 @@ export class AutomationRepository {
       .get(id) as Record<string, unknown> | undefined;
     if (!row) return undefined;
     return {
-      id: Number(row.id),
+      id: String(row.id),
       slug: String(row.slug),
       name: String(row.name),
       description: String(row.description),
@@ -524,8 +520,8 @@ export class AutomationRepository {
 
     let skill: Omit<AutomationSkill, "instructions">;
 
-    if (normalized.id) {
-      const result = this.database
+    if (normalized.id && previous) {
+      this.database
         .prepare(
           `UPDATE automation_skills SET slug=?,name=?,description=?,status=?,version=?,author=?,required_tool_ids_json=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`,
         )
@@ -539,14 +535,15 @@ export class AutomationRepository {
           JSON.stringify(normalized.requiredToolIds),
           normalized.id,
         );
-      if (!result.changes) throw new Error("Навык не найден");
       skill = this.findSkill(normalized.id)!;
     } else {
-      const inserted = this.database
+      const id = normalized.id ?? newEntityId();
+      this.database
         .prepare(
-          `INSERT INTO automation_skills(slug,name,description,status,version,author,required_tool_ids_json) VALUES(?,?,?,?,?,?,?)`,
+          `INSERT INTO automation_skills(id,slug,name,description,status,version,author,required_tool_ids_json) VALUES(?,?,?,?,?,?,?,?)`,
         )
         .run(
+          id,
           normalized.slug,
           normalized.name,
           normalized.description,
@@ -555,7 +552,7 @@ export class AutomationRepository {
           normalized.author,
           JSON.stringify(normalized.requiredToolIds),
         );
-      skill = this.findSkill(Number(inserted.lastInsertRowid))!;
+      skill = this.findSkill(id)!;
     }
 
     try {
@@ -563,7 +560,7 @@ export class AutomationRepository {
       if (previous && previous.slug !== slug)
         this.skillContent.remove(previous.slug);
     } catch (error) {
-      if (!input.id) this.deleteSkill(skill.id);
+      if (!previous) this.deleteSkill(skill.id);
       throw error;
     }
 
@@ -572,10 +569,10 @@ export class AutomationRepository {
 
   ensureBuiltinSkill(
     input: Omit<UpsertAutomationSkillInput, "id" | "instructions">,
-  ): number {
+  ): string {
     const existing = this.database
       .prepare("SELECT id FROM automation_skills WHERE slug=?")
-      .get(input.slug) as { id: number } | undefined;
+      .get(input.slug) as { id: string } | undefined;
     if (existing) {
       this.database
         .prepare(
@@ -591,23 +588,24 @@ export class AutomationRepository {
         );
       return existing.id;
     }
-    return Number(
-      this.database
-        .prepare(
-          `INSERT INTO automation_skills(slug,name,description,status,version,author,builtin,required_tool_ids_json) VALUES(?,?,?,'active',?,?,1,?)`,
-        )
-        .run(
-          input.slug,
-          input.name,
-          input.description,
-          input.version,
-          input.author,
-          JSON.stringify(input.requiredToolIds),
-        ).lastInsertRowid,
-    );
+    const id = newEntityId();
+    this.database
+      .prepare(
+        `INSERT INTO automation_skills(id,slug,name,description,status,version,author,builtin,required_tool_ids_json) VALUES(?,?,?,?, 'active',?,?,1,?)`,
+      )
+      .run(
+        id,
+        input.slug,
+        input.name,
+        input.description,
+        input.version,
+        input.author,
+        JSON.stringify(input.requiredToolIds),
+      );
+    return id;
   }
 
-  deleteSkill(id: number): void {
+  deleteSkill(id: string): void {
     const skill = this.listSkillsFull().find((item) => item.id === id);
     if (!skill) throw new Error("Навык не найден");
     if (skill.builtin) throw new Error("Системный навык нельзя удалить");
@@ -653,8 +651,8 @@ export class AutomationRepository {
   private mapAgent(
     row: AgentRow,
     toolIds?: string[],
-    vectorStoreIds?: number[],
-    skillIds?: number[],
+    vectorStoreIds?: string[],
+    skillIds?: string[],
   ): AutomationAgent {
     const allowedToolIds =
       toolIds ??
@@ -673,7 +671,7 @@ export class AutomationRepository {
           .prepare(
             "SELECT vector_store_id FROM automation_agent_vector_stores WHERE agent_id=? ORDER BY vector_store_id",
           )
-          .all(row.id) as Array<{ vector_store_id: number }>
+          .all(row.id) as Array<{ vector_store_id: string }>
       ).map((item) => item.vector_store_id);
 
     const allowedSkillIds =
@@ -683,7 +681,7 @@ export class AutomationRepository {
           .prepare(
             "SELECT skill_id FROM automation_agent_skills WHERE agent_id=? ORDER BY skill_id",
           )
-          .all(row.id) as Array<{ skill_id: number }>
+          .all(row.id) as Array<{ skill_id: string }>
       ).map((item) => item.skill_id);
 
     return {

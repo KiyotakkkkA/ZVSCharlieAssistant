@@ -1,6 +1,6 @@
 import { safeStorage } from "electron";
-import { randomUUID } from "node:crypto";
 import type Database from "better-sqlite3";
+import { newEntityId } from "./entity-id";
 import type {
   SecretCategory,
   SecretCategorySystemKey,
@@ -19,17 +19,15 @@ import type {
 import type { PortableSecretStorage } from "../data-transfer/secret-storage-transfer";
 
 interface CategoryRow {
-  id: number;
-  portable_id: string;
+  id: string;
   system_key: SecretCategorySystemKey | null;
   label: string;
   builtin: number;
 }
 
 interface SecretRow {
-  id: number;
-  portable_id: string;
-  category_id: number;
+  id: string;
+  category_id: string;
   label: string;
   content: string;
   builtin: number;
@@ -57,7 +55,6 @@ const decryptSecret = (value: string): string => {
 
 const mapCategory = (row: CategoryRow): SecretCategory => ({
   id: row.id,
-  portableId: row.portable_id,
   systemKey: row.system_key ?? undefined,
   label: row.label,
   builtin: Boolean(row.builtin),
@@ -65,7 +62,6 @@ const mapCategory = (row: CategoryRow): SecretCategory => ({
 
 const mapSecret = (row: SecretRow): SecretRecord => ({
   id: row.id,
-  portableId: row.portable_id,
   categoryId: row.category_id,
   label: row.label,
   content: decryptSecret(row.content),
@@ -78,7 +74,7 @@ export class SecretStorageRepository {
   getSnapshot(): SecretStorageSnapshot {
     const rows = this.database
       .prepare(
-        `SELECT id, portable_id, category_id, label, builtin
+        `SELECT id, category_id, label, builtin
          FROM secret_entities
          ORDER BY builtin DESC, label ASC`,
       )
@@ -88,7 +84,6 @@ export class SecretStorageRepository {
       categories: this.listCategories(),
       secrets: rows.map((row) => ({
         id: row.id,
-        portableId: row.portable_id,
         categoryId: row.category_id,
         label: row.label,
         builtin: Boolean(row.builtin),
@@ -100,7 +95,7 @@ export class SecretStorageRepository {
     if (!safeStorage.isEncryptionAvailable()) return;
     const rows = this.database
       .prepare("SELECT id, content FROM secret_entities")
-      .all() as Array<{ id: number; content: string }>;
+      .all() as Array<{ id: string; content: string }>;
     const pending = rows.filter(
       (row) => !row.content.startsWith(ENCRYPTED_PREFIX),
     );
@@ -116,7 +111,7 @@ export class SecretStorageRepository {
   listCategories(): SecretCategory[] {
     const rows = this.database
       .prepare(
-        "SELECT id, portable_id, system_key, label, builtin FROM secret_categories ORDER BY builtin DESC, label ASC",
+        "SELECT id, system_key, label, builtin FROM secret_categories ORDER BY builtin DESC, label ASC",
       )
       .all() as CategoryRow[];
 
@@ -126,7 +121,7 @@ export class SecretStorageRepository {
   listSecrets(): SecretRecord[] {
     const rows = this.database
       .prepare(
-        `SELECT id, portable_id, category_id, label, content, builtin
+        `SELECT id, category_id, label, content, builtin
          FROM secret_entities
          ORDER BY builtin DESC, label ASC`,
       )
@@ -137,19 +132,16 @@ export class SecretStorageRepository {
 
   exportPortable(): PortableSecretStorage {
     const categories = this.listCategories();
-    const categoryPortableIds = new Map(
-      categories.map((category) => [category.id, category.portableId]),
-    );
     return {
-      version: 1,
-      categories: categories.map(({ portableId, systemKey, label }) => ({
-        portableId,
+      version: 2,
+      categories: categories.map(({ id, systemKey, label }) => ({
+        id,
         ...(systemKey ? { systemKey } : {}),
         label,
       })),
       secrets: this.listSecrets().map((secret) => ({
-        portableId: secret.portableId,
-        categoryPortableId: categoryPortableIds.get(secret.categoryId)!,
+        id: secret.id,
+        categoryId: secret.categoryId,
         label: secret.label,
         content: secret.content,
       })),
@@ -162,11 +154,11 @@ export class SecretStorageRepository {
     const categories = { create: 0, update: 0, conflict: 0 };
     const secrets = { create: 0, update: 0, conflict: 0 };
     const conflicts: ImportPreview["conflicts"] = [];
-    const categoryIds = new Map<string, number>();
+    const categoryIds = new Map<string, string | null>();
 
     for (const category of input.categories) {
       const byIdentity = this.findCategoryIdentity(
-        category.portableId,
+        category.id,
         category.systemKey,
       );
       const byLabel = this.findCategoryByLabel(category.label);
@@ -177,10 +169,10 @@ export class SecretStorageRepository {
           label: category.label,
           reason: "Переносимый ID и название относятся к разным категориям",
         });
-        categoryIds.set(category.portableId, byIdentity.id);
+        categoryIds.set(category.id, byIdentity.id);
       } else if (byIdentity) {
         categories.update++;
-        categoryIds.set(category.portableId, byIdentity.id);
+        categoryIds.set(category.id, byIdentity.id);
       } else if (byLabel) {
         categories.conflict++;
         conflicts.push({
@@ -188,17 +180,17 @@ export class SecretStorageRepository {
           label: category.label,
           reason: "Категория с таким названием уже существует",
         });
-        categoryIds.set(category.portableId, byLabel.id);
+        categoryIds.set(category.id, byLabel.id);
       } else {
         categories.create++;
-        categoryIds.set(category.portableId, -1);
+        categoryIds.set(category.id, null);
       }
     }
 
     for (const secret of input.secrets) {
-      const byIdentity = this.findSecretByPortableId(secret.portableId);
-      const targetCategoryId = categoryIds.get(secret.categoryPortableId);
-      const byLabel = targetCategoryId && targetCategoryId > 0
+      const byIdentity = this.findSecretById(secret.id);
+      const targetCategoryId = categoryIds.get(secret.categoryId);
+      const byLabel = targetCategoryId
         ? this.findSecretByLabel(targetCategoryId, secret.label)
         : undefined;
       if (byIdentity && byLabel && byIdentity.id !== byLabel.id) {
@@ -235,17 +227,17 @@ export class SecretStorageRepository {
         secrets: { create: 0, update: 0 },
         skipped: 0,
       };
-      const categoryIds = new Map<string, number>();
+      const categoryIds = new Map<string, string>();
 
       for (const category of input.categories) {
         const byIdentity = this.findCategoryIdentity(
-          category.portableId,
+          category.id,
           category.systemKey,
         );
         const byLabel = this.findCategoryByLabel(category.label);
         const existing = byIdentity ?? byLabel;
         if (existing) {
-          categoryIds.set(category.portableId, existing.id);
+          categoryIds.set(category.id, existing.id);
           if (conflictPolicy === "overwrite" && !existing.builtin) {
             if (!byLabel || byLabel.id === existing.id) {
               this.database
@@ -256,19 +248,17 @@ export class SecretStorageRepository {
           } else result.skipped++;
           continue;
         }
-        const inserted = this.database
-          .prepare(
-            "INSERT INTO secret_categories (portable_id, label) VALUES (?, ?)",
-          )
-          .run(category.portableId, category.label);
-        categoryIds.set(category.portableId, Number(inserted.lastInsertRowid));
+        this.database
+          .prepare("INSERT INTO secret_categories (id, label) VALUES (?, ?)")
+          .run(category.id, category.label);
+        categoryIds.set(category.id, category.id);
         result.categories.create++;
       }
 
       for (const secret of input.secrets) {
-        const categoryId = categoryIds.get(secret.categoryPortableId);
+        const categoryId = categoryIds.get(secret.categoryId);
         if (!categoryId) throw new Error("Не найдена категория секрета");
-        const byIdentity = this.findSecretByPortableId(secret.portableId);
+        const byIdentity = this.findSecretById(secret.id);
         const byLabel = this.findSecretByLabel(categoryId, secret.label);
         if (byIdentity && byLabel && byIdentity.id !== byLabel.id) {
           result.skipped++;
@@ -295,11 +285,11 @@ export class SecretStorageRepository {
         this.database
           .prepare(
             `INSERT INTO secret_entities
-              (portable_id, category_id, label, content)
+              (id, category_id, label, content)
              VALUES (?, ?, ?, ?)`,
           )
           .run(
-            secret.portableId,
+            secret.id,
             categoryId,
             secret.label,
             encryptSecret(secret.content),
@@ -311,16 +301,16 @@ export class SecretStorageRepository {
   }
 
   private findCategoryIdentity(
-    portableId: string,
+    id: string,
     systemKey?: string,
   ): SecretCategory | undefined {
     const row = this.database
       .prepare(
-        `SELECT id, portable_id, system_key, label, builtin
+        `SELECT id, system_key, label, builtin
          FROM secret_categories
-         WHERE portable_id = ? OR (? IS NOT NULL AND system_key = ?)`,
+         WHERE id = ? OR (? IS NOT NULL AND system_key = ?)`,
       )
-      .get(portableId, systemKey ?? null, systemKey ?? null) as
+      .get(id, systemKey ?? null, systemKey ?? null) as
       | CategoryRow
       | undefined;
     return row ? mapCategory(row) : undefined;
@@ -329,30 +319,30 @@ export class SecretStorageRepository {
   private findCategoryByLabel(label: string): SecretCategory | undefined {
     const row = this.database
       .prepare(
-        `SELECT id, portable_id, system_key, label, builtin
+        `SELECT id, system_key, label, builtin
          FROM secret_categories WHERE label = ? COLLATE NOCASE`,
       )
       .get(label) as CategoryRow | undefined;
     return row ? mapCategory(row) : undefined;
   }
 
-  private findSecretByPortableId(portableId: string): SecretRecord | undefined {
+  private findSecretById(id: string): SecretRecord | undefined {
     const row = this.database
       .prepare(
-        `SELECT id, portable_id, category_id, label, content, builtin
-         FROM secret_entities WHERE portable_id = ?`,
+        `SELECT id, category_id, label, content, builtin
+         FROM secret_entities WHERE id = ?`,
       )
-      .get(portableId) as SecretRow | undefined;
+      .get(id) as SecretRow | undefined;
     return row ? mapSecret(row) : undefined;
   }
 
   private findSecretByLabel(
-    categoryId: number,
+    categoryId: string,
     label: string,
   ): SecretRecord | undefined {
     const row = this.database
       .prepare(
-        `SELECT id, portable_id, category_id, label, content, builtin
+        `SELECT id, category_id, label, content, builtin
          FROM secret_entities
          WHERE category_id = ? AND label = ? COLLATE NOCASE
          ORDER BY id LIMIT 1`,
@@ -361,25 +351,25 @@ export class SecretStorageRepository {
     return row ? mapSecret(row) : undefined;
   }
 
-  findCategory(id: number): SecretCategory | undefined {
+  findCategory(id: string): SecretCategory | undefined {
     const row = this.database
-      .prepare("SELECT id, portable_id, system_key, label, builtin FROM secret_categories WHERE id = ?")
+      .prepare("SELECT id, system_key, label, builtin FROM secret_categories WHERE id = ?")
       .get(id) as CategoryRow | undefined;
 
     return row ? mapCategory(row) : undefined;
   }
 
-  findSecret(id: number): SecretRecord | undefined {
+  findSecret(id: string): SecretRecord | undefined {
     const row = this.database
       .prepare(
-        "SELECT id, portable_id, category_id, label, content, builtin FROM secret_entities WHERE id = ?",
+        "SELECT id, category_id, label, content, builtin FROM secret_entities WHERE id = ?",
       )
       .get(id) as SecretRow | undefined;
 
     return row ? mapSecret(row) : undefined;
   }
 
-  categoryExists(id: number): boolean {
+  categoryExists(id: string): boolean {
     return Boolean(
       this.database
         .prepare("SELECT 1 FROM secret_categories WHERE id = ?")
@@ -389,10 +379,11 @@ export class SecretStorageRepository {
 
   upsertCategory(input: UpsertSecretCategoryInput): SecretCategory {
     if (input.id === undefined) {
-      const result = this.database
-        .prepare("INSERT INTO secret_categories (portable_id, label) VALUES (?, ?)")
-        .run(randomUUID(), input.label);
-      return this.findCategory(Number(result.lastInsertRowid))!;
+      const id = newEntityId();
+      this.database
+        .prepare("INSERT INTO secret_categories (id, label) VALUES (?, ?)")
+        .run(id, input.label);
+      return this.findCategory(id)!;
     }
 
     const result = this.database
@@ -404,18 +395,19 @@ export class SecretStorageRepository {
 
   upsertSecret(input: UpsertSecretInput): SecretRecord {
     if (input.id === undefined) {
-      const result = this.database
+      const id = newEntityId();
+      this.database
         .prepare(
-          `INSERT INTO secret_entities (portable_id, category_id, label, content)
+          `INSERT INTO secret_entities (id, category_id, label, content)
            VALUES (?, ?, ?, ?)`,
         )
         .run(
-          randomUUID(),
+          id,
           input.categoryId,
           input.label,
           encryptSecret(input.content!),
         );
-      return this.findSecret(Number(result.lastInsertRowid))!;
+      return this.findSecret(id)!;
     }
 
     const result = this.database
@@ -436,7 +428,7 @@ export class SecretStorageRepository {
     return this.findSecret(input.id)!;
   }
 
-  private integrationsUsingSecret(secretIds: number[]): string[] {
+  private integrationsUsingSecret(secretIds: string[]): string[] {
     if (secretIds.length === 0) return [];
     const placeholders = secretIds.map(() => "?").join(",");
     return (
@@ -452,11 +444,11 @@ export class SecretStorageRepository {
     ).map((row) => row.name);
   }
 
-  deleteCategory(id: number): void {
+  deleteCategory(id: string): void {
     const secretIds = (
       this.database
         .prepare("SELECT id FROM secret_entities WHERE category_id = ?")
-        .all(id) as Array<{ id: number }>
+        .all(id) as Array<{ id: string }>
     ).map((row) => row.id);
     const blocking = this.integrationsUsingSecret(secretIds);
     if (blocking.length)
@@ -471,7 +463,7 @@ export class SecretStorageRepository {
       throw new Error("Категория не найдена или не подлежит удалению");
   }
 
-  deleteSecret(id: number): void {
+  deleteSecret(id: string): void {
     const blocking = this.integrationsUsingSecret([id]);
     if (blocking.length)
       throw new Error(

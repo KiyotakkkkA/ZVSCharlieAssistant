@@ -7,15 +7,16 @@ import type {
   QuestionScope,
   UserQuestion,
 } from "../../../shared/models/user-question";
+import { newEntityId } from "./entity-id";
 
 interface QuestionRow {
-  id: number;
+  id: string;
   scope: QuestionScope;
-  conversation_id: number | null;
-  run_id: number | null;
-  execution_id: number | null;
+  conversation_id: string | null;
+  run_id: string | null;
+  execution_id: string | null;
   node_id: string | null;
-  node_run_id: number | null;
+  node_run_id: string | null;
   mode: QuestionMode;
   header: string;
   question: string;
@@ -27,7 +28,7 @@ interface QuestionRow {
   answered_by: string | null;
   answered_via: UserQuestion["answeredVia"];
   channel: QuestionChannel;
-  integration_profile_id: number | null;
+  integration_profile_id: string | null;
   recipient: string | null;
   correlation_id: string | null;
   expected_author: string | null;
@@ -43,6 +44,7 @@ const mapQuestion = (row: QuestionRow): UserQuestion => ({
   runId: row.run_id,
   executionId: row.execution_id,
   nodeId: row.node_id,
+  nodeRunId: row.node_run_id,
   mode: row.mode,
   header: row.header,
   question: row.question,
@@ -66,11 +68,11 @@ const mapQuestion = (row: QuestionRow): UserQuestion => ({
 
 export interface CreateQuestionInput {
   scope: QuestionScope;
-  conversationId?: number | null;
-  runId?: number | null;
-  executionId?: number | null;
+  conversationId?: string | null;
+  runId?: string | null;
+  executionId?: string | null;
   nodeId?: string | null;
-  nodeRunId?: number | null;
+  nodeRunId?: string | null;
   mode: QuestionMode;
   header: string;
   question: string;
@@ -78,7 +80,7 @@ export interface CreateQuestionInput {
   multiSelect: boolean;
   defaultAnswer?: string | null;
   channel: QuestionChannel;
-  integrationProfileId?: number | null;
+  integrationProfileId?: string | null;
   recipient?: string | null;
   correlationId?: string | null;
   expectedAuthor?: string | null;
@@ -89,15 +91,17 @@ export class UserQuestionRepository {
   constructor(private readonly db: Database.Database) {}
 
   create(input: CreateQuestionInput): UserQuestion {
-    const result = this.db
+    const id = newEntityId();
+    this.db
       .prepare(
         `INSERT INTO user_questions(
-           scope,conversation_id,run_id,execution_id,node_id,node_run_id,mode,
+           id,scope,conversation_id,run_id,execution_id,node_id,node_run_id,mode,
            header,question,options_json,multi_select,default_answer,channel,
            integration_profile_id,recipient,correlation_id,expected_author,expires_at
-         ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+         ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       )
       .run(
+        id,
         input.scope,
         input.conversationId ?? null,
         input.runId ?? null,
@@ -117,17 +121,17 @@ export class UserQuestionRepository {
         input.expectedAuthor ?? null,
         input.expiresAt ?? null,
       );
-    return this.find(Number(result.lastInsertRowid))!;
+    return this.find(id)!;
   }
 
-  find(id: number): UserQuestion | undefined {
+  find(id: string): UserQuestion | undefined {
     const row = this.db
       .prepare("SELECT * FROM user_questions WHERE id=?")
       .get(id) as QuestionRow | undefined;
     return row ? mapQuestion(row) : undefined;
   }
 
-  forNode(executionId: number, nodeId: string): UserQuestion | undefined {
+  forNode(executionId: string, nodeId: string): UserQuestion | undefined {
     const row = this.db
       .prepare(
         `SELECT * FROM user_questions
@@ -137,7 +141,7 @@ export class UserQuestionRepository {
     return row ? mapQuestion(row) : undefined;
   }
 
-  pendingForConversation(conversationId: number): UserQuestion[] {
+  pendingForConversation(conversationId: string): UserQuestion[] {
     return (
       this.db
         .prepare(
@@ -186,14 +190,14 @@ export class UserQuestionRepository {
     return row ? mapQuestion(row) : undefined;
   }
 
-  setCorrelation(id: number, correlationId: string): void {
+  setCorrelation(id: string, correlationId: string): void {
     this.db
       .prepare("UPDATE user_questions SET correlation_id=? WHERE id=?")
       .run(correlationId, id);
   }
 
   answer(
-    id: number,
+    id: string,
     answer: string[],
     via: NonNullable<UserQuestion["answeredVia"]>,
     answeredBy?: string | null,
@@ -211,7 +215,7 @@ export class UserQuestionRepository {
     return this.find(id)!;
   }
 
-  close(id: number, status: "timed_out" | "cancelled"): void {
+  close(id: string, status: "timed_out" | "cancelled"): void {
     this.db
       .prepare(
         `UPDATE user_questions SET status=?, answered_at=CURRENT_TIMESTAMP
@@ -232,7 +236,7 @@ export class UserQuestionRepository {
     ).map(mapQuestion);
   }
 
-  cancelForExecution(executionId: number): void {
+  cancelForExecution(executionId: string): void {
     this.db
       .prepare(
         `UPDATE user_questions SET status='cancelled', answered_at=CURRENT_TIMESTAMP
@@ -241,7 +245,7 @@ export class UserQuestionRepository {
       .run(executionId);
   }
 
-  forExecution(executionId: number): UserQuestion[] {
+  forExecution(executionId: string): UserQuestion[] {
     return (
       this.db
         .prepare(

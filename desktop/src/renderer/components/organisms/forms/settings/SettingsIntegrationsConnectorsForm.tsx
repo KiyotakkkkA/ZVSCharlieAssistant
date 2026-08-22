@@ -4,6 +4,7 @@ import {
   Select,
 } from "@kiyotakkkka/zvs-uikit-lib";
 import type { UpsertIntegrationProfileInput } from "../../../../../shared/dto";
+import { SYSTEM_SECRET_CATEGORY_IDS } from "../../../../../shared/entity-ids";
 import type { IntegrationConnectionMetadata } from "../../../../../shared/models/integration";
 import { Field, Lead, SecretOrientedSelect } from "../../../atoms";
 
@@ -80,13 +81,13 @@ export function SettingsIntegrationsConnectorsForm({
         </Field>
         <Field className="md:col-span-2" label="Токен доступа (необязательно)">
           <SecretOrientedSelect
-            categoryId={1}
+            categoryId={SYSTEM_SECRET_CATEGORY_IDS.apiKeys}
             value={String(value.secretBindings.accessToken ?? "")}
             onChange={(secretId) =>
               patch({
                 secretBindings: {
                   ...value.secretBindings,
-                  accessToken: Number(secretId),
+                  accessToken: secretId,
                 },
               })
             }

@@ -59,7 +59,7 @@ export const AIEntityCreateForm = observer(function AIEntityCreateForm({
     try {
       await entityGenerationStore.start({
         kind,
-        modelId: Number(modelId),
+        modelId,
         prompt,
       });
       toasts.success({

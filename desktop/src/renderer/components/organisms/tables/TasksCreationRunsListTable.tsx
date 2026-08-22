@@ -42,7 +42,7 @@ export function TasksCreationRunsListTable({
   onShowError,
 }: {
   runs: EntityGenerationRun[];
-  modelLabel: (id: number) => string;
+  modelLabel: (id: string) => string;
   onOpenEntity: (run: EntityGenerationRun) => void;
   onShowError: (run: EntityGenerationRun) => void;
 }) {

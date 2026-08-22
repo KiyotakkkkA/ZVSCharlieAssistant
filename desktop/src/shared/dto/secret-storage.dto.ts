@@ -1,12 +1,13 @@
 import { z } from "zod";
+import { entityIdSchema } from "./ipc-dto";
 
 export const upsertSecretCategoryDtoSchema = z.object({
-  id: z.int().positive().optional(),
+  id: entityIdSchema.optional(),
   label: z.string(),
 });
 export const upsertSecretDtoSchema = z.object({
-  id: z.int().positive().optional(),
-  categoryId: z.int().positive(),
+  id: entityIdSchema.optional(),
+  categoryId: entityIdSchema,
   label: z.string(),
   content: z.string().optional(),
 });

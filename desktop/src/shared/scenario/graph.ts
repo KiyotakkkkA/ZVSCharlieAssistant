@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { entityIdSchema } from "../dto/ipc-dto";
 
 export const SCENARIO_GRAPH_VERSION = 2 as const;
 
@@ -36,7 +37,7 @@ export const jsonValueSchema: z.ZodType<unknown> = z.lazy(() =>
 );
 
 export const scenarioNodeSchema = z.object({
-  id: z.string().min(1),
+  id: entityIdSchema,
   kind: z.string().min(1),
   name: z.string().min(1).max(120),
   description: z.string().max(2_000).default(""),
@@ -46,21 +47,21 @@ export const scenarioNodeSchema = z.object({
   runtime: nodeRuntimeSchema.default({}),
   disabled: z.boolean().default(false),
   notes: z.string().max(4_000).default(""),
-  groupId: z.string().nullable().default(null),
+  groupId: entityIdSchema.nullable().default(null),
 });
 export type ScenarioNode = z.infer<typeof scenarioNodeSchema>;
 
 export const scenarioEdgeSchema = z.object({
-  id: z.string().min(1),
-  source: z.string().min(1),
+  id: entityIdSchema,
+  source: entityIdSchema,
   sourcePort: z.string().min(1),
-  target: z.string().min(1),
+  target: entityIdSchema,
   targetPort: z.string().min(1),
 });
 export type ScenarioEdge = z.infer<typeof scenarioEdgeSchema>;
 
 export const scenarioGroupSchema = z.object({
-  id: z.string().min(1),
+  id: entityIdSchema,
   name: z.string().min(1).max(120),
   collapsed: z.boolean().default(false),
   color: z.string().max(32).default(""),

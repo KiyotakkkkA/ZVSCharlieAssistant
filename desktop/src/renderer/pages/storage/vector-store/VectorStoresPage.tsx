@@ -17,7 +17,7 @@ export const VectorStoresPage = observer(function VectorStoresPage() {
   );
   const selected = store.selectedStore;
   const documentCounts = useMemo(() => {
-    const counts = new Map<number, number>();
+    const counts = new Map<string, number>();
     for (const document of store.documents)
       counts.set(
         document.vectorStoreId,

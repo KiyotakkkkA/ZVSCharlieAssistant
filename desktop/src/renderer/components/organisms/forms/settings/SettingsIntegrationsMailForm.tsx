@@ -1,5 +1,6 @@
 import { InputCheckSlided, InputSmall } from "@kiyotakkkka/zvs-uikit-lib";
 import type { UpsertIntegrationProfileInput } from "../../../../../shared/dto";
+import { SYSTEM_SECRET_CATEGORY_IDS } from "../../../../../shared/entity-ids";
 import {
   Field,
   Lead,
@@ -124,13 +125,13 @@ export function SettingsIntegrationsMailForm({
           }
         >
           <SecretOrientedSelect
-            categoryId={1}
+            categoryId={SYSTEM_SECRET_CATEGORY_IDS.apiKeys}
             value={String(value.secretBindings.password ?? "")}
             onChange={(secretId) =>
               patch({
                 secretBindings: {
                   ...value.secretBindings,
-                  password: Number(secretId),
+                  password: secretId,
                 },
               })
             }

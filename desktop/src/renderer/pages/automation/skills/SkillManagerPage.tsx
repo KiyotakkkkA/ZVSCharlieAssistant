@@ -10,7 +10,7 @@ import { automationStore } from "../../../stores";
 
 export const SkillManagerPage = observer(function SkillManagerPage() {
   const { skillId } = useParams();
-  const id = skillId ? Number(skillId) : undefined;
+  const id = skillId;
   const model = automationStore.getSkill(id);
   const creating = !skillId;
   const [busy, setBusy] = useState(false);

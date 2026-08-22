@@ -12,7 +12,7 @@ import type { ScenarioDeliveryRepository } from "../../infrastructure/database/s
 import type { AutomationJobRepository } from "../../infrastructure/database/automation-job.repository";
 
 export class ScenarioSuspended extends Error {
-  constructor(readonly questionId: number) {
+  constructor(readonly questionId: string) {
     super("Запуск приостановлен до ответа пользователя");
     this.name = "ScenarioSuspended";
   }
@@ -29,9 +29,9 @@ export interface AskInput {
 }
 
 export interface ScenarioAskContext {
-  executionId: number;
+  executionId: string;
   nodeId: string;
-  nodeRunId: number;
+  nodeRunId: string;
   triggerInput: unknown;
 }
 
@@ -43,7 +43,7 @@ type PendingChatQuestion = {
 const CHAT_DEFAULT_TIMEOUT_SECONDS = 300;
 
 export class UserQuestionService {
-  private readonly chatWaiters = new Map<number, PendingChatQuestion>();
+  private readonly chatWaiters = new Map<string, PendingChatQuestion>();
   private listener?: (question: UserQuestion) => void;
 
   constructor(
@@ -58,17 +58,17 @@ export class UserQuestionService {
     this.listener = listener;
   }
 
-  pendingForConversation(conversationId: number) {
+  pendingForConversation(conversationId: string) {
     return this.data.pendingForConversation(conversationId);
   }
 
-  forExecution(executionId: number) {
+  forExecution(executionId: string) {
     return this.data.forExecution(executionId);
   }
 
   async askInChat(
     input: AskInput,
-    context: { conversationId: number; runId: number },
+    context: { conversationId: string; runId: string },
   ): Promise<string[]> {
     const timeoutMs =
       Math.min(
@@ -138,7 +138,7 @@ export class UserQuestionService {
   }
 
   answer(
-    id: number,
+    id: string,
     answer: string[],
     via: NonNullable<UserQuestion["answeredVia"]>,
     answeredBy?: string | null,
@@ -157,7 +157,7 @@ export class UserQuestionService {
     return question;
   }
 
-  cancelForExecution(executionId: number): void {
+  cancelForExecution(executionId: string): void {
     this.data.cancelForExecution(executionId);
   }
 
@@ -206,7 +206,7 @@ export class UserQuestionService {
     return true;
   }
 
-  private scheduleResume(executionId: number): void {
+  private scheduleResume(executionId: string): void {
     this.jobs.enqueue("scenario_run", `question-resume:${executionId}`, {
       executionId,
       scenarioId: String(executionId),
@@ -224,7 +224,7 @@ export class UserQuestionService {
     }
     this.deliveries.enqueue({
       executionId: question.executionId!,
-      nodeRunId: 0,
+      nodeRunId: question.nodeRunId!,
       channel: "email",
       integrationProfileId: target.integrationProfileId!,
       recipient: target.recipient!,
@@ -291,7 +291,7 @@ export class UserQuestionService {
 
 interface AskTarget {
   channel: QuestionChannel;
-  integrationProfileId: number | null;
+  integrationProfileId: string | null;
   recipient: string | null;
   author: string | null;
 }
@@ -300,7 +300,7 @@ function resolveTarget(triggerInput: unknown): AskTarget {
   const input = triggerInput as
     | {
         trigger?: string;
-        integrationProfileId?: number;
+        integrationProfileId?: string;
         entity?: {
           chat?: { id?: string };
           sender?: { id?: string };

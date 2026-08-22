@@ -4,7 +4,7 @@ import type { ChatToolCall, ScenarioNodeRun } from "../../../../ipc/contracts";
 import { WebIcon } from "../../atoms";
 
 interface InternalChatSource {
-  documentId: number;
+  documentId: string;
   fileName: string;
   pages: number[];
   score: number;
@@ -23,7 +23,7 @@ export interface ChatSources {
 }
 
 interface VectorSourceRow {
-  documentId: number;
+  documentId: string;
   fileName: string;
   content: string;
   score: number;
@@ -188,7 +188,7 @@ function WebSourceCard({ source }: { source: WebChatSource }) {
 
 function groupInternalSources(rows: VectorSourceRow[]) {
   const grouped = new Map<
-    number,
+    string,
     InternalChatSource & { pageSet: Set<number> }
   >();
   for (const row of rows) {
@@ -316,7 +316,7 @@ function isVectorSource(value: unknown): value is VectorSourceRow {
   const row = asRecord(value);
   return Boolean(
     row &&
-    Number.isInteger(row.documentId) &&
+    typeof row.documentId === "string" &&
     typeof row.fileName === "string" &&
     typeof row.content === "string" &&
     typeof row.score === "number" &&

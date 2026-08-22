@@ -9,12 +9,13 @@ export interface QuestionOption {
 }
 
 export interface UserQuestion {
-  id: number;
+  id: string;
   scope: QuestionScope;
-  conversationId: number | null;
-  runId: number | null;
-  executionId: number | null;
+  conversationId: string | null;
+  runId: string | null;
+  executionId: string | null;
   nodeId: string | null;
+  nodeRunId: string | null;
   mode: QuestionMode;
   header: string;
   question: string;

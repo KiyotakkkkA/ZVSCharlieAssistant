@@ -4,10 +4,10 @@ export type VectorStoreStatus = "ready" | "indexing" | "degraded" | "disabled";
 export type VectorDocumentStatus =
   "queued" | "extracting" | "embedding" | "ready" | "failed";
 export interface VectorStoreConfig {
-  id: number;
+  id: string;
   name: string;
   description: string;
-  embeddingModelId: number | null;
+  embeddingModelId: string | null;
   status: VectorStoreStatus;
   searchMode: VectorSearchMode;
   chunkSizeTokens: number;
@@ -17,8 +17,8 @@ export interface VectorStoreConfig {
   updatedAt: string;
 }
 export interface VectorStoreDocument {
-  id: number;
-  vectorStoreId: number;
+  id: string;
+  vectorStoreId: string;
   fileName: string;
   mimeType: string;
   size: number;
@@ -33,7 +33,7 @@ export interface VectorStoreSnapshot {
   documents: VectorStoreDocument[];
 }
 export interface VectorSearchResultItem {
-  documentId: number;
+  documentId: string;
   fileName: string;
   chunkIndex: number;
   content: string;

@@ -20,7 +20,7 @@ function fakeServices(
   overrides: Partial<ScenarioEngineServices> = {},
 ): ScenarioEngineServices {
   return {
-    defaultModelId: () => 1,
+    defaultModelId: () => "019cba09-8f30-7000-8000-000000000204",
     agent: () => undefined,
     generateText: async () => "",
     generateObject: async () => ({}) as never,
@@ -68,7 +68,10 @@ describe("узел http", () => {
     resetIds();
     let capturedHeaders: Headers | undefined;
     const services = fakeServices({
-      secret: (id) => (id === 7 ? "top-secret" : undefined),
+      secret: (id) =>
+        id === "019cba09-8f30-7000-8000-000000000207"
+          ? "top-secret"
+          : undefined,
       httpFetch: (async (_url, init) => {
         capturedHeaders = init?.headers as Headers;
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
@@ -80,7 +83,7 @@ describe("узел http", () => {
       config: {
         method: "GET",
         url: "https://example.com/api",
-        authSecretId: 7,
+        authSecretId: "019cba09-8f30-7000-8000-000000000207",
         authScheme: "bearer",
         timeoutSeconds: 30,
       },
@@ -133,7 +136,9 @@ describe("узел approval", () => {
     resetIds();
     const services = fakeServices({
       askApproval: () => {
-        throw new ScenarioSuspended(42);
+        throw new ScenarioSuspended(
+          "019cba09-8f30-7000-8000-000000000205",
+        );
       },
     });
     const trigger = node("trigger.manual", { name: "Старт" });
@@ -145,7 +150,9 @@ describe("узел approval", () => {
       },
     );
     expect(result.status).toBe("suspended");
-    expect(result.suspension?.questionId).toBe(42);
+    expect(result.suspension?.questionId).toBe(
+      "019cba09-8f30-7000-8000-000000000205",
+    );
   });
 
   it("режим confirm с ответом «Нет» уводит items на выход rejected", async () => {
@@ -177,14 +184,19 @@ describe("узел subScenario", () => {
     resetIds();
     const services = fakeServices({
       runSubScenario: async (input) => {
-        expect(input.scenarioId).toBe("child");
+        expect(input.scenarioId).toBe(
+          "019cba09-8f30-7000-8000-000000000208",
+        );
         return { done: true };
       },
     });
     const trigger = node("trigger.manual", { name: "Старт" });
     const sub = node("subScenario", {
       name: "Вложенный",
-      config: { scenarioId: "child", mode: "await" },
+      config: {
+        scenarioId: "019cba09-8f30-7000-8000-000000000208",
+        mode: "await",
+      },
     });
     const result = await runGraph(graph([trigger, sub], [edge(trigger, sub)]), {
       extraExecutors: [createSubScenarioExecutor(services)],
@@ -203,13 +215,13 @@ describe("узел knowledgeStore + agent", () => {
     let seenKnowledge: unknown;
     const services = fakeServices({
       agent: (id) =>
-        id === "a1"
+        id === "019cba09-8f30-7000-8000-000000000209"
           ? {
-              id: "a1",
+              id: "019cba09-8f30-7000-8000-000000000209",
               name: "Ассистент",
               description: "",
               instructions: "Отвечай кратко.",
-              textModelId: 5,
+              textModelId: "019cba09-8f30-7000-8000-000000000206",
               allowedToolIds: [],
               allowedVectorStoreIds: [],
               allowedSkillIds: [],
@@ -222,7 +234,7 @@ describe("узел knowledgeStore + agent", () => {
           : undefined,
       searchKnowledge: async () => [
         {
-          documentId: 1,
+          documentId: "019cba09-8f30-7000-8000-000000000011",
           chunkIndex: 0,
           fileName: "doc.txt",
           content: "факт",
@@ -238,11 +250,15 @@ describe("узел knowledgeStore + agent", () => {
     const trigger = node("trigger.manual", { name: "Старт" });
     const store = node("knowledgeStore", {
       name: "База",
-      config: { vectorStoreId: 1, limit: 5, minScore: 0 },
+      config: {
+        vectorStoreId: "019cba09-8f30-7000-8000-000000000010",
+        limit: 5,
+        minScore: 0,
+      },
     });
     const agentNode = node("agent", {
       name: "Агент",
-      config: { agentId: "a1" },
+      config: { agentId: "019cba09-8f30-7000-8000-000000000209" },
     });
     const result = await runGraph(
       graph(
@@ -271,7 +287,7 @@ describe("узел knowledgeStore + agent", () => {
     const trigger = node("trigger.manual", { name: "Старт" });
     const agentNode = node("agent", {
       name: "Агент",
-      config: { agentId: "missing" },
+      config: { agentId: "019cba09-8f30-7000-8000-000000000210" },
     });
     const result = runGraph(
       graph([trigger, agentNode], [edge(trigger, agentNode)]),
@@ -351,7 +367,7 @@ describe("узел downloadFiles + readFiles", () => {
     const services = fakeServices({
       downloadFiles: async () => [
         {
-          id: 1,
+          id: "019cba09-8f30-7000-8000-000000000020",
           fileName: "a.txt",
           mimeType: "text/plain",
           size: 3,
@@ -403,7 +419,7 @@ describe("узел orchestrator", () => {
         name: id,
         description: "",
         instructions: "Инструкция",
-        textModelId: 5,
+        textModelId: "019cba09-8f30-7000-8000-000000000206",
         allowedToolIds: [],
         allowedVectorStoreIds: [],
         allowedSkillIds: [],
@@ -425,7 +441,7 @@ describe("узел orchestrator", () => {
     });
     const worker = node("agent", {
       name: "Исполнитель",
-      config: { agentId: "w1" },
+      config: { agentId: "019cba09-8f30-7000-8000-000000000211" },
     });
     const result = await runGraph(
       graph(

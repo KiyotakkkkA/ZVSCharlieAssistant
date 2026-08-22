@@ -85,11 +85,11 @@ export const ScenarioExecutionHistory = observer(
         (scenario?.graph.nodes ?? []).map((node) => [node.id, node.name]),
       );
     }, [execution.run.scenarioId]);
-    const [expandedNodes, setExpandedNodes] = useState<Set<number>>(new Set());
+    const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
     const running = ["queued", "running", "waiting_for_approval"].includes(
       execution.run.status,
     );
-    const toggleNode = (nodeId: number) =>
+    const toggleNode = (nodeId: string) =>
       setExpandedNodes((current) => {
         const next = new Set(current);
         if (next.has(nodeId)) next.delete(nodeId);

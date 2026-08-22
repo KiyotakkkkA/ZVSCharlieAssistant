@@ -79,11 +79,11 @@ export class MemoryStore {
     );
   }
 
-  async setPinned(id: number, pinned: boolean) {
+  async setPinned(id: string, pinned: boolean) {
     this.apply(await window.desktop.assistant.memory.setPinned(id, pinned));
   }
 
-  async remove(id: number) {
+  async remove(id: string) {
     this.apply(await window.desktop.assistant.memory.remove(id));
   }
 

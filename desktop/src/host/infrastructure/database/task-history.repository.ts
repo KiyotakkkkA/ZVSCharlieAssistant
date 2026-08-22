@@ -8,7 +8,7 @@ import type {
 
 interface TaskRunRow {
   id: string;
-  run_id: number;
+  run_id: string;
   kind: TaskRunKind;
   origin: TaskRunOrigin;
   title: string;

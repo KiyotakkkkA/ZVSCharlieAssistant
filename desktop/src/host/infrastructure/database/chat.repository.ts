@@ -12,21 +12,22 @@ import {
   chatUsageDtoSchema,
   parseJsonDto,
 } from "../../../shared/dto";
+import { newEntityId } from "./entity-id";
 import type {
   ChatMessageContentPart,
   ChatUsage,
 } from "../../../shared/dto";
 interface ConversationRow {
-  id: number;
+  id: string;
   title: string;
   last_usage: string;
   updated_at: string;
 }
 interface MessageRow {
-  id: number;
-  conversation_id: number;
-  run_id: number | null;
-  execution_run_id?: number | null;
+  id: string;
+  conversation_id: string;
+  run_id: string | null;
+  execution_run_id?: string | null;
   role: ChatMessage["role"];
   status: ChatMessage["status"];
   content_json: string;
@@ -35,7 +36,7 @@ interface MessageRow {
 }
 export class ChatRepository {
   constructor(private readonly db: Database.Database) {}
-  snapshot(conversationId?: number): ChatSnapshot {
+  snapshot(conversationId?: string): ChatSnapshot {
     const conversations = (
       this.db
         .prepare(
@@ -54,8 +55,8 @@ export class ChatRepository {
     };
   }
   messagePage(
-    conversationId: number,
-    beforeId?: number,
+    conversationId: string,
+    beforeId?: string,
     limit = 30,
   ): ChatMessagePage {
     const rows = (
@@ -80,7 +81,7 @@ export class ChatRepository {
       hasMore,
     };
   }
-  messages(conversationId: number): ChatMessage[] {
+  messages(conversationId: string): ChatMessage[] {
     return (
       this.db
         .prepare(
@@ -91,17 +92,16 @@ export class ChatRepository {
   }
   createConversation(
     usage: ChatUsage,
-  ): number {
-    return Number(
-      this.db
-        .prepare(
-          "INSERT INTO chat_conversations(mode,agent_id,last_usage) VALUES(?,?,?)",
-        )
-        .run(usage.mode, usage.agentId ?? null, JSON.stringify(usage))
-        .lastInsertRowid,
-    );
+  ): string {
+    const id = newEntityId();
+    this.db
+      .prepare(
+        "INSERT INTO chat_conversations(id,mode,agent_id,last_usage) VALUES(?,?,?,?)",
+      )
+      .run(id, usage.mode, usage.agentId ?? null, JSON.stringify(usage));
+    return id;
   }
-  updateLastUsage(conversationId: number, usage: ChatUsage) {
+  updateLastUsage(conversationId: string, usage: ChatUsage) {
     this.db
       .prepare(
         "UPDATE chat_conversations SET mode=?,agent_id=?,last_usage=?,updated_at=CURRENT_TIMESTAMP WHERE id=?",
@@ -114,49 +114,48 @@ export class ChatRepository {
       );
   }
   createRun(
-    conversationId: number,
+    conversationId: string,
     agentId: string | undefined,
-    modelId: number,
+    modelId: string,
     maxSteps: number,
-  ): number {
-    return Number(
-      this.db
-        .prepare(
-          "INSERT INTO generation_runs(conversation_id,agent_id,model_id,status,max_steps) VALUES(?,?,?,'queued',?)",
-        )
-        .run(conversationId, agentId ?? null, modelId, maxSteps)
-        .lastInsertRowid,
-    );
+  ): string {
+    const id = newEntityId();
+    this.db
+      .prepare(
+        "INSERT INTO generation_runs(id,conversation_id,agent_id,model_id,status,max_steps) VALUES(?,?,?,?,'queued',?)",
+      )
+      .run(id, conversationId, agentId ?? null, modelId, maxSteps);
+    return id;
   }
   addMessage(
-    conversationId: number,
-    runId: number | null,
+    conversationId: string,
+    runId: string | null,
     role: ChatMessage["role"],
     text: string,
     status: ChatMessage["status"],
     usage: ChatUsage,
   ): ChatMessage {
-    const id = Number(
-      this.db
-        .prepare(
-          "INSERT INTO chat_messages(conversation_id,run_id,role,status,content_json,last_usage) VALUES(?,?,?,?,?,?)",
-        )
-        .run(
-          conversationId,
-          runId,
-          role,
-          status,
-          JSON.stringify([{ type: "text", text }]),
-          JSON.stringify(usage),
-        ).lastInsertRowid,
-    );
+    const id = newEntityId();
+    this.db
+      .prepare(
+        "INSERT INTO chat_messages(id,conversation_id,run_id,role,status,content_json,last_usage) VALUES(?,?,?,?,?,?,?)",
+      )
+      .run(
+        id,
+        conversationId,
+        runId,
+        role,
+        status,
+        JSON.stringify([{ type: "text", text }]),
+        JSON.stringify(usage),
+      );
     return this.mapMessage(
       this.db
         .prepare("SELECT * FROM chat_messages WHERE id=?")
         .get(id) as MessageRow,
     );
   }
-  messageAttachments(messageId: number) {
+  messageAttachments(messageId: string) {
     return (
       this.db
         .prepare(
@@ -164,7 +163,7 @@ export class ChatRepository {
            WHERE message_id=? ORDER BY id`,
         )
         .all(messageId) as Array<{
-        id: number;
+        id: string;
         name: string;
         mime_type: string | null;
         size: number;
@@ -179,7 +178,7 @@ export class ChatRepository {
     }));
   }
 
-  writeMessageContent(messageId: number, reasoning: string, text: string) {
+  writeMessageContent(messageId: string, reasoning: string, text: string) {
     const parts: ChatMessageContentPart[] = [];
     if (reasoning) parts.push({ type: "reasoning", text: reasoning });
     if (text || !parts.length) parts.push({ type: "text", text });
@@ -189,7 +188,7 @@ export class ChatRepository {
   }
 
   historyMessages(
-    conversationId: number,
+    conversationId: string,
     maxMessages: number,
     maxCharacters: number,
   ): ChatMessage[] {
@@ -210,22 +209,22 @@ export class ChatRepository {
     }
     return selected.reverse();
   }
-  replaceText(messageId: number, text: string) {
+  replaceText(messageId: string, text: string) {
     this.db
       .prepare("UPDATE chat_messages SET content_json=? WHERE id=?")
       .run(JSON.stringify([{ type: "text", text }]), messageId);
   }
-  setMessageStatus(id: number, status: ChatMessage["status"]) {
+  setMessageStatus(id: string, status: ChatMessage["status"]) {
     this.db
       .prepare("UPDATE chat_messages SET status=? WHERE id=?")
       .run(status, id);
   }
-  linkMessageToScenarioRun(messageId: number, executionRunId: number) {
+  linkMessageToScenarioRun(messageId: string, executionRunId: string) {
     this.db
       .prepare("UPDATE chat_messages SET execution_run_id=? WHERE id=?")
       .run(executionRunId, messageId);
   }
-  setRunStatus(id: number, status: RunStatus, error?: string) {
+  setRunStatus(id: string, status: RunStatus, error?: string) {
     this.db
       .prepare(
         "UPDATE generation_runs SET status=?, error_message=?, started_at=CASE WHEN ?='running' THEN CURRENT_TIMESTAMP ELSE started_at END, completed_at=CASE WHEN ? IN ('completed','failed','cancelled') THEN CURRENT_TIMESTAMP ELSE completed_at END WHERE id=?",
@@ -233,43 +232,46 @@ export class ChatRepository {
       .run(status, error ?? null, status, status, id);
   }
   addStep(
-    runId: number,
+    runId: string,
     index: number,
     payload: unknown,
     finishReason?: string,
   ) {
     this.db
       .prepare(
-        "INSERT OR REPLACE INTO generation_run_steps(run_id,step_index,finish_reason,payload_json) VALUES(?,?,?,?)",
+        `INSERT INTO generation_run_steps(id,run_id,step_index,finish_reason,payload_json)
+         VALUES(?,?,?,?,?) ON CONFLICT(run_id,step_index) DO UPDATE SET
+         finish_reason=excluded.finish_reason,payload_json=excluded.payload_json`,
       )
-      .run(runId, index, finishReason ?? null, JSON.stringify(payload));
+      .run(newEntityId(), runId, index, finishReason ?? null, JSON.stringify(payload));
     this.db
       .prepare("UPDATE generation_runs SET current_step=? WHERE id=?")
       .run(index + 1, runId);
   }
   createToolCall(
-    runId: number,
+    runId: string,
     providerCallId: string,
     toolId: string,
     risk: string,
     input: unknown,
     status: string,
-  ): number {
+  ): string {
     const row = this.db
       .prepare(
-        "INSERT INTO generation_tool_calls(run_id,provider_call_id,tool_id,risk,status,input_json) VALUES(?,?,?,?,?,?) ON CONFLICT(run_id,provider_call_id) DO UPDATE SET status=excluded.status RETURNING id",
+        "INSERT INTO generation_tool_calls(id,run_id,provider_call_id,tool_id,risk,status,input_json) VALUES(?,?,?,?,?,?,?) ON CONFLICT(run_id,provider_call_id) DO UPDATE SET status=excluded.status RETURNING id",
       )
       .get(
+        newEntityId(),
         runId,
         providerCallId,
         toolId,
         risk,
         status,
         JSON.stringify(input),
-      ) as { id: number };
+      ) as { id: string };
     return row.id;
   }
-  finishToolCall(id: number, status: string, output?: unknown, error?: string) {
+  finishToolCall(id: string, status: string, output?: unknown, error?: string) {
     this.db
       .prepare(
         "UPDATE generation_tool_calls SET status=?,output_json=?,error_message=?,completed_at=CURRENT_TIMESTAMP WHERE id=?",
@@ -281,17 +283,17 @@ export class ChatRepository {
         id,
       );
   }
-  updateTitle(id: number, text: string) {
+  updateTitle(id: string, text: string) {
     this.db
       .prepare(
         "UPDATE chat_conversations SET title=CASE WHEN title='Новый диалог' THEN ? ELSE title END,updated_at=CURRENT_TIMESTAMP WHERE id=?",
       )
       .run(text.slice(0, 60), id);
   }
-  deleteConversation(id: number) {
+  deleteConversation(id: string) {
     this.db.prepare("DELETE FROM chat_conversations WHERE id=?").run(id);
   }
-  renameConversation(id: number, title: string) {
+  renameConversation(id: string, title: string) {
     const normalized = title.trim();
     if (!normalized) throw new Error("Название не может быть пустым");
     if (normalized.length > 120)
@@ -303,7 +305,7 @@ export class ChatRepository {
       .run(normalized, id);
     if (!result.changes) throw new Error("Диалог не найден");
   }
-  truncateMessages(conversationId: number, fromMessageId: number) {
+  truncateMessages(conversationId: string, fromMessageId: string) {
     const truncate = this.db.transaction(() => {
       const target = this.db
         .prepare(
@@ -317,22 +319,22 @@ export class ChatRepository {
           "SELECT DISTINCT run_id,execution_run_id FROM chat_messages WHERE conversation_id=? AND id>=?",
         )
         .all(conversationId, fromMessageId) as Array<{
-        run_id: number | null;
-        execution_run_id: number | null;
+        run_id: string | null;
+        execution_run_id: string | null;
       }>;
       const generationRunIds = suffix
         .map((row) => row.run_id)
-        .filter((id): id is number => id !== null);
+        .filter((id): id is string => id !== null);
       const executionRunIds = suffix
         .map((row) => row.execution_run_id)
-        .filter((id): id is number => id !== null);
+        .filter((id): id is string => id !== null);
 
       this.db
         .prepare("DELETE FROM chat_messages WHERE conversation_id=? AND id>=?")
         .run(conversationId, fromMessageId);
       const deleteByIds = (
         table: "generation_runs" | "execution_runs",
-        ids: number[],
+        ids: string[],
       ) => {
         if (!ids.length) return;
         const placeholders = ids.map(() => "?").join(",");
@@ -350,18 +352,18 @@ export class ChatRepository {
     });
     truncate();
   }
-  resolveModel(id: number) {
+  resolveModel(id: string) {
     return this.db
       .prepare(
         "SELECT m.id,m.remote_id,m.details_json,p.kind,p.base_url,p.api_key_secret_id,p.generation_settings_json FROM text_provider_models m JOIN text_provider_configs p ON p.id=m.provider_id WHERE m.id=? AND m.enabled=1 AND p.enabled=1 AND p.provider_type='text'",
       )
       .get(id) as
       | {
-          id: number;
+          id: string;
           remote_id: string;
           kind: string;
           base_url: string;
-          api_key_secret_id: number | null;
+          api_key_secret_id: string | null;
           details_json: string;
           generation_settings_json: string;
         }
@@ -376,7 +378,7 @@ export class ChatRepository {
       .get(id) as
       | {
           instructions: string;
-          text_model_id: number | null;
+          text_model_id: string | null;
           max_tool_calls: number;
           timeout_seconds: number;
           retrieval_limit: number;
@@ -397,14 +399,14 @@ export class ChatRepository {
         .prepare(
           "SELECT vector_store_id FROM automation_agent_vector_stores WHERE agent_id=?",
         )
-        .all(id) as Array<{ vector_store_id: number }>
+        .all(id) as Array<{ vector_store_id: string }>
     ).map((item) => item.vector_store_id);
     const allowedSkillIds = (
       this.db
         .prepare(
           "SELECT skill_id FROM automation_agent_skills WHERE agent_id=? ORDER BY skill_id",
         )
-        .all(id) as Array<{ skill_id: number }>
+        .all(id) as Array<{ skill_id: string }>
     ).map((item) => item.skill_id);
     return {
       ...row,
@@ -429,7 +431,7 @@ export class ChatRepository {
         "SELECT id,tool_id,status,input_json,output_json,error_message FROM generation_tool_calls WHERE run_id=? ORDER BY id",
       )
       .all(row.run_id) as Array<{
-      id: number;
+      id: string;
       tool_id: string;
       status: ChatToolCall["status"];
       input_json: string;

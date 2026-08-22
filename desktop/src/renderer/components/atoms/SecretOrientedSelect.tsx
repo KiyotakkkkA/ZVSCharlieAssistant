@@ -6,7 +6,7 @@ interface SecretOrientedSelectProps extends Omit<
   SelectProps,
   "children" | "options"
 > {
-  categoryId: number;
+  categoryId: string;
   className?: string;
   triggerClassName?: string;
   menuClassName?: string;

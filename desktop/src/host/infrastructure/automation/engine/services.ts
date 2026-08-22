@@ -7,9 +7,9 @@ import type {
 import type { ScenarioFileReference } from "../../../../shared/dto/scenario-trigger-event.dto";
 
 export interface GenerateTextRequest {
-  runId: number;
+  runId: string;
   nodeId: string;
-  modelId: number;
+  modelId: string;
   system: string;
   prompt: unknown;
   signal: AbortSignal;
@@ -22,9 +22,9 @@ export interface GenerateTextRequest {
 }
 
 export interface GenerateObjectRequest<T> {
-  runId: number;
+  runId: string;
   nodeId: string;
-  modelId: number;
+  modelId: string;
   system: string;
   prompt: unknown;
   signal: AbortSignal;
@@ -33,7 +33,7 @@ export interface GenerateObjectRequest<T> {
 }
 
 export interface KnowledgeChunk {
-  documentId: number;
+  documentId: string;
   chunkIndex: number;
   fileName: string;
   content: string;
@@ -46,10 +46,10 @@ export interface ScenarioAgentRecord {
   name: string;
   description: string;
   instructions: string;
-  textModelId: number | null;
+  textModelId: string | null;
   allowedToolIds: string[];
-  allowedVectorStoreIds: number[];
-  allowedSkillIds: number[];
+  allowedVectorStoreIds: string[];
+  allowedSkillIds: string[];
   retrievalLimit: number;
   maxToolCalls: number;
   timeoutSeconds: number;
@@ -60,17 +60,17 @@ export interface ScenarioAgentRecord {
 export interface CreateToolsRequest {
   signal: AbortSignal;
   allowedToolIds: string[];
-  allowedVectorStoreIds: number[];
+  allowedVectorStoreIds: string[];
   retrievalLimit: number;
-  allowedSkillIds: number[];
+  allowedSkillIds: string[];
   terminalPolicy?: AgentTerminalPolicy;
   directoryPolicy?: AgentDirectoryPolicy;
   onToolResult?(toolId: string, input: unknown, output: unknown): void;
 }
 
 export interface DownloadFilesRequest {
-  executionId: number;
-  nodeRunId: number;
+  executionId: string;
+  nodeRunId: string;
   nodeId: string;
   value: unknown;
   maxFileSizeBytes: number;
@@ -79,7 +79,7 @@ export interface DownloadFilesRequest {
 }
 
 export interface DownloadedFile {
-  id: number;
+  id: string;
   fileName: string;
   mimeType: string | null;
   size: number;
@@ -89,18 +89,18 @@ export interface DownloadedFile {
 
 export interface ReadFilesResult {
   documents: Array<{
-    fileId: number;
+    fileId: string;
     fileName: string;
     mimeType: string | null;
     text: string;
     truncated: boolean;
   }>;
-  unsupportedFiles: Array<{ fileId: number; fileName: string }>;
+  unsupportedFiles: Array<{ fileId: string; fileName: string }>;
 }
 
 export interface DeliverResponseRequest {
-  executionId: number;
-  nodeRunId: number;
+  executionId: string;
+  nodeRunId: string;
   config: unknown;
   triggerInput: unknown;
   output: unknown;
@@ -114,9 +114,9 @@ export interface RunSubScenarioRequest {
 }
 
 export interface AskApprovalRequest {
-  executionId: number;
+  executionId: string;
   nodeId: string;
-  nodeRunId: number;
+  nodeRunId: string;
   triggerInput: unknown;
   mode: "confirm" | "choice" | "text";
   header: string;
@@ -126,12 +126,12 @@ export interface AskApprovalRequest {
   defaultAnswer: string | null;
   timeoutSeconds: number | null;
   channel: "ui" | "trigger" | "telegram" | "email";
-  integrationProfileId: number | null;
+  integrationProfileId: string | null;
   recipient: string;
 }
 
 export interface ScenarioEngineServices {
-  defaultModelId(): number | null;
+  defaultModelId(): string | null;
   agent(agentId: string): ScenarioAgentRecord | undefined;
 
   generateText(request: GenerateTextRequest): Promise<string>;
@@ -140,14 +140,14 @@ export interface ScenarioEngineServices {
   createTools(request: CreateToolsRequest): ToolSet | undefined;
 
   searchKnowledge(input: {
-    vectorStoreIds: number[];
+    vectorStoreIds: string[];
     query: string;
     limit: number;
     minScore?: number;
   }): Promise<KnowledgeChunk[]>;
 
   httpFetch: typeof fetch;
-  secret(secretId: number): string | undefined;
+  secret(secretId: string): string | undefined;
 
   downloadFiles(request: DownloadFilesRequest): Promise<DownloadedFile[]>;
   readFiles(input: {

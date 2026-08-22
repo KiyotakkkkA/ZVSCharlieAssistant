@@ -15,8 +15,8 @@ export class PayloadStore {
   ) {}
 
   put(
-    executionId: number,
-    nodeRunId: number,
+    executionId: string,
+    nodeRunId: string,
     label: string,
     value: unknown,
   ): StoredPayload {

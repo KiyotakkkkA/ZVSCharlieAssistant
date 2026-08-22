@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { entityIdSchema } from "./ipc-dto";
 
 export const memoryKindSchema = z.enum([
   "fact",
@@ -8,7 +9,7 @@ export const memoryKindSchema = z.enum([
 ]);
 
 export const upsertMemoryEntryDtoSchema = z.object({
-  id: z.int().positive().optional(),
+  id: entityIdSchema.optional(),
   kind: memoryKindSchema,
   title: z.string().trim().min(1).max(200),
   content: z.string().trim().min(1).max(20_000),

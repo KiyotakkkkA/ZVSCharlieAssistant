@@ -93,12 +93,11 @@ const asText = (value: unknown): string =>
 export function ScenarioExecHistoryPage() {
   const { runId } = useParams<{ runId: string }>();
   const { goBack, goTo } = useAppNavigation();
-  const numericRunId = Number(runId);
 
   const [execution, setExecution] = useState<Execution | null>(null);
   const [questions, setQuestions] = useState<UserQuestion[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [answering, setAnswering] = useState(false);
   const [liveOutput, setLiveOutput] = useState<Map<string, string>>(new Map());
   const [now, setNow] = useState(() => Date.now());
@@ -107,8 +106,8 @@ export function ScenarioExecHistoryPage() {
   const refresh = useCallback(async () => {
     try {
       const [value, pending] = await Promise.all([
-        window.desktop.automation.getScenarioRun(numericRunId),
-        window.desktop.assistant.questions.forExecution(numericRunId),
+        window.desktop.automation.getScenarioRun(runId!),
+        window.desktop.assistant.questions.forExecution(runId!),
       ]);
       setExecution(value);
       setQuestions(pending);
@@ -118,18 +117,18 @@ export function ScenarioExecHistoryPage() {
         cause instanceof Error ? cause.message : "Не удалось загрузить запуск",
       );
     }
-  }, [numericRunId]);
+  }, [runId]);
 
   useEffect(() => {
-    if (!Number.isInteger(numericRunId) || numericRunId <= 0) {
+    if (!runId) {
       setError("Некорректный идентификатор запуска");
       return;
     }
     void refresh();
     const stopRuns = window.desktop.automation.subscribeScenarioRuns(
       (event) => {
-        if ("runId" in event && event.runId !== numericRunId) return;
-        if ("run" in event && event.run.id !== numericRunId) return;
+        if ("runId" in event && event.runId !== runId) return;
+        if ("run" in event && event.run.id !== runId) return;
         if (event.type === "node.output.delta") {
           setLiveOutput((current) => {
             const next = new Map(current);
@@ -146,7 +145,7 @@ export function ScenarioExecHistoryPage() {
     );
     const stopQuestions = window.desktop.assistant.questions.subscribe(
       (question) => {
-        if (question.executionId !== numericRunId) return;
+        if (question.executionId !== runId) return;
         void refresh();
       },
     );
@@ -154,7 +153,7 @@ export function ScenarioExecHistoryPage() {
       stopRuns();
       stopQuestions();
     };
-  }, [numericRunId, refresh]);
+  }, [runId, refresh]);
 
   const active = execution ? ACTIVE_STATUSES.has(execution.run.status) : false;
 

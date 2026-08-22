@@ -45,7 +45,7 @@ class IntegrationStore {
     return profile;
   }
 
-  async remove(id: number): Promise<void> {
+  async remove(id: string): Promise<void> {
     await window.desktop.integrations.delete(id);
     runInAction(() => {
       this.profiles = this.profiles.filter((item) => item.id !== id);

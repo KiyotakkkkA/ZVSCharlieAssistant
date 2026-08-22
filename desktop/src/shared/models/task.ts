@@ -4,7 +4,7 @@ export type TaskRunOrigin = RunOrigin;
 export type TaskRunStatus = RunStatus;
 export interface AgentTaskRun {
   id: string;
-  runId: number;
+  runId: string;
   kind: TaskRunKind;
   origin: TaskRunOrigin;
   title: string;

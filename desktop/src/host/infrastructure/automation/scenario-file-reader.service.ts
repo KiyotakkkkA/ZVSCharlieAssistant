@@ -4,7 +4,7 @@ import type { ScenarioFileReference } from "../../../shared/dto/scenario-trigger
 import type { TextExtractionClient } from "../vector-store/text-extraction.client";
 
 export interface ScenarioFileTextContent {
-  fileId: number;
+  fileId: string;
   fileName: string;
   mimeType: string | null;
   text: string;
@@ -37,7 +37,7 @@ export class ScenarioFileReaderService {
     maxCharactersPerFile: number,
   ): Promise<{
     documents: ScenarioFileTextContent[];
-    unsupportedFiles: Array<{ fileId: number; fileName: string }>;
+    unsupportedFiles: Array<{ fileId: string; fileName: string }>;
   }> {
     const supported = files.filter((file) => isSupported(file.fileName));
     const documents = await Promise.all(

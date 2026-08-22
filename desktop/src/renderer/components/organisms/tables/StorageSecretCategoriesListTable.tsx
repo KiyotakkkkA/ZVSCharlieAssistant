@@ -14,7 +14,7 @@ export function StorageSecretCategoriesListTable({
   onDelete,
 }: {
   categories: SecretCategory[];
-  secretsCount: (id: number) => number;
+  secretsCount: (id: string) => number;
   onEdit: (category: SecretCategory) => void;
   onDelete: (category: SecretCategory) => void;
 }) {

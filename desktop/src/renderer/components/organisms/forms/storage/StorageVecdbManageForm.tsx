@@ -203,7 +203,7 @@ export const StorageVecdbManageForm = observer(function StorageVecdbManageForm({
                   }
                   onChange={(value) =>
                     persist({
-                      embeddingModelId: Number(value),
+                      embeddingModelId: value,
                     })
                   }
                   className="w-full"

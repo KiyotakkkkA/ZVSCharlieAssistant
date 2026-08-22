@@ -17,7 +17,7 @@ interface HttpConfig {
   query: Array<{ key: string; value: string }>;
   bodyMode: "none" | "json" | "text" | "form";
   body: unknown;
-  authSecretId: number | null;
+  authSecretId: string | null;
   authScheme: "bearer" | "basic" | "raw" | "header";
   authHeaderName: string;
   timeoutSeconds: number;
@@ -304,7 +304,7 @@ function countPendingAttachments(values: unknown[]): number {
 }
 
 function collectFiles(values: unknown[]): ScenarioFileReference[] {
-  const files = new Map<number, ScenarioFileReference>();
+  const files = new Map<string, ScenarioFileReference>();
   const visit = (candidate: unknown) => {
     if (Array.isArray(candidate)) {
       candidate.forEach(visit);
@@ -312,14 +312,14 @@ function collectFiles(values: unknown[]): ScenarioFileReference[] {
     }
     if (!isRecord(candidate)) return;
     if (
-      Number.isInteger(candidate.id) &&
+      typeof candidate.id === "string" &&
       typeof candidate.fileName === "string" &&
       typeof candidate.storageKey === "string" &&
       typeof candidate.sha256 === "string" &&
       Number.isInteger(candidate.size)
     ) {
-      files.set(Number(candidate.id), {
-        id: Number(candidate.id),
+      files.set(candidate.id, {
+        id: candidate.id,
         fileName: candidate.fileName,
         mimeType:
           candidate.mimeType === null || typeof candidate.mimeType === "string"
@@ -338,7 +338,7 @@ function collectFiles(values: unknown[]): ScenarioFileReference[] {
 }
 
 interface KnowledgeStoreConfig {
-  vectorStoreId: number;
+  vectorStoreId: string;
   limit: number;
   minScore: number;
 }

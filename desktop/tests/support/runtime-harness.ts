@@ -14,7 +14,7 @@ import { FLOW_EXECUTORS } from "../../src/host/infrastructure/automation/engine/
 import { DATA_EXECUTORS } from "../../src/host/infrastructure/automation/engine/executors/data.executors";
 
 export interface NodeRunRecord {
-  nodeRunId: number;
+  nodeRunId: string;
   nodeId: string;
   attempt: number;
   iteration: number;
@@ -33,8 +33,8 @@ export class MemoryPersistence implements RuntimePersistence {
     nodeId: string;
     attempt: number;
     iteration: number;
-  }): number {
-    const nodeRunId = this.nextId++;
+  }): string {
+    const nodeRunId = `019cba09-8f30-7000-8000-${String(this.nextId++).padStart(12, "0")}`;
     this.runs.push({
       nodeRunId,
       nodeId: input.nodeId,
@@ -45,7 +45,7 @@ export class MemoryPersistence implements RuntimePersistence {
   }
 
   finishNode(input: {
-    nodeRunId: number;
+    nodeRunId: string;
     status: string;
     outputs?: Record<string, ScenarioItems>;
     error?: string;
@@ -61,7 +61,7 @@ export class MemoryPersistence implements RuntimePersistence {
     record.outputs = input.outputs;
   }
 
-  saveCheckpoint(_executionId: number, state: SerializedSchedulerState): void {
+  saveCheckpoint(_executionId: string, state: SerializedSchedulerState): void {
     this.checkpoint = state;
   }
 
@@ -82,7 +82,7 @@ export interface HarnessResult {
   events: RuntimeNodeEvent[];
   persistence: MemoryPersistence;
   checkpoint?: SerializedSchedulerState;
-  suspension?: { nodeId: string; questionId: number };
+  suspension?: { nodeId: string; questionId: string };
   executedNodes: number;
 }
 
@@ -110,9 +110,9 @@ export async function runGraph(
   const events: RuntimeNodeEvent[] = [];
 
   const runtime = new ScenarioRuntime({
-    executionId: 1,
-    scenarioId: "test",
-    scenarioRevisionId: 1,
+    executionId: "019cba09-8f30-7000-8000-000000000301",
+    scenarioId: "019cba09-8f30-7000-8000-000000000302",
+    scenarioRevisionId: "019cba09-8f30-7000-8000-000000000303",
     graph,
     compiled,
     input: options.input ?? { trigger: "manual" },

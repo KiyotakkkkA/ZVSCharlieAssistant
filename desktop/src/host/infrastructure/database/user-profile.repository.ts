@@ -1,6 +1,7 @@
 import type Database from "better-sqlite3";
 import type { UserProfile } from "../../../shared/models/user-profile";
 import type { UpsertUserProfileInput } from "../../../shared/dto";
+import { GLOBAL_ENTITY_IDS } from "../../../shared/entity-ids";
 
 interface UserProfileRow {
   display_name: string;
@@ -16,9 +17,9 @@ export class UserProfileRepository {
     const row = this.database
       .prepare(
         `SELECT display_name,instructions,style,updated_at
-         FROM user_profile WHERE id=1`,
+         FROM user_profile WHERE id=?`,
       )
-      .get() as UserProfileRow;
+      .get(GLOBAL_ENTITY_IDS.userProfile) as UserProfileRow;
     return {
       displayName: row.display_name,
       instructions: row.instructions,
@@ -32,9 +33,14 @@ export class UserProfileRepository {
       .prepare(
         `UPDATE user_profile
          SET display_name=?,instructions=?,style=?,updated_at=CURRENT_TIMESTAMP
-         WHERE id=1`,
+         WHERE id=?`,
       )
-      .run(input.displayName, input.instructions, input.style);
+      .run(
+        input.displayName,
+        input.instructions,
+        input.style,
+        GLOBAL_ENTITY_IDS.userProfile,
+      );
     return this.get();
   }
 

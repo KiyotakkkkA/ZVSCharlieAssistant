@@ -41,7 +41,7 @@ class TextProviderStore {
     runInAction(() => this.apply(snapshot));
     return snapshot;
   }
-  async delete(id: number) {
+  async delete(id: string) {
     const snapshot = await window.desktop.textProviders.deleteProvider(id);
     runInAction(() => this.apply(snapshot));
   }
@@ -57,7 +57,7 @@ class TextProviderStore {
         ),
     );
   }
-  modelLabel(modelId: number) {
+  modelLabel(modelId: string) {
     const model = this.models.find((item) => item.id === modelId);
     const provider =
       model && this.providers.find((item) => item.id === model.providerId);

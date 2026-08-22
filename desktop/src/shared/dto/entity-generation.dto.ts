@@ -1,10 +1,11 @@
 import { z } from "zod";
+import { entityIdSchema } from "./ipc-dto";
 
 export const generatedEntityKindSchema = z.enum(["agent", "skill"]);
 
 export const startEntityGenerationDtoSchema = z.object({
   kind: generatedEntityKindSchema,
-  modelId: z.int().positive(),
+  modelId: entityIdSchema,
   prompt: z.string().trim().min(10).max(4000),
 });
 

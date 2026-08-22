@@ -19,23 +19,23 @@ export interface AssistantApi {
     getSnapshot(): Promise<MemorySnapshot>;
     upsertEntry(input: UpsertMemoryEntryInput): Promise<MemorySnapshot>;
     upsertPolicy(input: UpsertMemoryPolicyInput): Promise<MemorySnapshot>;
-    setPinned(id: number, pinned: boolean): Promise<MemorySnapshot>;
-    remove(id: number): Promise<MemorySnapshot>;
+    setPinned(id: string, pinned: boolean): Promise<MemorySnapshot>;
+    remove(id: string): Promise<MemorySnapshot>;
     clear(): Promise<MemorySnapshot>;
     subscribe(listener: (event: MemoryChangeEvent) => void): () => void;
   };
   tasks: {
-    forConversation(conversationId: number): Promise<TaskPlan | null>;
+    forConversation(conversationId: string): Promise<TaskPlan | null>;
     setStatus(
-      conversationId: number,
+      conversationId: string,
       position: number,
       status: string,
     ): Promise<TaskPlan>;
-    clear(conversationId: number): Promise<void>;
+    clear(conversationId: string): Promise<void>;
   };
   questions: {
-    pendingForConversation(conversationId: number): Promise<UserQuestion[]>;
-    forExecution(executionId: number): Promise<UserQuestion[]>;
+    pendingForConversation(conversationId: string): Promise<UserQuestion[]>;
+    forExecution(executionId: string): Promise<UserQuestion[]>;
     answer(input: AnswerQuestionInput): Promise<UserQuestion>;
     subscribe(listener: (question: UserQuestion) => void): () => void;
   };

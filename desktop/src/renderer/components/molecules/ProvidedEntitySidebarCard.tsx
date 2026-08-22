@@ -18,7 +18,7 @@ import { VectorStoreStatus } from "src/shared/models/vector-store";
 type SupportedKind = IntegrationKind | TextProviderKind | "vecstore";
 
 export interface SettingsProvidedEntitySidebarModel {
-  id: number | null;
+  id: string | null;
   kind: SupportedKind;
   name: string;
   status: ProvidedEntityStatus | VectorStoreStatus;

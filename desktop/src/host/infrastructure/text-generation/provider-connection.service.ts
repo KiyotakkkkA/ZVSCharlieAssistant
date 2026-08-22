@@ -13,7 +13,9 @@ import { SecretStorageRepository } from "../database/secret-storage.repository";
 import { describeProviderHttpError } from "./provider-error";
 import { TextProviderRepository } from "../database/text-provider.repository";
 
-const API_KEYS_CATEGORY_ID = 1;
+import { SYSTEM_SECRET_CATEGORY_IDS } from "../../../shared/entity-ids";
+
+const API_KEYS_CATEGORY_ID = SYSTEM_SECRET_CATEGORY_IDS.apiKeys;
 
 interface ProviderConnectionRequest {
   baseUrl: string;
@@ -433,7 +435,7 @@ export class ProviderConnectionService {
     );
   }
 
-  deleteProvider(id: number): TextProviderSnapshot {
+  deleteProvider(id: string): TextProviderSnapshot {
     return this.providers.delete(id);
   }
 }

@@ -12,8 +12,8 @@ import type { StartRunInput } from "../../shared/dto";
 class ChatStore {
   conversations: ChatConversation[] = [];
   messages: ChatMessage[] = [];
-  activeConversationId: number | null = null;
-  activeRunId: number | null = null;
+  activeConversationId: string | null = null;
+  activeRunId: string | null = null;
   loading = false;
   hasMoreMessages = false;
   loadingEarlier = false;
@@ -21,17 +21,17 @@ class ChatStore {
   scenarioNodeRuns: ScenarioNodeRun[] = [];
   scenarioNodeOutput = new Map<string, string>();
   scenarioExecutions = new Map<
-    number,
+    string,
     { run: ScenarioRun; nodes: ScenarioNodeRun[] }
   >();
   pendingScenarioApproval: {
-    runId: number;
+    runId: string;
     nodeId: string;
     prompt: string;
   } | null = null;
   private unsubscribe?: () => void;
-  private readonly pendingTextDeltas = new Map<number, string>();
-  private readonly pendingReasoningDeltas = new Map<number, string>();
+  private readonly pendingTextDeltas = new Map<string, string>();
+  private readonly pendingReasoningDeltas = new Map<string, string>();
   private readonly pendingScenarioDeltas = new Map<string, string>();
   private deltaTimer: number | null = null;
 
@@ -90,12 +90,12 @@ class ChatStore {
     if (this.activeRunId) await window.desktop.chat.cancelRun(this.activeRunId);
   }
 
-  async renameConversation(id: number, title: string) {
+  async renameConversation(id: string, title: string) {
     await window.desktop.chat.renameConversation(id, title);
     await this.refreshConversations();
   }
 
-  async deleteConversation(id: number) {
+  async deleteConversation(id: string) {
     await window.desktop.chat.deleteConversation(id);
     const next = this.conversations.find((item) => item.id !== id);
     if (next) await this.select(next.id);
@@ -103,7 +103,7 @@ class ChatStore {
     await this.refreshConversations();
   }
 
-  async truncateMessages(fromMessageId: number) {
+  async truncateMessages(fromMessageId: string) {
     const conversationId = this.activeConversationId;
     if (!conversationId) throw new Error("Диалог не выбран");
     if (this.activeRunId)
@@ -135,7 +135,7 @@ class ChatStore {
     this.scenarioExecutions.clear();
   }
 
-  async select(id: number) {
+  async select(id: string) {
     this.resetPendingDeltas();
     const snapshot = await window.desktop.chat.getSnapshot(id);
     runInAction(() => {
@@ -374,7 +374,7 @@ class ChatStore {
       ...new Set(
         messages
           .map((message) => message.scenarioRunId)
-          .filter((id): id is number => typeof id === "number"),
+          .filter((id): id is string => typeof id === "string"),
       ),
     ].filter((id) => !this.scenarioExecutions.has(id));
     const executions = await Promise.allSettled(

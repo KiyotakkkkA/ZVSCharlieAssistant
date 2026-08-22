@@ -6,16 +6,18 @@ import type {
   MemoryPolicy,
   MemorySource,
 } from "../../../shared/models/memory";
+import { newEntityId } from "./entity-id";
+import { GLOBAL_ENTITY_IDS } from "../../../shared/entity-ids";
 
 interface MemoryRow {
-  id: number;
+  id: string;
   kind: MemoryKind;
   title: string;
   content: string;
   tags_json: string;
   source: MemorySource;
-  conversation_id: number | null;
-  execution_id: number | null;
+  conversation_id: string | null;
+  execution_id: string | null;
   agent_id: string | null;
   pinned: number;
   hits: number;
@@ -54,8 +56,8 @@ export class MemoryRepository {
 
   policy(): MemoryPolicy {
     const row = this.db
-      .prepare("SELECT * FROM memory_policy WHERE id=1")
-      .get() as Record<string, number | string>;
+      .prepare("SELECT * FROM memory_policy WHERE id=?")
+      .get(GLOBAL_ENTITY_IDS.memoryPolicy) as Record<string, number | string>;
     return {
       enabled: Boolean(row.enabled),
       autosave: Boolean(row.autosave),
@@ -91,7 +93,7 @@ export class MemoryRepository {
         `UPDATE memory_policy SET enabled=?, autosave=?, allow_scenario_writes=?,
            max_entries=?, max_content_chars=?, injected_entries=?,
            updated_at=CURRENT_TIMESTAMP
-         WHERE id=1`,
+         WHERE id=?`,
       )
       .run(
         Number(input.enabled),
@@ -100,6 +102,7 @@ export class MemoryRepository {
         input.maxEntries,
         input.maxContentChars,
         input.injectedEntries,
+        GLOBAL_ENTITY_IDS.memoryPolicy,
       );
     return this.policy();
   }
@@ -125,7 +128,7 @@ export class MemoryRepository {
     );
   }
 
-  find(id: number): MemoryEntry | undefined {
+  find(id: string): MemoryEntry | undefined {
     const row = this.db
       .prepare("SELECT * FROM memory_entries WHERE id=?")
       .get(id) as MemoryRow | undefined;
@@ -157,7 +160,7 @@ export class MemoryRepository {
     const rows = this.db
       .prepare(
         `SELECT e.* FROM memory_search s
-         JOIN memory_entries e ON e.id = s.rowid
+         JOIN memory_entries e ON e.search_rowid = s.rowid
          WHERE memory_search MATCH ?
          ORDER BY bm25(memory_search), e.pinned DESC
          LIMIT ?`,
@@ -167,7 +170,7 @@ export class MemoryRepository {
     return rows.map(mapEntry);
   }
 
-  private registerHits(ids: number[]): void {
+  private registerHits(ids: string[]): void {
     const update = this.db.prepare(
       "UPDATE memory_entries SET hits=hits+1, used_at=CURRENT_TIMESTAMP WHERE id=?",
     );
@@ -177,14 +180,14 @@ export class MemoryRepository {
   }
 
   upsert(input: {
-    id?: number;
+    id?: string;
     kind: MemoryKind;
     title: string;
     content: string;
     tags: string[];
     source: MemorySource;
-    conversationId?: number | null;
-    executionId?: number | null;
+    conversationId?: string | null;
+    executionId?: string | null;
     agentId?: string | null;
     pinned?: boolean;
   }): { entry: MemoryEntry; created: boolean } {
@@ -212,13 +215,15 @@ export class MemoryRepository {
         );
       return { entry: this.find(existing.id)!, created: false };
     }
-    const result = this.db
+    const id = input.id ?? newEntityId();
+    this.db
       .prepare(
         `INSERT INTO memory_entries
-           (kind,title,content,tags_json,source,conversation_id,execution_id,agent_id,pinned)
-         VALUES(?,?,?,?,?,?,?,?,?)`,
+           (id,kind,title,content,tags_json,source,conversation_id,execution_id,agent_id,pinned)
+         VALUES(?,?,?,?,?,?,?,?,?,?)`,
       )
       .run(
+        id,
         input.kind,
         input.title,
         input.content,
@@ -229,10 +234,10 @@ export class MemoryRepository {
         input.agentId ?? null,
         Number(input.pinned ?? false),
       );
-    return { entry: this.find(Number(result.lastInsertRowid))!, created: true };
+    return { entry: this.find(id)!, created: true };
   }
 
-  setPinned(id: number, pinned: boolean): void {
+  setPinned(id: string, pinned: boolean): void {
     const result = this.db
       .prepare(
         "UPDATE memory_entries SET pinned=?, updated_at=CURRENT_TIMESTAMP WHERE id=?",
@@ -241,7 +246,7 @@ export class MemoryRepository {
     if (!result.changes) throw new Error("Запись памяти не найдена");
   }
 
-  remove(id: number): void {
+  remove(id: string): void {
     const result = this.db
       .prepare("DELETE FROM memory_entries WHERE id=?")
       .run(id);

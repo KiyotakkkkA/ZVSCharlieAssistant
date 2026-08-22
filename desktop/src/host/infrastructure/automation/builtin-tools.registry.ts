@@ -1,9 +1,10 @@
 import type { AutomationTool } from "../../../shared/models/automation";
+import { SYSTEM_SECRET_CATEGORY_IDS } from "../../../shared/entity-ids";
 
 const ollamaApiKey = {
   key: "ollamaApiKey",
   label: "Ollama API key",
-  categoryId: 1,
+  categoryId: SYSTEM_SECRET_CATEGORY_IDS.apiKeys,
   required: true,
 } as const;
 

@@ -1,16 +1,17 @@
 import type Database from "better-sqlite3";
 import type { TaskItem, TaskPlan } from "../../../shared/models/task-plan";
 import type { TaskItemInput } from "../../../shared/dto";
+import { newEntityId } from "./entity-id";
 
 interface PlanRow {
-  id: number;
-  conversation_id: number | null;
-  execution_id: number | null;
+  id: string;
+  conversation_id: string | null;
+  execution_id: string | null;
   updated_at: string;
 }
 
 interface ItemRow {
-  id: number;
+  id: string;
   position: number;
   subject: string;
   detail: string;
@@ -19,7 +20,7 @@ interface ItemRow {
 }
 
 export type TaskPlanScope =
-  { conversationId: number } | { executionId: number };
+  { conversationId: string } | { executionId: string };
 
 export class TaskPlanRepository {
   constructor(private readonly db: Database.Database) {}
@@ -40,25 +41,24 @@ export class TaskPlanRepository {
   replace(scope: TaskPlanScope, items: TaskItemInput[]): TaskPlan {
     return this.db.transaction(() => {
       const existing = this.find(scope);
-      const planId =
-        existing?.id ??
-        Number(
-          this.db
-            .prepare(
-              "INSERT INTO task_plans(conversation_id,execution_id) VALUES(?,?)",
-            )
-            .run(
-              "conversationId" in scope ? scope.conversationId : null,
-              "executionId" in scope ? scope.executionId : null,
-            ).lastInsertRowid,
-        );
+      const planId = existing?.id ?? newEntityId();
+      if (!existing)
+        this.db
+          .prepare(
+            "INSERT INTO task_plans(id,conversation_id,execution_id) VALUES(?,?,?)",
+          )
+          .run(
+            planId,
+            "conversationId" in scope ? scope.conversationId : null,
+            "executionId" in scope ? scope.executionId : null,
+          );
       this.db.prepare("DELETE FROM task_items WHERE plan_id=?").run(planId);
       const insert = this.db.prepare(
-        `INSERT INTO task_items(plan_id,position,subject,detail,status)
-         VALUES(?,?,?,?,?)`,
+        `INSERT INTO task_items(id,plan_id,position,subject,detail,status)
+         VALUES(?,?,?,?,?,?)`,
       );
       items.forEach((item, index) =>
-        insert.run(planId, index, item.subject, item.detail, item.status),
+        insert.run(newEntityId(), planId, index, item.subject, item.detail, item.status),
       );
       this.db
         .prepare(

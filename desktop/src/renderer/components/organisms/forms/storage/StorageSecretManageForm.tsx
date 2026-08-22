@@ -55,7 +55,7 @@ export function StorageSecretManageForm({
     try {
       await onSubmit({
         id: model?.id,
-        categoryId: Number(categoryId),
+        categoryId,
         label,
         content: content.trim() || undefined,
       });

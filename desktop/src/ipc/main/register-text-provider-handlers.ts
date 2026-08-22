@@ -29,7 +29,7 @@ export function registerTextProviderHandlers(
   );
   ipcMain.handle(
     TEXT_PROVIDER_IPC_CHANNELS.deleteProvider,
-    (_event, id: number) => service.deleteProvider(id),
+    (_event, id: string) => service.deleteProvider(id),
   );
 }
 

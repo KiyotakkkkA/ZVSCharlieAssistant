@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { entityIdSchema } from "./ipc-dto";
 
 export const textProviderKindSchema = z.enum([
   "ollama",
@@ -49,11 +50,11 @@ export const testTextProviderConnectionDtoSchema = z.object({
   kind: textProviderKindSchema,
   providerType: textProviderTypeSchema,
   baseUrl: z.string(),
-  apiKeySecretId: z.int().positive().optional(),
+  apiKeySecretId: entityIdSchema.optional(),
 });
 export const upsertTextProviderDtoSchema =
   testTextProviderConnectionDtoSchema.extend({
-    id: z.int().positive().optional(),
+    id: entityIdSchema.optional(),
     name: z.string(),
     enabled: z.boolean(),
     enabledModelIds: z.array(z.string()),

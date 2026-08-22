@@ -59,6 +59,7 @@ import {
 } from "../../../../shared/scenario/descriptors";
 import { resolvePorts } from "../../../../shared/scenario/node-descriptor";
 import type { AutomationStatus } from "../../../../shared/dto";
+import { newUuidV7 } from "../../../../shared/uuid-v7";
 
 const NODE_WIDTH = 190;
 const NODE_HEIGHT = 60;
@@ -70,10 +71,12 @@ const scenarioStatusOptions = [
 ];
 
 function starterGraph(): ScenarioGraph {
+  const triggerId = newUuidV7();
+  const resultId = newUuidV7();
   return scenarioGraphSchema.parse({
     nodes: [
       {
-        id: "trigger",
+        id: triggerId,
         kind: "trigger.manual",
         name: "Ручной запуск",
         x: 80,
@@ -82,7 +85,7 @@ function starterGraph(): ScenarioGraph {
           scenarioDescriptors.get("trigger.manual")?.defaultConfig?.() ?? {},
       },
       {
-        id: "result",
+        id: resultId,
         kind: "output",
         name: "Результат",
         x: 460,
@@ -92,10 +95,10 @@ function starterGraph(): ScenarioGraph {
     ],
     edges: [
       {
-        id: "trigger-result",
-        source: "trigger",
+        id: newUuidV7(),
+        source: triggerId,
         sourcePort: "main",
-        target: "result",
+        target: resultId,
         targetPort: "main",
       },
     ],
@@ -109,17 +112,12 @@ export const ScenarioGraphEditorPage = observer(
     const toasts = useToasts();
     const { scenarioId } = useParams();
     const scenario = automationStore.getScenario(scenarioId);
+    const initialGraph = useRef(
+      scenario?.graph.nodes.length ? scenario.graph : starterGraph(),
+    ).current;
 
-    const [nodes, setNodes] = useState<ScenarioNode[]>(() =>
-      scenario?.graph.nodes.length
-        ? scenario.graph.nodes
-        : starterGraph().nodes,
-    );
-    const [edges, setEdges] = useState<ScenarioEdge[]>(() =>
-      scenario?.graph.nodes.length
-        ? scenario.graph.edges
-        : starterGraph().edges,
-    );
+    const [nodes, setNodes] = useState<ScenarioNode[]>(() => initialGraph.nodes);
+    const [edges, setEdges] = useState<ScenarioEdge[]>(() => initialGraph.edges);
     const nodeNames = useMemo(() => nodes.map((node) => node.name), [nodes]);
 
     const [selectedNodeId, setSelectedNodeId] = useState(nodes[0]?.id ?? "");
@@ -341,7 +339,7 @@ export const ScenarioGraphEditorPage = observer(
         const descriptor = scenarioDescriptors.get(kind);
         if (!descriptor) return;
         pushHistory();
-        const id = `${kind.replace(/[^a-zA-Z0-9]/g, "_")}-${crypto.randomUUID().slice(0, 8)}`;
+        const id = newUuidV7();
         setNodes((current) => [
           ...current,
           {
@@ -525,7 +523,7 @@ export const ScenarioGraphEditorPage = observer(
           return [
             ...current,
             {
-              id: `edge-${crypto.randomUUID()}`,
+              id: newUuidV7(),
               source: connection.source!,
               sourcePort: connection.sourceHandle ?? "main",
               target: connection.target!,

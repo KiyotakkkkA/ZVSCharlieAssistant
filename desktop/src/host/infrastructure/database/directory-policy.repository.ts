@@ -6,6 +6,7 @@ import {
   parseJsonDto,
   type UpsertDirectoryPolicyInput,
 } from "../../../shared/dto";
+import { GLOBAL_ENTITY_IDS } from "../../../shared/entity-ids";
 
 interface DirectoryPolicyRow {
   grants_json: string;
@@ -17,8 +18,8 @@ export class DirectoryPolicyRepository {
 
   get(): DirectoryPolicy {
     const row = this.database
-      .prepare("SELECT grants_json,updated_at FROM directory_policy WHERE id=1")
-      .get() as DirectoryPolicyRow;
+      .prepare("SELECT grants_json,updated_at FROM directory_policy WHERE id=?")
+      .get(GLOBAL_ENTITY_IDS.directoryPolicy) as DirectoryPolicyRow;
     return {
       grants: parseJsonDto(directoryGrantDtoSchema.array(), row.grants_json),
       updatedAt: row.updated_at,
@@ -45,9 +46,9 @@ export class DirectoryPolicyRepository {
       .prepare(
         `UPDATE directory_policy
          SET grants_json=?,updated_at=CURRENT_TIMESTAMP
-         WHERE id=1`,
+         WHERE id=?`,
       )
-      .run(JSON.stringify(grants));
+      .run(JSON.stringify(grants), GLOBAL_ENTITY_IDS.directoryPolicy);
     return this.get();
   }
 }

@@ -5,9 +5,10 @@ import type {
   IntegrationSnapshot,
 } from "../../../shared/models/integration";
 import type { UpsertIntegrationProfileInput } from "../../../shared/dto";
+import { newEntityId } from "./entity-id";
 
 type ProfileRow = {
-  id: number;
+  id: string;
   kind: IntegrationProfile["kind"];
   name: string;
   enabled: number;
@@ -23,9 +24,9 @@ type ProfileRow = {
 export interface DueTriggerBinding {
   id: string;
   scenarioId: string;
-  scenarioRevisionId: number;
+  scenarioRevisionId: string;
   kind: "telegram" | "email" | "interval";
-  integrationProfileId: number | null;
+  integrationProfileId: string | null;
   config: Record<string, unknown>;
   nextRunAt: string | null;
 }
@@ -52,9 +53,9 @@ export class IntegrationRepository {
         "SELECT profile_id,binding_key,secret_id FROM integration_secret_bindings",
       )
       .all() as Array<{
-      profile_id: number;
+      profile_id: string;
       binding_key: string;
-      secret_id: number;
+      secret_id: string;
     }>;
     return rows.map((row) => ({
       id: row.id,
@@ -76,27 +77,26 @@ export class IntegrationRepository {
     }));
   }
 
-  findProfile(id: number): IntegrationProfile | undefined {
+  findProfile(id: string): IntegrationProfile | undefined {
     return this.listProfiles().find((item) => item.id === id);
   }
 
   upsertProfile(input: UpsertIntegrationProfileInput): IntegrationProfile {
     const id = this.db.transaction(() => {
-      const profileId =
-        input.id ??
-        Number(
-          this.db
-            .prepare(
-              `INSERT INTO integration_profiles(kind,name,enabled,config_json,status)
-           VALUES(?,?,?,?,'unchecked')`,
-            )
-            .run(
-              input.kind,
-              input.name,
-              Number(input.enabled),
-              JSON.stringify(input.config),
-            ).lastInsertRowid,
-        );
+      const profileId = input.id ?? newEntityId();
+      if (!input.id)
+        this.db
+          .prepare(
+            `INSERT INTO integration_profiles(id,kind,name,enabled,config_json,status)
+             VALUES(?,?,?,?,?,'unchecked')`,
+          )
+          .run(
+            profileId,
+            input.kind,
+            input.name,
+            Number(input.enabled),
+            JSON.stringify(input.config),
+          );
       if (input.id) {
         const result = this.db
           .prepare(
@@ -125,7 +125,7 @@ export class IntegrationRepository {
     return this.findProfile(id)!;
   }
 
-  deleteProfile(id: number): void {
+  deleteProfile(id: string): void {
     const scenarios = (
       this.db
         .prepare(
@@ -164,7 +164,7 @@ export class IntegrationRepository {
   }
 
   setConnectionResult(
-    id: number,
+    id: string,
     ok: boolean,
     error?: string,
     metadata: IntegrationConnectionMetadata = {},
@@ -184,7 +184,7 @@ export class IntegrationRepository {
 
   syncTriggerNodeBindings(
     scenarioId: string,
-    revisionId: number,
+    revisionId: string,
     nodes: Array<{ id: string; kind: string; config: Record<string, unknown> }>,
   ): void {
     this.db.transaction(() => {
@@ -200,7 +200,7 @@ export class IntegrationRepository {
         if (node.kind === "trigger.manual") {
           if (node.config.fromChat)
             insert.run(
-              `${scenarioId}:${node.id}:manual_chat`,
+              newEntityId(),
               scenarioId,
               revisionId,
               node.id,
@@ -212,7 +212,7 @@ export class IntegrationRepository {
             );
           if (node.config.fromEditor)
             insert.run(
-              `${scenarioId}:${node.id}:manual_editor`,
+              newEntityId(),
               scenarioId,
               revisionId,
               node.id,
@@ -227,7 +227,7 @@ export class IntegrationRepository {
         if (node.kind === "trigger.interval") {
           const intervalSeconds = Number(node.config.intervalSeconds) || 3_600;
           insert.run(
-            `${scenarioId}:${node.id}`,
+            newEntityId(),
             scenarioId,
             revisionId,
             node.id,
@@ -241,9 +241,11 @@ export class IntegrationRepository {
         }
         if (node.kind === "trigger.telegram" || node.kind === "trigger.email") {
           const integrationProfileId =
-            Number(node.config.integrationProfileId) || null;
+            typeof node.config.integrationProfileId === "string"
+              ? node.config.integrationProfileId
+              : null;
           insert.run(
-            `${scenarioId}:${node.id}`,
+            newEntityId(),
             scenarioId,
             revisionId,
             node.id,
@@ -269,12 +271,12 @@ export class IntegrationRepository {
     ).map((row) => ({
       id: String(row.id),
       scenarioId: String(row.scenario_id),
-      scenarioRevisionId: Number(row.scenario_revision_id),
+      scenarioRevisionId: String(row.scenario_revision_id),
       kind: row.kind as "interval",
       integrationProfileId:
         row.integration_profile_id === null
           ? null
-          : Number(row.integration_profile_id),
+          : String(row.integration_profile_id),
       config: JSON.parse(String(row.config_json)),
       nextRunAt: row.next_run_at === null ? null : String(row.next_run_at),
     }));
@@ -294,9 +296,9 @@ export class IntegrationRepository {
     ).map((row) => ({
       id: String(row.id),
       scenarioId: String(row.scenario_id),
-      scenarioRevisionId: Number(row.scenario_revision_id),
+      scenarioRevisionId: String(row.scenario_revision_id),
       kind: row.kind as "telegram" | "email",
-      integrationProfileId: Number(row.integration_profile_id),
+      integrationProfileId: String(row.integration_profile_id),
       config: JSON.parse(String(row.config_json)),
       nextRunAt: null,
     }));

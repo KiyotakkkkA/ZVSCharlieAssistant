@@ -13,7 +13,7 @@ export class AutomationSkillStore {
   hydrate(items: AutomationSkill[]) {
     this.items = items;
   }
-  get(id?: number) {
+  get(id?: string) {
     return this.items.find((item) => item.id === id);
   }
   async upsert(input: UpsertAutomationSkillInput) {
@@ -27,7 +27,7 @@ export class AutomationSkillStore {
     });
     return item;
   }
-  async remove(id: number) {
+  async remove(id: string) {
     await window.desktop.automation.deleteSkill(id);
     runInAction(() => {
       this.items = this.items.filter((item) => item.id !== id);

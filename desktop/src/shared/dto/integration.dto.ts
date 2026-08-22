@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { entityIdSchema } from "./ipc-dto";
 
 export const integrationKindSchema = z.enum([
   "telegram_bot",
@@ -8,7 +9,7 @@ export const integrationKindSchema = z.enum([
 ]);
 
 export const upsertIntegrationProfileDtoSchema = z.object({
-  id: z.int().positive().optional(),
+  id: entityIdSchema.optional(),
   kind: integrationKindSchema,
   name: z.string().trim().min(1).max(120),
   enabled: z.boolean(),
@@ -26,7 +27,7 @@ export const upsertIntegrationProfileDtoSchema = z.object({
     smtpSecure: z.boolean().optional(),
     smtpFrom: z.string().trim().email().max(320).optional(),
   }),
-  secretBindings: z.record(z.string(), z.int().positive()),
+  secretBindings: z.record(z.string(), entityIdSchema),
 });
 
 export type IntegrationKind = z.infer<typeof integrationKindSchema>;

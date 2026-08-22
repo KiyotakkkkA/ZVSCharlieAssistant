@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { entityIdSchema } from "./ipc-dto";
 
 export const directoryPermissionSchema = z.enum([
   "read",
@@ -9,7 +10,7 @@ export const directoryPermissionSchema = z.enum([
 ]);
 
 export const directoryGrantDtoSchema = z.object({
-  id: z.int().positive().optional(),
+  id: entityIdSchema.optional(),
   path: z.string(),
   recursive: z.boolean(),
   permissions: z.array(directoryPermissionSchema),

@@ -14,9 +14,9 @@ export type ScenarioErrorCode =
 
 export interface ScenarioErrorContext {
   scenarioId?: string;
-  executionId?: number;
+  executionId?: string;
   nodeId?: string;
-  nodeRunId?: number;
+  nodeRunId?: string;
   attempt?: number;
   [key: string]: unknown;
 }
@@ -100,7 +100,7 @@ export class CancelledError extends ScenarioError {
 
 export class ScenarioSuspended extends Error {
   constructor(
-    readonly questionId: number,
+    readonly questionId: string,
     readonly nodeId?: string,
   ) {
     super("Сценарий приостановлен до ответа пользователя");

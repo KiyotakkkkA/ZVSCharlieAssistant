@@ -2,14 +2,14 @@ export type MemoryKind = "fact" | "preference" | "instruction" | "episode";
 export type MemorySource = "chat" | "scenario" | "manual";
 
 export interface MemoryEntry {
-  id: number;
+  id: string;
   kind: MemoryKind;
   title: string;
   content: string;
   tags: string[];
   source: MemorySource;
-  conversationId: number | null;
-  executionId: number | null;
+  conversationId: string | null;
+  executionId: string | null;
   agentId: string | null;
   pinned: boolean;
   hits: number;
@@ -38,5 +38,5 @@ export interface MemoryChangeEvent {
   action: "created" | "updated" | "removed";
   title: string;
   kind: MemoryKind;
-  entryId: number | null;
+  entryId: string | null;
 }

@@ -157,7 +157,10 @@ describe("связи и порты", () => {
 
   it("не требует подключения необязательного входа базы знаний", () => {
     const trigger = node("trigger.manual", { name: "Старт" });
-    const agent = node("agent", { name: "Агент", config: { agentId: "a1" } });
+    const agent = node("agent", {
+      name: "Агент",
+      config: { agentId: "019cba09-8f30-7000-8000-000000000201" },
+    });
     const output = node("output", { name: "Итог" });
     const result = compiler.validate(
       graph(
@@ -245,7 +248,10 @@ describe("достижимость", () => {
       name: "База",
       config: { vectorStoreId: 3, limit: 8, minScore: 0 },
     });
-    const agent = node("agent", { name: "Агент", config: { agentId: "a1" } });
+    const agent = node("agent", {
+      name: "Агент",
+      config: { agentId: "019cba09-8f30-7000-8000-000000000201" },
+    });
     const output = node("output", { name: "Итог" });
     const result = compiler.validate(
       graph(

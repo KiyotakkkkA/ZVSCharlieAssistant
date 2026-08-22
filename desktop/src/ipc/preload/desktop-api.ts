@@ -126,7 +126,7 @@ export const desktopApi: DesktopApi = {
         INTEGRATION_IPC_CHANNELS.upsert,
         input,
       ) as Promise<IntegrationProfile>,
-    delete: (id: number): Promise<void> =>
+    delete: (id: string): Promise<void> =>
       ipcRenderer.invoke(INTEGRATION_IPC_CHANNELS.delete, id) as Promise<void>,
     test: (
       input: UpsertIntegrationProfileInput,
@@ -144,9 +144,9 @@ export const desktopApi: DesktopApi = {
         ipcRenderer.invoke(ASSISTANT_IPC_CHANNELS.memoryUpsertEntry, input),
       upsertPolicy: (input: unknown) =>
         ipcRenderer.invoke(ASSISTANT_IPC_CHANNELS.memoryUpsertPolicy, input),
-      setPinned: (id: number, pinned: boolean) =>
+      setPinned: (id: string, pinned: boolean) =>
         ipcRenderer.invoke(ASSISTANT_IPC_CHANNELS.memorySetPinned, id, pinned),
-      remove: (id: number) =>
+      remove: (id: string) =>
         ipcRenderer.invoke(ASSISTANT_IPC_CHANNELS.memoryRemove, id),
       clear: () => ipcRenderer.invoke(ASSISTANT_IPC_CHANNELS.memoryClear),
       subscribe: (listener: (event: MemoryChangeEvent) => void) => {
@@ -164,28 +164,28 @@ export const desktopApi: DesktopApi = {
       },
     },
     tasks: {
-      forConversation: (conversationId: number) =>
+      forConversation: (conversationId: string) =>
         ipcRenderer.invoke(
           ASSISTANT_IPC_CHANNELS.tasksForConversation,
           conversationId,
         ),
-      setStatus: (conversationId: number, position: number, status: string) =>
+      setStatus: (conversationId: string, position: number, status: string) =>
         ipcRenderer.invoke(
           ASSISTANT_IPC_CHANNELS.tasksSetStatus,
           conversationId,
           position,
           status,
         ),
-      clear: (conversationId: number) =>
+      clear: (conversationId: string) =>
         ipcRenderer.invoke(ASSISTANT_IPC_CHANNELS.tasksClear, conversationId),
     },
     questions: {
-      pendingForConversation: (conversationId: number) =>
+      pendingForConversation: (conversationId: string) =>
         ipcRenderer.invoke(
           ASSISTANT_IPC_CHANNELS.questionsPending,
           conversationId,
         ),
-      forExecution: (executionId: number) =>
+      forExecution: (executionId: string) =>
         ipcRenderer.invoke(
           ASSISTANT_IPC_CHANNELS.questionsForExecution,
           executionId,
@@ -306,14 +306,14 @@ export const desktopApi: DesktopApi = {
         SECRET_IPC_CHANNELS.upsertSecret,
         input,
       ) as Promise<SecretEntity>,
-    deleteCategory: (id: number): Promise<void> =>
+    deleteCategory: (id: string): Promise<void> =>
       ipcRenderer.invoke(
         SECRET_IPC_CHANNELS.deleteCategory,
         id,
       ) as Promise<void>,
-    deleteSecret: (id: number): Promise<void> =>
+    deleteSecret: (id: string): Promise<void> =>
       ipcRenderer.invoke(SECRET_IPC_CHANNELS.deleteSecret, id) as Promise<void>,
-    copySecret: (id: number): Promise<void> =>
+    copySecret: (id: string): Promise<void> =>
       ipcRenderer.invoke(SECRET_IPC_CHANNELS.copySecret, id) as Promise<void>,
   },
   automation: {
@@ -340,7 +340,7 @@ export const desktopApi: DesktopApi = {
         AUTOMATION_IPC_CHANNELS.upsertSkill,
         input,
       ) as Promise<AutomationSkill>,
-    deleteSkill: (id: number): Promise<void> =>
+    deleteSkill: (id: string): Promise<void> =>
       ipcRenderer.invoke(
         AUTOMATION_IPC_CHANNELS.deleteSkill,
         id,
@@ -382,12 +382,12 @@ export const desktopApi: DesktopApi = {
         input,
         origin,
       ) as Promise<ScenarioRun>,
-    cancelScenarioRun: (id: number): Promise<void> =>
+    cancelScenarioRun: (id: string): Promise<void> =>
       ipcRenderer.invoke(
         AUTOMATION_IPC_CHANNELS.cancelScenarioRun,
         id,
       ) as Promise<void>,
-    approveScenarioRun: (id: number, approved: boolean): Promise<void> =>
+    approveScenarioRun: (id: string, approved: boolean): Promise<void> =>
       ipcRenderer.invoke(
         AUTOMATION_IPC_CHANNELS.approveScenarioRun,
         id,
@@ -401,7 +401,7 @@ export const desktopApi: DesktopApi = {
         scenarioId,
       ) as Promise<{ run: ScenarioRun; nodes: ScenarioNodeRun[] } | null>,
     getScenarioRun: (
-      id: number,
+      id: string,
     ): Promise<{ run: ScenarioRun; nodes: ScenarioNodeRun[] }> =>
       ipcRenderer.invoke(
         AUTOMATION_IPC_CHANNELS.getScenarioRun,
@@ -439,7 +439,7 @@ export const desktopApi: DesktopApi = {
         TEXT_PROVIDER_IPC_CHANNELS.upsertProvider,
         input,
       ) as Promise<TextProviderSnapshot>,
-    deleteProvider: (id: number): Promise<TextProviderSnapshot> =>
+    deleteProvider: (id: string): Promise<TextProviderSnapshot> =>
       ipcRenderer.invoke(
         TEXT_PROVIDER_IPC_CHANNELS.deleteProvider,
         id,
@@ -459,7 +459,7 @@ export const desktopApi: DesktopApi = {
         VECTOR_STORE_IPC_CHANNELS.upsertStore,
         input,
       ) as Promise<VectorStoreSnapshot>,
-    deleteStore: (id: number): Promise<VectorStoreSnapshot> =>
+    deleteStore: (id: string): Promise<VectorStoreSnapshot> =>
       ipcRenderer.invoke(
         VECTOR_STORE_IPC_CHANNELS.deleteStore,
         id,
@@ -471,7 +471,7 @@ export const desktopApi: DesktopApi = {
         VECTOR_STORE_IPC_CHANNELS.uploadDocuments,
         input,
       ) as Promise<VectorStoreSnapshot>,
-    deleteDocument: (id: number): Promise<VectorStoreSnapshot> =>
+    deleteDocument: (id: string): Promise<VectorStoreSnapshot> =>
       ipcRenderer.invoke(
         VECTOR_STORE_IPC_CHANNELS.deleteDocument,
         id,
@@ -482,14 +482,14 @@ export const desktopApi: DesktopApi = {
       >,
   },
   chat: {
-    getSnapshot: (id?: number): Promise<ChatSnapshot> =>
+    getSnapshot: (id?: string): Promise<ChatSnapshot> =>
       ipcRenderer.invoke(
         CHAT_IPC_CHANNELS.getSnapshot,
         id,
       ) as Promise<ChatSnapshot>,
     getMessagesPage: (
-      id: number,
-      beforeId?: number,
+      id: string,
+      beforeId?: string,
     ): Promise<ChatMessagePage> =>
       ipcRenderer.invoke(
         CHAT_IPC_CHANNELS.getMessagesPage,
@@ -498,27 +498,27 @@ export const desktopApi: DesktopApi = {
       ) as Promise<ChatMessagePage>,
     startRun: (
       input: StartRunInput,
-    ): Promise<{ runId: number; conversationId: number }> =>
+    ): Promise<{ runId: string; conversationId: string }> =>
       ipcRenderer.invoke(CHAT_IPC_CHANNELS.startRun, input) as Promise<{
-        runId: number;
-        conversationId: number;
+        runId: string;
+        conversationId: string;
       }>,
-    cancelRun: (id: number): Promise<void> =>
+    cancelRun: (id: string): Promise<void> =>
       ipcRenderer.invoke(CHAT_IPC_CHANNELS.cancelRun, id) as Promise<void>,
-    deleteConversation: (id: number): Promise<void> =>
+    deleteConversation: (id: string): Promise<void> =>
       ipcRenderer.invoke(
         CHAT_IPC_CHANNELS.deleteConversation,
         id,
       ) as Promise<void>,
-    renameConversation: (id: number, title: string): Promise<void> =>
+    renameConversation: (id: string, title: string): Promise<void> =>
       ipcRenderer.invoke(
         CHAT_IPC_CHANNELS.renameConversation,
         id,
         title,
       ) as Promise<void>,
     truncateMessages: (
-      conversationId: number,
-      fromMessageId: number,
+      conversationId: string,
+      fromMessageId: string,
     ): Promise<void> =>
       ipcRenderer.invoke(
         CHAT_IPC_CHANNELS.truncateMessages,

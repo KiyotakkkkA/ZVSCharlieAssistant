@@ -16,13 +16,13 @@ export interface SkillContentStore {
 
 export interface AutomationRuntimeCatalog {
   listSkills(): Array<Omit<AutomationSkill, "instructions">>;
-  toolSecretId(toolId: string, key: string): number | undefined;
+  toolSecretId(toolId: string, key: string): string | undefined;
 }
 
 export interface BuiltinSkillMetadataStore {
   ensureBuiltinSkill(
     input: Omit<UpsertAutomationSkillInput, "id" | "instructions">,
-  ): number;
+  ): string;
 }
 
 export interface BuiltinSkillDefinition {
@@ -38,15 +38,15 @@ export interface BuiltinSkillDefinition {
 
 export interface ToolCallRecorder {
   createToolCall(
-    runId: number,
+    runId: string,
     providerCallId: string,
     toolId: string,
     risk: string,
     input: unknown,
     status: string,
-  ): number;
+  ): string;
   finishToolCall(
-    id: number,
+    id: string,
     status: string,
     output?: unknown,
     error?: string,

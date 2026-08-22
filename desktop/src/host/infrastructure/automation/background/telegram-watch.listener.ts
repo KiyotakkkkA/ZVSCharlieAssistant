@@ -46,7 +46,7 @@ type TelegramFile = {
 type WatchHandle = { controller: AbortController; task: Promise<void> };
 
 export class TelegramWatchListener {
-  private readonly watches = new Map<number, WatchHandle>();
+  private readonly watches = new Map<string, WatchHandle>();
   private reconcileTimer?: NodeJS.Timeout;
   private stopped = true;
 
@@ -79,7 +79,7 @@ export class TelegramWatchListener {
       this.integrations
         .bindings("telegram")
         .map((binding) => binding.integrationProfileId)
-        .filter((id): id is number => id !== null),
+        .filter((id): id is string => id !== null),
     );
     for (const [profileId, watch] of this.watches) {
       if (profileIds.has(profileId)) continue;
@@ -100,7 +100,7 @@ export class TelegramWatchListener {
   }
 
   private async watchProfile(
-    profileId: number,
+    profileId: string,
     signal: AbortSignal,
   ): Promise<void> {
     let retryDelay = 1_000;
@@ -154,7 +154,7 @@ export class TelegramWatchListener {
   }
 
   private dispatch(
-    profileId: number,
+    profileId: string,
     bindings: DueTriggerBinding[],
     updates: TelegramUpdate[],
   ): void {
@@ -205,7 +205,7 @@ export class TelegramWatchListener {
     }
   }
 
-  private profileBindings(profileId: number): DueTriggerBinding[] {
+  private profileBindings(profileId: string): DueTriggerBinding[] {
     return this.integrations
       .bindings("telegram")
       .filter((binding) => binding.integrationProfileId === profileId);

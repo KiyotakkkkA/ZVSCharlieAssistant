@@ -18,7 +18,7 @@ export function registerIntegrationHandlers(
     (_event, raw: UpsertIntegrationProfileInput) =>
       service.upsert(parseIpcDto(upsertIntegrationProfileDtoSchema, raw)),
   );
-  ipcMain.handle(INTEGRATION_IPC_CHANNELS.delete, (_event, id: number) =>
+  ipcMain.handle(INTEGRATION_IPC_CHANNELS.delete, (_event, id: string) =>
     service.delete(id),
   );
   ipcMain.handle(

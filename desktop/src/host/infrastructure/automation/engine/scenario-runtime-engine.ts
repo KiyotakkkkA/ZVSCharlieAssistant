@@ -23,7 +23,7 @@ type Emit = (event: ScenarioRunEvent) => void;
 
 export class ScenarioRuntimeEngine {
   private readonly compiler = new ScenarioCompiler(scenarioDescriptors);
-  private readonly controllers = new Map<number, AbortController>();
+  private readonly controllers = new Map<string, AbortController>();
 
   constructor(
     private readonly graphs: ScenarioGraphRepository,
@@ -46,8 +46,8 @@ export class ScenarioRuntimeEngine {
     input: unknown,
     origin: ScenarioRunOrigin,
     emit: Emit,
-    conversationId?: number,
-    revisionId?: number,
+    conversationId?: string,
+    revisionId?: string,
   ): ScenarioRun {
     const definition = this.graphs.find(scenarioId, revisionId);
     if (!definition)
@@ -78,7 +78,7 @@ export class ScenarioRuntimeEngine {
     return run;
   }
 
-  resume(executionId: number, emit: Emit): void {
+  resume(executionId: string, emit: Emit): void {
     const run = this.executions.run(executionId);
     if (!run) throw new Error("Запуск не найден");
     const definition = this.graphs.find(run.scenarioId, run.scenarioRevisionId);
@@ -101,14 +101,14 @@ export class ScenarioRuntimeEngine {
     );
   }
 
-  cancel(runId: number): void {
+  cancel(runId: string): void {
     this.controllers.get(runId)?.abort();
   }
 
   private async execute(
-    runId: number,
+    runId: string,
     scenarioId: string,
-    scenarioRevisionId: number,
+    scenarioRevisionId: string,
     graph: ScenarioGraph,
     compiled: CompiledScenario,
     input: unknown,
@@ -179,7 +179,7 @@ export class ScenarioRuntimeEngine {
     }
   }
 
-  private forward(runId: number, event: RuntimeNodeEvent, emit: Emit): void {
+  private forward(runId: string, event: RuntimeNodeEvent, emit: Emit): void {
     if (event.type === "node.started" || event.type === "node.completed") {
       if (event.nodeRunId === undefined) return;
       const node = this.executions.nodeRun(event.nodeRunId);

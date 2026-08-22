@@ -15,7 +15,7 @@ export function StorageSecretsListTable({
   onDelete,
 }: {
   secrets: SecretEntity[];
-  categoryLabel: (id: number) => string;
+  categoryLabel: (id: string) => string;
   onCopy: (secret: SecretEntity) => void;
   onEdit: (secret: SecretEntity) => void;
   onDelete: (secret: SecretEntity) => void;

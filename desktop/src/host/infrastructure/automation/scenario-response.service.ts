@@ -6,9 +6,9 @@ export class ScenarioResponseService {
   constructor(private readonly deliveries: ScenarioDeliveryRepository) {}
 
   enqueue(input: {
-    executionId: number;
+    executionId: string;
     nodeId: string;
-    nodeRunId: number;
+    nodeRunId: string;
     config: unknown;
     triggerInput: unknown;
     output: unknown;

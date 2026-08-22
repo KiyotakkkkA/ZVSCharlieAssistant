@@ -19,8 +19,8 @@ export const MAX_DOCUMENT_BYTES = 64 * 1_048_576;
 export class VectorStoreService {
   private activeIngests = 0;
   private readonly ingestQueue: Array<() => Promise<void>> = [];
-  private readonly writeQueues = new Map<number, Promise<void>>();
-  private readonly ftsIndexPromises = new Map<number, Promise<void>>();
+  private readonly writeQueues = new Map<string, Promise<void>>();
+  private readonly ftsIndexPromises = new Map<string, Promise<void>>();
   private connectionPromise?: Promise<lancedb.Connection>;
   private tableNamesPromise?: Promise<Set<string>>;
   private rrfPromise?: ReturnType<typeof lancedb.rerankers.RRFReranker.create>;
@@ -37,12 +37,9 @@ export class VectorStoreService {
     return this.data.snapshot();
   }
 
-  documents(ids: number[]) {
+  documents(ids: string[]) {
     const uniqueIds = [...new Set(ids)];
-    if (
-      uniqueIds.length > 100 ||
-      uniqueIds.some((id) => !Number.isInteger(id) || id < 1)
-    )
+    if (uniqueIds.length > 100)
       throw new Error("Некорректный список документов");
     return this.data.documents(uniqueIds);
   }
@@ -90,7 +87,7 @@ export class VectorStoreService {
     return this.snapshot();
   }
 
-  async deleteStore(id: number) {
+  async deleteStore(id: string) {
     if (this.data.hasProcessingDocuments(id))
       throw new Error("Дождитесь завершения обработки документов");
     const db = await this.connect();
@@ -144,17 +141,17 @@ export class VectorStoreService {
     });
   }
 
-  async deleteDocument(id: number) {
+  async deleteDocument(id: string) {
     const row = this.data.document(id);
     if (!row) return this.snapshot();
     if (["queued", "extracting", "embedding"].includes(String(row.status)))
       throw new Error("Документ ещё обрабатывается");
-    const storeId = Number(row.vector_store_id);
+    const storeId = String(row.vector_store_id);
     const db = await this.connect();
     if ((await this.tableNames()).has(tableName(storeId)))
       await (
         await db.openTable(tableName(storeId))
-      ).delete(`document_id = ${id}`);
+      ).delete(`document_id = '${id}'`);
     await rm(String(row.local_path), { force: true });
     this.data.deleteDocument(id);
     this.data.refreshStoreState(storeId);
@@ -166,8 +163,6 @@ export class VectorStoreService {
     if (!query) throw new Error("Поисковый запрос пуст");
     if (!input.vectorStoreIds.length)
       throw new Error("Не выбрано векторное хранилище");
-    if (input.vectorStoreIds.some((id) => !Number.isInteger(id) || id < 1))
-      throw new Error("Передан некорректный идентификатор хранилища");
     if (
       input.scoreThreshold !== undefined &&
       (input.scoreThreshold < 0 || input.scoreThreshold > 1)
@@ -180,7 +175,7 @@ export class VectorStoreService {
     const results: VectorSearchResultItem[] = [];
     const db = await this.connect();
     const tableNames = await this.tableNames();
-    const queryVectors = new Map<number, Promise<number[]>>();
+    const queryVectors = new Map<string, Promise<number[]>>();
     for (const storeId of [...new Set(input.vectorStoreIds)]) {
       const store = this.data.store(storeId);
       if (!store) throw new Error(`Векторное хранилище #${storeId} не найдено`);
@@ -219,7 +214,7 @@ export class VectorStoreService {
             : 1 / (1 + Number(row._distance ?? 0));
         if (score < (input.scoreThreshold ?? 0)) continue;
         results.push({
-          documentId: Number(row.document_id),
+          documentId: String(row.document_id),
           fileName: String(row.file_name),
           chunkIndex: Number(row.chunk_index),
           content: String(row.text),
@@ -336,8 +331,8 @@ export class VectorStoreService {
   }
 
   private async writeRows(
-    storeId: number,
-    documentId: number,
+    storeId: string,
+    documentId: string,
     rows: Array<Record<string, unknown>>,
   ) {
     const previous = this.writeQueues.get(storeId) ?? Promise.resolve();
@@ -349,7 +344,7 @@ export class VectorStoreService {
         const tables = await this.tableNames();
         if (tables.has(name)) {
           const table = await db.openTable(name);
-          await table.delete(`document_id = ${documentId}`);
+          await table.delete(`document_id = '${documentId}'`);
           await table.add(rows);
           if (this.data.store(storeId)?.searchMode === "hybrid") {
             this.ftsIndexPromises.delete(storeId);
@@ -380,7 +375,7 @@ export class VectorStoreService {
     return this.connectionPromise;
   }
 
-  private ensureFtsIndex(storeId: number, table: lancedb.Table) {
+  private ensureFtsIndex(storeId: string, table: lancedb.Table) {
     let pending = this.ftsIndexPromises.get(storeId);
     if (!pending) {
       pending = table
@@ -426,7 +421,7 @@ export class VectorStoreService {
   }
 }
 
-const tableName = (id: number) => `vector_store_${id}`;
+const tableName = (id: string) => `vector_store_${id}`;
 const safeName = (name: string) =>
   name.replace(/[^a-zA-Zа-яА-Я0-9._-]+/g, "_").slice(-120);
 

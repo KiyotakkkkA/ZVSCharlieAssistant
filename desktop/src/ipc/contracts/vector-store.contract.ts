@@ -13,13 +13,13 @@ export type * from "../../shared/models/vector-store";
 
 export interface VectorStoreApi {
   getSnapshot(): Promise<VectorStoreSnapshot>;
-  getDocuments(ids: number[]): Promise<VectorStoreDocument[]>;
+  getDocuments(ids: string[]): Promise<VectorStoreDocument[]>;
   upsertStore(input: UpsertVectorStoreInput): Promise<VectorStoreSnapshot>;
-  deleteStore(id: number): Promise<VectorStoreSnapshot>;
+  deleteStore(id: string): Promise<VectorStoreSnapshot>;
   uploadDocuments(
     input: UploadVectorDocumentInput[],
   ): Promise<VectorStoreSnapshot>;
-  deleteDocument(id: number): Promise<VectorStoreSnapshot>;
+  deleteDocument(id: string): Promise<VectorStoreSnapshot>;
   search(input: VectorSearchInput): Promise<VectorSearchResultItem[]>;
 }
 

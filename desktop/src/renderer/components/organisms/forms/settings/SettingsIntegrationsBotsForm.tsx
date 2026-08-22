@@ -4,6 +4,7 @@ import {
   Select,
 } from "@kiyotakkkka/zvs-uikit-lib";
 import type { UpsertIntegrationProfileInput } from "../../../../../shared/dto";
+import { SYSTEM_SECRET_CATEGORY_IDS } from "../../../../../shared/entity-ids";
 import type { IntegrationConnectionMetadata } from "../../../../../shared/models/integration";
 import {
   Field,
@@ -62,13 +63,13 @@ export function SettingsIntegrationsBotsForm({
 
         <Field className="col-span-2" label="Токен бота">
           <SecretOrientedSelect
-            categoryId={1}
+            categoryId={SYSTEM_SECRET_CATEGORY_IDS.apiKeys}
             value={String(value.secretBindings.botToken ?? "")}
             onChange={(secretId) =>
               patch({
                 secretBindings: {
                   ...value.secretBindings,
-                  botToken: Number(secretId),
+                  botToken: secretId,
                 },
               })
             }

@@ -145,7 +145,7 @@ export const ToolsListPage = observer(function ToolsListPage() {
                               .upsertToolSecretBinding({
                                 toolId: selectedTool.id,
                                 key: requirement.key,
-                                secretId: value ? Number(value) : null,
+                                secretId: value || null,
                               })
                               .then((tool) => {
                                 setSelectedTool(tool);

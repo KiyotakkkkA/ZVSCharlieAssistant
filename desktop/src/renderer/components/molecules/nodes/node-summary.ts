@@ -3,9 +3,9 @@ import { OPERATOR_LABELS } from "../../../../shared/scenario/descriptors/flow";
 
 export interface SummaryNames {
   agents: ReadonlyMap<string, string>;
-  vectorStores: ReadonlyMap<number, string>;
+  vectorStores: ReadonlyMap<string, string>;
   scenarios: ReadonlyMap<string, string>;
-  models: ReadonlyMap<number, string>;
+  models: ReadonlyMap<string, string>;
 }
 
 const EMPTY: SummaryNames = {
@@ -53,7 +53,7 @@ export function nodeSummary(
       return agent ? agent : "Агент не выбран";
     }
     case "orchestrator": {
-      const model = names.models.get(number("modelId"));
+      const model = names.models.get(text("modelId"));
       const mode = config.mode === "graph" ? "по графу" : "моделью";
       return model ? `${mode} · ${model}` : `Распределяет ${mode}`;
     }
@@ -64,7 +64,7 @@ export function nodeSummary(
       return categories ? `${categories} ${plural(categories, "категория", "категории", "категорий")}` : "Категории не заданы";
     }
     case "knowledgeStore": {
-      const store = names.vectorStores.get(number("vectorStoreId"));
+      const store = names.vectorStores.get(text("vectorStoreId"));
       return store ? store : "Хранилище не выбрано";
     }
 

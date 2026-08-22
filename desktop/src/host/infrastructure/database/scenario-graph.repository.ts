@@ -1,5 +1,5 @@
 import type Database from "better-sqlite3";
-import { randomUUID } from "node:crypto";
+import { newEntityId } from "./entity-id";
 import {
   emptyScenarioGraph,
   scenarioGraphSchema,
@@ -18,7 +18,7 @@ export interface ScenarioDefinitionV2 {
   status: "draft" | "active" | "disabled";
   graph: ScenarioGraph;
   toolSettings: AutomationScenarioToolSetting[];
-  revisionId: number;
+  revisionId: string;
   version: number;
   nodesCount: number;
   lastRunAt: string | null;
@@ -39,7 +39,7 @@ interface ScenarioRow {
   name: string;
   description: string;
   status: ScenarioDefinitionV2["status"];
-  revision_id: number;
+  revision_id: string;
   version: number;
   graph_json: string;
   tool_settings_json: string;
@@ -65,7 +65,7 @@ export class ScenarioGraphRepository {
     return rows.map(mapRow);
   }
 
-  find(id: string, revisionId?: number): ScenarioDefinitionV2 | undefined {
+  find(id: string, revisionId?: string): ScenarioDefinitionV2 | undefined {
     const row = this.db
       .prepare(
         `SELECT s.id, s.name, s.description, s.status, r.id AS revision_id,
@@ -83,7 +83,7 @@ export class ScenarioGraphRepository {
     if (!STATUSES.has(input.status))
       throw new Error("Недопустимый статус сценария");
     const graph = scenarioGraphSchema.parse(input.graph);
-    const id = input.id ?? randomUUID();
+    const id = input.id ?? newEntityId();
     if (input.id && !this.find(input.id)) throw new Error("Сценарий не найден");
     const name = input.name.trim().slice(0, 120) || "Без названия";
     const description = (input.description ?? "").trim().slice(0, 1_000);
@@ -108,16 +108,20 @@ export class ScenarioGraphRepository {
       ).version;
 
       const toolSettings = input.toolSettings ?? [];
-      const revisionId = Number(
-        this.db
-          .prepare(
-            `INSERT INTO automation_scenario_revisions
-               (scenario_id, version, graph_json, tool_settings_json)
-             VALUES (?, ?, ?, ?)`,
-          )
-          .run(id, version, JSON.stringify(graph), JSON.stringify(toolSettings))
-          .lastInsertRowid,
-      );
+      const revisionId = newEntityId();
+      this.db
+        .prepare(
+          `INSERT INTO automation_scenario_revisions
+             (id, scenario_id, version, graph_json, tool_settings_json)
+           VALUES (?, ?, ?, ?, ?)`,
+        )
+        .run(
+          revisionId,
+          id,
+          version,
+          JSON.stringify(graph),
+          JSON.stringify(toolSettings),
+        );
 
       this.db
         .prepare(

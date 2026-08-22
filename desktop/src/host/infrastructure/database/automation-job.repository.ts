@@ -1,8 +1,9 @@
 import { notifyWork } from "../automation/background/work-signal";
 import type Database from "better-sqlite3";
+import { newEntityId } from "./entity-id";
 
 export interface AutomationJob {
-  id: number;
+  id: string;
   kind: "scenario_run";
   payload: Record<string, unknown>;
   attempt: number;
@@ -33,7 +34,7 @@ export class AutomationJobRepository {
       .run().changes;
   }
 
-  renewLease(id: number, workerId: string, seconds = 120): boolean {
+  renewLease(id: string, workerId: string, seconds = 120): boolean {
     return (
       this.db
         .prepare(
@@ -72,7 +73,7 @@ export class AutomationJobRepository {
           .all(limit) as Array<Record<string, unknown>>);
   }
 
-  retry(id: number): boolean {
+  retry(id: string): boolean {
     const changed = this.db
       .prepare(
         `UPDATE automation_jobs SET status='queued',attempt=0,last_error=NULL,lease_owner=NULL,
@@ -84,7 +85,7 @@ export class AutomationJobRepository {
     return changed > 0;
   }
 
-  cancel(id: number): boolean {
+  cancel(id: string): boolean {
     return (
       this.db
         .prepare(
@@ -103,10 +104,10 @@ export class AutomationJobRepository {
   ): void {
     this.db
       .prepare(
-        `INSERT INTO automation_jobs(kind,deduplication_key,payload_json,priority)
-       VALUES(?,?,?,?) ON CONFLICT(deduplication_key) DO NOTHING`,
+        `INSERT INTO automation_jobs(id,kind,deduplication_key,payload_json,priority)
+       VALUES(?,?,?,?,?) ON CONFLICT(deduplication_key) DO NOTHING`,
       )
-      .run(kind, key, JSON.stringify(payload), priority);
+      .run(newEntityId(), kind, key, JSON.stringify(payload), priority);
     notifyWork("scenario-job");
   }
 
@@ -120,7 +121,7 @@ export class AutomationJobRepository {
         )
         .get() as
         | {
-            id: number;
+            id: string;
             kind: AutomationJob["kind"];
             payload_json: string;
             attempt: number;
@@ -146,7 +147,7 @@ export class AutomationJobRepository {
     })();
   }
 
-  complete(id: number): void {
+  complete(id: string): void {
     this.db
       .prepare(
         "UPDATE automation_jobs SET status='completed',lease_owner=NULL,lease_expires_at=NULL,updated_at=CURRENT_TIMESTAMP WHERE id=?",
@@ -154,7 +155,7 @@ export class AutomationJobRepository {
       .run(id);
   }
 
-  updatePayload(id: number, payload: unknown): void {
+  updatePayload(id: string, payload: unknown): void {
     this.db
       .prepare(
         "UPDATE automation_jobs SET payload_json=?,updated_at=CURRENT_TIMESTAMP WHERE id=?",

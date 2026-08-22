@@ -12,7 +12,7 @@ interface ApprovalConfig {
   defaultAnswer: string | null;
   timeoutSeconds: number | null;
   channel: "ui" | "trigger" | "telegram" | "email";
-  integrationProfileId: number | null;
+  integrationProfileId: string | null;
   recipient: string;
 }
 

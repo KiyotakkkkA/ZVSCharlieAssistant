@@ -1,4 +1,5 @@
 import type Database from "better-sqlite3";
+import { newEntityId } from "./entity-id";
 import type {
   AutomationScenarioNodeKind,
   ScenarioNodeRun,
@@ -39,29 +40,29 @@ export class ScenarioExecutionRepository {
 
   createRun(
     scenarioId: string,
-    revisionId: number,
+    revisionId: string,
     origin: ScenarioRunOrigin,
     input: unknown,
-    conversationId?: number,
+    conversationId?: string,
   ): ScenarioRun {
-    const id = Number(
-      this.db
-        .prepare(
-          `INSERT INTO execution_runs(kind,origin,scenario_id,scenario_revision_id,conversation_id,status,input_json)
-       VALUES('scenario',?,?,?,?,'queued',?)`,
-        )
-        .run(
-          origin,
-          scenarioId,
-          revisionId,
-          conversationId ?? null,
-          JSON.stringify(input ?? null),
-        ).lastInsertRowid,
-    );
+    const id = newEntityId();
+    this.db
+      .prepare(
+        `INSERT INTO execution_runs(id,kind,origin,scenario_id,scenario_revision_id,conversation_id,status,input_json)
+         VALUES(?,'scenario',?,?,?,?,'queued',?)`,
+      )
+      .run(
+        id,
+        origin,
+        scenarioId,
+        revisionId,
+        conversationId ?? null,
+        JSON.stringify(input ?? null),
+      );
     return this.run(id)!;
   }
 
-  run(id: number): ScenarioRun | undefined {
+  run(id: string): ScenarioRun | undefined {
     const row = this.db
       .prepare(
         `SELECT e.*,s.name scenario_name FROM execution_runs e
@@ -83,7 +84,7 @@ export class ScenarioExecutionRepository {
     return row ? mapRun(row) : undefined;
   }
 
-  nodeRuns(id: number): ScenarioNodeRun[] {
+  nodeRuns(id: string): ScenarioNodeRun[] {
     return (
       this.db
         .prepare(
@@ -93,7 +94,7 @@ export class ScenarioExecutionRepository {
     ).map(mapNodeRun);
   }
 
-  completedOutputs(id: number): Map<string, unknown> {
+  completedOutputs(id: string): Map<string, unknown> {
     const rows = this.db
       .prepare(
         `SELECT node_id,output_json FROM scenario_node_runs
@@ -104,7 +105,7 @@ export class ScenarioExecutionRepository {
   }
 
   setRunStatus(
-    id: number,
+    id: string,
     status: ScenarioRunStatus,
     output?: unknown,
     error?: string,
@@ -133,7 +134,7 @@ export class ScenarioExecutionRepository {
   }
 
   startNode(
-    executionId: number,
+    executionId: string,
     nodeId: string,
     kind: AutomationScenarioNodeKind,
     input: unknown,
@@ -147,20 +148,18 @@ export class ScenarioExecutionRepository {
           .get(executionId, nodeId) as { value: number }
       ).value,
     );
-    const id = Number(
-      this.db
-        .prepare(
-          `INSERT INTO scenario_node_runs(execution_id,node_id,node_kind,attempt,status,input_json,started_at)
-       VALUES(?,?,?,?,'running',?,CURRENT_TIMESTAMP)`,
-        )
-        .run(executionId, nodeId, kind, attempt, JSON.stringify(input ?? null))
-        .lastInsertRowid,
-    );
+    const id = newEntityId();
+    this.db
+      .prepare(
+        `INSERT INTO scenario_node_runs(id,execution_id,node_id,node_kind,attempt,status,input_json,started_at)
+         VALUES(?,?,?,?,?,'running',?,CURRENT_TIMESTAMP)`,
+      )
+      .run(id, executionId, nodeId, kind, attempt, JSON.stringify(input ?? null));
     return this.nodeRun(id)!;
   }
 
   finishNode(
-    id: number,
+    id: string,
     status: ScenarioRunStatus,
     output?: unknown,
     error?: string,
@@ -178,25 +177,25 @@ export class ScenarioExecutionRepository {
     return this.nodeRun(id)!;
   }
 
-  setNodeStatus(id: number, status: ScenarioRunStatus) {
+  setNodeStatus(id: string, status: ScenarioRunStatus) {
     this.db
       .prepare("UPDATE scenario_node_runs SET status=? WHERE id=?")
       .run(status, id);
   }
 
   requestApproval(
-    executionId: number,
-    nodeRunId: number,
+    executionId: string,
+    nodeRunId: string,
     prompt: string,
   ): void {
     this.db
       .prepare(
-        `INSERT INTO execution_approvals(execution_id,node_run_id,prompt) VALUES(?,?,?)`,
+        `INSERT INTO execution_approvals(id,execution_id,node_run_id,prompt) VALUES(?,?,?,?)`,
       )
-      .run(executionId, nodeRunId, prompt);
+      .run(newEntityId(), executionId, nodeRunId, prompt);
   }
 
-  resolveApproval(executionId: number, approved: boolean): void {
+  resolveApproval(executionId: string, approved: boolean): void {
     this.db
       .prepare(
         `UPDATE execution_approvals SET status=?,resolved_at=CURRENT_TIMESTAMP
@@ -218,7 +217,7 @@ export class ScenarioExecutionRepository {
           name: string;
           description: string;
           instructions: string;
-          text_model_id: number;
+          text_model_id: string;
           retrieval_limit: number;
           max_tool_calls: number;
           timeout_seconds: number;
@@ -237,14 +236,14 @@ export class ScenarioExecutionRepository {
         .prepare(
           "SELECT vector_store_id FROM automation_agent_vector_stores WHERE agent_id=?",
         )
-        .all(id) as Array<{ vector_store_id: number }>
+        .all(id) as Array<{ vector_store_id: string }>
     ).map((item) => item.vector_store_id);
     const allowedSkillIds = (
       this.db
         .prepare(
           "SELECT skill_id FROM automation_agent_skills WHERE agent_id=? ORDER BY skill_id",
         )
-        .all(id) as Array<{ skill_id: number }>
+        .all(id) as Array<{ skill_id: string }>
     ).map((item) => item.skill_id);
     return {
       ...agent,
@@ -256,18 +255,18 @@ export class ScenarioExecutionRepository {
     };
   }
 
-  defaultModelId(): number | undefined {
+  defaultModelId(): string | undefined {
     return (
       this.db
         .prepare(
           `SELECT m.id FROM text_provider_models m JOIN text_provider_configs p ON p.id=m.provider_id
        WHERE m.enabled=1 AND p.enabled=1 AND p.provider_type='text' ORDER BY m.id LIMIT 1`,
         )
-        .get() as { id: number } | undefined
+        .get() as { id: string } | undefined
     )?.id;
   }
 
-  nodeRun(id: number): ScenarioNodeRun | undefined {
+  nodeRun(id: string): ScenarioNodeRun | undefined {
     const row = this.db
       .prepare("SELECT * FROM scenario_node_runs WHERE id=?")
       .get(id) as Record<string, unknown> | undefined;
@@ -276,9 +275,9 @@ export class ScenarioExecutionRepository {
 }
 
 const mapRun = (r: Record<string, unknown>): ScenarioRun => ({
-  id: Number(r.id),
+  id: String(r.id),
   scenarioId: String(r.scenario_id),
-  scenarioRevisionId: Number(r.scenario_revision_id),
+  scenarioRevisionId: String(r.scenario_revision_id),
   scenarioName: String(r.scenario_name),
   origin: r.origin as ScenarioRunOrigin,
   status: r.status as ScenarioRunStatus,
@@ -291,8 +290,8 @@ const mapRun = (r: Record<string, unknown>): ScenarioRun => ({
 });
 
 const mapNodeRun = (r: Record<string, unknown>): ScenarioNodeRun => ({
-  id: Number(r.id),
-  executionId: Number(r.execution_id),
+  id: String(r.id),
+  executionId: String(r.execution_id),
   nodeId: String(r.node_id),
   nodeKind: r.node_kind as AutomationScenarioNodeKind,
   attempt: Number(r.attempt),

@@ -6,6 +6,7 @@ import {
   stringArrayDtoSchema,
   type UpsertTerminalPolicyInput,
 } from "../../../shared/dto";
+import { GLOBAL_ENTITY_IDS } from "../../../shared/entity-ids";
 
 export interface PendingTerminalSessionInput {
   sessionId: string;
@@ -37,8 +38,8 @@ export class TerminalPolicyRepository {
 
   get(): TerminalPolicy {
     const row = this.database
-      .prepare("SELECT * FROM terminal_policy WHERE id=1")
-      .get() as PolicyRow;
+      .prepare("SELECT * FROM terminal_policy WHERE id=?")
+      .get(GLOBAL_ENTITY_IDS.terminalPolicy) as PolicyRow;
     return {
       enabled: Boolean(row.enabled),
       confirmationMode: row.confirmation_mode,
@@ -122,7 +123,7 @@ export class TerminalPolicyRepository {
           default_timeout_seconds=?, max_timeout_seconds=?, max_output_bytes=?,
           allow_network=?, allowed_commands_json=?,
           updated_at=CURRENT_TIMESTAMP
-         WHERE id=1`,
+         WHERE id=?`,
       )
       .run(
         Number(input.enabled),
@@ -133,6 +134,7 @@ export class TerminalPolicyRepository {
         input.maxOutputBytes,
         Number(input.allowNetwork),
         JSON.stringify(allowedCommands),
+        GLOBAL_ENTITY_IDS.terminalPolicy,
       );
     return this.get();
   }

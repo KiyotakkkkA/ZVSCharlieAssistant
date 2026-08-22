@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { entityIdSchema } from "../../dto/ipc-dto";
 import {
   exprNumber,
   exprStringList,
@@ -203,7 +204,7 @@ const httpConfigSchema = z.object({
   query: z.array(z.object({ key: z.string(), value: exprText() })).default([]),
   bodyMode: z.enum(["none", "json", "text", "form"]).default("none"),
   body: exprValue(),
-  authSecretId: z.int().positive().nullable().default(null),
+  authSecretId: entityIdSchema.nullable().default(null),
   authScheme: z.enum(["bearer", "basic", "raw", "header"]).default("bearer"),
   authHeaderName: z.string().default("Authorization"),
   timeoutSeconds: exprNumber({ min: 1, max: 600, fallback: 60 }),
@@ -380,7 +381,7 @@ function walkUpstream(
 }
 
 const knowledgeStoreConfigSchema = z.object({
-  vectorStoreId: z.int().positive(),
+  vectorStoreId: entityIdSchema,
   limit: z.int().min(1).max(100).default(8),
   minScore: z.number().min(0).max(1).default(0),
 });
@@ -397,16 +398,16 @@ export const knowledgeStoreDescriptor: ScenarioNodeDescriptor<
   icon: "knowledge",
   accent: "#059669",
   configSchema: knowledgeStoreConfigSchema,
-  defaultConfig: () => ({ vectorStoreId: 0, limit: 8, minScore: 0 }),
+  defaultConfig: () => ({ vectorStoreId: "", limit: 8, minScore: 0 }),
   inputs: [],
   outputs: [knowledgeOutput()],
   itemMode: "collection",
   idempotent: true,
   isTrigger: true,
   validate: ({ node, outgoing }) => {
-    const config = node.config as { vectorStoreId?: number };
+    const config = node.config as { vectorStoreId?: string };
     const issues = [];
-    if (!config.vectorStoreId || config.vectorStoreId < 1)
+    if (!config.vectorStoreId)
       issues.push({
         nodeId: node.id,
         severity: "error" as const,

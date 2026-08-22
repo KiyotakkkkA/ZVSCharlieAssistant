@@ -3,6 +3,7 @@ import type { RuntimePersistence } from "./runtime";
 import type { SerializedSchedulerState } from "./scheduler-state";
 import type { ScenarioItems } from "../../../../shared/scenario/items";
 import { PayloadStore } from "./payload-store";
+import { newEntityId } from "../../database/entity-id";
 
 export class SqliteRuntimePersistence implements RuntimePersistence {
   private readonly payloads: PayloadStore;
@@ -15,27 +16,27 @@ export class SqliteRuntimePersistence implements RuntimePersistence {
   }
 
   startNode(input: {
-    executionId: number;
+    executionId: string;
     nodeId: string;
     nodeKind: string;
     attempt: number;
     iteration: number;
     inputs: Record<string, ScenarioItems>;
-  }): number {
-    const nodeRunId = Number(
-      this.db
-        .prepare(
-          `INSERT INTO scenario_node_runs(execution_id,node_id,node_kind,iteration,attempt,status,input_json,started_at)
-           VALUES(?,?,?,?,?,'running','{}',CURRENT_TIMESTAMP)`,
-        )
-        .run(
-          input.executionId,
-          input.nodeId,
-          input.nodeKind,
-          input.iteration,
-          input.attempt,
-        ).lastInsertRowid,
-    );
+  }): string {
+    const nodeRunId = newEntityId();
+    this.db
+      .prepare(
+        `INSERT INTO scenario_node_runs(id,execution_id,node_id,node_kind,iteration,attempt,status,input_json,started_at)
+         VALUES(?,?,?,?,?,?,'running','{}',CURRENT_TIMESTAMP)`,
+      )
+      .run(
+        nodeRunId,
+        input.executionId,
+        input.nodeId,
+        input.nodeKind,
+        input.iteration,
+        input.attempt,
+      );
 
     const stored = this.payloads.put(
       input.executionId,
@@ -53,7 +54,7 @@ export class SqliteRuntimePersistence implements RuntimePersistence {
   }
 
   finishNode(input: {
-    nodeRunId: number;
+    nodeRunId: string;
     status:
       "completed" | "failed" | "cancelled" | "skipped" | "waiting_for_approval";
     outputs?: Record<string, ScenarioItems>;
@@ -65,7 +66,7 @@ export class SqliteRuntimePersistence implements RuntimePersistence {
   }): void {
     const row = this.db
       .prepare(`SELECT execution_id FROM scenario_node_runs WHERE id=?`)
-      .get(input.nodeRunId) as { execution_id: number } | undefined;
+      .get(input.nodeRunId) as { execution_id: string } | undefined;
     if (!row) return;
 
     const stored =
@@ -102,7 +103,7 @@ export class SqliteRuntimePersistence implements RuntimePersistence {
       );
   }
 
-  saveCheckpoint(executionId: number, state: SerializedSchedulerState): void {
+  saveCheckpoint(executionId: string, state: SerializedSchedulerState): void {
     this.db
       .prepare(
         `UPDATE execution_runs SET checkpoint_json=?, engine_version=2, status='waiting_for_approval' WHERE id=?`,
@@ -110,7 +111,7 @@ export class SqliteRuntimePersistence implements RuntimePersistence {
       .run(JSON.stringify(state), executionId);
   }
 
-  loadCheckpoint(executionId: number): SerializedSchedulerState | undefined {
+  loadCheckpoint(executionId: string): SerializedSchedulerState | undefined {
     const row = this.db
       .prepare(`SELECT checkpoint_json FROM execution_runs WHERE id=?`)
       .get(executionId) as { checkpoint_json: string | null } | undefined;
@@ -119,13 +120,13 @@ export class SqliteRuntimePersistence implements RuntimePersistence {
       : undefined;
   }
 
-  clearCheckpoint(executionId: number): void {
+  clearCheckpoint(executionId: string): void {
     this.db
       .prepare(`UPDATE execution_runs SET checkpoint_json=NULL WHERE id=?`)
       .run(executionId);
   }
 
-  nodeRunPayloads(nodeRunId: number): { inputs: unknown; outputs: unknown } {
+  nodeRunPayloads(nodeRunId: string): { inputs: unknown; outputs: unknown } {
     const row = this.db
       .prepare(
         `SELECT input_json,input_ref,output_json,output_ref FROM scenario_node_runs WHERE id=?`,
@@ -146,9 +147,9 @@ export class SqliteRuntimePersistence implements RuntimePersistence {
   }
 
   recordLlmCall(input: {
-    executionId: number;
-    nodeRunId: number;
-    modelId: number | null;
+    executionId: string;
+    nodeRunId: string;
+    modelId: string | null;
     systemPrompt?: string;
     prompt?: unknown;
     outputText?: string;
@@ -159,10 +160,11 @@ export class SqliteRuntimePersistence implements RuntimePersistence {
   }): void {
     this.db
       .prepare(
-        `INSERT INTO llm_calls(execution_id,node_run_id,model_id,system_prompt,prompt_json,output_text,prompt_tokens,completion_tokens,latency_ms,finish_reason)
-         VALUES(?,?,?,?,?,?,?,?,?,?)`,
+        `INSERT INTO llm_calls(id,execution_id,node_run_id,model_id,system_prompt,prompt_json,output_text,prompt_tokens,completion_tokens,latency_ms,finish_reason)
+         VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
       )
       .run(
+        newEntityId(),
         input.executionId,
         input.nodeRunId,
         input.modelId,

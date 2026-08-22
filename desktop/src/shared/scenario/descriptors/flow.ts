@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { entityIdSchema } from "../../dto/ipc-dto";
 import { exprNumber, exprText, exprValue } from "../config-fields";
 import {
   errorOutput,
@@ -370,7 +371,7 @@ const approvalConfigSchema = z.object({
   defaultAnswer: z.string().nullable().default(null),
   timeoutSeconds: z.int().min(10).max(604_800).nullable().default(null),
   channel: z.enum(["ui", "trigger", "telegram", "email"]).default("ui"),
-  integrationProfileId: z.int().positive().nullable().default(null),
+  integrationProfileId: entityIdSchema.nullable().default(null),
   recipient: z.string().max(320).default(""),
 });
 
@@ -421,7 +422,7 @@ export const approvalDescriptor: ScenarioNodeDescriptor<
       options?: unknown[];
       channel?: string;
       recipient?: string;
-      integrationProfileId?: number | null;
+      integrationProfileId?: string | null;
     };
     const issues: ScenarioValidationIssue[] = [];
     if (config.mode === "choice" && !(config.options?.length ?? 0))
@@ -444,7 +445,7 @@ export const approvalDescriptor: ScenarioNodeDescriptor<
 };
 
 const subScenarioConfigSchema = z.object({
-  scenarioId: z.string().default(""),
+  scenarioId: entityIdSchema,
   mode: z.enum(["await", "fireAndForget"]).default("await"),
   input: z.enum(["items", "expression"]).default("items"),
   inputExpression: z.string().default(""),

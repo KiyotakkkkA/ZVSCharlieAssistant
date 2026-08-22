@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { jsonValueSchema } from "./ipc-dto";
+import { entityIdSchema, jsonValueSchema } from "./ipc-dto";
 
 export const attachmentReferenceDtoSchema = z.object({
   kind: z.enum(["photo", "document", "video", "audio", "voice", "file"]),
@@ -56,8 +56,8 @@ export const emailMessageEntityDtoSchema = z.object({
 
 export const chatMessageEntityDtoSchema = z.object({
   type: z.literal("chat_message"),
-  conversationId: z.number().int().positive(),
-  messageId: z.number().int().positive(),
+  conversationId: entityIdSchema,
+  messageId: entityIdSchema,
   text: z.string(),
   attachments: z.array(attachmentReferenceDtoSchema),
 });
@@ -67,19 +67,19 @@ export const scenarioMessageTriggerInputDtoSchema = z.discriminatedUnion(
   [
     z.object({
       trigger: z.literal("telegram"),
-      integrationProfileId: z.number().int().positive(),
-      triggerBindingId: z.string(),
+      integrationProfileId: entityIdSchema,
+      triggerBindingId: entityIdSchema,
       entity: telegramMessageEntityDtoSchema,
     }),
     z.object({
       trigger: z.literal("email"),
-      integrationProfileId: z.number().int().positive(),
-      triggerBindingId: z.string(),
+      integrationProfileId: entityIdSchema,
+      triggerBindingId: entityIdSchema,
       entity: emailMessageEntityDtoSchema,
     }),
     z.object({
       trigger: z.literal("chat"),
-      triggerBindingId: z.string(),
+      triggerBindingId: entityIdSchema,
       entity: chatMessageEntityDtoSchema,
     }),
   ],
@@ -96,7 +96,7 @@ export type EmailMessageEntity = z.infer<typeof emailMessageEntityDtoSchema>;
 export type AttachmentReference = z.infer<typeof attachmentReferenceDtoSchema>;
 
 export const scenarioFileReferenceDtoSchema = z.object({
-  id: z.number().int().positive(),
+  id: entityIdSchema,
   fileName: z.string(),
   mimeType: z.string().nullable(),
   size: z.number().int().nonnegative(),

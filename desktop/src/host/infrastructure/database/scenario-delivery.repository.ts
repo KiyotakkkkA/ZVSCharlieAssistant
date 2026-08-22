@@ -1,13 +1,14 @@
 import { notifyWork } from "../automation/background/work-signal";
 import type Database from "better-sqlite3";
+import { newEntityId } from "./entity-id";
 
 export type ScenarioDeliveryChannel = "telegram" | "email";
 export interface ScenarioDeliveryJob {
-  id: number;
-  executionId: number;
-  nodeRunId: number;
+  id: string;
+  executionId: string;
+  nodeRunId: string;
   channel: ScenarioDeliveryChannel;
-  integrationProfileId: number;
+  integrationProfileId: string;
   recipient: string;
   payload: Record<string, unknown>;
   attempt: number;
@@ -25,10 +26,11 @@ export class ScenarioDeliveryRepository {
     this.db
       .prepare(
         `INSERT INTO scenario_delivery_outbox(
-      execution_id,node_run_id,channel,integration_profile_id,recipient,payload_json,idempotency_key
-    ) VALUES(?,?,?,?,?,?,?) ON CONFLICT(idempotency_key) DO NOTHING`,
+      id,execution_id,node_run_id,channel,integration_profile_id,recipient,payload_json,idempotency_key
+    ) VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(idempotency_key) DO NOTHING`,
       )
       .run(
+        newEntityId(),
         input.executionId,
         input.nodeRunId,
         input.channel,
@@ -83,7 +85,7 @@ export class ScenarioDeliveryRepository {
       .all(...parameters) as Array<Record<string, unknown>>;
   }
 
-  retry(id: number): boolean {
+  retry(id: string): boolean {
     const changed = this.db
       .prepare(
         `UPDATE scenario_delivery_outbox SET status='queued',attempt=0,last_error=NULL,
@@ -115,7 +117,7 @@ export class ScenarioDeliveryRepository {
     })();
   }
 
-  complete(id: number) {
+  complete(id: string) {
     this.db
       .prepare(
         `UPDATE scenario_delivery_outbox SET status='completed',completed_at=CURRENT_TIMESTAMP,
@@ -138,11 +140,11 @@ export class ScenarioDeliveryRepository {
 
 function mapJob(row: Record<string, unknown>): ScenarioDeliveryJob {
   return {
-    id: Number(row.id),
-    executionId: Number(row.execution_id),
-    nodeRunId: Number(row.node_run_id),
+    id: String(row.id),
+    executionId: String(row.execution_id),
+    nodeRunId: String(row.node_run_id),
     channel: row.channel as ScenarioDeliveryChannel,
-    integrationProfileId: Number(row.integration_profile_id),
+    integrationProfileId: String(row.integration_profile_id),
     recipient: String(row.recipient),
     payload: JSON.parse(String(row.payload_json)),
     attempt: Number(row.attempt),

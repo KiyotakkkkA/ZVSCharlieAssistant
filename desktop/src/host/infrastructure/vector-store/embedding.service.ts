@@ -8,7 +8,7 @@ export class EmbeddingService {
     private readonly secrets: SecretStorageRepository,
   ) {}
 
-  async embed(modelId: number, input: string[]) {
+  async embed(modelId: string, input: string[]) {
     const model = this.data.embeddingModel(modelId);
     if (!model) throw new Error("Embedding-модель недоступна или отключена");
     const key = model.api_key_secret_id

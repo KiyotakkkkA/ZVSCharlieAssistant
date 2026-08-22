@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { agentTerminalPolicyDtoSchema } from "./terminal.dto";
 import { agentDirectoryPolicyDtoSchema } from "./directory-policy.dto";
-import { jsonValueSchema } from "./ipc-dto";
+import { entityIdSchema, jsonValueSchema } from "./ipc-dto";
 import { scenarioGraphSchema } from "../scenario/graph";
 
 export const automationStatusSchema = z.enum(["draft", "active", "disabled"]);
@@ -10,22 +10,22 @@ export const scenarioResponseChannelDtoSchema = z.object({
   channel: z.enum(["telegram", "email"]),
   enabled: z.boolean(),
   mode: z.enum(["reply_to_trigger", "explicit_recipient"]),
-  integrationProfileId: z.int().positive().nullable(),
+  integrationProfileId: entityIdSchema.nullable(),
   recipient: z.string().trim().max(320),
 });
 export const scenarioResponseConfigDtoSchema = z.object({
   channels: z.array(scenarioResponseChannelDtoSchema),
 });
 export const upsertAutomationAgentDtoSchema = z.object({
-  id: z.string().optional(),
+  id: entityIdSchema.optional(),
   name: z.string(),
   description: z.string(),
   instructions: z.string(),
-  textModelId: z.int().positive(),
+  textModelId: entityIdSchema,
   status: automationStatusSchema,
   allowedToolIds: z.array(z.string()),
-  allowedVectorStoreIds: z.array(z.int().positive()),
-  allowedSkillIds: z.array(z.int().positive()),
+  allowedVectorStoreIds: z.array(entityIdSchema),
+  allowedSkillIds: z.array(entityIdSchema),
   memoryRead: z.boolean(),
   memoryWrite: z.boolean(),
   retrievalLimit: z.int().positive(),
@@ -35,7 +35,7 @@ export const upsertAutomationAgentDtoSchema = z.object({
   directoryPolicy: agentDirectoryPolicyDtoSchema,
 });
 export const upsertAutomationSkillDtoSchema = z.object({
-  id: z.int().positive().optional(),
+  id: entityIdSchema.optional(),
   slug: z.string(),
   name: z.string(),
   description: z.string(),
@@ -50,7 +50,7 @@ export const automationScenarioToolSettingDtoSchema = z.object({
   settings: z.record(z.string(), jsonValueSchema),
 });
 export const upsertAutomationScenarioDtoSchema = z.object({
-  id: z.string().optional(),
+  id: entityIdSchema.optional(),
   name: z.string(),
   description: z.string(),
   status: automationStatusSchema,
@@ -60,7 +60,7 @@ export const upsertAutomationScenarioDtoSchema = z.object({
 export const upsertAutomationToolSecretBindingDtoSchema = z.object({
   toolId: z.string(),
   key: z.string(),
-  secretId: z.int().positive().nullable(),
+  secretId: entityIdSchema.nullable(),
 });
 
 export type AutomationStatus = z.infer<typeof automationStatusSchema>;

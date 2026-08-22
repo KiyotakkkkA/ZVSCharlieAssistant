@@ -28,7 +28,7 @@ export const SettingsProvidersPage = observer(function SettingsProvidersPage() {
   const toasts = useToasts();
   const [providers, setProviders] = useState<SettingsProviderDraft[]>([]);
   const [activeType, setActiveType] = useState<TextProviderType>("text");
-  const [selectedId, setSelectedId] = useState<number | "draft" | null>(null);
+  const [selectedId, setSelectedId] = useState<string | "draft" | null>(null);
   const [checking, setChecking] = useState(false);
   const [providerToDelete, setProviderToDelete] =
     useState<SettingsProviderDraft | null>(null);
@@ -136,9 +136,7 @@ export const SettingsProvidersPage = observer(function SettingsProvidersPage() {
         kind: selected.kind,
         providerType: selected.providerType,
         baseUrl: selected.baseUrl,
-        apiKeySecretId: selected.apiKeySecretId
-          ? Number(selected.apiKeySecretId)
-          : undefined,
+        apiKeySecretId: selected.apiKeySecretId || undefined,
       });
       updateSelected({
         status: "connected",

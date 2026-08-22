@@ -85,12 +85,12 @@ export interface NodeExecutionContext<C = unknown, S = unknown> {
   items: ScenarioItems;
   inputs: Readonly<Record<string, ScenarioItems>>;
 
-  executionId: number;
-  nodeRunId: number;
+  executionId: string;
+  nodeRunId: string;
   attempt: number;
   iteration: number;
   scenarioId: string;
-  scenarioRevisionId: number;
+  scenarioRevisionId: string;
   graph: ScenarioGraph;
 
   signal: AbortSignal;
