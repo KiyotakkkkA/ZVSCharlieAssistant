@@ -133,7 +133,7 @@ export const SettingsTerminalPolicyForm = observer(
               checked={model.enabled}
               onChange={(state) => update("enabled", state)}
             >
-              <ParameterLabel description="Глобально включает cmd_exec. Пока параметр выключен, инструмент нельзя назначить агентам.">
+              <ParameterLabel description="Пока параметр выключен, инструмент нельзя назначить агентам.">
                 Разрешить управляемое выполнение PowerShell
               </ParameterLabel>
             </InputCheckBox>

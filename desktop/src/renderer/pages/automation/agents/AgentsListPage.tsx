@@ -109,6 +109,12 @@ export const AgentsListPage = observer(function AgentsListPage() {
               icon={<RobotIcon className="size-6" />}
               title="Агенты не найдены"
               description="Измените запрос или создайте нового агента."
+              action={
+                <PrimaryButton
+                  label="Добавить агента"
+                  onClick={() => goTo(APP_PATHS.automation.agents.create)}
+                />
+              }
             />
           </div>
         )}
