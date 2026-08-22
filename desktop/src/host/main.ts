@@ -1,6 +1,8 @@
-import { app, BrowserWindow } from "electron";
+import { app } from "electron";
 import { join } from "node:path";
-import { createMainWindow } from "./infrastructure/electron/create-main-window";
+import { AppWindowController } from "./infrastructure/electron/app-window.controller";
+import { ApplicationSettingsRepository } from "./infrastructure/electron/application-settings.repository";
+import { TrayController } from "./infrastructure/electron/tray.controller";
 import {
   registerAppHandlers,
   removeAppHandlers,
@@ -138,8 +140,22 @@ let scenarioDeliveryWorker: ScenarioDeliveryWorker | undefined;
 let textExtraction: TextExtractionClient | undefined;
 let questionSweeper: NodeJS.Timeout | undefined;
 let engineLogger: Logger | undefined;
+const appWindow = new AppWindowController();
+let trayController: TrayController | undefined;
+const isPrimaryInstance = app.requestSingleInstanceLock();
+
+if (!isPrimaryInstance) app.quit();
+
+app.on("second-instance", () => {
+  if (app.isReady()) {
+    appWindow.show();
+    return;
+  }
+  app.once("ready", () => appWindow.show());
+});
 
 app.whenReady().then(() => {
+  if (!isPrimaryInstance) return;
   installContentSecurityPolicy();
   database = createSqliteDatabase(join(app.getPath("userData"), "storage.db"));
   const secretRepository = new SecretStorageRepository(database);
@@ -169,7 +185,20 @@ app.whenReady().then(() => {
     "ZVS Assistant",
     "Reports",
   );
-  registerAppHandlers(new ElectronGeneratedArtifactExporter(reportsRoot));
+  const applicationSettings = new ApplicationSettingsRepository(
+    join(app.getPath("userData"), "application-settings.json"),
+  );
+  registerAppHandlers(new ElectronGeneratedArtifactExporter(reportsRoot), {
+    get: () => applicationSettings.get(),
+    update: (input) => {
+      const updated = applicationSettings.update(input);
+      appWindow.setCloseToTray(
+        trayController !== undefined && updated.runInBackground,
+      );
+      trayController?.refresh();
+      return updated;
+    },
+  });
   registerSecretStorageHandlers(secretRepository);
   const providerRepository = new TextProviderRepository(database);
   registerTextProviderHandlers(
@@ -323,7 +352,29 @@ app.whenReady().then(() => {
   registerCoreInteractorHandlers(new CoreInteractorService());
   registerAssistantHandlers(memoryService, taskPlans, questionService);
 
-  createMainWindow();
+  appWindow.create();
+  try {
+    trayController = new TrayController({
+      onOpen: () => appWindow.show(),
+      onNewChat: () => appWindow.dispatchCommand("new-chat"),
+      onOpenTasks: () => appWindow.dispatchCommand("open-tasks"),
+      onOpenScenarios: () => appWindow.dispatchCommand("open-scenarios"),
+      onOpenSettings: () => appWindow.dispatchCommand("open-settings"),
+      isBackgroundEnabled: () => applicationSettings.get().runInBackground,
+      onBackgroundChange: (enabled) => {
+        const updated = applicationSettings.update({
+          runInBackground: enabled,
+        });
+        appWindow.setCloseToTray(updated.runInBackground);
+      },
+      onQuit: () => app.quit(),
+    });
+    trayController.create();
+    appWindow.setCloseToTray(applicationSettings.get().runInBackground);
+  } catch (error) {
+    trayController = undefined;
+    console.error("Failed to initialize Tray", error);
+  }
   scenarioJobWorker = new ScenarioJobWorker(
     automationJobs,
     scenarioRuntimeEngine,
@@ -360,11 +411,14 @@ app.whenReady().then(() => {
   questionSweeper.unref();
 
   app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
+    appWindow.show();
   });
 });
 
 app.on("before-quit", () => {
+  appWindow.beginQuit();
+  trayController?.destroy();
+  trayController = undefined;
   if (questionSweeper) clearInterval(questionSweeper);
   questionSweeper = undefined;
   textExtraction?.dispose();
@@ -403,5 +457,5 @@ app.on("before-quit", () => {
 });
 
 app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") app.quit();
+  if (!appWindow.keepsRunningInBackground()) app.quit();
 });

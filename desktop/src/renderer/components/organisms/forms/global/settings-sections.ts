@@ -1,4 +1,10 @@
-import { AccountOutlineIcon, PaletteIcon, StorageIcon } from "../../../atoms";
+import {
+  AccountOutlineIcon,
+  ApplicationIcon,
+  CogIcon,
+  PaletteIcon,
+  StorageIcon,
+} from "../../../atoms";
 import type { GlobalSettingsAnchorDescriptor } from "../../../atoms";
 
 export const APPEARANCE_SECTION = {
@@ -61,6 +67,25 @@ export const PROFILE_ANCHORS = {
       "Заполните только то, что действительно важно — короткие формулировки работают лучше длинных.",
     keywords: ["имя", "обращение", "инструкции", "стиль", "тон"],
     icon: AccountOutlineIcon,
+  },
+} satisfies Record<string, GlobalSettingsAnchorDescriptor>;
+
+export const APPLICATION_SECTION = {
+  id: "application",
+  label: "Приложение",
+  description: "Поведение приложения и работа системных функций.",
+  keywords: ["приложение", "система", "tray", "фон", "закрытие"],
+  icon: ApplicationIcon,
+};
+
+export const APPLICATION_ANCHORS = {
+  background: {
+    id: "application-background",
+    parentId: "application",
+    label: "Фоновая работа",
+    description: "Настройте поведение приложения после закрытия окна.",
+    keywords: ["фон", "tray", "трей", "закрытие", "сценарии"],
+    icon: CogIcon,
   },
 } satisfies Record<string, GlobalSettingsAnchorDescriptor>;
 

@@ -1,8 +1,17 @@
 export const IPC_CHANNELS = {
   getAppInfo: "app:get-info",
+  command: "app:command",
   saveGeneratedArtifact: "app:save-generated-artifact",
   selectDirectory: "app:select-directory",
+  getApplicationSettings: "app:get-application-settings",
+  updateApplicationSettings: "app:update-application-settings",
 } as const;
+
+export type AppCommand =
+  | "new-chat"
+  | "open-tasks"
+  | "open-scenarios"
+  | "open-settings";
 
 export interface AppInfo {
   name: string;
@@ -12,8 +21,10 @@ export interface AppInfo {
 
 export interface DesktopApi {
   getAppInfo(): Promise<AppInfo>;
+  subscribeToCommands(listener: (command: AppCommand) => void): () => void;
   saveGeneratedArtifact(input: GeneratedArtifactInput): Promise<boolean>;
   selectDirectory(): Promise<string | null>;
+  applicationSettings: ApplicationSettingsApi;
   dataTransfer: import("./data-transfer.contract").DataTransferApi;
   secrets: import("./secrets.contract").SecretStorageApi;
   automation: import("./automation.contract").AutomationApi;
@@ -28,6 +39,19 @@ export interface DesktopApi {
   entityGeneration: import("./entity-generation.contract").EntityGenerationApi;
   core: import("./core-interactor.contract").CoreInteractorApi;
   assistant: import("./assistant.contract").AssistantApi;
+}
+
+export interface ApplicationSettings {
+  runInBackground: boolean;
+}
+
+export interface UpdateApplicationSettingsInput {
+  runInBackground: boolean;
+}
+
+export interface ApplicationSettingsApi {
+  get(): Promise<ApplicationSettings>;
+  update(input: UpdateApplicationSettingsInput): Promise<ApplicationSettings>;
 }
 
 export interface GeneratedArtifactInput {

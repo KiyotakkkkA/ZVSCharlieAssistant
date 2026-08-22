@@ -64,7 +64,7 @@ export function GlobalSettingsSidebar() {
           }}
         />
         {query ? (
-          <div className="absolute left-0 right-0 top-[calc(100%+0.35rem)] max-h-80 space-y-2 overflow-y-auto rounded-xl border border-main-700/45 bg-main-900 p-1.5 shadow-2xl shadow-black/45">
+          <div className="absolute left-0 right-0 top-[calc(100%+0.35rem)] max-h-100 space-y-2 overflow-y-auto rounded-xl border border-main-700/45 bg-main-900 p-1.5 shadow-2xl shadow-black/45">
             {groups.map((group) => (
               <div key={group.id}>
                 <NavigationRow
@@ -138,7 +138,9 @@ function NavigationRow({
           : "text-main-300 hover:bg-main-700/25 hover:text-main-50"
       }`}
     >
-      {Icon ? <Icon className="mt-0.5 size-3.5 shrink-0 text-main-400" /> : null}
+      {Icon ? (
+        <Icon className="mt-0.5 size-3.5 shrink-0 text-main-400" />
+      ) : null}
       <span className="min-w-0">
         <span className="block truncate text-sm font-medium">{label}</span>
         {description ? (

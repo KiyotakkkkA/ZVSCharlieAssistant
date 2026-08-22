@@ -1,7 +1,11 @@
 export type {
+  AppCommand,
   AppInfo,
+  ApplicationSettings,
+  ApplicationSettingsApi,
   DesktopApi,
   GeneratedArtifactInput,
+  UpdateApplicationSettingsInput,
 } from "./app.contract";
 export { IPC_CHANNELS } from "./app.contract";
 
@@ -72,10 +76,7 @@ export { DIRECTORY_POLICY_IPC_CHANNELS } from "./directory-policy.contract";
 export type { IntegrationApi } from "./integration.contract";
 export { INTEGRATION_IPC_CHANNELS } from "./integration.contract";
 
-export type {
-  UserProfileApi,
-  UserProfile,
-} from "./user-profile.contract";
+export type { UserProfileApi, UserProfile } from "./user-profile.contract";
 export { USER_PROFILE_IPC_CHANNELS } from "./user-profile.contract";
 
 export type {
@@ -91,6 +92,7 @@ export { CORE_INTERACTOR_IPC_CHANNELS } from "./core-interactor.contract";
 
 export type { AssistantApi } from "./assistant.contract";
 export { ASSISTANT_IPC_CHANNELS } from "./assistant.contract";
+
 export type * from "../../shared/models/memory";
 export type * from "../../shared/models/task-plan";
 export type * from "../../shared/models/user-question";

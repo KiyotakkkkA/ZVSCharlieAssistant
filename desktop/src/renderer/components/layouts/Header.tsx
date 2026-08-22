@@ -1,5 +1,8 @@
 import { Button, Modal } from "@kiyotakkkka/zvs-uikit-lib";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { APP_PATHS } from "../../app/routes";
+import { chatStore } from "../../stores";
 import {
   CogIcon,
   GlobalSettingsProvider,
@@ -9,6 +12,9 @@ import { GlobalSettingsPanel } from "../organisms";
 import {
   APPEARANCE_ANCHORS,
   APPEARANCE_SECTION,
+  APPLICATION_ANCHORS,
+  APPLICATION_SECTION,
+  GlobalSettingsApplicationForm,
   GlobalSettingsAppearanceForm,
   GlobalSettingsProfileForm,
   PROFILE_ANCHORS,
@@ -30,6 +36,11 @@ const SETTINGS_FORMS: GlobalSettingsFormDescriptor[] = [
     Component: GlobalSettingsAppearanceForm,
   },
   {
+    ...APPLICATION_SECTION,
+    anchors: Object.values(APPLICATION_ANCHORS),
+    Component: GlobalSettingsApplicationForm,
+  },
+  {
     ...DATA_SECTION,
     anchors: Object.values(DATA_ANCHORS),
     Component: GlobalSettingsDataForm,
@@ -38,6 +49,29 @@ const SETTINGS_FORMS: GlobalSettingsFormDescriptor[] = [
 
 export const Header = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(
+    () =>
+      window.desktop.subscribeToCommands((command) => {
+        switch (command) {
+          case "new-chat":
+            chatStore.newConversation();
+            navigate(APP_PATHS.chat);
+            break;
+          case "open-tasks":
+            navigate(APP_PATHS.tasks);
+            break;
+          case "open-scenarios":
+            navigate(APP_PATHS.automation.scenarios.index);
+            break;
+          case "open-settings":
+            setSettingsOpen(true);
+            break;
+        }
+      }),
+    [navigate],
+  );
   return (
     <>
       <header className="flex h-11 items-center justify-between gap-3 rounded-lg bg-main-800/40 px-3">

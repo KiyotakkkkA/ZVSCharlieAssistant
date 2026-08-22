@@ -67,7 +67,7 @@ export function GlobalSettingsAppearanceForm() {
   return (
     <div className="space-y-8">
       <section>
-        <GlobalSettingsLabel {...APPEARANCE_ANCHORS.colors} className="mb-4" />
+        <GlobalSettingsLabel {...APPEARANCE_ANCHORS.colors} />
         <div className="grid gap-6 grid-cols-2">
           <ThemeColumn
             title="Тёмная палитра"
@@ -91,17 +91,14 @@ export function GlobalSettingsAppearanceForm() {
       </section>
 
       <section>
-        <GlobalSettingsLabel
-          {...APPEARANCE_ANCHORS.typography}
-          className="mb-4"
-        />
-        <div className="divide-y divide-main-700/35">
-          <div className="flex flex-col gap-4 py-5 md:flex-row md:items-center md:justify-between">
+        <GlobalSettingsLabel {...APPEARANCE_ANCHORS.typography} />
+        <div>
+          <div className="flex gap-4 py-5 items-center justify-between">
             <GlobalSettingsLabel
               {...APPEARANCE_ANCHORS.fontFamily}
               presentation="setting"
             />
-            <div className="flex w-full gap-2 md:ml-auto md:w-auto md:shrink-0">
+            <div className="flex gap-2 ml-auto w-auto shrink-0">
               <InputSmall
                 value={fontDraft}
                 placeholder="Например, Inter"
@@ -117,7 +114,7 @@ export function GlobalSettingsAppearanceForm() {
               />
             </div>
           </div>
-          <div className="flex flex-col gap-4 py-5 md:flex-row md:items-center md:justify-between">
+          <div className="flex gap-4 items-center justify-between">
             <GlobalSettingsLabel
               {...APPEARANCE_ANCHORS.fontSize}
               presentation="setting"

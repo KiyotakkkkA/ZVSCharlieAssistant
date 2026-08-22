@@ -205,8 +205,9 @@ export function GlobalSettingsDataForm() {
             получит доступ к файлу, сможет их прочитать.
           </Alert>
         ) : (
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid gap-3 grid-cols-5">
             <InputSmall
+              className="col-span-2"
               preset="password"
               autoComplete="new-password"
               maxLength={256}
@@ -215,6 +216,7 @@ export function GlobalSettingsDataForm() {
               onChange={(event) => setExportPassword(event.target.value)}
             />
             <InputSmall
+              className="col-span-2"
               preset="password"
               autoComplete="new-password"
               maxLength={256}
@@ -222,19 +224,18 @@ export function GlobalSettingsDataForm() {
               placeholder="Повторите пароль"
               onChange={(event) => setExportConfirmation(event.target.value)}
             />
+            <Button
+              variant="primary"
+              className="px-2"
+              loading={busy === "export"}
+              disabled={busy !== null}
+              onClick={() => void exportData()}
+            >
+              <DownloadIcon className="size-4" />
+              Экспортировать
+            </Button>
           </div>
         )}
-        <div className="flex justify-end">
-          <Button
-            variant="primary"
-            loading={busy === "export"}
-            disabled={busy !== null}
-            onClick={() => void exportData()}
-          >
-            <DownloadIcon className="size-4" />
-            Экспортировать
-          </Button>
-        </div>
       </section>
 
       <section className="space-y-5 border-t border-main-700/35 pt-8">

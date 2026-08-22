@@ -10,6 +10,9 @@ import {
   TEXT_PROVIDER_IPC_CHANNELS,
   CHAT_IPC_CHANNELS,
   type AppInfo,
+  type AppCommand,
+  type ApplicationSettings,
+  type UpdateApplicationSettingsInput,
   type GeneratedArtifactInput,
   type AutomationAgent,
   type AutomationScenario,
@@ -85,6 +88,14 @@ import type {
 export const desktopApi: DesktopApi = {
   getAppInfo: (): Promise<AppInfo> =>
     ipcRenderer.invoke(IPC_CHANNELS.getAppInfo) as Promise<AppInfo>,
+  subscribeToCommands: (listener: (command: AppCommand) => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      command: AppCommand,
+    ) => listener(command);
+    ipcRenderer.on(IPC_CHANNELS.command, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.command, handler);
+  },
   saveGeneratedArtifact: (input: GeneratedArtifactInput): Promise<boolean> =>
     ipcRenderer.invoke(
       IPC_CHANNELS.saveGeneratedArtifact,
@@ -92,6 +103,19 @@ export const desktopApi: DesktopApi = {
     ) as Promise<boolean>,
   selectDirectory: (): Promise<string | null> =>
     ipcRenderer.invoke(IPC_CHANNELS.selectDirectory) as Promise<string | null>,
+  applicationSettings: {
+    get: (): Promise<ApplicationSettings> =>
+      ipcRenderer.invoke(
+        IPC_CHANNELS.getApplicationSettings,
+      ) as Promise<ApplicationSettings>,
+    update: (
+      input: UpdateApplicationSettingsInput,
+    ): Promise<ApplicationSettings> =>
+      ipcRenderer.invoke(
+        IPC_CHANNELS.updateApplicationSettings,
+        input,
+      ) as Promise<ApplicationSettings>,
+  },
   dataTransfer: {
     exportData: (input: ExportDataInput): Promise<boolean> =>
       ipcRenderer.invoke(
