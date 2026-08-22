@@ -17,12 +17,18 @@ export interface ImportPreview {
   fileName: string;
   categories: DataTransferCounts;
   secrets: DataTransferCounts;
+  policies: {
+    terminal: boolean;
+    memory: boolean;
+  };
+  skills: DataTransferCounts;
   conflicts: DataTransferConflict[];
 }
 
 export interface ImportResult {
   categories: Omit<DataTransferCounts, "conflict">;
   secrets: Omit<DataTransferCounts, "conflict">;
+  policies: number;
+  skills: Omit<DataTransferCounts, "conflict">;
   skipped: number;
 }
-

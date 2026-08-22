@@ -1,4 +1,9 @@
 import { z } from "zod";
+import {
+  automationStatusSchema,
+  upsertMemoryPolicyDtoSchema,
+  upsertTerminalPolicyDtoSchema,
+} from "../../../shared/dto";
 
 const portableCategorySchema = z
   .object({
@@ -27,13 +32,53 @@ export const dataTransferPayloadSchema = z
             categories: z.array(portableCategorySchema).max(10_000),
             secrets: z.array(portableSecretSchema).max(100_000),
           })
-          .strict(),
+          .strict()
+          .optional(),
+        terminalPolicy: z
+          .object({
+            version: z.literal(1),
+            value: upsertTerminalPolicyDtoSchema,
+          })
+          .strict()
+          .optional(),
+        memoryPolicy: z
+          .object({
+            version: z.literal(1),
+            value: upsertMemoryPolicyDtoSchema,
+          })
+          .strict()
+          .optional(),
+        skills: z
+          .object({
+            version: z.literal(1),
+            items: z
+              .array(
+                z
+                  .object({
+                    slug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+                    name: z.string().trim().min(1).max(120),
+                    description: z.string().max(500),
+                    status: automationStatusSchema,
+                    version: z.string().trim().min(1).max(30),
+                    author: z.string().max(120),
+                    instructions: z.string().trim().min(1).max(50_000),
+                    requiredToolIds: z.array(z.string()).max(100),
+                  })
+                  .strict(),
+              )
+              .max(10_000),
+          })
+          .strict()
+          .optional(),
       })
       .strict(),
   })
   .strict()
   .superRefine((payload, context) => {
     const section = payload.sections.secretStorage;
+    if (!Object.values(payload.sections).some(Boolean))
+      context.addIssue({ code: "custom", message: "Файл не содержит данных" });
+    if (!section) return;
     const categoryIds = new Set<string>();
     const secretIds = new Set<string>();
     for (const category of section.categories) {
@@ -61,4 +106,7 @@ export const dataTransferPayloadSchema = z
 
 export type DataTransferPayload = z.infer<typeof dataTransferPayloadSchema>;
 export type PortableSecretStorage =
-  DataTransferPayload["sections"]["secretStorage"];
+  NonNullable<DataTransferPayload["sections"]["secretStorage"]>;
+export type PortableSkill = NonNullable<
+  DataTransferPayload["sections"]["skills"]
+>["items"][number];

@@ -5,6 +5,7 @@ import {
   encryptJsonContainer,
 } from "../../src/host/infrastructure/data-transfer/encrypted-json-container";
 import { exportDataDtoSchema } from "../../src/shared/dto/data-transfer.dto";
+import { dataTransferPayloadSchema } from "../../src/host/infrastructure/data-transfer/secret-storage-transfer";
 
 describe("encrypted data transfer container", () => {
   it("round-trips JSON without exposing its contents", () => {
@@ -59,5 +60,53 @@ describe("encrypted data transfer container", () => {
         entities: ["secretCategories", "secrets"],
       }).success,
     ).toBe(true);
+  });
+
+  it("accepts policies and user skills as independent sections", () => {
+    const result = dataTransferPayloadSchema.safeParse({
+      sections: {
+        terminalPolicy: {
+          version: 1,
+          value: {
+            enabled: true,
+            confirmationMode: "risky",
+            maxConcurrentSessions: 2,
+            defaultTimeoutSeconds: 60,
+            maxTimeoutSeconds: 300,
+            maxOutputBytes: 1_048_576,
+            allowNetwork: false,
+            allowedCommands: ["git-status"],
+          },
+        },
+        memoryPolicy: {
+          version: 1,
+          value: {
+            enabled: true,
+            autosave: true,
+            allowScenarioWrites: false,
+            maxEntries: 500,
+            maxContentChars: 2_000,
+            injectedEntries: 12,
+          },
+        },
+        skills: {
+          version: 1,
+          items: [
+            {
+              slug: "user-skill",
+              name: "Пользовательский навык",
+              description: "Описание",
+              status: "active",
+              version: "1.0.0",
+              author: "User",
+              instructions: "Инструкции навыка",
+              requiredToolIds: [],
+            },
+          ],
+        },
+      },
+    });
+
+    expect(result.success).toBe(true);
   });
 });

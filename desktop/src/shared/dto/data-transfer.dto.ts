@@ -6,7 +6,17 @@ export const exportDataDtoSchema = z
   .object({
     password: passwordSchema,
     encryption: z.enum(["password", "none"]),
-    entities: z.array(z.enum(["secretCategories", "secrets"])).min(1),
+    entities: z
+      .array(
+        z.enum([
+          "secretCategories",
+          "secrets",
+          "terminalPolicy",
+          "memoryPolicy",
+          "skills",
+        ]),
+      )
+      .min(1),
   })
   .superRefine((input, context) => {
     if (input.encryption === "password" && input.password.length < 8)

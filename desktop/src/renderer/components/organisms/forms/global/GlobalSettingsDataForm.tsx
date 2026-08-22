@@ -16,7 +16,12 @@ import {
   CompactEntitySelector,
   type CompactEntitySelectorItem,
 } from "../../../molecules";
-import { secretStorageStore } from "../../../../stores";
+import {
+  automationStore,
+  memoryStore,
+  secretStorageStore,
+  terminalPolicyStore,
+} from "../../../../stores";
 import { DATA_ANCHORS } from "./settings-sections";
 
 export function GlobalSettingsDataForm() {
@@ -28,6 +33,9 @@ export function GlobalSettingsDataForm() {
     {
       secretCategories: true,
       secrets: true,
+      terminalPolicy: true,
+      memoryPolicy: true,
+      skills: true,
     },
   );
   const [importPassword, setImportPassword] = useState("");
@@ -39,9 +47,15 @@ export function GlobalSettingsDataForm() {
   );
 
   const exportData = async () => {
-    const entities = (["secretCategories", "secrets"] as const).filter(
-      (entity) => exportEntities[entity],
-    );
+    const entities = (
+      [
+        "secretCategories",
+        "secrets",
+        "terminalPolicy",
+        "memoryPolicy",
+        "skills",
+      ] as const
+    ).filter((entity) => exportEntities[entity]);
     if (!entities.length) {
       toasts.warning({ title: "Выберите данные для экспорта" });
       return;
@@ -102,11 +116,16 @@ export function GlobalSettingsDataForm() {
         sessionId: preview.sessionId,
         conflictPolicy,
       });
-      await secretStorageStore.bootstrap(true);
+      await Promise.all([
+        secretStorageStore.bootstrap(true),
+        terminalPolicyStore.bootstrap(true),
+        memoryStore.bootstrap(true),
+        automationStore.bootstrap(true),
+      ]);
       setPreview(null);
       toasts.success({
         title: "Импорт завершён",
-        description: `Создано: ${result.categories.create + result.secrets.create}, обновлено: ${result.categories.update + result.secrets.update}, пропущено: ${result.skipped}.`,
+        description: `Создано: ${result.categories.create + result.secrets.create + result.skills.create}, обновлено: ${result.categories.update + result.secrets.update + result.skills.update + result.policies}, пропущено: ${result.skipped}.`,
       });
     } catch (error) {
       showError(toasts, "Не удалось импортировать данные", error);
@@ -205,15 +224,23 @@ export function GlobalSettingsDataForm() {
               <h4 className="text-sm font-medium text-main-100">
                 {preview.fileName}
               </h4>
-              <p className="mt-1 text-xs text-main-400">
-                Категории: {describeCounts(preview.categories)}. Секреты:{" "}
-                {describeCounts(preview.secrets)}.
+              <p className="mt-1 text-xs text-main-500">
+                Проверьте состав и изменения перед импортом.
               </p>
             </div>
-            {preview.conflicts.length ? (
+            <div className="grid gap-2 md:grid-cols-2">
+              <ImportCountsCard
+                label="Категории"
+                counts={preview.categories}
+              />
+              <ImportCountsCard label="Секреты" counts={preview.secrets} />
+              <ImportCountsCard label="Навыки" counts={preview.skills} />
+              <PoliciesImportCard policies={preview.policies} />
+            </div>
+            {preview.conflicts.length || preview.skills.conflict ? (
               <Alert
                 variant="warning"
-                title={`Конфликты: ${preview.conflicts.length}`}
+                title={`Конфликты: ${preview.conflicts.length + preview.skills.conflict}`}
               >
                 Выберите, пропустить существующие записи или обновить их данными
                 из копии.
@@ -273,6 +300,24 @@ function exportEntityItems(
       description: "Названия и значения секретов вместе с категориями.",
       group: "Хранилище секретов",
     },
+    {
+      id: "terminalPolicy",
+      title: "Работа с терминалом",
+      description: "Ограничения, подтверждения и разрешённые команды.",
+      group: "Политики",
+    },
+    {
+      id: "memoryPolicy",
+      title: "Память",
+      description: "Автосохранение, лимиты и использование памяти.",
+      group: "Политики",
+    },
+    {
+      id: "skills",
+      title: "Навыки",
+      description: "Только пользовательские навыки, без системных.",
+      group: "Автоматизация",
+    },
   ];
 }
 
@@ -300,8 +345,96 @@ function PasswordField({
   );
 }
 
-function describeCounts(counts: ImportPreview["categories"]): string {
-  return `${counts.create} новых, ${counts.update} обновляемых, ${counts.conflict} конфликтов`;
+function ImportCountsCard({
+  label,
+  counts,
+}: {
+  label: string;
+  counts: ImportPreview["categories"];
+}) {
+  const total = counts.create + counts.update + counts.conflict;
+  return (
+    <article className="rounded-lg border border-main-700/35 bg-main-900/35 p-3">
+      <div className="mb-2.5 flex items-center justify-between gap-3">
+        <h5 className="text-xs font-medium text-main-200">{label}</h5>
+        <span className="rounded-full bg-main-700/45 px-2 py-0.5 text-[10px] font-medium text-main-400">
+          {total}
+        </span>
+      </div>
+      <div className="grid grid-cols-3 gap-1.5">
+        <ImportMetric
+          label="Новые"
+          value={counts.create}
+          className="bg-success-medium/10 text-success-light"
+        />
+        <ImportMetric
+          label="Обновятся"
+          value={counts.update}
+          className="bg-info-medium/10 text-info-light"
+        />
+        <ImportMetric
+          label="Конфликты"
+          value={counts.conflict}
+          className="bg-warning-medium/10 text-warning-light"
+        />
+      </div>
+    </article>
+  );
+}
+
+function ImportMetric({
+  label,
+  value,
+  className,
+}: {
+  label: string;
+  value: number;
+  className: string;
+}) {
+  return (
+    <div className={`rounded-md px-2 py-1.5 ${className}`}>
+      <span className="block text-sm font-semibold leading-none">{value}</span>
+      <span className="mt-1 block truncate text-[10px] opacity-75">
+        {label}
+      </span>
+    </div>
+  );
+}
+
+function PoliciesImportCard({
+  policies,
+}: {
+  policies: ImportPreview["policies"];
+}) {
+  const total = Number(policies.terminal) + Number(policies.memory);
+  return (
+    <article className="rounded-lg border border-main-700/35 bg-main-900/35 p-3">
+      <div className="mb-2.5 flex items-center justify-between gap-3">
+        <h5 className="text-xs font-medium text-main-200">Политики</h5>
+        <span className="rounded-full bg-main-700/45 px-2 py-0.5 text-[10px] font-medium text-main-400">
+          {total}
+        </span>
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        <PolicyBadge label="Терминал" included={policies.terminal} />
+        <PolicyBadge label="Память" included={policies.memory} />
+      </div>
+    </article>
+  );
+}
+
+function PolicyBadge({ label, included }: { label: string; included: boolean }) {
+  return (
+    <span
+      className={`rounded-md px-2 py-1.5 text-[11px] font-medium ${
+        included
+          ? "bg-info-medium/10 text-info-light"
+          : "bg-main-700/25 text-main-500"
+      }`}
+    >
+      {label} · {included ? "обновится" : "нет в копии"}
+    </span>
+  );
 }
 
 function showError(

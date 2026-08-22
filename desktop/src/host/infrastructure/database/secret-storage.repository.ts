@@ -156,7 +156,9 @@ export class SecretStorageRepository {
     };
   }
 
-  previewPortable(input: PortableSecretStorage): Omit<ImportPreview, "sessionId" | "fileName"> {
+  previewPortable(
+    input: PortableSecretStorage,
+  ): Pick<ImportPreview, "categories" | "secrets" | "conflicts"> {
     const categories = { create: 0, update: 0, conflict: 0 };
     const secrets = { create: 0, update: 0, conflict: 0 };
     const conflicts: ImportPreview["conflicts"] = [];
@@ -223,9 +225,12 @@ export class SecretStorageRepository {
   importPortable(
     input: PortableSecretStorage,
     conflictPolicy: DataTransferConflictPolicy,
-  ): ImportResult {
+  ): Pick<ImportResult, "categories" | "secrets" | "skipped"> {
     return this.database.transaction(() => {
-      const result: ImportResult = {
+      const result: Pick<
+        ImportResult,
+        "categories" | "secrets" | "skipped"
+      > = {
         categories: { create: 0, update: 0 },
         secrets: { create: 0, update: 0 },
         skipped: 0,

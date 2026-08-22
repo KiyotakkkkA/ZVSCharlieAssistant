@@ -170,7 +170,6 @@ app.whenReady().then(() => {
   );
   registerAppHandlers(new ElectronGeneratedArtifactExporter(reportsRoot));
   registerSecretStorageHandlers(secretRepository);
-  registerDataTransferHandlers(new DataTransferService(secretRepository));
   const providerRepository = new TextProviderRepository(database);
   registerTextProviderHandlers(
     new ProviderConnectionService(secretRepository, providerRepository),
@@ -216,7 +215,16 @@ app.whenReady().then(() => {
   registerIntegrationHandlers(
     new IntegrationProfileService(integrationRepository, secretRepository),
   );
-  const memoryService = new MemoryService(new MemoryRepository(database));
+  const memoryRepository = new MemoryRepository(database);
+  const memoryService = new MemoryService(memoryRepository);
+  registerDataTransferHandlers(
+    new DataTransferService(
+      secretRepository,
+      terminalPolicyRepository,
+      memoryRepository,
+      automationRepository,
+    ),
+  );
   const taskPlans = new TaskPlanRepository(database);
   const automationJobs = new AutomationJobRepository(database);
   const questionService = new UserQuestionService(
