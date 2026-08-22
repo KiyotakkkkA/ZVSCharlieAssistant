@@ -2,8 +2,10 @@ import reportDocxInstructions from "./report-docx-gost/SKILL.md?raw";
 import managedPowerShellInstructions from "./managed-powershell/SKILL.md?raw";
 import createAgentInstructions from "./create-agent/SKILL.md?raw";
 import createSkillInstructions from "./create-skill/SKILL.md?raw";
+import { SYSTEM_SKILL_IDS } from "../../shared/entity-ids";
 
 export interface DefaultSkillDefinition {
+  id: string;
   slug: string;
   name: string;
   description: string;
@@ -18,6 +20,7 @@ const stripFrontmatter = (value: string) =>
 
 export const DEFAULT_SKILLS: readonly DefaultSkillDefinition[] = [
   {
+    id: SYSTEM_SKILL_IDS.reportDocxGost,
     slug: "report-docx-gost",
     name: "Academic DOCX report formatting",
     description:
@@ -28,6 +31,7 @@ export const DEFAULT_SKILLS: readonly DefaultSkillDefinition[] = [
     instructions: stripFrontmatter(reportDocxInstructions),
   },
   {
+    id: SYSTEM_SKILL_IDS.managedPowerShell,
     slug: "managed-powershell",
     name: "Managed PowerShell execution",
     description:
@@ -38,6 +42,7 @@ export const DEFAULT_SKILLS: readonly DefaultSkillDefinition[] = [
     instructions: stripFrontmatter(managedPowerShellInstructions),
   },
   {
+    id: SYSTEM_SKILL_IDS.createAgent,
     slug: "create-agent",
     name: "Создание агента",
     description:
@@ -48,6 +53,7 @@ export const DEFAULT_SKILLS: readonly DefaultSkillDefinition[] = [
     instructions: stripFrontmatter(createAgentInstructions),
   },
   {
+    id: SYSTEM_SKILL_IDS.createSkill,
     slug: "create-skill",
     name: "Создание навыка",
     description:

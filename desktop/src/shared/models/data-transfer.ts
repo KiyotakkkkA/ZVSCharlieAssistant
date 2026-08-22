@@ -7,7 +7,7 @@ export interface DataTransferCounts {
 }
 
 export interface DataTransferConflict {
-  kind: "category" | "secret";
+  kind: string;
   label: string;
   reason: string;
 }
@@ -22,6 +22,18 @@ export interface ImportPreview {
     memory: boolean;
   };
   skills: DataTransferCounts;
+  entities: Partial<
+    Record<
+      import("../dto/data-transfer.dto").DataTransferEntity,
+      DataTransferCounts
+    >
+  >;
+  missingDependencies: Array<{
+    ownerKind: string;
+    ownerId: string;
+    dependencyKind: string;
+    dependencyId: string;
+  }>;
   conflicts: DataTransferConflict[];
 }
 
@@ -30,5 +42,11 @@ export interface ImportResult {
   secrets: Omit<DataTransferCounts, "conflict">;
   policies: number;
   skills: Omit<DataTransferCounts, "conflict">;
+  entities: Partial<
+    Record<
+      import("../dto/data-transfer.dto").DataTransferEntity,
+      Omit<DataTransferCounts, "conflict">
+    >
+  >;
   skipped: number;
 }

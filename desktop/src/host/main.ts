@@ -12,6 +12,7 @@ import {
 import { createSqliteDatabase } from "./infrastructure/database/sqlite.database";
 import { SecretStorageRepository } from "./infrastructure/database/secret-storage.repository";
 import { DataTransferService } from "./infrastructure/data-transfer/data-transfer.service";
+import { ConfigurationTransferRepository } from "./infrastructure/data-transfer/configuration-transfer.repository";
 import {
   registerDataTransferHandlers,
   removeDataTransferHandlers,
@@ -203,6 +204,7 @@ app.whenReady().then(() => {
   const scenarioExecutions = new ScenarioExecutionRepository(database);
   scenarioExecutions.recoverInterruptedRuns();
   const integrationRepository = new IntegrationRepository(database);
+  const scenarioGraphs = new ScenarioGraphRepository(database);
   const scenarioDeliveries = new ScenarioDeliveryRepository(database);
   const scenarioDownloadsRoot = join(app.getPath("userData"), "downloads");
   scenarioFileDownloads = new ScenarioFileDownloadService(
@@ -223,6 +225,11 @@ app.whenReady().then(() => {
       terminalPolicyRepository,
       memoryRepository,
       automationRepository,
+      new ConfigurationTransferRepository(
+        database,
+        scenarioGraphs,
+        integrationRepository,
+      ),
     ),
   );
   const taskPlans = new TaskPlanRepository(database);
@@ -264,7 +271,6 @@ app.whenReady().then(() => {
   );
   registerDirectoryPolicyHandlers(directoryPolicyRepository);
   registerUserProfileHandlers(userProfileRepository);
-  const scenarioGraphs = new ScenarioGraphRepository(database);
   const runtimePersistence = new SqliteRuntimePersistence(
     database,
     join(app.getPath("userData"), "executions"),

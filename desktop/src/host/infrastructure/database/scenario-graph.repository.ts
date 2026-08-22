@@ -84,7 +84,6 @@ export class ScenarioGraphRepository {
       throw new Error("Недопустимый статус сценария");
     const graph = scenarioGraphSchema.parse(input.graph);
     const id = input.id ?? newEntityId();
-    if (input.id && !this.find(input.id)) throw new Error("Сценарий не найден");
     const name = input.name.trim().slice(0, 120) || "Без названия";
     const description = (input.description ?? "").trim().slice(0, 1_000);
 

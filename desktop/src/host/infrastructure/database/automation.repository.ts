@@ -133,8 +133,7 @@ export class AutomationRepository {
 
     if (
       input.secretId !== null &&
-      (!Number.isInteger(input.secretId) ||
-        !this.secretExistsInCategory(input.secretId, requirement.categoryId))
+      !this.secretExistsInCategory(input.secretId, requirement.categoryId)
     ) {
       throw new Error("Секрет не существует или относится к другой категории");
     }
@@ -568,7 +567,7 @@ export class AutomationRepository {
   }
 
   ensureBuiltinSkill(
-    input: Omit<UpsertAutomationSkillInput, "id" | "instructions">,
+    input: Omit<UpsertAutomationSkillInput, "instructions"> & { id: string },
   ): string {
     const existing = this.database
       .prepare("SELECT id FROM automation_skills WHERE slug=?")
@@ -588,7 +587,7 @@ export class AutomationRepository {
         );
       return existing.id;
     }
-    const id = newEntityId();
+    const id = input.id;
     this.database
       .prepare(
         `INSERT INTO automation_skills(id,slug,name,description,status,version,author,builtin,required_tool_ids_json) VALUES(?,?,?,?, 'active',?,?,1,?)`,

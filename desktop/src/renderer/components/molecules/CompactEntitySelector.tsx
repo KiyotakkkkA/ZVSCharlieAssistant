@@ -4,7 +4,14 @@ import {
   InputCheckBoxGroup,
   InputSmall,
   ScrollArea,
+  Tooltip,
 } from "@kiyotakkkka/zvs-uikit-lib";
+import type { SvgIcon } from "../atoms";
+
+export interface CompactEntitySelectorMetaIcon {
+  icon: SvgIcon;
+  label: string;
+}
 
 export interface CompactEntitySelectorItem {
   id: string;
@@ -13,6 +20,7 @@ export interface CompactEntitySelectorItem {
   meta?: string;
   group?: string;
   disabled?: boolean;
+  metaIcons?: CompactEntitySelectorMetaIcon[];
 }
 
 interface CompactEntitySelectorProps {
@@ -80,13 +88,20 @@ export function CompactEntitySelector({
                     {group} · {entries.length}
                   </div>
                 ) : null}
-                <div className="p-2 space-y-1.5 w-full">
+                <div className="w-full space-y-1.5 p-2">
                   {entries.map((item) => (
                     <div key={item.id} className="relative w-full">
                       <InputCheckBox
                         modelValue={item.id}
                         disabled={item.disabled}
-                        className="w-full rounded-lg transition-colors hover:bg-main-700/35 px-2!"
+                        className="w-full rounded-lg px-2! transition-colors hover:bg-main-700/35"
+                        classNames={{
+                          content: item.metaIcons?.length
+                            ? `min-w-0 flex-1 ${metaPaddingClass(item.metaIcons.length)}`
+                            : item.meta
+                              ? "min-w-0 flex-1 pr-36"
+                              : "min-w-0 flex-1",
+                        }}
                       >
                         <span className="block min-w-0 flex-1">
                           <span className="block truncate text-sm font-medium text-main-100">
@@ -99,7 +114,27 @@ export function CompactEntitySelector({
                           ) : null}
                         </span>
                       </InputCheckBox>
-                      {item.meta ? (
+                      {item.metaIcons?.length ? (
+                        <span className="absolute right-2.5 top-1/2 flex -translate-y-1/2 items-center gap-1">
+                          {item.metaIcons.map(
+                            ({ icon: Icon, label }, index) => (
+                              <Tooltip
+                                key={`${label}-${index}`}
+                                label={label}
+                                placement="left-center"
+                              >
+                                <span
+                                  tabIndex={0}
+                                  aria-label={label}
+                                  className="grid size-6 shrink-0 place-items-center rounded-md text-main-500 outline-none transition-colors hover:bg-main-700/45 hover:text-main-200 focus-visible:bg-main-700/45 focus-visible:text-main-200"
+                                >
+                                  <Icon className="size-3.5" />
+                                </span>
+                              </Tooltip>
+                            ),
+                          )}
+                        </span>
+                      ) : item.meta ? (
                         <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 whitespace-nowrap text-[11px] text-main-500">
                           {item.meta}
                         </span>
@@ -118,4 +153,12 @@ export function CompactEntitySelector({
       </ScrollArea>
     </div>
   );
+}
+
+function metaPaddingClass(count: number): string {
+  if (count <= 1) return "pr-12";
+  if (count === 2) return "pr-20";
+  if (count === 3) return "pr-28";
+  if (count === 4) return "pr-36";
+  return "pr-48";
 }

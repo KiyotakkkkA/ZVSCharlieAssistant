@@ -26,8 +26,8 @@ import {
   type Connection,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { Dropdown } from "@kiyotakkkka/zvs-uikit-lib";
-import { GridIcon, HoverTooltip, MagnetIcon, TrashIcon } from "../atoms";
+import { Dropdown, Tooltip } from "@kiyotakkkka/zvs-uikit-lib";
+import { GridIcon, MagnetIcon, TrashIcon } from "../atoms";
 import type { ScenarioNode } from "../../../shared/scenario/graph";
 import { scenarioDescriptors } from "../../../shared/scenario/descriptors";
 import {
@@ -278,7 +278,7 @@ function CanvasToggle({
   children: ReactNode;
 }) {
   return (
-    <HoverTooltip label={label} className="block">
+    <Tooltip label={label} placement="right-center" className="block">
       <button
         type="button"
         aria-label={label}
@@ -292,7 +292,7 @@ function CanvasToggle({
       >
         {children}
       </button>
-    </HoverTooltip>
+    </Tooltip>
   );
 }
 

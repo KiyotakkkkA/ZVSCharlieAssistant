@@ -7,6 +7,7 @@ import {
   InputSmall,
   ScrollArea,
   Select,
+  Tooltip,
   useToasts,
 } from "@kiyotakkkka/zvs-uikit-lib";
 import { useParams } from "react-router-dom";
@@ -16,7 +17,6 @@ import {
   ChevronLeftIcon,
   CogIcon,
   EditIcon,
-  HoverTooltip,
   PlusIcon,
   RobotIcon,
   SaveIcon,
@@ -753,9 +753,10 @@ export const ScenarioGraphEditorPage = observer(
                       const visual = nodeVisual(descriptor.kind);
                       const Icon = visual.icon;
                       return (
-                        <HoverTooltip
+                        <Tooltip
                           key={descriptor.kind}
                           label={descriptor.label}
+                          placement="right-center"
                           className="block"
                         >
                           <button
@@ -774,7 +775,7 @@ export const ScenarioGraphEditorPage = observer(
                           >
                             <Icon className="size-4" />
                           </button>
-                        </HoverTooltip>
+                        </Tooltip>
                       );
                     }),
                   )}

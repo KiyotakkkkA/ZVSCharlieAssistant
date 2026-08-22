@@ -10,17 +10,39 @@ import {
 import type {
   DataTransferConflictPolicy,
   ImportPreview,
+  ImportResult,
 } from "../../../../../shared/models/data-transfer";
-import { DownloadIcon, GlobalSettingsLabel, UploadIcon } from "../../../atoms";
+import {
+  dataTransferRequiredBy,
+  resolveDataTransferEntities,
+  type DataTransferEntity,
+} from "../../../../../shared/dto";
+import {
+  DownloadIcon,
+  GlobalSettingsLabel,
+  GraphIcon,
+  LockIcon,
+  NumbersIcon,
+  PolicyIcon,
+  RobotIcon,
+  ScriptIcon,
+  SkillIcon,
+  StorageIcon,
+  TransitConnectionIcon,
+  UploadIcon,
+} from "../../../atoms";
 import {
   CompactEntitySelector,
   type CompactEntitySelectorItem,
 } from "../../../molecules";
 import {
   automationStore,
+  integrationStore,
   memoryStore,
   secretStorageStore,
   terminalPolicyStore,
+  textProviderStore,
+  vectorStoreStore,
 } from "../../../../stores";
 import { DATA_ANCHORS } from "./settings-sections";
 
@@ -36,6 +58,11 @@ export function GlobalSettingsDataForm() {
       terminalPolicy: true,
       memoryPolicy: true,
       skills: true,
+      providers: true,
+      integrations: true,
+      vectorStores: true,
+      agents: true,
+      scenarios: true,
     },
   );
   const [importPassword, setImportPassword] = useState("");
@@ -47,15 +74,9 @@ export function GlobalSettingsDataForm() {
   );
 
   const exportData = async () => {
-    const entities = (
-      [
-        "secretCategories",
-        "secrets",
-        "terminalPolicy",
-        "memoryPolicy",
-        "skills",
-      ] as const
-    ).filter((entity) => exportEntities[entity]);
+    const entities = DATA_TRANSFER_ENTITIES.filter(
+      (entity) => exportEntities[entity],
+    );
     if (!entities.length) {
       toasts.warning({ title: "Выберите данные для экспорта" });
       return;
@@ -121,11 +142,14 @@ export function GlobalSettingsDataForm() {
         terminalPolicyStore.bootstrap(true),
         memoryStore.bootstrap(true),
         automationStore.bootstrap(true),
+        textProviderStore.bootstrap(true),
+        integrationStore.bootstrap(true),
+        vectorStoreStore.bootstrap(true),
       ]);
       setPreview(null);
       toasts.success({
         title: "Импорт завершён",
-        description: `Создано: ${result.categories.create + result.secrets.create + result.skills.create}, обновлено: ${result.categories.update + result.secrets.update + result.skills.update + result.policies}, пропущено: ${result.skipped}.`,
+        description: importResultDescription(result),
       });
     } catch (error) {
       showError(toasts, "Не удалось импортировать данные", error);
@@ -145,14 +169,23 @@ export function GlobalSettingsDataForm() {
       <section className="space-y-5">
         <GlobalSettingsLabel {...DATA_ANCHORS.export} />
         <CompactEntitySelector
-          items={exportEntityItems(Boolean(exportEntities.secrets))}
+          items={exportEntityItems(exportEntities)}
           model={exportEntities}
           searchPlaceholder="Найти данные"
-          onModelChange={(model) =>
+          onModelChange={(model) => {
+            const selected = DATA_TRANSFER_ENTITIES.filter(
+              (entity) => model[entity],
+            );
+            const resolved = new Set(resolveDataTransferEntities(selected));
             setExportEntities(
-              model.secrets ? { ...model, secretCategories: true } : model,
-            )
-          }
+              Object.fromEntries(
+                DATA_TRANSFER_ENTITIES.map((entity) => [
+                  entity,
+                  resolved.has(entity),
+                ]),
+              ),
+            );
+          }}
         />
         <InputCheckBox
           checked={withoutEncryption}
@@ -173,15 +206,21 @@ export function GlobalSettingsDataForm() {
           </Alert>
         ) : (
           <div className="grid gap-3 md:grid-cols-2">
-            <PasswordField
+            <InputSmall
+              preset="password"
+              autoComplete="new-password"
+              maxLength={256}
               value={exportPassword}
               placeholder="Пароль шифрования"
-              onChange={setExportPassword}
+              onChange={(event) => setExportPassword(event.target.value)}
             />
-            <PasswordField
+            <InputSmall
+              preset="password"
+              autoComplete="new-password"
+              maxLength={256}
               value={exportConfirmation}
               placeholder="Повторите пароль"
-              onChange={setExportConfirmation}
+              onChange={(event) => setExportConfirmation(event.target.value)}
             />
           </div>
         )}
@@ -201,11 +240,14 @@ export function GlobalSettingsDataForm() {
       <section className="space-y-5 border-t border-main-700/35 pt-8">
         <GlobalSettingsLabel {...DATA_ANCHORS.import} />
         <div className="flex flex-col gap-3 md:flex-row">
-          <PasswordField
+          <InputSmall
+            preset="password"
+            autoComplete="new-password"
+            maxLength={256}
             value={importPassword}
             placeholder="Пароль от копии, если он установлен"
             className="min-w-0 flex-1"
-            onChange={setImportPassword}
+            onChange={(event) => setImportPassword(event.target.value)}
           />
           <Button
             variant="secondary"
@@ -229,21 +271,36 @@ export function GlobalSettingsDataForm() {
               </p>
             </div>
             <div className="grid gap-2 md:grid-cols-2">
-              <ImportCountsCard
-                label="Категории"
-                counts={preview.categories}
-              />
-              <ImportCountsCard label="Секреты" counts={preview.secrets} />
-              <ImportCountsCard label="Навыки" counts={preview.skills} />
+              {DATA_TRANSFER_ENTITIES.flatMap((entity) => {
+                const counts = preview.entities[entity];
+                return counts ? (
+                  <ImportCountsCard
+                    key={entity}
+                    label={ENTITY_LABELS[entity]}
+                    counts={counts}
+                  />
+                ) : (
+                  []
+                );
+              })}
               <PoliciesImportCard policies={preview.policies} />
             </div>
-            {preview.conflicts.length || preview.skills.conflict ? (
+            {preview.missingDependencies.length ? (
               <Alert
                 variant="warning"
-                title={`Конфликты: ${preview.conflicts.length + preview.skills.conflict}`}
+                title={`Не найдены зависимости: ${preview.missingDependencies.length}`}
               >
-                Выберите, пропустить существующие записи или обновить их данными
-                из копии.
+                Сначала импортируйте недостающие связанные сущности или выберите
+                полную копию. Импорт этой копии будет заблокирован.
+              </Alert>
+            ) : null}
+            {totalConflicts(preview) ? (
+              <Alert
+                variant="warning"
+                title={`Конфликты: ${totalConflicts(preview)}`}
+              >
+                Одинаковое естественное имя связано с разными UUID. Импорт
+                заблокирован, чтобы не нарушить связи между сущностями.
               </Alert>
             ) : null}
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -268,7 +325,11 @@ export function GlobalSettingsDataForm() {
                 <Button
                   variant="primary"
                   loading={busy === "commit"}
-                  disabled={busy !== null}
+                  disabled={
+                    busy !== null ||
+                    preview.missingDependencies.length > 0 ||
+                    preview.conflicts.length > 0
+                  }
                   onClick={() => void commitImport()}
                 >
                   Импортировать
@@ -282,67 +343,128 @@ export function GlobalSettingsDataForm() {
   );
 }
 
+const DATA_TRANSFER_ENTITIES = [
+  "secretCategories",
+  "secrets",
+  "terminalPolicy",
+  "memoryPolicy",
+  "skills",
+  "providers",
+  "integrations",
+  "vectorStores",
+  "agents",
+  "scenarios",
+] as const satisfies readonly DataTransferEntity[];
+
+const ENTITY_LABELS: Record<DataTransferEntity, string> = {
+  secretCategories: "Категории секретов",
+  secrets: "Секреты",
+  terminalPolicy: "Работа с терминалом",
+  memoryPolicy: "Память",
+  skills: "Навыки",
+  providers: "Провайдеры и модели",
+  integrations: "Интеграции",
+  vectorStores: "Векторные хранилища",
+  agents: "Агенты",
+  scenarios: "Сценарии",
+};
+
+const ENTITY_ICONS: Record<DataTransferEntity, typeof StorageIcon> = {
+  secretCategories: StorageIcon,
+  secrets: LockIcon,
+  terminalPolicy: PolicyIcon,
+  memoryPolicy: PolicyIcon,
+  skills: SkillIcon,
+  providers: RobotIcon,
+  integrations: TransitConnectionIcon,
+  vectorStores: NumbersIcon,
+  agents: GraphIcon,
+  scenarios: ScriptIcon,
+};
+
 function exportEntityItems(
-  secretsSelected: boolean,
+  model: Record<string, boolean>,
 ): CompactEntitySelectorItem[] {
+  const selected = DATA_TRANSFER_ENTITIES.filter((entity) => model[entity]);
+  const item = (
+    value: Omit<CompactEntitySelectorItem, "disabled" | "meta"> & {
+      id: DataTransferEntity;
+    },
+  ): CompactEntitySelectorItem => {
+    const requiredBy = dataTransferRequiredBy(selected, value.id).filter(
+      (entity) => entity !== value.id,
+    );
+    return {
+      ...value,
+      disabled: requiredBy.length > 0,
+      metaIcons: requiredBy.map((entity) => ({
+        icon: ENTITY_ICONS[entity],
+        label: `Требуется для: ${ENTITY_LABELS[entity]}`,
+      })),
+    };
+  };
   return [
-    {
+    item({
       id: "secretCategories",
       title: "Категории секретов",
       description: "Структура категорий и их переносимые идентификаторы.",
       group: "Хранилище секретов",
-      disabled: secretsSelected,
-      meta: secretsSelected ? "Требуется для экспорта секретов" : undefined,
-    },
-    {
+    }),
+    item({
       id: "secrets",
       title: "Секреты",
       description: "Названия и значения секретов вместе с категориями.",
       group: "Хранилище секретов",
-    },
-    {
+    }),
+    item({
       id: "terminalPolicy",
       title: "Работа с терминалом",
       description: "Ограничения, подтверждения и разрешённые команды.",
       group: "Политики",
-    },
-    {
+    }),
+    item({
       id: "memoryPolicy",
       title: "Память",
       description: "Автосохранение, лимиты и использование памяти.",
       group: "Политики",
-    },
-    {
+    }),
+    item({
       id: "skills",
       title: "Навыки",
       description: "Только пользовательские навыки, без системных.",
       group: "Автоматизация",
-    },
+    }),
+    item({
+      id: "providers",
+      title: "Провайдеры и модели",
+      description: "Настройки провайдеров.",
+      group: "Конфигурация",
+    }),
+    item({
+      id: "integrations",
+      title: "Интеграции",
+      description: "Профили подключений без результатов проверки и истории.",
+      group: "Конфигурация",
+    }),
+    item({
+      id: "vectorStores",
+      title: "Векторные хранилища",
+      description: "Только настройки; документы и индексы не экспортируются.",
+      group: "Конфигурация",
+    }),
+    item({
+      id: "agents",
+      title: "Агенты",
+      description: "Инструкции, модели, навыки и доступные инструменты.",
+      group: "Автоматизация",
+    }),
+    item({
+      id: "scenarios",
+      title: "Сценарии",
+      description: "Активные графы и все необходимые зависимости.",
+      group: "Автоматизация",
+    }),
   ];
-}
-
-function PasswordField({
-  value,
-  placeholder,
-  className,
-  onChange,
-}: {
-  value: string;
-  placeholder: string;
-  className?: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <InputSmall
-      type="password"
-      autoComplete="new-password"
-      value={value}
-      placeholder={placeholder}
-      maxLength={256}
-      className={className ?? "w-full"}
-      onChange={(event) => onChange(event.target.value)}
-    />
-  );
 }
 
 function ImportCountsCard({
@@ -423,7 +545,13 @@ function PoliciesImportCard({
   );
 }
 
-function PolicyBadge({ label, included }: { label: string; included: boolean }) {
+function PolicyBadge({
+  label,
+  included,
+}: {
+  label: string;
+  included: boolean;
+}) {
   return (
     <span
       className={`rounded-md px-2 py-1.5 text-[11px] font-medium ${
@@ -446,4 +574,23 @@ function showError(
     title,
     description: error instanceof Error ? error.message : "Неизвестная ошибка",
   });
+}
+
+function totalConflicts(preview: ImportPreview): number {
+  return Math.max(
+    preview.conflicts.length,
+    Object.values(preview.entities).reduce(
+      (sum, counts) => sum + (counts?.conflict ?? 0),
+      0,
+    ),
+  );
+}
+
+function importResultDescription(result: ImportResult): string {
+  const counts = Object.values(result.entities);
+  const created = counts.reduce((sum, value) => sum + (value?.create ?? 0), 0);
+  const updated =
+    result.policies +
+    counts.reduce((sum, value) => sum + (value?.update ?? 0), 0);
+  return `Создано: ${created}, обновлено: ${updated}, пропущено: ${result.skipped}.`;
 }

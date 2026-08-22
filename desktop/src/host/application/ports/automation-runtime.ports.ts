@@ -21,11 +21,12 @@ export interface AutomationRuntimeCatalog {
 
 export interface BuiltinSkillMetadataStore {
   ensureBuiltinSkill(
-    input: Omit<UpsertAutomationSkillInput, "id" | "instructions">,
+    input: Omit<UpsertAutomationSkillInput, "instructions"> & { id: string },
   ): string;
 }
 
 export interface BuiltinSkillDefinition {
+  id: string;
   slug: string;
   name: string;
   description: string;
