@@ -1,4 +1,4 @@
-import { app } from "electron";
+import { app, Menu } from "electron";
 import { join } from "node:path";
 import { AppWindowController } from "./infrastructure/electron/app-window.controller";
 import { ApplicationSettingsRepository } from "./infrastructure/electron/application-settings.repository";
@@ -353,6 +353,21 @@ app.whenReady().then(() => {
   registerAssistantHandlers(memoryService, taskPlans, questionService);
 
   appWindow.create();
+  Menu.setApplicationMenu(
+    Menu.buildFromTemplate([
+      {
+        label: "Приложение",
+        submenu: [
+          { label: "Главная", click: () => appWindow.dispatchCommand("open-home") },
+          { label: "Мастер настройки…", click: () => appWindow.dispatchCommand("start-onboarding") },
+          { type: "separator" },
+          { role: "quit", label: "Выйти" },
+        ],
+      },
+      { role: "editMenu", label: "Правка" },
+      { role: "viewMenu", label: "Вид" },
+    ]),
+  );
   try {
     trayController = new TrayController({
       onOpen: () => appWindow.show(),
@@ -360,6 +375,7 @@ app.whenReady().then(() => {
       onOpenTasks: () => appWindow.dispatchCommand("open-tasks"),
       onOpenScenarios: () => appWindow.dispatchCommand("open-scenarios"),
       onOpenSettings: () => appWindow.dispatchCommand("open-settings"),
+      onStartOnboarding: () => appWindow.dispatchCommand("start-onboarding"),
       isBackgroundEnabled: () => applicationSettings.get().runInBackground,
       onBackgroundChange: (enabled) => {
         const updated = applicationSettings.update({

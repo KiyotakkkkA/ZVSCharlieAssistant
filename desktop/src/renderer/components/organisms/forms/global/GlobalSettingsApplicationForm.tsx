@@ -1,8 +1,9 @@
-import { InputCheckSlided, useToasts } from "@kiyotakkkka/zvs-uikit-lib";
+import { Button, InputCheckSlided, useToasts } from "@kiyotakkkka/zvs-uikit-lib";
 import { useEffect, useState } from "react";
 import type { ApplicationSettings } from "../../../../../ipc/contracts";
 import { GlobalSettingsLabel } from "../../../atoms";
 import { APPLICATION_ANCHORS } from "./settings-sections";
+import { onboardingStore } from "../../../../stores";
 
 const DEFAULT_SETTINGS: ApplicationSettings = {
   runInBackground: true,
@@ -89,6 +90,14 @@ export function GlobalSettingsApplicationForm() {
               onChange={(checked) => void setRunInBackground(checked)}
             />
           </div>
+        </div>
+      </section>
+      <section>
+        <GlobalSettingsLabel {...APPLICATION_ANCHORS.onboarding} />
+        <div className="flex flex-wrap gap-2 py-3">
+          <Button variant="ghost" onClick={onboardingStore.startTour}>Пройти тур заново</Button>
+          <Button variant="ghost" onClick={() => void onboardingStore.restoreChecklist()}>Показать чеклист первых шагов</Button>
+          <Button variant="ghost" onClick={onboardingStore.openWizard}>Открыть мастер настройки</Button>
         </div>
       </section>
     </div>
