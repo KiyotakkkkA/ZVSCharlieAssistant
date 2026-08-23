@@ -2,20 +2,20 @@ import { Button, ProgressBar } from "@kiyotakkkka/zvs-uikit-lib";
 import { observer } from "mobx-react-lite";
 import {
   useEffect,
-  useMemo,
   useRef,
   useState,
   type CSSProperties,
 } from "react";
 import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
+import { APP_PATHS } from "../../../app/routes";
 import { onboardingStore } from "../../../stores";
 import {
   ArrowExpandRightIcon,
   CheckIcon,
   ChevronLeftIcon,
 } from "../../atoms";
-import { TOUR_STEPS } from "./tour-steps";
+import { findGuide } from "./guides";
 
 type Rect = { top: number; left: number; width: number; height: number };
 
@@ -25,32 +25,16 @@ export const OnboardingTourOverlay = observer(function OnboardingTourOverlay() {
   const dialogRef = useRef<HTMLDivElement>(null);
   const [rect, setRect] = useState<Rect | null>(null);
   const [targetMissing, setTargetMissing] = useState(false);
-  const step = TOUR_STEPS[onboardingStore.tourStepIndex];
-  const isPageOverview = step?.target.endsWith("-page") ?? false;
-  const highlightedRect = isPageOverview ? null : rect;
-
-  const chapter = useMemo(() => {
-    if (!step) return { index: 0, total: 0, step: 0, steps: 0, next: -1 };
-    const chapters = [...new Set(TOUR_STEPS.map((item) => item.chapter))];
-    const chapterSteps = TOUR_STEPS.filter(
-      (item) => item.chapter === step.chapter,
-    );
-    const chapterStep = chapterSteps.findIndex((item) => item.id === step.id);
-    const nextChapterIndex = TOUR_STEPS.findIndex(
-      (item, index) =>
-        index > onboardingStore.tourStepIndex && item.chapter !== step.chapter,
-    );
-    return {
-      index: chapters.indexOf(step.chapter) + 1,
-      total: chapters.length,
-      step: chapterStep + 1,
-      steps: chapterSteps.length,
-      next: nextChapterIndex,
-    };
-  }, [step]);
+  const guide = findGuide(onboardingStore.activeGuideId);
+  const step = guide?.steps[onboardingStore.guideStepIndex];
+  const highlightedRect = rect;
+  const finishGuide = async () => {
+    await onboardingStore.finishGuide();
+    navigate(APP_PATHS.guides, { replace: true });
+  };
 
   useEffect(() => {
-    if (!onboardingStore.tourActive || !step) return;
+    if (!onboardingStore.guideActive || !step) return;
     setRect(null);
     setTargetMissing(false);
 
@@ -103,7 +87,7 @@ export const OnboardingTourOverlay = observer(function OnboardingTourOverlay() {
         setTargetMissing(true);
         if (step.optional) {
           window.setTimeout(() => {
-            if (active) onboardingStore.nextTourStep();
+            if (active) onboardingStore.nextGuideStep();
           }, 500);
         }
       }
@@ -120,18 +104,28 @@ export const OnboardingTourOverlay = observer(function OnboardingTourOverlay() {
   }, [location.pathname, navigate, step]);
 
   useEffect(() => {
-    if (!onboardingStore.tourActive) return;
+    if (!onboardingStore.guideActive) return;
     const previousFocus = document.activeElement as HTMLElement | null;
     dialogRef.current?.focus();
     const handler = (event: KeyboardEvent) => {
-      if (event.key === "ArrowLeft") onboardingStore.prevTourStep();
-      else if (event.key === "Escape") void onboardingStore.finishTour();
+      if (event.key === "ArrowLeft") onboardingStore.prevGuideStep();
+      else if (event.key === "Escape") onboardingStore.closeGuide();
       else if (event.key === "ArrowRight" || event.key === "Enter") {
+        if (
+          event.key === "Enter" &&
+          event.target instanceof HTMLElement &&
+          event.target.closest("button, a, input, select, textarea")
+        ) {
+          return;
+        }
         event.preventDefault();
-        if (onboardingStore.tourStepIndex === TOUR_STEPS.length - 1) {
-          void onboardingStore.finishTour();
+        if (
+          guide &&
+          onboardingStore.guideStepIndex === guide.steps.length - 1
+        ) {
+          void finishGuide();
         } else {
-          onboardingStore.nextTourStep();
+          onboardingStore.nextGuideStep();
         }
       }
     };
@@ -140,14 +134,14 @@ export const OnboardingTourOverlay = observer(function OnboardingTourOverlay() {
       window.removeEventListener("keydown", handler);
       previousFocus?.focus();
     };
-  }, [onboardingStore.tourActive]);
+  }, [guide, onboardingStore.guideActive]);
 
   useEffect(() => {
-    if (onboardingStore.tourActive) dialogRef.current?.focus();
+    if (onboardingStore.guideActive) dialogRef.current?.focus();
   }, [step?.id]);
 
-  if (!onboardingStore.tourActive || !step) return null;
-  const last = onboardingStore.tourStepIndex === TOUR_STEPS.length - 1;
+  if (!onboardingStore.guideActive || !guide || !step) return null;
+  const last = onboardingStore.guideStepIndex === guide.steps.length - 1;
   const tooltipStyle = positionTooltip(highlightedRect, step.placement);
 
   return createPortal(
@@ -181,18 +175,17 @@ export const OnboardingTourOverlay = observer(function OnboardingTourOverlay() {
           <div
             className="h-full bg-accent-light transition-[width] duration-300"
             style={{
-              width: `${((onboardingStore.tourStepIndex + 1) / TOUR_STEPS.length) * 100}%`,
+              width: `${((onboardingStore.guideStepIndex + 1) / guide.steps.length) * 100}%`,
             }}
           />
         </div>
         <div className="p-5">
           <div className="flex items-center justify-between gap-3">
             <span className="rounded-full bg-accent-medium/12 px-2.5 py-1 text-[11px] font-medium text-accent-light">
-              {step.chapter}
+              {guide.title}
             </span>
             <span className="text-[11px] tabular-nums text-main-500">
-              Раздел {chapter.index} из {chapter.total} · {chapter.step}/
-              {chapter.steps}
+              Шаг {onboardingStore.guideStepIndex + 1} из {guide.steps.length}
             </span>
           </div>
           <h2
@@ -226,37 +219,27 @@ export const OnboardingTourOverlay = observer(function OnboardingTourOverlay() {
 
           <div className="mt-5 border-t border-main-700/45 pt-4">
             <ProgressBar
-              value={onboardingStore.tourStepIndex + 1}
-              max={TOUR_STEPS.length}
-              label={`Шаг ${onboardingStore.tourStepIndex + 1} из ${TOUR_STEPS.length}`}
+              value={onboardingStore.guideStepIndex + 1}
+              max={guide.steps.length}
+              label={`Шаг ${onboardingStore.guideStepIndex + 1} из ${guide.steps.length}`}
             />
             <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
               <Button
                 variant="secondary"
                 rounded="rounded-full"
                 className="px-2"
-                onClick={() => void onboardingStore.finishTour()}
+                onClick={onboardingStore.closeGuide}
               >
-                Завершить обзор
+                Выйти из урока
               </Button>
               <div className="flex items-center gap-2">
-                {chapter.next >= 0 && chapter.steps > 1 ? (
-                  <Button
-                    variant="secondary"
-                    rounded="rounded-full"
-                    className="px-2"
-                    onClick={() => onboardingStore.setTourStep(chapter.next)}
-                  >
-                    Следующий раздел
-                  </Button>
-                ) : null}
                 <Button
                   variant="secondary"
                   rounded="rounded-full"
                   label="Назад"
                   className="size-9 p-0"
-                  disabled={onboardingStore.tourStepIndex === 0}
-                  onClick={onboardingStore.prevTourStep}
+                  disabled={onboardingStore.guideStepIndex === 0}
+                  onClick={onboardingStore.prevGuideStep}
                 >
                   <ChevronLeftIcon className="size-4" />
                 </Button>
@@ -266,8 +249,8 @@ export const OnboardingTourOverlay = observer(function OnboardingTourOverlay() {
                   className="px-2"
                   onClick={() =>
                     last
-                      ? void onboardingStore.finishTour()
-                      : onboardingStore.nextTourStep()
+                      ? void finishGuide()
+                      : onboardingStore.nextGuideStep()
                   }
                 >
                   {last ? "Готово" : "Далее"}

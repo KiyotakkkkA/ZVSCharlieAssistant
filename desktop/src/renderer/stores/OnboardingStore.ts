@@ -45,8 +45,9 @@ export class OnboardingStore {
   loading = false;
   initialized = false;
   wizardOpen = false;
-  tourActive = false;
-  tourStepIndex = 0;
+  guideActive = false;
+  activeGuideId: string | null = null;
+  guideStepIndex = 0;
 
   constructor(private readonly readiness: OnboardingReadiness = defaultReadiness) {
     makeAutoObservable<this, "readiness">(
@@ -69,6 +70,14 @@ export class OnboardingStore {
       runInAction(() => {
         this.settings = settings;
         this.wizardOpen = !settings.onboarding.wizardCompleted;
+        if (
+          settings.onboarding.wizardCompleted &&
+          !settings.onboarding.tourCompleted
+        ) {
+          this.activeGuideId = "beginning";
+          this.guideStepIndex = 0;
+          this.guideActive = true;
+        }
         this.initialized = true;
       });
     } finally {
@@ -94,30 +103,59 @@ export class OnboardingStore {
     this.wizardOpen = true;
   }
 
-  startTour(): void {
+  startGuide(id: string): void {
     this.wizardOpen = false;
-    this.tourStepIndex = 0;
-    this.tourActive = true;
+    this.activeGuideId = id;
+    this.guideStepIndex = 0;
+    this.guideActive = true;
   }
 
-  nextTourStep(): void {
-    this.tourStepIndex += 1;
+  nextGuideStep(): void {
+    this.guideStepIndex += 1;
   }
 
-  prevTourStep(): void {
-    this.tourStepIndex = Math.max(0, this.tourStepIndex - 1);
+  prevGuideStep(): void {
+    this.guideStepIndex = Math.max(0, this.guideStepIndex - 1);
   }
 
-  setTourStep(index: number): void {
-    this.tourStepIndex = Math.max(0, index);
+  closeGuide(): void {
+    this.guideActive = false;
+    this.activeGuideId = null;
+    this.guideStepIndex = 0;
   }
 
-  async finishTour(): Promise<void> {
-    await this.patch({ tourCompleted: true });
-    runInAction(() => {
-      this.tourActive = false;
-      this.tourStepIndex = 0;
+  async finishGuide(): Promise<void> {
+    const id = this.activeGuideId;
+    if (!id) return;
+    const completedGuides = this.settings?.onboarding.completedGuides ?? [];
+    await this.patch({
+      completedGuides: completedGuides.includes(id)
+        ? completedGuides
+        : [...completedGuides, id],
+      ...(id === "beginning" ? { tourCompleted: true } : {}),
     });
+    runInAction(() => {
+      this.guideActive = false;
+      this.activeGuideId = null;
+      this.guideStepIndex = 0;
+    });
+  }
+
+  async setGuideCompleted(id: string, completed: boolean): Promise<void> {
+    const current = this.settings?.onboarding.completedGuides ?? [];
+    await this.patch({
+      completedGuides: completed
+        ? [...new Set([...current, id])]
+        : current.filter((item) => item !== id),
+      ...(id === "beginning" ? { tourCompleted: completed } : {}),
+    });
+  }
+
+  isGuideCompleted(id: string): boolean {
+    return (
+      this.settings?.onboarding.completedGuides.includes(id) === true ||
+      (id === "beginning" && this.settings?.onboarding.tourCompleted === true)
+    );
   }
 
   async dismissChecklist(): Promise<void> {
@@ -139,16 +177,18 @@ export class OnboardingStore {
 
   async resetOnboarding(): Promise<void> {
     await this.patch({
-      version: 1,
+      version: 2,
       wizardCompleted: false,
       tourCompleted: false,
       checklistDismissed: false,
       completedSteps: [],
+      completedGuides: [],
     });
     runInAction(() => {
       this.wizardOpen = true;
-      this.tourActive = false;
-      this.tourStepIndex = 0;
+      this.guideActive = false;
+      this.activeGuideId = null;
+      this.guideStepIndex = 0;
     });
   }
 

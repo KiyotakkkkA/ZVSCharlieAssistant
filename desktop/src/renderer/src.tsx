@@ -28,6 +28,9 @@ const ChatPage = lazy(() =>
   import("./pages/chat").then(({ ChatPage }) => ({ default: ChatPage })),
 );
 const HomePage = lazy(() => import("./pages/home").then(({ HomePage }) => ({ default: HomePage })));
+const GuidesPage = lazy(() =>
+  import("./pages/guides").then(({ GuidesPage }) => ({ default: GuidesPage })),
+);
 const TaskListPage = lazy(() =>
   import("./pages/tasks").then(({ TaskListPage }) => ({
     default: TaskListPage,
@@ -162,6 +165,7 @@ createRoot(root).render(
         <Route element={<App initialPalette={initialPalette ?? undefined} />}>
           <Route element={<AppLayout />}>
             <Route index element={<HomePage />} />
+            <Route path={APP_PATHS.guides} element={<GuidesPage />} />
             <Route path={APP_PATHS.chat} element={<ChatPage />} />
             <Route path={APP_PATHS.tasks} element={<TaskListPage />} />
             <Route

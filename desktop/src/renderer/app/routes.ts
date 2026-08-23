@@ -20,6 +20,7 @@ import {
 
 export const APP_PATHS = {
   home: "/",
+  guides: "/guides",
   chat: "/chat",
   tasks: "/tasks",
   automation: {

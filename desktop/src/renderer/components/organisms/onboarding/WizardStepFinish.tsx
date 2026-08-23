@@ -101,10 +101,10 @@ export const WizardStepFinish = observer(function WizardStepFinish({
           rounded="rounded-full"
           className="px-2"
           onClick={() =>
-            void onComplete().then(() => onboardingStore.startTour())
+            void onComplete().then(() => onboardingStore.startGuide("beginning"))
           }
         >
-          Пройти обзор интерфейса
+          Пройти урок «Начало»
         </Button>
         <Button
           variant="secondary"

@@ -78,6 +78,7 @@ describe("ApplicationSettingsRepository", () => {
           wizardCompleted: 1,
           tourCompleted: true,
           completedSteps: ["profile", 4, "profile", "chat"],
+          completedGuides: ["beginning", false, "beginning", "chat"],
           firstLaunchAt: 123,
         },
       }),
@@ -89,6 +90,7 @@ describe("ApplicationSettingsRepository", () => {
         ...defaultOnboarding(),
         tourCompleted: true,
         completedSteps: ["profile", "chat"],
+        completedGuides: ["beginning", "chat"],
       },
     });
   });
@@ -96,11 +98,12 @@ describe("ApplicationSettingsRepository", () => {
 
 function defaultOnboarding() {
   return {
-    version: 1,
+    version: 2,
     wizardCompleted: false,
     tourCompleted: false,
     checklistDismissed: false,
     completedSteps: [],
+    completedGuides: [],
     firstLaunchAt: null,
   };
 }

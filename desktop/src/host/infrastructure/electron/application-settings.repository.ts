@@ -7,11 +7,12 @@ import type {
 const DEFAULT_SETTINGS: ApplicationSettings = {
   runInBackground: true,
   onboarding: {
-    version: 1,
+    version: 2,
     wizardCompleted: false,
     tourCompleted: false,
     checklistDismissed: false,
     completedSteps: [],
+    completedGuides: [],
     firstLaunchAt: null,
   },
 };
@@ -50,6 +51,9 @@ export class ApplicationSettingsRepository {
         completedSteps: input.onboarding?.completedSteps
           ? uniqueStrings(input.onboarding.completedSteps)
           : current.onboarding.completedSteps,
+        completedGuides: input.onboarding?.completedGuides
+          ? uniqueStrings(input.onboarding.completedGuides)
+          : current.onboarding.completedGuides,
       },
     };
     writeFileSync(this.path, `${JSON.stringify(settings, null, 2)}\n`, {
@@ -88,6 +92,7 @@ function parseSettings(value: unknown): ApplicationSettings {
         DEFAULT_SETTINGS.onboarding.checklistDismissed,
       ),
       completedSteps: uniqueStrings(onboarding.completedSteps),
+      completedGuides: uniqueStrings(onboarding.completedGuides),
       firstLaunchAt:
         typeof onboarding.firstLaunchAt === "string"
           ? onboarding.firstLaunchAt
@@ -99,7 +104,11 @@ function parseSettings(value: unknown): ApplicationSettings {
 function createDefaultSettings(): ApplicationSettings {
   return {
     ...DEFAULT_SETTINGS,
-    onboarding: { ...DEFAULT_SETTINGS.onboarding, completedSteps: [] },
+    onboarding: {
+      ...DEFAULT_SETTINGS.onboarding,
+      completedSteps: [],
+      completedGuides: [],
+    },
   };
 }
 
@@ -147,6 +156,13 @@ function validateOnboardingPatch(
       patch.completedSteps.some((item) => typeof item !== "string"))
   ) {
     throw new TypeError("onboarding.completedSteps must be an array of strings");
+  }
+  if (
+    patch.completedGuides !== undefined &&
+    (!Array.isArray(patch.completedGuides) ||
+      patch.completedGuides.some((item) => typeof item !== "string"))
+  ) {
+    throw new TypeError("onboarding.completedGuides must be an array of strings");
   }
   if (
     patch.firstLaunchAt !== undefined &&

@@ -328,8 +328,8 @@ export const HomePage = observer(function HomePage() {
           <div className="flex items-center gap-1">
             <GuideAction
               icon={PlayCircleIcon}
-              label="Открыть интерактивный тур"
-              onClick={onboardingStore.startTour}
+              label="Открыть уроки"
+              onClick={() => navigate(APP_PATHS.guides)}
             />
             <GuideAction
               icon={QuestionIcon}

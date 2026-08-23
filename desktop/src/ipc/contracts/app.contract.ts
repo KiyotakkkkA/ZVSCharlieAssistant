@@ -49,6 +49,7 @@ export interface OnboardingState {
   tourCompleted: boolean;
   checklistDismissed: boolean;
   completedSteps: string[];
+  completedGuides: string[];
   firstLaunchAt: string | null;
 }
 

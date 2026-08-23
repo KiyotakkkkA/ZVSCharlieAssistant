@@ -87,14 +87,6 @@ export const APPLICATION_ANCHORS = {
     keywords: ["фон", "tray", "трей", "закрытие", "сценарии"],
     icon: CogIcon,
   },
-  onboarding: {
-    id: "application-onboarding",
-    parentId: "application",
-    label: "Руководство",
-    description: "Повторно откройте руководство.",
-    keywords: ["онбординг", "тур", "мастер", "помощь", "чеклист"],
-    icon: CogIcon,
-  },
 } satisfies Record<string, GlobalSettingsAnchorDescriptor>;
 
 export const DATA_SECTION = {

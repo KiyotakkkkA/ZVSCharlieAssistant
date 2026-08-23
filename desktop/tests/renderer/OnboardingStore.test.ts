@@ -2,11 +2,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { OnboardingStore, type OnboardingReadiness } from "../../src/renderer/stores/OnboardingStore";
 
 const onboarding = {
-  version: 1,
+  version: 2,
   wizardCompleted: false,
   tourCompleted: false,
   checklistDismissed: false,
   completedSteps: [],
+  completedGuides: [],
   firstLaunchAt: "2026-08-24T00:00:00.000Z",
 };
 
@@ -45,6 +46,18 @@ describe("OnboardingStore", () => {
     expect(window.desktop.applicationSettings.update).toHaveBeenCalledWith({
       onboarding: { wizardCompleted: true },
     });
+  });
+
+  it("tracks each completed guide independently", async () => {
+    const store = new OnboardingStore(readiness({}));
+    store.settings = { runInBackground: true, onboarding };
+    store.startGuide("chat");
+    await store.finishGuide();
+
+    expect(window.desktop.applicationSettings.update).toHaveBeenCalledWith({
+      onboarding: { completedGuides: ["chat"] },
+    });
+    expect(store.guideActive).toBe(false);
   });
 });
 

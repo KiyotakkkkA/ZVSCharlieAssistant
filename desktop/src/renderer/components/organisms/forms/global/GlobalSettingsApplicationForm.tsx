@@ -1,23 +1,18 @@
-import { Button, InputCheckSlided, useToasts } from "@kiyotakkkka/zvs-uikit-lib";
+import { InputCheckSlided, useToasts } from "@kiyotakkkka/zvs-uikit-lib";
 import { useEffect, useState } from "react";
 import type { ApplicationSettings } from "../../../../../ipc/contracts";
-import {
-  CreationIcon,
-  GlobalSettingsLabel,
-  RefreshIcon,
-  TasksIcon,
-} from "../../../atoms";
+import { GlobalSettingsLabel } from "../../../atoms";
 import { APPLICATION_ANCHORS } from "./settings-sections";
-import { onboardingStore } from "../../../../stores";
 
 const DEFAULT_SETTINGS: ApplicationSettings = {
   runInBackground: true,
   onboarding: {
-    version: 1,
+    version: 2,
     wizardCompleted: false,
     tourCompleted: false,
     checklistDismissed: false,
     completedSteps: [],
+    completedGuides: [],
     firstLaunchAt: null,
   },
 };
@@ -95,38 +90,6 @@ export function GlobalSettingsApplicationForm() {
               onChange={(checked) => void setRunInBackground(checked)}
             />
           </div>
-        </div>
-      </section>
-      <section>
-        <GlobalSettingsLabel {...APPLICATION_ANCHORS.onboarding} />
-        <div className="flex flex-wrap gap-2 py-3">
-          <Button
-            variant="secondary"
-            rounded="rounded-full"
-            className="px-2"
-            onClick={onboardingStore.startTour}
-          >
-            <RefreshIcon className="size-4" />
-            Пройти тур заново
-          </Button>
-          <Button
-            variant="secondary"
-            rounded="rounded-full"
-            className="px-2"
-            onClick={() => void onboardingStore.restoreChecklist()}
-          >
-            <TasksIcon className="size-4" />
-            Показать первые шаги
-          </Button>
-          <Button
-            variant="secondary"
-            rounded="rounded-full"
-            className="px-2"
-            onClick={onboardingStore.openWizard}
-          >
-            <CreationIcon className="size-4" />
-            Открыть мастер
-          </Button>
         </div>
       </section>
     </div>
