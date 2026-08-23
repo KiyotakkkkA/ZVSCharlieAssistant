@@ -26,14 +26,22 @@ afterEach(() => {
 describe("ApplicationSettingsRepository", () => {
   it("uses background mode by default and persists changes", () => {
     const repository = createRepository();
-    expect(repository.get()).toEqual({ runInBackground: true });
+    expect(repository.get()).toEqual({
+      runInBackground: true,
+      onboarding: defaultOnboarding(),
+    });
 
     expect(repository.update({ runInBackground: false })).toEqual({
       runInBackground: false,
+      onboarding: defaultOnboarding(),
     });
-    expect(repository.get()).toEqual({ runInBackground: false });
+    expect(repository.get()).toEqual({
+      runInBackground: false,
+      onboarding: defaultOnboarding(),
+    });
     expect(JSON.parse(readFileSync(settingsPath(), "utf8"))).toEqual({
       runInBackground: false,
+      onboarding: defaultOnboarding(),
     });
   });
 
@@ -42,10 +50,60 @@ describe("ApplicationSettingsRepository", () => {
     writeFileSync(settingsPath(), "not-json", "utf8");
     const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
 
-    expect(repository.get()).toEqual({ runInBackground: true });
+    expect(repository.get()).toEqual({
+      runInBackground: true,
+      onboarding: defaultOnboarding(),
+    });
     expect(log).toHaveBeenCalledOnce();
   });
+
+  it("reads a legacy file and applies partial onboarding patches", () => {
+    const repository = createRepository();
+    writeFileSync(settingsPath(), JSON.stringify({ runInBackground: false }));
+
+    expect(repository.update({ onboarding: { tourCompleted: true } })).toEqual({
+      runInBackground: false,
+      onboarding: { ...defaultOnboarding(), tourCompleted: true },
+    });
+  });
+
+  it("discards malformed values and de-duplicates completed steps", () => {
+    const repository = createRepository();
+    writeFileSync(
+      settingsPath(),
+      JSON.stringify({
+        runInBackground: "yes",
+        onboarding: {
+          version: "one",
+          wizardCompleted: 1,
+          tourCompleted: true,
+          completedSteps: ["profile", 4, "profile", "chat"],
+          firstLaunchAt: 123,
+        },
+      }),
+    );
+
+    expect(repository.get()).toEqual({
+      runInBackground: true,
+      onboarding: {
+        ...defaultOnboarding(),
+        tourCompleted: true,
+        completedSteps: ["profile", "chat"],
+      },
+    });
+  });
 });
+
+function defaultOnboarding() {
+  return {
+    version: 1,
+    wizardCompleted: false,
+    tourCompleted: false,
+    checklistDismissed: false,
+    completedSteps: [],
+    firstLaunchAt: null,
+  };
+}
 
 function createRepository(): ApplicationSettingsRepository {
   directory = mkdtempSync(join(tmpdir(), "zvs-application-settings-"));

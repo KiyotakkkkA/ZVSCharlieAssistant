@@ -11,7 +11,9 @@ export type AppCommand =
   | "new-chat"
   | "open-tasks"
   | "open-scenarios"
-  | "open-settings";
+  | "open-settings"
+  | "start-onboarding"
+  | "open-home";
 
 export interface AppInfo {
   name: string;
@@ -41,12 +43,23 @@ export interface DesktopApi {
   assistant: import("./assistant.contract").AssistantApi;
 }
 
+export interface OnboardingState {
+  version: number;
+  wizardCompleted: boolean;
+  tourCompleted: boolean;
+  checklistDismissed: boolean;
+  completedSteps: string[];
+  firstLaunchAt: string | null;
+}
+
 export interface ApplicationSettings {
   runInBackground: boolean;
+  onboarding: OnboardingState;
 }
 
 export interface UpdateApplicationSettingsInput {
-  runInBackground: boolean;
+  runInBackground?: boolean;
+  onboarding?: Partial<OnboardingState>;
 }
 
 export interface ApplicationSettingsApi {

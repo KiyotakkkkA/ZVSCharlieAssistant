@@ -6,6 +6,14 @@ import { APPLICATION_ANCHORS } from "./settings-sections";
 
 const DEFAULT_SETTINGS: ApplicationSettings = {
   runInBackground: true,
+  onboarding: {
+    version: 1,
+    wizardCompleted: false,
+    tourCompleted: false,
+    checklistDismissed: false,
+    completedSteps: [],
+    firstLaunchAt: null,
+  },
 };
 
 export function GlobalSettingsApplicationForm() {
