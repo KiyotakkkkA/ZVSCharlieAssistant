@@ -78,6 +78,7 @@ export function NavigationTreeItem({
         </button>
       ) : node.path ? (
         <NavLink
+          data-tour={`nav-${node.id.replace(/^(automation|storage|settings)-/, "")}`}
           to={node.path}
           end
           className={({ isActive }) =>

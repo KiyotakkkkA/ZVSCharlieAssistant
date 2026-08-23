@@ -49,6 +49,7 @@ export const NavigationSidebar = () => {
 
   return (
     <aside
+      data-tour="sidebar"
       className={[
         "relative shrink-0 overflow-visible rounded-xl p-2 shadow-sm",
         "transition-[width,background-color] duration-300 ease-out bg-main-800/40 space-y-2",
@@ -115,6 +116,7 @@ export const NavigationSidebar = () => {
                     className="block"
                   >
                     <NavLink
+                      data-tour={`nav-${route.id.replace(/^(automation|storage|settings)-/, "")}`}
                       to={route.path!}
                       end={route.path === "/"}
                       aria-label={route.label}

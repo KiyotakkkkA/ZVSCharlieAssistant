@@ -23,7 +23,7 @@ import {
   onboardingStore,
 } from "../stores";
 import { TerminalApprovalModal } from "../components/organisms/modals/TerminalApprovalModal";
-import { OnboardingWizardModal } from "../components/organisms/onboarding";
+import { OnboardingTourOverlay, OnboardingWizardModal } from "../components/organisms/onboarding";
 
 const CRITICAL_STORES = [
   ["Секреты", () => secretStorageStore.bootstrap()],
@@ -106,6 +106,7 @@ export function App({ initialPalette }: AppProps) {
         <Outlet />
         <TerminalApprovalModal />
         <OnboardingWizardModal />
+        <OnboardingTourOverlay />
       </ToastProvider>
     </StyleProvider>
   );

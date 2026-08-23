@@ -99,6 +99,7 @@ export function ChatComposer(props: ChatComposerProps) {
     <div className="pointer-events-none inset-x-0 bottom-0 px-4 pb-4 pt-4">
       <div className="pointer-events-auto mx-auto max-w-4xl">
         <div
+          data-tour="chat-composer"
           className="cursor-text rounded-3xl border border-main-700 bg-main-800/95 p-2 hover:border-main-600 focus-within:border-main-600"
           onClick={focusInputFromContainer}
         >
@@ -162,6 +163,7 @@ export function ChatComposer(props: ChatComposerProps) {
                   </Dropdown.Menu>
                 </Dropdown>
               ) : null}
+              <div data-tour="chat-composer-mode">
               <Dropdown
                 className="shrink-0"
                 menuWidth={260}
@@ -200,6 +202,7 @@ export function ChatComposer(props: ChatComposerProps) {
                   ))}
                 </Dropdown.Menu>
               </Dropdown>
+              </div>
               {props.mode === "agent" ? (
                 <Select
                   disabled={props.agentOptions.length === 0}
@@ -265,6 +268,7 @@ export function ChatComposer(props: ChatComposerProps) {
             </div>
             <div className="flex items-center gap-1.5">
               {!["agent", "scenario"].includes(props.mode) && (
+                <div data-tour="chat-composer-model">
                 <ModelOrientedSelect
                   variant="ghost"
                   value={props.model}
@@ -272,6 +276,7 @@ export function ChatComposer(props: ChatComposerProps) {
                   menuWidth={280}
                   menuPlacement="top-right"
                 />
+                </div>
               )}
               <Tooltip
                 label={
