@@ -66,7 +66,7 @@ export const TaskListPage = observer(function TaskListPage() {
   const empty = tab === "scenarios-runs" ? !runs.length : !creationRuns.length;
 
   return (
-    <section className="flex h-full min-h-0 flex-col overflow-hidden p-4">
+    <section data-tour="tasks-page" className="flex h-full min-h-0 flex-col overflow-hidden p-4">
       <PageHeader
         title="Задачи"
         description="История запусков фоновых задач."

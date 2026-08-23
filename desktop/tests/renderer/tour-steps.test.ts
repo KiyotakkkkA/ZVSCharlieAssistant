@@ -9,7 +9,13 @@ describe("TOUR_STEPS", () => {
   });
 
   it("references known routes", () => {
-    const paths = [APP_PATHS.home, APP_PATHS.chat, APP_PATHS.automation.agents.index];
-    for (const step of TOUR_STEPS) if (step.route) expect(paths).toContain(step.route);
+    const paths = collectPaths(APP_PATHS);
+    for (const step of TOUR_STEPS) expect(paths).toContain(step.route);
   });
 });
+
+function collectPaths(value: unknown): string[] {
+  if (typeof value === "string") return [value];
+  if (!value || typeof value !== "object") return [];
+  return Object.values(value).flatMap(collectPaths);
+}

@@ -175,7 +175,7 @@ export const StorageSecretsPage = observer(function StorageSecretsPage() {
       : filteredCategories.length === 0;
 
   return (
-    <section className="flex h-full min-h-0 flex-col overflow-hidden p-4">
+    <section data-tour="secrets-page" className="flex h-full min-h-0 flex-col overflow-hidden p-4">
       <PageHeader
         title="Менеджер секретов"
         description="Управляйте ключами, токенами и учётными данными, которые используют ваши агенты."

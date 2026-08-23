@@ -108,6 +108,10 @@ export class OnboardingStore {
     this.tourStepIndex = Math.max(0, this.tourStepIndex - 1);
   }
 
+  setTourStep(index: number): void {
+    this.tourStepIndex = Math.max(0, index);
+  }
+
   async finishTour(): Promise<void> {
     await this.patch({ tourCompleted: true });
     runInAction(() => {

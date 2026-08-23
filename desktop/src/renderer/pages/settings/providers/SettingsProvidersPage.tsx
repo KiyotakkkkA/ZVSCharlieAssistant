@@ -171,7 +171,7 @@ export const SettingsProvidersPage = observer(function SettingsProvidersPage() {
   };
 
   return (
-    <section className="flex h-full min-h-0 flex-col overflow-hidden p-4">
+    <section data-tour="providers-page" className="flex h-full min-h-0 flex-col overflow-hidden p-4">
       <PageHeader
         title="Провайдеры моделей"
         description={

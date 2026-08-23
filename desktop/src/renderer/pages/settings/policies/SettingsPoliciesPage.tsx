@@ -25,7 +25,7 @@ export const SettingsPoliciesPage = observer(function SettingsPoliciesPage() {
   const [currentTab, setCurrentTab] = useState("terminal");
 
   return (
-    <div className="flex h-full min-h-0 flex-col p-4">
+    <div data-tour="policies-page" className="flex h-full min-h-0 flex-col p-4">
       <PageHeader
         title="Политики"
         description="Глобальные границы доступа для агентов, сценариев и системных инструментов."

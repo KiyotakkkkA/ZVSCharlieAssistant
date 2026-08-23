@@ -166,7 +166,7 @@ export const ChatPage = observer(function ChatPage() {
     });
   };
   return (
-    <section className="flex h-full min-h-0 overflow-hidden rounded-lg">
+    <section data-tour="chat-page" className="flex h-full min-h-0 overflow-hidden rounded-lg">
       <ChatSidebar
         dialogs={dialogs}
         activeDialogId={String(chatStore.activeConversationId ?? "")}

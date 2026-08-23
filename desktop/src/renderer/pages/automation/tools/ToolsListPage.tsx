@@ -32,7 +32,7 @@ export const ToolsListPage = observer(function ToolsListPage() {
   }, [query, automationStore.tools]);
 
   return (
-    <section className="flex h-full min-h-0 flex-col overflow-hidden p-4">
+    <section data-tour="tools-page" className="flex h-full min-h-0 flex-col overflow-hidden p-4">
       <PageHeader
         title="Инструменты"
         description="Встроенные возможности приложения, которые можно разрешать агентам."

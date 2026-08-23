@@ -37,7 +37,7 @@ export const SkillsListPage = observer(function SkillsListPage() {
   }, [query, automationStore.skills]);
 
   return (
-    <section className="flex h-full min-h-0 flex-col overflow-hidden p-4">
+    <section data-tour="skills-page" className="flex h-full min-h-0 flex-col overflow-hidden p-4">
       <PageHeader
         title="Навыки"
         description="Переиспользуемые инструкции и знания, которые можно назначать агентам."

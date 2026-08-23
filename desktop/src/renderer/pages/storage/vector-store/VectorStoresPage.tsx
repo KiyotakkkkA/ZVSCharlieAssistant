@@ -26,7 +26,7 @@ export const VectorStoresPage = observer(function VectorStoresPage() {
     return counts;
   }, [store.documents]);
   return (
-    <section className="flex h-full min-h-0 flex-col overflow-hidden p-4">
+    <section data-tour="vector-page" className="flex h-full min-h-0 flex-col overflow-hidden p-4">
       <PageHeader
         title="Векторные базы"
         description="Загружайте документы и управляйте базами знаний для агентов и сценариев."

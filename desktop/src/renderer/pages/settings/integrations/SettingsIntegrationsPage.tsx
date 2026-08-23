@@ -197,7 +197,7 @@ export const SettingsIntegrationsPage = observer(
         .length + (selectedId === "draft" && draft.kind === kind ? 1 : 0);
 
     return (
-      <section className="flex h-full min-h-0 flex-col p-4">
+      <section data-tour="integrations-page" className="flex h-full min-h-0 flex-col p-4">
         <PageHeader
           title="Интеграции"
           description="Использование возможностей внешних систем"
