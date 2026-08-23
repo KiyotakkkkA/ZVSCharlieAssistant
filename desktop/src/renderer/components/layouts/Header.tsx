@@ -120,10 +120,10 @@ export const Header = observer(function Header() {
             data-tour="header-settings"
             variant="ghost"
             title="Глобальные настройки"
-            className="text-main-400 hover:bg-main-700/70 hover:text-main-50"
+            className="size-9 p-0 text-main-400 hover:bg-main-700/70 hover:text-main-50"
             onClick={() => uiStore.openSettings()}
           >
-            <CogIcon />
+            <CogIcon className="size-5" />
           </Button>
         </div>
       </header>

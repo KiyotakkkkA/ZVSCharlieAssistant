@@ -1,7 +1,12 @@
 import { Button, InputCheckSlided, useToasts } from "@kiyotakkkka/zvs-uikit-lib";
 import { useEffect, useState } from "react";
 import type { ApplicationSettings } from "../../../../../ipc/contracts";
-import { GlobalSettingsLabel } from "../../../atoms";
+import {
+  CreationIcon,
+  GlobalSettingsLabel,
+  RefreshIcon,
+  TasksIcon,
+} from "../../../atoms";
 import { APPLICATION_ANCHORS } from "./settings-sections";
 import { onboardingStore } from "../../../../stores";
 
@@ -95,9 +100,33 @@ export function GlobalSettingsApplicationForm() {
       <section>
         <GlobalSettingsLabel {...APPLICATION_ANCHORS.onboarding} />
         <div className="flex flex-wrap gap-2 py-3">
-          <Button variant="ghost" onClick={onboardingStore.startTour}>Пройти тур заново</Button>
-          <Button variant="ghost" onClick={() => void onboardingStore.restoreChecklist()}>Показать чеклист первых шагов</Button>
-          <Button variant="ghost" onClick={onboardingStore.openWizard}>Открыть мастер настройки</Button>
+          <Button
+            variant="secondary"
+            rounded="rounded-full"
+            className="px-2"
+            onClick={onboardingStore.startTour}
+          >
+            <RefreshIcon className="size-4" />
+            Пройти тур заново
+          </Button>
+          <Button
+            variant="secondary"
+            rounded="rounded-full"
+            className="px-2"
+            onClick={() => void onboardingStore.restoreChecklist()}
+          >
+            <TasksIcon className="size-4" />
+            Показать первые шаги
+          </Button>
+          <Button
+            variant="secondary"
+            rounded="rounded-full"
+            className="px-2"
+            onClick={onboardingStore.openWizard}
+          >
+            <CreationIcon className="size-4" />
+            Открыть мастер
+          </Button>
         </div>
       </section>
     </div>
