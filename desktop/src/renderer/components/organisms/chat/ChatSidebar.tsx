@@ -35,7 +35,7 @@ export function ChatSidebar({
   onDelete,
 }: ChatSidebarProps) {
   return (
-    <aside className="flex w-64 shrink-0 flex-col border-r border-main-700/35">
+    <aside data-tour="chat-sidebar" className="flex w-64 shrink-0 flex-col border-r border-main-700/35">
       <div className="flex h-14 shrink-0 items-center justify-between px-3">
         <span className="px-2 text-sm font-semibold text-main-200">
           Диалоги

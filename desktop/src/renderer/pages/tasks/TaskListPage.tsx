@@ -72,10 +72,11 @@ export const TaskListPage = observer(function TaskListPage() {
         description="История запусков фоновых задач."
         breadcrumbs={[{ label: "Задачи" }]}
         footer={
-          <Tabs
-            value={tab}
-            onChange={(value) => setTab(value as TaskTab)}
-            options={[
+          <div data-tour="tasks-tabs">
+            <Tabs
+              value={tab}
+              onChange={(value) => setTab(value as TaskTab)}
+              options={[
               {
                 value: "scenarios-runs",
                 label: `Сценарии · ${tasksStore.agentRuns.length}`,
@@ -84,8 +85,9 @@ export const TaskListPage = observer(function TaskListPage() {
                 value: "creation-runs",
                 label: `Создание · ${entityGenerationStore.runs.length}`,
               },
-            ]}
-          />
+              ]}
+            />
+          </div>
         }
       >
         <InputSmall
@@ -98,7 +100,7 @@ export const TaskListPage = observer(function TaskListPage() {
         />
       </PageHeader>
 
-      <ScrollArea className="min-h-0 flex-1 p-1">
+      <ScrollArea data-tour="tasks-list" className="min-h-0 flex-1 p-1">
         {empty ? (
           <div className="grid min-h-80 place-items-center">
             <EmptyState

@@ -647,8 +647,8 @@ export const ScenarioGraphEditorPage = observer(
     );
 
     return (
-      <section className="flex h-full min-h-0 flex-col overflow-hidden bg-main-900">
-        <header className="flex h-20 shrink-0 items-center justify-between gap-4 border-b border-main-800 px-4">
+      <section data-tour="scenario-editor" className="flex h-full min-h-0 flex-col overflow-hidden bg-main-900">
+        <header data-tour="scenario-editor-header" className="flex h-20 shrink-0 items-center justify-between gap-4 border-b border-main-800 px-4">
           <div className="flex min-w-0 items-center gap-3">
             <Button
               variant="ghost"
@@ -748,6 +748,7 @@ export const ScenarioGraphEditorPage = observer(
 
         <div className="flex min-h-0 flex-1">
           <ResizableSidePanel
+            dataTour="scenario-node-palette"
             title="Узлы"
             side="left"
             storageKey="zvs.scenario-editor.node-palette"
@@ -867,6 +868,7 @@ export const ScenarioGraphEditorPage = observer(
           </ResizableSidePanel>
 
           <ScenarioGraphCanvas
+            dataTour="scenario-canvas"
             key={scenario?.revisionId ?? "new-scenario"}
             nodes={flowNodes}
             edges={flowEdges}
@@ -878,6 +880,7 @@ export const ScenarioGraphEditorPage = observer(
           />
 
           <ResizableSidePanel
+            dataTour="scenario-node-settings"
             title="Настройки"
             storageKey="zvs.scenario-editor.inspector"
             headerAction={<CogIcon className="size-4 shrink-0 text-main-500" />}

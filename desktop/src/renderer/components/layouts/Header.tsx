@@ -3,7 +3,7 @@ import { observer } from "mobx-react-lite";
 import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { APP_PATHS, NAVIGATION_ROUTES, type NavigationRoute } from "../../app/routes";
-import { chatStore, onboardingStore, uiStore } from "../../stores";
+import { chatStore, uiStore } from "../../stores";
 import {
   CogIcon,
   QuestionIcon,
@@ -90,9 +90,6 @@ export const Header = observer(function Header() {
             break;
           case "open-settings":
             uiStore.openSettings();
-            break;
-          case "start-onboarding":
-            onboardingStore.openWizard();
             break;
           case "open-home":
             navigate(APP_PATHS.home);

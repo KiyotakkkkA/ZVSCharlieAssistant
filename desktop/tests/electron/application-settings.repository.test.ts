@@ -75,7 +75,6 @@ describe("ApplicationSettingsRepository", () => {
         runInBackground: "yes",
         onboarding: {
           version: "one",
-          wizardCompleted: 1,
           tourCompleted: true,
           completedSteps: ["profile", 4, "profile", "chat"],
           completedGuides: ["beginning", false, "beginning", "chat"],
@@ -99,7 +98,6 @@ describe("ApplicationSettingsRepository", () => {
 function defaultOnboarding() {
   return {
     version: 2,
-    wizardCompleted: false,
     tourCompleted: false,
     checklistDismissed: false,
     completedSteps: [],

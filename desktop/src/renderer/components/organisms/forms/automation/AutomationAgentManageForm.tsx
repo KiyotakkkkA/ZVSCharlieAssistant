@@ -289,13 +289,14 @@ export const AutomationAgentManageForm = observer(
 
     return (
       <form
+        data-tour="agent-form"
         className="space-y-6"
         onSubmit={(event) => {
           event.preventDefault();
           void submit();
         }}
       >
-        <div className="w-fit">
+        <div data-tour="agent-form-tabs" className="w-fit">
           <Tabs
             value={activeTab}
             onChange={(value) =>
@@ -340,6 +341,7 @@ export const AutomationAgentManageForm = observer(
         {activeTab === "basic" ? (
           <>
             <FormSection
+              dataTour="agent-form-main"
               title="Основное"
               description="Название и назначение агента в сценариях автоматизации."
             >
@@ -381,6 +383,7 @@ export const AutomationAgentManageForm = observer(
             </FormSection>
 
             <FormSection
+              dataTour="agent-form-instructions"
               title="Инструкции"
               description="Системные правила, роль и ограничения поведения модели."
             >
@@ -397,6 +400,7 @@ export const AutomationAgentManageForm = observer(
             </FormSection>
 
             <FormSection
+              dataTour="agent-form-model"
               title="Модель"
               description="Текстовая модель, которая будет использоваться агентом для обработки запросов."
             >
@@ -425,6 +429,7 @@ export const AutomationAgentManageForm = observer(
             </FormSection>
 
             <FormSection
+              dataTour="agent-form-tools"
               title="Инструменты"
               description="Только выбранные возможности будут доступны агенту во время выполнения."
             >
@@ -659,16 +664,18 @@ export const AutomationAgentManageForm = observer(
 );
 
 function FormSection({
+  dataTour,
   title,
   description,
   children,
 }: {
+  dataTour?: string;
   title: string;
   description: string;
   children: React.ReactNode;
 }) {
   return (
-    <section className="grid gap-4 rounded-xl bg-main-800/20 p-5 ring-1 ring-main-700/35 xl:grid-cols-[220px_1fr] ">
+    <section data-tour={dataTour} className="grid gap-4 rounded-xl bg-main-800/20 p-5 ring-1 ring-main-700/35 xl:grid-cols-[220px_1fr] ">
       <div>
         <h2 className="text-sm font-semibold text-main-100">{title}</h2>
         <p className="mt-1 text-xs leading-5 text-main-500">{description}</p>

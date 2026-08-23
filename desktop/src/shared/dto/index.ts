@@ -13,3 +13,4 @@ export * from "./task-plan.dto";
 export * from "./user-profile.dto";
 export * from "./entity-generation.dto";
 export * from "./data-transfer.dto";
+export * from "./application-settings.dto";

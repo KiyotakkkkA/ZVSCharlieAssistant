@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { observable } from "mobx";
 import { OnboardingStore, type OnboardingReadiness } from "../../src/renderer/stores/OnboardingStore";
 
 const onboarding = {
   version: 2,
-  wizardCompleted: false,
   tourCompleted: false,
   checklistDismissed: false,
   completedSteps: [],
@@ -12,10 +12,14 @@ const onboarding = {
 };
 
 beforeEach(() => {
-  const update = vi.fn(async ({ onboarding: patch }) => ({
-    runInBackground: true,
-    onboarding: { ...onboarding, ...patch },
-  }));
+  const update = vi.fn(async ({ onboarding: patch }) => {
+    const clonedPatch = structuredClone(patch);
+
+    return {
+      runInBackground: true,
+      onboarding: { ...onboarding, ...clonedPatch },
+    };
+  });
   Object.defineProperty(globalThis, "window", {
     configurable: true,
     value: { desktop: { applicationSettings: { update } } },
@@ -38,21 +42,17 @@ describe("OnboardingStore", () => {
     expect(store.checklistProgress).toBe(5 / 6);
   });
 
-  it("persists wizard completion exactly once", async () => {
-    const store = new OnboardingStore(readiness({}));
-    await store.completeWizard();
-
-    expect(window.desktop.applicationSettings.update).toHaveBeenCalledTimes(1);
-    expect(window.desktop.applicationSettings.update).toHaveBeenCalledWith({
-      onboarding: { wizardCompleted: true },
-    });
-  });
-
   it("tracks each completed guide independently", async () => {
     const store = new OnboardingStore(readiness({}));
-    store.settings = { runInBackground: true, onboarding };
+    store.settings = {
+      runInBackground: true,
+      onboarding: {
+        ...onboarding,
+        completedGuides: observable.array<string>([]),
+      },
+    };
     store.startGuide("chat");
-    await store.finishGuide();
+    await expect(store.finishGuide()).resolves.toBeUndefined();
 
     expect(window.desktop.applicationSettings.update).toHaveBeenCalledWith({
       onboarding: { completedGuides: ["chat"] },

@@ -223,11 +223,13 @@ export const SettingsIntegrationsPage = observer(
             />
           }
         >
-          <PrimaryButton
-            variant="create"
-            label="Добавить профиль"
-            onClick={createProfile}
-          />
+          <div data-tour="integrations-add">
+            <PrimaryButton
+              variant="create"
+              label="Добавить профиль"
+              onClick={createProfile}
+            />
+          </div>
         </PageHeader>
         <div className="flex min-h-0 flex-1 gap-3">
           <aside className="flex w-80 shrink-0 flex-col overflow-hidden rounded-xl bg-main-800/40">
@@ -271,7 +273,7 @@ export const SettingsIntegrationsPage = observer(
               </div>
             </ScrollArea>
           </aside>
-          <div className="space-y-5 p-5 bg-main-800/40 rounded-xl w-full">
+          <div data-tour="integration-form" className="space-y-5 p-5 bg-main-800/40 rounded-xl w-full">
             <ProvidedEntityManageHeader
               model={draft}
               onTest={test}

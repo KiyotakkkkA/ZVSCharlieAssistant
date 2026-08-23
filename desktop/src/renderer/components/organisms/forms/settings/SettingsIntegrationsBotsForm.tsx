@@ -36,7 +36,7 @@ export function SettingsIntegrationsBotsForm({
         title="Подключение"
         description="Настройки подключения к провайдеру."
       />
-      <div className="grid gap-4 rounded-xl bg-main-800/35 p-4 md:grid-cols-2">
+      <div data-tour="integration-connection-fields" className="grid gap-4 rounded-xl bg-main-800/35 p-4 md:grid-cols-2">
         <Field
           label="
             Название"

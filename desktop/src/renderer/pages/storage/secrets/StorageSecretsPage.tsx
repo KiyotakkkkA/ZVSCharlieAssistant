@@ -221,14 +221,16 @@ export const StorageSecretsPage = observer(function StorageSecretsPage() {
             }
             className="w-64"
           />
-          <PrimaryButton
-            label={
-              activeSection === "secrets"
-                ? "Добавить секрет"
-                : "Добавить категорию"
-            }
-            onClick={openCreateDialog}
-          />
+          <div data-tour="secrets-add">
+            <PrimaryButton
+              label={
+                activeSection === "secrets"
+                  ? "Добавить секрет"
+                  : "Добавить категорию"
+              }
+              onClick={openCreateDialog}
+            />
+          </div>
         </div>
       </PageHeader>
 

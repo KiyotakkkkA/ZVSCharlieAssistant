@@ -359,7 +359,6 @@ app.whenReady().then(() => {
         label: "Приложение",
         submenu: [
           { label: "Главная", click: () => appWindow.dispatchCommand("open-home") },
-          { label: "Мастер настройки…", click: () => appWindow.dispatchCommand("start-onboarding") },
           { type: "separator" },
           { role: "quit", label: "Выйти" },
         ],
@@ -375,7 +374,6 @@ app.whenReady().then(() => {
       onOpenTasks: () => appWindow.dispatchCommand("open-tasks"),
       onOpenScenarios: () => appWindow.dispatchCommand("open-scenarios"),
       onOpenSettings: () => appWindow.dispatchCommand("open-settings"),
-      onStartOnboarding: () => appWindow.dispatchCommand("start-onboarding"),
       isBackgroundEnabled: () => applicationSettings.get().runInBackground,
       onBackgroundChange: (enabled) => {
         const updated = applicationSettings.update({

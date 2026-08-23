@@ -12,7 +12,6 @@ export type AppCommand =
   | "open-tasks"
   | "open-scenarios"
   | "open-settings"
-  | "start-onboarding"
   | "open-home";
 
 export interface AppInfo {
@@ -43,26 +42,6 @@ export interface DesktopApi {
   assistant: import("./assistant.contract").AssistantApi;
 }
 
-export interface OnboardingState {
-  version: number;
-  wizardCompleted: boolean;
-  tourCompleted: boolean;
-  checklistDismissed: boolean;
-  completedSteps: string[];
-  completedGuides: string[];
-  firstLaunchAt: string | null;
-}
-
-export interface ApplicationSettings {
-  runInBackground: boolean;
-  onboarding: OnboardingState;
-}
-
-export interface UpdateApplicationSettingsInput {
-  runInBackground?: boolean;
-  onboarding?: Partial<OnboardingState>;
-}
-
 export interface ApplicationSettingsApi {
   get(): Promise<ApplicationSettings>;
   update(input: UpdateApplicationSettingsInput): Promise<ApplicationSettings>;
@@ -72,3 +51,13 @@ export interface GeneratedArtifactInput {
   path: string;
   fileName: string;
 }
+import type {
+  ApplicationSettings,
+  UpdateApplicationSettingsInput,
+} from "../../shared/dto";
+
+export type {
+  ApplicationSettings,
+  OnboardingState,
+  UpdateApplicationSettingsInput,
+} from "../../shared/dto";

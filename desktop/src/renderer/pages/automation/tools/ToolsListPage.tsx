@@ -58,15 +58,16 @@ export const ToolsListPage = observer(function ToolsListPage() {
         </div>
       </PageHeader>
 
-      <ScrollArea className="min-h-0 flex-1 p-1">
+      <ScrollArea data-tour="tools-list" className="min-h-0 flex-1 p-1">
         {tools.length && viewMode === "cards" ? (
           <div className="grid gap-3 xl:grid-cols-3">
-            {tools.map((tool) => (
-              <AutomationToolCard
-                key={tool.id}
-                tool={tool}
-                onOpen={setSelectedTool}
-              />
+            {tools.map((tool, index) => (
+              <div key={tool.id} data-tour={index === 0 ? "tools-first" : undefined}>
+                <AutomationToolCard
+                  tool={tool}
+                  onOpen={setSelectedTool}
+                />
+              </div>
             ))}
           </div>
         ) : tools.length ? (
@@ -104,7 +105,7 @@ export const ToolsListPage = observer(function ToolsListPage() {
         </Modal.Header>
         <Modal.Content>
           {selectedTool ? (
-            <div className="space-y-5">
+            <div data-tour="tool-details" className="space-y-5">
               <p className="text-sm leading-6 text-main-300">
                 {selectedTool.description}
               </p>

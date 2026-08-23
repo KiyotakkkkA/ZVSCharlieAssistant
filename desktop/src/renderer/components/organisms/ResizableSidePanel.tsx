@@ -13,6 +13,7 @@ const MAX_WIDTH = 720;
 const COLLAPSED_WIDTH = 56;
 
 interface Props {
+  dataTour?: string;
   title: string;
   storageKey: string;
   side?: "left" | "right";
@@ -23,6 +24,7 @@ interface Props {
 }
 
 export function ResizableSidePanel({
+  dataTour,
   title,
   storageKey,
   side = "right",
@@ -91,6 +93,7 @@ export function ResizableSidePanel({
 
   return (
     <aside
+      data-tour={dataTour}
       className={[
         "relative z-20 flex shrink-0 flex-col border-main-800 bg-main-900/90",
         side === "left" ? "border-r" : "border-l",

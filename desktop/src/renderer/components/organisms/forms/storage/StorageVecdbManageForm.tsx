@@ -76,25 +76,27 @@ export const StorageVecdbManageForm = observer(function StorageVecdbManageForm({
     );
   };
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div data-tour="knowledge-form" className="flex h-full min-h-0 flex-col">
       <header className="shrink-0 px-5 pt-5">
         <ProvidedEntityManageHeader
           model={{ ...model, kind: "vecstore" }}
           description={model.description || "Описание не задано"}
         />
-        <Tabs
-          value={tab}
-          onChange={(value) => setTab(value as DetailTab)}
-          options={[
-            { value: "documents", label: `Документы · ${documents.length}` },
-            { value: "settings", label: "Настройки" },
-            { value: "search", label: "Тест поиска" },
-          ]}
-        />
+        <div data-tour="knowledge-tabs">
+          <Tabs
+            value={tab}
+            onChange={(value) => setTab(value as DetailTab)}
+            options={[
+              { value: "documents", label: `Документы · ${documents.length}` },
+              { value: "settings", label: "Настройки" },
+              { value: "search", label: "Тест поиска" },
+            ]}
+          />
+        </div>
       </header>
       <ScrollArea className="min-h-0 flex-1">
         {tab === "documents" ? (
-          <div className="space-y-4 p-5">
+          <div data-tour="knowledge-documents" className="space-y-4 p-5">
             <InputDropZone
               files={[]}
               multiple
@@ -138,7 +140,7 @@ export const StorageVecdbManageForm = observer(function StorageVecdbManageForm({
             ) : null}
           </div>
         ) : tab === "settings" ? (
-          <div className="grid gap-5 p-5 xl:grid-cols-[220px_minmax(0,1fr)]">
+          <div data-tour="knowledge-settings" className="grid gap-5 p-5 xl:grid-cols-[220px_minmax(0,1fr)]">
             <Lead
               title="Основное"
               description="Основная информация о базе данных"
@@ -327,7 +329,7 @@ export const StorageVecdbManageForm = observer(function StorageVecdbManageForm({
             </div>
           </div>
         ) : (
-          <div className="mx-auto max-w-4xl space-y-5 p-5">
+          <div data-tour="knowledge-search" className="mx-auto max-w-4xl space-y-5 p-5">
             <div className="flex gap-2">
               <InputSmall
                 className="w-lg"

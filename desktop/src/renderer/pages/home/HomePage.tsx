@@ -24,7 +24,6 @@ import {
   CogIcon,
   NumbersIcon,
   PlayCircleIcon,
-  QuestionIcon,
   RobotIcon,
   ScriptIcon,
 } from "../../components/atoms";
@@ -330,11 +329,6 @@ export const HomePage = observer(function HomePage() {
               icon={PlayCircleIcon}
               label="Открыть уроки"
               onClick={() => navigate(APP_PATHS.guides)}
-            />
-            <GuideAction
-              icon={QuestionIcon}
-              label="Открыть мастер настройки"
-              onClick={onboardingStore.openWizard}
             />
             <GuideAction
               icon={CogIcon}

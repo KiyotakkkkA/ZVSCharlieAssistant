@@ -3,6 +3,10 @@ import type {
   ApplicationSettings,
   OnboardingState,
 } from "../../ipc/contracts";
+import {
+  parseIpcDto,
+  updateApplicationSettingsDtoSchema,
+} from "../../shared/dto";
 import { automationStore } from "./AutomationStore";
 import { chatStore } from "./ChatStore";
 import { directoryPolicyStore } from "./DirectoryPolicyStore";
@@ -44,7 +48,6 @@ export class OnboardingStore {
   settings: ApplicationSettings | null = null;
   loading = false;
   initialized = false;
-  wizardOpen = false;
   guideActive = false;
   activeGuideId: string | null = null;
   guideStepIndex = 0;
@@ -69,11 +72,7 @@ export class OnboardingStore {
       }
       runInAction(() => {
         this.settings = settings;
-        this.wizardOpen = !settings.onboarding.wizardCompleted;
-        if (
-          settings.onboarding.wizardCompleted &&
-          !settings.onboarding.tourCompleted
-        ) {
+        if (!settings.onboarding.tourCompleted) {
           this.activeGuideId = "beginning";
           this.guideStepIndex = 0;
           this.guideActive = true;
@@ -86,25 +85,14 @@ export class OnboardingStore {
   }
 
   private async patch(onboarding: Partial<OnboardingState>): Promise<void> {
-    const settings = await window.desktop.applicationSettings.update({ onboarding });
+    const input = parseIpcDto(updateApplicationSettingsDtoSchema, {
+      onboarding,
+    });
+    const settings = await window.desktop.applicationSettings.update(input);
     runInAction(() => (this.settings = settings));
   }
 
-  async completeWizard(): Promise<void> {
-    await this.patch({ wizardCompleted: true });
-    runInAction(() => (this.wizardOpen = false));
-  }
-
-  async skipWizard(): Promise<void> {
-    await this.completeWizard();
-  }
-
-  openWizard(): void {
-    this.wizardOpen = true;
-  }
-
   startGuide(id: string): void {
-    this.wizardOpen = false;
     this.activeGuideId = id;
     this.guideStepIndex = 0;
     this.guideActive = true;
@@ -178,14 +166,12 @@ export class OnboardingStore {
   async resetOnboarding(): Promise<void> {
     await this.patch({
       version: 2,
-      wizardCompleted: false,
       tourCompleted: false,
       checklistDismissed: false,
       completedSteps: [],
       completedGuides: [],
     });
     runInAction(() => {
-      this.wizardOpen = true;
       this.guideActive = false;
       this.activeGuideId = null;
       this.guideStepIndex = 0;

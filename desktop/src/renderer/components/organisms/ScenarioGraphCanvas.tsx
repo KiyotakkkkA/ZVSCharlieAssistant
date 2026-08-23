@@ -60,6 +60,7 @@ type ScenarioEdgeData = {
 export type ScenarioFlowEdge = FlowEdge<ScenarioEdgeData, "scenario">;
 
 type ScenarioGraphCanvasProps = {
+  dataTour?: string;
   nodes: ScenarioFlowNode[];
   edges: ScenarioFlowEdge[];
   onNodesChange: OnNodesChange<ScenarioFlowNode>;
@@ -83,6 +84,7 @@ function portsOf(node: ScenarioNode): {
 }
 
 export function ScenarioGraphCanvas({
+  dataTour,
   nodes,
   edges,
   onNodesChange,
@@ -154,6 +156,7 @@ export function ScenarioGraphCanvas({
 
   return (
     <div
+      data-tour={dataTour}
       className="relative min-w-0 flex-1 overflow-hidden bg-main-900"
       onDragOver={(event) => {
         if (!onDrop) return;

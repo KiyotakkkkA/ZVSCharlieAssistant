@@ -8,7 +8,6 @@ const DEFAULT_SETTINGS: ApplicationSettings = {
   runInBackground: true,
   onboarding: {
     version: 2,
-    wizardCompleted: false,
     tourCompleted: false,
     checklistDismissed: false,
     completedSteps: [],

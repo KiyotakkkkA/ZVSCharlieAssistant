@@ -8,6 +8,8 @@ export interface GuideStep {
   description: string;
   points?: readonly string[];
   route: AppPath;
+  openTarget?: string;
+  openLabel?: string;
   placement?: "top" | "bottom" | "left" | "right";
   optional?: boolean;
 }

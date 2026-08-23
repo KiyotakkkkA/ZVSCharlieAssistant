@@ -200,7 +200,9 @@ export const SettingsProvidersPage = observer(function SettingsProvidersPage() {
           />
         }
       >
-        <PrimaryButton label="Добавить провайдера" onClick={createProvider} />
+        <div data-tour="providers-add">
+          <PrimaryButton label="Добавить провайдера" onClick={createProvider} />
+        </div>
       </PageHeader>
       <div data-tour="providers-workspace" className="flex min-h-0 flex-1 gap-3">
         <aside className="flex w-80 shrink-0 flex-col overflow-hidden rounded-xl bg-main-800/40">

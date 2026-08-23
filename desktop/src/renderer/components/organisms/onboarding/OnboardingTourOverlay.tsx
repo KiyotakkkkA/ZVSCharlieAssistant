@@ -1,20 +1,11 @@
 import { Button, ProgressBar } from "@kiyotakkkka/zvs-uikit-lib";
 import { observer } from "mobx-react-lite";
-import {
-  useEffect,
-  useRef,
-  useState,
-  type CSSProperties,
-} from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
 import { APP_PATHS } from "../../../app/routes";
 import { onboardingStore } from "../../../stores";
-import {
-  ArrowExpandRightIcon,
-  CheckIcon,
-  ChevronLeftIcon,
-} from "../../atoms";
+import { ArrowExpandRightIcon, CheckIcon, ChevronLeftIcon } from "../../atoms";
 import { findGuide } from "./guides";
 
 type Rect = { top: number; left: number; width: number; height: number };
@@ -48,6 +39,7 @@ export const OnboardingTourOverlay = observer(function OnboardingTourOverlay() {
     let resizeObserver: ResizeObserver | undefined;
     let pollTimer: number | undefined;
     let timeoutTimer: number | undefined;
+    let prepared = !step.openTarget;
 
     const update = () => {
       if (!active || !element) return;
@@ -73,6 +65,24 @@ export const OnboardingTourOverlay = observer(function OnboardingTourOverlay() {
     };
 
     const findTarget = () => {
+      if (!prepared && step.openTarget) {
+        const action = document.querySelector<HTMLElement>(
+          `[data-tour="${step.openTarget}"]`,
+        );
+        if (!action) return;
+        const candidates = action.matches("button, a")
+          ? [action]
+          : [...action.querySelectorAll<HTMLElement>("button, a")];
+        const clickable = step.openLabel
+          ? candidates.find((item) =>
+              item.textContent?.includes(step.openLabel ?? ""),
+            )
+          : candidates[0];
+        if (!clickable) return;
+        clickable.click();
+        prepared = true;
+        return;
+      }
       const target = document.querySelector<HTMLElement>(
         `[data-tour="${step.target}"]`,
       );
@@ -145,7 +155,7 @@ export const OnboardingTourOverlay = observer(function OnboardingTourOverlay() {
   const tooltipStyle = positionTooltip(highlightedRect, step.placement);
 
   return createPortal(
-    <div className="fixed inset-0 z-[10000]" aria-hidden={false}>
+    <div className="fixed inset-0 z-10000" aria-hidden={false}>
       {highlightedRect ? (
         <div
           className="pointer-events-none absolute rounded-xl bg-transparent ring-2 ring-accent-light shadow-[0_0_0_9999px_rgb(0_0_0/0.68),0_0_36px_rgb(99_179_237/0.2)] transition-[top,left,width,height] duration-200"
@@ -248,9 +258,7 @@ export const OnboardingTourOverlay = observer(function OnboardingTourOverlay() {
                   rounded="rounded-full"
                   className="px-2"
                   onClick={() =>
-                    last
-                      ? void finishGuide()
-                      : onboardingStore.nextGuideStep()
+                    last ? void finishGuide() : onboardingStore.nextGuideStep()
                   }
                 >
                   {last ? "Готово" : "Далее"}

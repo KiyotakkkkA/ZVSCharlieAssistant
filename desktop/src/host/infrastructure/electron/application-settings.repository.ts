@@ -8,7 +8,6 @@ const DEFAULT_SETTINGS: ApplicationSettings = {
   runInBackground: true,
   onboarding: {
     version: 2,
-    wizardCompleted: false,
     tourCompleted: false,
     checklistDismissed: false,
     completedSteps: [],
@@ -79,10 +78,6 @@ function parseSettings(value: unknown): ApplicationSettings {
         : DEFAULT_SETTINGS.runInBackground,
     onboarding: {
       version: readNumber(onboarding.version, DEFAULT_SETTINGS.onboarding.version),
-      wizardCompleted: readBoolean(
-        onboarding.wizardCompleted,
-        DEFAULT_SETTINGS.onboarding.wizardCompleted,
-      ),
       tourCompleted: readBoolean(
         onboarding.tourCompleted,
         DEFAULT_SETTINGS.onboarding.tourCompleted,
@@ -142,7 +137,6 @@ function validateOnboardingPatch(
     throw new TypeError("onboarding.version must be a non-negative number");
   }
   for (const key of [
-    "wizardCompleted",
     "tourCompleted",
     "checklistDismissed",
   ] as const) {

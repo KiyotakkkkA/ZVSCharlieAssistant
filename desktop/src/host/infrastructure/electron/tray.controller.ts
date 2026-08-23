@@ -7,7 +7,6 @@ interface TrayControllerOptions {
   onOpenTasks(): void;
   onOpenScenarios(): void;
   onOpenSettings(): void;
-  onStartOnboarding(): void;
   isBackgroundEnabled(): boolean;
   onBackgroundChange(enabled: boolean): void;
   onQuit(): void;
@@ -68,10 +67,6 @@ export class TrayController {
         {
           label: "Настройки…",
           click: this.options.onOpenSettings,
-        },
-        {
-          label: "Мастер настройки…",
-          click: this.options.onStartOnboarding,
         },
         { type: "separator" },
         {

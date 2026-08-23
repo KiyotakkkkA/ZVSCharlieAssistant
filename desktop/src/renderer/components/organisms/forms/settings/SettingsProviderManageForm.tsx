@@ -154,7 +154,7 @@ export function SettingsProviderManageForm({
   };
 
   return (
-    <ScrollArea className="min-h-0 min-w-0 flex-1 rounded-xl bg-main-800/40">
+    <ScrollArea data-tour="provider-form" className="min-h-0 min-w-0 flex-1 rounded-xl bg-main-800/40">
       <div className="p-5">
         <ProvidedEntityManageHeader
           model={model}
@@ -175,7 +175,7 @@ export function SettingsProviderManageForm({
             title="Подключение"
             description="Настройки подключения к провайдеру."
           />
-          <div className="grid gap-4 rounded-xl bg-main-800/35 p-4 md:grid-cols-2">
+          <div data-tour="provider-connection-fields" className="grid gap-4 rounded-xl bg-main-800/35 p-4 md:grid-cols-2">
             <Field label="Название">
               <InputSmall
                 value={model.name}
@@ -262,7 +262,7 @@ export function SettingsProviderManageForm({
                 title="Генерация"
                 description="Параметры генерации ответа"
               />
-              <div className="grid gap-4 rounded-xl bg-main-800/35 p-4 md:grid-cols-3">
+              <div data-tour="provider-generation-fields" className="grid gap-4 rounded-xl bg-main-800/35 p-4 md:grid-cols-3">
                 <Field
                   label={
                     <ParameterLabel description="Верхняя граница длины одного ответа модели. Чем выше значение, тем больше потенциальная стоимость запроса и расход доступного лимита. Для OpenRouter значение дополнительно ограничивается максимумом выбранной модели.">
@@ -353,7 +353,7 @@ export function SettingsProviderManageForm({
             title="Модели"
             description="Список доступных моделей провайдера."
           />
-          <div className="rounded-xl bg-main-800/35 p-4">
+          <div data-tour="provider-models" className="rounded-xl bg-main-800/35 p-4">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
               <span className="text-xs text-main-500">
                 {visibleModels.length === model.models.length

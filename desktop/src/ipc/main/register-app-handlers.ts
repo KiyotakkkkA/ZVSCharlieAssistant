@@ -6,6 +6,10 @@ import {
   type UpdateApplicationSettingsInput,
 } from "../contracts";
 import type { GeneratedArtifactExporter } from "../../host/application/ports/generated-artifact.ports";
+import {
+  parseIpcDto,
+  updateApplicationSettingsDtoSchema,
+} from "../../shared/dto";
 
 interface ApplicationSettingsHandler {
   get(): ApplicationSettings;
@@ -34,7 +38,8 @@ export function registerAppHandlers(
   ipcMain.handle(IPC_CHANNELS.getApplicationSettings, () => settings.get());
   ipcMain.handle(
     IPC_CHANNELS.updateApplicationSettings,
-    (_event, input: UpdateApplicationSettingsInput) => settings.update(input),
+    (_event, input: UpdateApplicationSettingsInput) =>
+      settings.update(parseIpcDto(updateApplicationSettingsDtoSchema, input)),
   );
 }
 
