@@ -1,50 +1,474 @@
-import { Button, Card, EmptyState, ProgressBar } from "@kiyotakkkka/zvs-uikit-lib";
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  ProgressBar,
+  Tooltip,
+} from "@kiyotakkkka/zvs-uikit-lib";
 import { observer } from "mobx-react-lite";
 import { useNavigate } from "react-router-dom";
-import { APP_PATHS } from "../../app/routes";
-import { onboardingStore, tasksStore, uiStore, userProfileStore } from "../../stores";
-import { ChatIcon, CheckIcon, LockIcon, NumbersIcon, RobotIcon, ScriptIcon, SkillIcon } from "../../components/atoms";
+import { APP_PATHS, type AppPath } from "../../app/routes";
+import {
+  automationStore,
+  onboardingStore,
+  tasksStore,
+  textProviderStore,
+  uiStore,
+  userProfileStore,
+} from "../../stores";
+import {
+  ArrowExpandRightIcon,
+  ChatIcon,
+  CheckIcon,
+  CogIcon,
+  NumbersIcon,
+  PlayCircleIcon,
+  QuestionIcon,
+  RobotIcon,
+  ScriptIcon,
+} from "../../components/atoms";
 import { PROFILE_ANCHORS } from "../../components/organisms/forms";
+
+interface GuideTask {
+  id: string;
+  title: string;
+  description: string;
+  actionLabel: string;
+  done: boolean;
+  action: () => void;
+}
 
 export const HomePage = observer(function HomePage() {
   const navigate = useNavigate();
-  const steps = [
-    { title: "Подключите модель", description: "Чтобы чат и агенты могли отвечать.", done: onboardingStore.hasProvider, action: () => navigate(APP_PATHS.settings.providers) },
-    { title: "Расскажите о себе", description: "Ассистент учтёт имя и стиль общения.", done: onboardingStore.hasProfile, action: () => uiStore.openSettings(PROFILE_ANCHORS.identity.id) },
-    { title: "Разрешите рабочую папку", description: "Задайте безопасные границы доступа.", done: onboardingStore.hasDirectoryPolicy, action: () => navigate(APP_PATHS.settings.policies) },
-    { title: "Напишите первое сообщение", description: "Начните свободный диалог.", done: onboardingStore.hasChatMessage, action: () => navigate(APP_PATHS.chat) },
-    { title: "Создайте первого агента", description: "Соберите исполнителя под свою задачу.", done: onboardingStore.hasAgent, action: () => navigate(APP_PATHS.automation.agents.create) },
-    { title: "Соберите сценарий", description: "Автоматизируйте повторяющийся процесс.", done: onboardingStore.hasScenario, action: () => navigate(APP_PATHS.automation.scenarios.create) },
+  const guideTasks: GuideTask[] = [
+    {
+      id: "provider",
+      title: "Подключить модель",
+      description: "Обязательный шаг для диалога, планировщика и агентов.",
+      actionLabel: "Подключить",
+      done: onboardingStore.hasProvider,
+      action: () => navigate(APP_PATHS.settings.providers),
+    },
+    {
+      id: "profile",
+      title: "Настроить профиль",
+      description: "Укажите имя, контекст и предпочтительный стиль ответов.",
+      actionLabel: "Настроить",
+      done: onboardingStore.hasProfile,
+      action: () => uiStore.openSettings(PROFILE_ANCHORS.identity.id),
+    },
+    {
+      id: "directory",
+      title: "Выбрать рабочую папку",
+      description: "Определите безопасные границы доступа к файлам.",
+      actionLabel: "Выбрать",
+      done: onboardingStore.hasDirectoryPolicy,
+      action: () => navigate(APP_PATHS.settings.policies),
+    },
+    {
+      id: "chat",
+      title: "Начать первый диалог",
+      description: "Проверьте подключение на реальной задаче.",
+      actionLabel: "Открыть чат",
+      done: onboardingStore.hasChatMessage,
+      action: () => navigate(APP_PATHS.chat),
+    },
+    {
+      id: "agent",
+      title: "Создать агента",
+      description: "Соберите исполнителя с моделью, навыками и инструментами.",
+      actionLabel: "Создать",
+      done: onboardingStore.hasAgent,
+      action: () => navigate(APP_PATHS.automation.agents.create),
+    },
+    {
+      id: "scenario",
+      title: "Собрать сценарий",
+      description: "Свяжите действия в воспроизводимый процесс.",
+      actionLabel: "Собрать",
+      done: onboardingStore.hasScenario,
+      action: () => navigate(APP_PATHS.automation.scenarios.create),
+    },
   ];
-  const quick = [
-    ["Чат", "Диалог и планирование задач.", APP_PATHS.chat, ChatIcon],
-    ["Агенты", "Исполнители для многошаговой работы.", APP_PATHS.automation.agents.index, RobotIcon],
-    ["Сценарии", "Повторяемые процессы на визуальном графе.", APP_PATHS.automation.scenarios.index, ScriptIcon],
-    ["Навыки", "Переиспользуемые инструкции для агентов.", APP_PATHS.automation.skills.index, SkillIcon],
-    ["Векторная БД", "Документы для поиска ответов.", APP_PATHS.storage.vectorDb, NumbersIcon],
-    ["Секреты", "Защищённые ключи интеграций.", APP_PATHS.storage.secrets, LockIcon],
-  ] as const;
+  const nextTask = guideTasks.find((task) => !task.done);
+  const completed = guideTasks.filter((task) => task.done).length;
   const latest = [...tasksStore.agentRuns]
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    .slice(0, 5);
+    .slice(0, 4);
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8 p-6">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div><h1 className="text-2xl font-semibold text-main-50">{userProfileStore.profile?.displayName ? `Здравствуйте, ${userProfileStore.profile.displayName}` : "Добро пожаловать"}</h1><p className="mt-2 text-sm text-main-400">Начните с короткой настройки или сразу откройте нужный раздел.</p></div>
-        <div className="flex gap-2"><Button variant="ghost" onClick={onboardingStore.startTour}>Пройти интерактивный тур</Button><Button variant="ghost" onClick={onboardingStore.openWizard}>Открыть мастер настройки</Button></div>
-      </header>
-      {!onboardingStore.settings?.onboarding.checklistDismissed ? (
-        <Card data-tour="home-checklist" className="bg-main-800/45 p-5">
-          <div className="flex items-center justify-between gap-3"><div><h2 className="text-lg font-semibold text-main-50">Первые шаги</h2><p className="mt-1 text-xs text-main-400">{Math.round(onboardingStore.checklistProgress * 100)}% готово</p></div><Button variant="ghost" onClick={() => void onboardingStore.dismissChecklist()}>Скрыть чеклист</Button></div>
-          <ProgressBar className="mt-4" value={onboardingStore.checklistProgress} max={1} />
-          <div className="mt-4 grid gap-2 sm:grid-cols-2">
-            {steps.map((step) => <button key={step.title} type="button" onClick={step.action} className={["flex items-center gap-3 rounded-xl p-3 text-left ring-1 ring-main-700/40 transition hover:bg-main-700/30", step.done ? "opacity-60" : ""].join(" ")}><span className="grid size-8 shrink-0 place-items-center rounded-full bg-main-700/50">{step.done ? <CheckIcon className="size-5 text-success-light" /> : <span className="text-xs text-main-400">→</span>}</span><span><span className="block text-sm font-medium text-main-100">{step.title}</span><span className="block text-xs text-main-500">{step.description}</span></span></button>)}
+    <div className="mx-auto w-full max-w-[1440px] space-y-5 p-5 xl:p-7">
+      <section
+        data-tour="home-overview"
+        className="relative overflow-hidden rounded-2xl bg-main-800/45 p-6 ring-1 ring-main-700/45"
+      >
+        <div className="pointer-events-none absolute -right-24 -top-28 size-80 rounded-full bg-accent-medium/8 blur-3xl" />
+        <div className="relative grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-center">
+          <div className="max-w-2xl">
+            <Badge variant={nextTask ? "info" : "success"}>
+              {nextTask
+                ? `${completed} из ${guideTasks.length} шагов готово`
+                : "Настройка завершена"}
+            </Badge>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-main-50">
+              {userProfileStore.profile?.displayName
+                ? `Здравствуйте, ${userProfileStore.profile.displayName}`
+                : "Добро пожаловать в ZVS Assistant"}
+            </h1>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-main-400">
+              {nextTask
+                ? "Подготовьте рабочее окружение и переходите к первой полезной задаче."
+                : "Основные возможности настроены — можно начинать работу."}
+            </p>
+            {nextTask ? (
+              <div className="mt-6 flex flex-wrap items-center gap-3">
+                <Button
+                  variant="primary"
+                  rounded="rounded-full"
+                  className="px-2"
+                  onClick={nextTask.action}
+                >
+                  {nextTask.actionLabel}
+                  <ArrowExpandRightIcon className="size-4" />
+                </Button>
+                <span className="text-xs text-main-500">
+                  Следующий шаг: {nextTask.title.toLocaleLowerCase("ru-RU")}
+                </span>
+              </div>
+            ) : (
+              <Button
+                variant="primary"
+                rounded="rounded-full"
+                className="mt-6 px-2"
+                onClick={() => navigate(APP_PATHS.chat)}
+              >
+                <ChatIcon className="size-4" />
+                Открыть чат
+              </Button>
+            )}
           </div>
+
+          <div className="grid grid-cols-3 gap-2 rounded-2xl bg-main-900/35 p-3 ring-1 ring-main-700/35">
+            <Metric value={textProviderStore.enabledModels.length} label="моделей" />
+            <Metric value={automationStore.agents.length} label="агентов" />
+            <Metric value={automationStore.scenarios.length} label="сценариев" />
+          </div>
+        </div>
+      </section>
+
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,.75fr)]">
+        {!onboardingStore.settings?.onboarding.checklistDismissed ? (
+          <Card data-tour="home-checklist" className="bg-main-800/35 p-0">
+            <div className="flex items-center justify-between gap-4 border-b border-main-700/40 px-5 py-4">
+              <div>
+                <h2 className="text-base font-semibold text-main-100">
+                  Подготовка к работе
+                </h2>
+                <p className="mt-1 text-xs text-main-500">
+                  Выполняйте задачи в удобном порядке — прогресс сохранится.
+                </p>
+              </div>
+              <Tooltip label="Скрыть список" placement="bottom-left">
+                <Button
+                  variant="ghost"
+                  rounded="rounded-lg"
+                  label="Скрыть список"
+                  className="size-9 p-0 text-main-400 hover:bg-main-700/60 hover:text-main-100"
+                  onClick={() => void onboardingStore.dismissChecklist()}
+                >
+                  <CheckIcon className="size-4" />
+                </Button>
+              </Tooltip>
+            </div>
+            <div className="px-5 pt-4">
+              <ProgressBar
+                value={completed}
+                max={guideTasks.length}
+                label={`${completed} из ${guideTasks.length}`}
+              />
+            </div>
+            <ol className="divide-y divide-main-700/35 px-5 py-2">
+              {guideTasks.map((task, index) => (
+                <li key={task.id} className="flex items-center gap-3 py-3">
+                  <span
+                    className={[
+                      "grid size-7 shrink-0 place-items-center rounded-full text-xs font-semibold",
+                      task.done
+                        ? "bg-success-medium/15 text-success-light"
+                        : "bg-main-700/55 text-main-300",
+                    ].join(" ")}
+                  >
+                    {task.done ? <CheckIcon className="size-4" /> : index + 1}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p
+                      className={
+                        task.done
+                          ? "text-sm text-main-400 line-through"
+                          : "text-sm font-medium text-main-100"
+                      }
+                    >
+                      {task.title}
+                    </p>
+                    <p className="mt-0.5 text-xs leading-5 text-main-500">
+                      {task.description}
+                    </p>
+                  </div>
+                  {!task.done ? (
+                    <Button
+                      variant="secondary"
+                      rounded="rounded-full"
+                      className="shrink-0 px-2"
+                      onClick={task.action}
+                    >
+                      {task.actionLabel}
+                    </Button>
+                  ) : (
+                    <Badge variant="success">Готово</Badge>
+                  )}
+                </li>
+              ))}
+            </ol>
+          </Card>
+        ) : (
+          <button
+            type="button"
+            className="flex min-h-24 items-center justify-between rounded-2xl bg-main-800/30 px-5 text-left ring-1 ring-main-700/40 hover:bg-main-800/50"
+            onClick={() => void onboardingStore.restoreChecklist()}
+          >
+            <span>
+              <span className="block text-sm font-medium text-main-100">
+                Подготовка к работе
+              </span>
+              <span className="mt-1 block text-xs text-main-500">
+                Показать скрытый список задач
+              </span>
+            </span>
+            <ArrowExpandRightIcon className="size-5 text-main-400" />
+          </button>
+        )}
+
+        <Card
+          data-tour="home-recent"
+          className="flex min-h-0 flex-col bg-main-800/35 p-0"
+        >
+          <div className="flex items-center justify-between border-b border-main-700/40 px-5 py-4">
+            <div>
+              <h2 className="text-base font-semibold text-main-100">
+                Последние задачи
+              </h2>
+              <p className="mt-1 text-xs text-main-500">
+                Недавние запуски и их состояние
+              </p>
+            </div>
+            <Tooltip label="Открыть все задачи" placement="bottom-left">
+              <Button
+                variant="ghost"
+                rounded="rounded-lg"
+                label="Открыть все задачи"
+                className="size-9 p-0 text-main-400 hover:bg-main-700/60 hover:text-main-100"
+                onClick={() => navigate(APP_PATHS.tasks)}
+              >
+                <ArrowExpandRightIcon className="size-4" />
+              </Button>
+            </Tooltip>
+          </div>
+          {latest.length ? (
+            <div className="divide-y divide-main-700/35 px-5 py-2">
+              {latest.map((task) => (
+                <button
+                  key={task.id}
+                  type="button"
+                  onClick={() => navigate(APP_PATHS.tasks)}
+                  className="flex w-full items-center gap-3 py-3 text-left"
+                >
+                  <span className="size-2 shrink-0 rounded-full bg-accent-light" />
+                  <span className="min-w-0 flex-1 truncate text-sm text-main-200">
+                    {task.title}
+                  </span>
+                  <span className="text-[11px] text-main-600">
+                    {new Date(task.createdAt).toLocaleDateString("ru-RU")}
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="grid flex-1 place-items-center p-6">
+              <EmptyState
+                title="История пока пуста"
+                description="Первый запуск агента или сценария появится здесь."
+                action={
+                  <Button
+                    variant="secondary"
+                    rounded="rounded-full"
+                    className="px-2"
+                    onClick={() => navigate(APP_PATHS.chat)}
+                  >
+                    <ChatIcon className="size-4" />
+                    Начать в чате
+                  </Button>
+                }
+              />
+            </div>
+          )}
         </Card>
-      ) : <Button variant="ghost" onClick={() => void onboardingStore.restoreChecklist()}>Показать чеклист первых шагов</Button>}
-      <section><h2 className="mb-3 text-lg font-semibold text-main-100">Быстрый старт</h2><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{quick.map(([title, description, path, Icon]) => <Card key={title} className="cursor-pointer bg-main-800/35 p-4 hover:bg-main-700/35" onClick={() => navigate(path)}><Icon className="size-6 text-primary-light" /><h3 className="mt-3 text-sm font-medium text-main-100">{title}</h3><p className="mt-1 text-xs leading-5 text-main-400">{description}</p></Card>)}</div></section>
-      <section><div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-semibold text-main-100">Последние задачи</h2><Button variant="ghost" onClick={() => navigate(APP_PATHS.tasks)}>Все задачи</Button></div>{latest.length ? <div className="space-y-2">{latest.map((task) => <button key={task.id} type="button" onClick={() => navigate(APP_PATHS.tasks)} className="flex w-full items-center justify-between rounded-xl bg-main-800/35 px-4 py-3 text-left"><span className="text-sm text-main-200">{task.title}</span><span className="text-xs text-main-500">{new Date(task.createdAt).toLocaleString("ru-RU")}</span></button>)}</div> : <EmptyState title="Запусков пока нет" description="Здесь появятся последние задачи агентов и сценариев." />}</section>
+      </div>
+
+      <section data-tour="home-workspaces">
+        <div className="mb-3 flex items-end justify-between gap-4">
+          <div>
+            <h2 className="text-base font-semibold text-main-100">
+              Рабочие области
+            </h2>
+            <p className="mt-1 text-xs text-main-500">
+              Выберите способ решения задачи
+            </p>
+          </div>
+          <div className="flex items-center gap-1">
+            <GuideAction
+              icon={PlayCircleIcon}
+              label="Открыть интерактивный тур"
+              onClick={onboardingStore.startTour}
+            />
+            <GuideAction
+              icon={QuestionIcon}
+              label="Открыть мастер настройки"
+              onClick={onboardingStore.openWizard}
+            />
+            <GuideAction
+              icon={CogIcon}
+              label="Настройки приложения"
+              onClick={() => uiStore.openSettings()}
+            />
+          </div>
+        </div>
+        <div className="grid gap-3 md:grid-cols-3">
+          <WorkspaceCard
+            icon={ChatIcon}
+            title="Обсудить задачу"
+            description="Задайте вопрос, составьте план или разберите данные вместе с моделью."
+            path={APP_PATHS.chat}
+            onOpen={navigate}
+          />
+          <WorkspaceCard
+            icon={RobotIcon}
+            title="Поручить агенту"
+            description="Настройте исполнителя с конкретной ролью, навыками и доступами."
+            path={APP_PATHS.automation.agents.index}
+            onOpen={navigate}
+          />
+          <WorkspaceCard
+            icon={ScriptIcon}
+            title="Автоматизировать процесс"
+            description="Соберите повторяемую последовательность действий на визуальном графе."
+            path={APP_PATHS.automation.scenarios.index}
+            onOpen={navigate}
+          />
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <SecondaryLink
+            icon={NumbersIcon}
+            label="Базы знаний"
+            onClick={() => navigate(APP_PATHS.storage.vectorDb)}
+          />
+          <SecondaryLink
+            icon={CogIcon}
+            label="Политики доступа"
+            onClick={() => navigate(APP_PATHS.settings.policies)}
+          />
+        </div>
+      </section>
     </div>
   );
 });
+
+function Metric({ value, label }: { value: number; label: string }) {
+  return (
+    <div className="rounded-xl bg-main-800/55 px-3 py-4 text-center">
+      <div className="text-xl font-semibold tabular-nums text-main-50">
+        {value}
+      </div>
+      <div className="mt-1 text-[11px] text-main-500">{label}</div>
+    </div>
+  );
+}
+
+function GuideAction({
+  icon: Icon,
+  label,
+  onClick,
+}: {
+  icon: typeof PlayCircleIcon;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <Tooltip label={label} placement="bottom-left">
+      <Button
+        variant="ghost"
+        rounded="rounded-lg"
+        label={label}
+        className="size-9 p-0 text-main-400 hover:bg-main-700/60 hover:text-main-100"
+        onClick={onClick}
+      >
+        <Icon className="size-4" />
+      </Button>
+    </Tooltip>
+  );
+}
+
+function WorkspaceCard({
+  icon: Icon,
+  title,
+  description,
+  path,
+  onOpen,
+}: {
+  icon: typeof ChatIcon;
+  title: string;
+  description: string;
+  path: AppPath;
+  onOpen: (path: AppPath) => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="group flex min-h-36 flex-col rounded-2xl bg-main-800/30 p-5 text-left ring-1 ring-main-700/40 transition hover:-translate-y-0.5 hover:bg-main-800/55 hover:ring-main-600/70"
+      onClick={() => onOpen(path)}
+    >
+      <span className="grid size-10 place-items-center rounded-xl bg-accent-medium/10 text-accent-light">
+        <Icon className="size-5" />
+      </span>
+      <span className="mt-4 flex w-full items-center justify-between gap-3">
+        <span className="text-sm font-semibold text-main-100">{title}</span>
+        <ArrowExpandRightIcon className="size-4 text-main-600 transition group-hover:translate-x-0.5 group-hover:text-main-300" />
+      </span>
+      <span className="mt-2 text-xs leading-5 text-main-500">
+        {description}
+      </span>
+    </button>
+  );
+}
+
+function SecondaryLink({
+  icon: Icon,
+  label,
+  onClick,
+}: {
+  icon: typeof CogIcon;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <Button
+      variant="secondary"
+      rounded="rounded-full"
+      className="px-2"
+      onClick={onClick}
+    >
+      <Icon className="size-4" />
+      {label}
+    </Button>
+  );
+}
