@@ -4,7 +4,6 @@ import type { Guide } from "./types";
 
 export const providersGuide: Guide = {
   id: "providers",
-  order: 2,
   title: "Подключение модели",
   description: "Как подключить сервис, который будет отвечать в чате.",
   result: "Вы сможете выбрать модель и проверить, что она готова отвечать.",

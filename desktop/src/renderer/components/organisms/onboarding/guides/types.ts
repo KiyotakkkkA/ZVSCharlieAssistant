@@ -16,7 +16,6 @@ export interface GuideStep {
 
 export interface Guide {
   id: string;
-  order: number;
   title: string;
   description: string;
   result: string;

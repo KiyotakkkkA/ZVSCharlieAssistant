@@ -4,7 +4,6 @@ import type { Guide } from "./types";
 
 export const scenariosGuide: Guide = {
   id: "scenarios",
-  order: 8,
   title: "Сценарии",
   description: "Как собрать повторяющуюся работу из нескольких шагов.",
   result: "Вы поймёте, когда нужен сценарий и как читать его схему.",

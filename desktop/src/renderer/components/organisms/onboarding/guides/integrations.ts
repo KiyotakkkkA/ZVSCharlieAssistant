@@ -4,7 +4,6 @@ import type { Guide } from "./types";
 
 export const integrationsGuide: Guide = {
   id: "integrations",
-  order: 12,
   title: "Внешние сервисы",
   description: "Как связать приложение с почтой, мессенджерами и хранилищами кода.",
   result: "Вы поймёте, как добавить подключение и проверить его до использования.",

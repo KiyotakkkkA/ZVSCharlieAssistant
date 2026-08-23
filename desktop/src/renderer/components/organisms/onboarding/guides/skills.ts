@@ -4,7 +4,6 @@ import type { Guide } from "./types";
 
 export const skillsGuide: Guide = {
   id: "skills",
-  order: 7,
   title: "Навыки",
   description: "Как сохранить полезные инструкции и применять их повторно.",
   result: "Вы сможете подготовить правило работы, которое подходит нескольким агентам.",

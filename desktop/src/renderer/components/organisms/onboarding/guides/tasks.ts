@@ -4,7 +4,6 @@ import type { Guide } from "./types";
 
 export const tasksGuide: Guide = {
   id: "tasks",
-  order: 4,
   title: "Задачи и результаты",
   description: "Где смотреть выполненную работу и причины ошибок.",
   result: "Вы сможете найти результат запуска и понять, завершился ли он успешно.",

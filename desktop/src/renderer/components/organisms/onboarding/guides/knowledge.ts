@@ -4,7 +4,6 @@ import type { Guide } from "./types";
 
 export const knowledgeGuide: Guide = {
   id: "knowledge",
-  order: 10,
   title: "Базы знаний",
   description: "Как дать агенту доступ к вашим документам.",
   result: "Вы поймёте, как загрузить документы и использовать их при ответах.",

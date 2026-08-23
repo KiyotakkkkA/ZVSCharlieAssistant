@@ -4,7 +4,6 @@ import type { Guide } from "./types";
 
 export const chatGuide: Guide = {
   id: "chat",
-  order: 3,
   title: "Первый разговор",
   description: "Как выбрать режим, модель и начать диалог.",
   result: "Вы сможете задать вопрос и выбрать подходящий способ ответа.",

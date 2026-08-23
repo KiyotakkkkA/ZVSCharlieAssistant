@@ -53,7 +53,7 @@ export const GuidesPage = observer(function GuidesPage() {
           </div>
         </div>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {GUIDES.map((guide) => {
+          {GUIDES.map((guide, index) => {
             const done = onboardingStore.isGuideCompleted(guide.id);
             const recommendations = guide.recommendedBefore
               ?.map((id) => findGuide(id))
@@ -83,7 +83,7 @@ export const GuidesPage = observer(function GuidesPage() {
                 </div>
                 <div className="mt-4">
                   <p className="text-[11px] font-medium text-main-500">
-                    Урок {guide.order}
+                    Урок {index + 1}
                   </p>
                   <h3 className="mt-1 text-base font-semibold text-main-100">
                     {guide.title}

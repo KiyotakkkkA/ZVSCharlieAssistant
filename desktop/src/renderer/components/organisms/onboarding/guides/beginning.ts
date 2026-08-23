@@ -4,7 +4,6 @@ import type { Guide } from "./types";
 
 export const beginningGuide: Guide = {
   id: "beginning",
-  order: 1,
   title: "Начало",
   description: "Короткое знакомство с главной страницей, меню и настройками.",
   result: "Вы поймёте, где находятся основные разделы и куда обращаться за помощью.",

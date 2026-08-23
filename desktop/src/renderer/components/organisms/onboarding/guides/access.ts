@@ -4,7 +4,6 @@ import type { Guide } from "./types";
 
 export const accessGuide: Guide = {
   id: "access",
-  order: 11,
   title: "Безопасный доступ",
   description: "Как ограничить папки и команды, доступные помощникам.",
   result: "Вы сможете задать безопасные границы для работы агентов и сценариев.",

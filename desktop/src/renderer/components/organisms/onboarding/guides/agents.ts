@@ -4,7 +4,6 @@ import type { Guide } from "./types";
 
 export const agentsGuide: Guide = {
   id: "agents",
-  order: 5,
   title: "Агенты",
   description: "Как создать помощника для определённого вида работы.",
   result: "Вы поймёте, из чего состоит агент и когда он полезнее обычного чата.",

@@ -4,7 +4,6 @@ import type { Guide } from "./types";
 
 export const toolsGuide: Guide = {
   id: "tools",
-  order: 6,
   title: "Возможности агентов",
   description: "Что умеют встроенные инструменты и как выдавать их безопасно.",
   result: "Вы сможете выбрать действия, которые разрешено выполнять агенту.",
