@@ -109,11 +109,7 @@ export const GuidesPage = observer(function GuidesPage() {
                     onClick={() => onboardingStore.startGuide(guide.id)}
                   >
                     {done ? "Пройти ещё раз" : "Начать урок"}
-                    {done ? (
-                      <PlayCircleIcon className="size-4" />
-                    ) : (
-                      <ArrowExpandRightIcon className="size-4" />
-                    )}
+                    {done && <PlayCircleIcon className="size-4" />}
                   </Button>
                 </div>
               </article>

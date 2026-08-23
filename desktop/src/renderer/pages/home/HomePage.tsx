@@ -7,7 +7,6 @@ import {
   Tooltip,
 } from "@kiyotakkkka/zvs-uikit-lib";
 import { observer } from "mobx-react-lite";
-import { useNavigate } from "react-router-dom";
 import { APP_PATHS, type AppPath } from "../../app/routes";
 import {
   automationStore,
@@ -28,6 +27,7 @@ import {
   ScriptIcon,
 } from "../../components/atoms";
 import { PROFILE_ANCHORS } from "../../components/organisms/forms";
+import { useAppNavigation } from "@renderer/hooks";
 
 interface GuideTask {
   id: string;
@@ -39,7 +39,7 @@ interface GuideTask {
 }
 
 export const HomePage = observer(function HomePage() {
-  const navigate = useNavigate();
+  const { goTo } = useAppNavigation();
   const guideTasks: GuideTask[] = [
     {
       id: "provider",
@@ -47,7 +47,7 @@ export const HomePage = observer(function HomePage() {
       description: "Обязательный шаг для диалога, планировщика и агентов.",
       actionLabel: "Подключить",
       done: onboardingStore.hasProvider,
-      action: () => navigate(APP_PATHS.settings.providers),
+      action: () => goTo(APP_PATHS.settings.providers),
     },
     {
       id: "profile",
@@ -63,7 +63,7 @@ export const HomePage = observer(function HomePage() {
       description: "Определите безопасные границы доступа к файлам.",
       actionLabel: "Выбрать",
       done: onboardingStore.hasDirectoryPolicy,
-      action: () => navigate(APP_PATHS.settings.policies),
+      action: () => goTo(APP_PATHS.settings.policies),
     },
     {
       id: "chat",
@@ -71,7 +71,7 @@ export const HomePage = observer(function HomePage() {
       description: "Проверьте подключение на реальной задаче.",
       actionLabel: "Открыть чат",
       done: onboardingStore.hasChatMessage,
-      action: () => navigate(APP_PATHS.chat),
+      action: () => goTo(APP_PATHS.chat),
     },
     {
       id: "agent",
@@ -79,7 +79,7 @@ export const HomePage = observer(function HomePage() {
       description: "Соберите исполнителя с моделью, навыками и инструментами.",
       actionLabel: "Создать",
       done: onboardingStore.hasAgent,
-      action: () => navigate(APP_PATHS.automation.agents.create),
+      action: () => goTo(APP_PATHS.automation.agents.create),
     },
     {
       id: "scenario",
@@ -87,7 +87,7 @@ export const HomePage = observer(function HomePage() {
       description: "Свяжите действия в воспроизводимый процесс.",
       actionLabel: "Собрать",
       done: onboardingStore.hasScenario,
-      action: () => navigate(APP_PATHS.automation.scenarios.create),
+      action: () => goTo(APP_PATHS.automation.scenarios.create),
     },
   ];
   const nextTask = guideTasks.find((task) => !task.done);
@@ -97,7 +97,7 @@ export const HomePage = observer(function HomePage() {
     .slice(0, 4);
 
   return (
-    <div className="mx-auto w-full max-w-[1440px] space-y-5 p-5 xl:p-7">
+    <div className="mx-auto w-full max-w-360 space-y-5 p-5 xl:p-7">
       <section
         data-tour="home-overview"
         className="relative overflow-hidden rounded-2xl bg-main-800/45 p-6 ring-1 ring-main-700/45"
@@ -140,7 +140,7 @@ export const HomePage = observer(function HomePage() {
                 variant="primary"
                 rounded="rounded-full"
                 className="mt-6 px-2"
-                onClick={() => navigate(APP_PATHS.chat)}
+                onClick={() => goTo(APP_PATHS.chat)}
               >
                 <ChatIcon className="size-4" />
                 Открыть чат
@@ -149,9 +149,15 @@ export const HomePage = observer(function HomePage() {
           </div>
 
           <div className="grid grid-cols-3 gap-2 rounded-2xl bg-main-900/35 p-3 ring-1 ring-main-700/35">
-            <Metric value={textProviderStore.enabledModels.length} label="моделей" />
+            <Metric
+              value={textProviderStore.enabledModels.length}
+              label="моделей"
+            />
             <Metric value={automationStore.agents.length} label="агентов" />
-            <Metric value={automationStore.scenarios.length} label="сценариев" />
+            <Metric
+              value={automationStore.scenarios.length}
+              label="сценариев"
+            />
           </div>
         </div>
       </section>
@@ -267,7 +273,7 @@ export const HomePage = observer(function HomePage() {
                 rounded="rounded-lg"
                 label="Открыть все задачи"
                 className="size-9 p-0 text-main-400 hover:bg-main-700/60 hover:text-main-100"
-                onClick={() => navigate(APP_PATHS.tasks)}
+                onClick={() => goTo(APP_PATHS.tasks)}
               >
                 <ArrowExpandRightIcon className="size-4" />
               </Button>
@@ -279,7 +285,7 @@ export const HomePage = observer(function HomePage() {
                 <button
                   key={task.id}
                   type="button"
-                  onClick={() => navigate(APP_PATHS.tasks)}
+                  onClick={() => goTo(APP_PATHS.tasks)}
                   className="flex w-full items-center gap-3 py-3 text-left"
                 >
                   <span className="size-2 shrink-0 rounded-full bg-accent-light" />
@@ -302,7 +308,7 @@ export const HomePage = observer(function HomePage() {
                     variant="secondary"
                     rounded="rounded-full"
                     className="px-2"
-                    onClick={() => navigate(APP_PATHS.chat)}
+                    onClick={() => goTo(APP_PATHS.chat)}
                   >
                     <ChatIcon className="size-4" />
                     Начать в чате
@@ -328,7 +334,7 @@ export const HomePage = observer(function HomePage() {
             <GuideAction
               icon={PlayCircleIcon}
               label="Открыть уроки"
-              onClick={() => navigate(APP_PATHS.guides)}
+              onClick={() => goTo(APP_PATHS.guides)}
             />
             <GuideAction
               icon={CogIcon}
@@ -343,33 +349,33 @@ export const HomePage = observer(function HomePage() {
             title="Обсудить задачу"
             description="Задайте вопрос, составьте план или разберите данные вместе с моделью."
             path={APP_PATHS.chat}
-            onOpen={navigate}
+            onOpen={goTo}
           />
           <WorkspaceCard
             icon={RobotIcon}
             title="Поручить агенту"
             description="Настройте исполнителя с конкретной ролью, навыками и доступами."
             path={APP_PATHS.automation.agents.index}
-            onOpen={navigate}
+            onOpen={goTo}
           />
           <WorkspaceCard
             icon={ScriptIcon}
             title="Автоматизировать процесс"
             description="Соберите повторяемую последовательность действий на визуальном графе."
             path={APP_PATHS.automation.scenarios.index}
-            onOpen={navigate}
+            onOpen={goTo}
           />
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
           <SecondaryLink
             icon={NumbersIcon}
             label="Базы знаний"
-            onClick={() => navigate(APP_PATHS.storage.vectorDb)}
+            onClick={() => goTo(APP_PATHS.storage.vectorDb)}
           />
           <SecondaryLink
             icon={CogIcon}
             label="Политики доступа"
-            onClick={() => navigate(APP_PATHS.settings.policies)}
+            onClick={() => goTo(APP_PATHS.settings.policies)}
           />
         </div>
       </section>

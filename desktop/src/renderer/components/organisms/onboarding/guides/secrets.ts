@@ -6,7 +6,8 @@ export const secretsGuide: Guide = {
   id: "secrets",
   title: "Пароли и ключи",
   description: "Как безопасно хранить данные для подключений.",
-  result: "Вы сможете добавить ключ и использовать его, не вставляя значение в каждую настройку.",
+  result:
+    "Вы сможете добавить ключ и использовать его, не вставляя значение в каждую настройку.",
   duration: "4 минуты",
   icon: LockIcon,
   recommendedBefore: ["providers"],

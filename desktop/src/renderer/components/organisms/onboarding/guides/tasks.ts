@@ -6,7 +6,8 @@ export const tasksGuide: Guide = {
   id: "tasks",
   title: "Задачи и результаты",
   description: "Где смотреть выполненную работу и причины ошибок.",
-  result: "Вы сможете найти результат запуска и понять, завершился ли он успешно.",
+  result:
+    "Вы сможете найти результат запуска и понять, завершился ли он успешно.",
   duration: "4 минуты",
   icon: TasksIcon,
   recommendedBefore: ["chat"],

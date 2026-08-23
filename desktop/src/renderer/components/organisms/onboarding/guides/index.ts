@@ -15,14 +15,14 @@ export type { Guide, GuideStep } from "./types";
 
 export const GUIDES = [
   beginningGuide,
+  secretsGuide,
   providersGuide,
   chatGuide,
-  tasksGuide,
   agentsGuide,
   toolsGuide,
   skillsGuide,
   scenariosGuide,
-  secretsGuide,
+  tasksGuide,
   knowledgeGuide,
   accessGuide,
   integrationsGuide,

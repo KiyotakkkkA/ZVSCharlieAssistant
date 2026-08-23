@@ -7,7 +7,6 @@ import {
   Modal,
   useToasts,
 } from "@kiyotakkkka/zvs-uikit-lib";
-import { useNavigate } from "react-router-dom";
 import { APP_PATHS } from "../../app/routes";
 import {
   ChatComposer,
@@ -32,10 +31,11 @@ import { BrainIcon } from "@renderer/components/atoms";
 import { PrimaryButton } from "@renderer/components/atoms/buttons";
 import { DangerModal } from "@renderer/components/organisms/modals";
 import type { StartRunInput } from "../../../shared/dto";
+import { useAppNavigation } from "@renderer/hooks";
 
 export const ChatPage = observer(function ChatPage() {
   const toasts = useToasts();
-  const navigate = useNavigate();
+  const { goTo } = useAppNavigation();
   const [text, setText] = useState("");
   const [mode, setMode] = useState<ChatMode>("chat");
   const [model, setModel] = useState<ChatModel>("");
@@ -149,7 +149,8 @@ export const ChatPage = observer(function ChatPage() {
     if (mode !== "scenario" && textProviderStore.enabledModels.length === 0) {
       toasts.warning({
         title: "Не подключена ни одна модель",
-        description: "Настройте провайдера и включите модель для отправки сообщения.",
+        description:
+          "Настройте провайдера и включите модель для отправки сообщения.",
       });
       return;
     }
@@ -241,7 +242,35 @@ export const ChatPage = observer(function ChatPage() {
           scenarioNodeOutput={new Map(chatStore.scenarioNodeOutput.entries())}
         />
         <ChatComposer
-          topContent={<>{textProviderStore.enabledModels.length === 0 ? <Alert variant="warning" title="Не подключена ни одна модель" rounded=""><div className="flex flex-wrap items-center justify-between gap-2"><span>Подключите провайдера, чтобы получать ответы в чате.</span><Button variant="ghost" onClick={() => navigate(APP_PATHS.settings.providers)}>Настроить провайдера</Button></div></Alert> : null}<ChatQuestionCard /></>}
+          topContent={
+            <>
+              {textProviderStore.enabledModels.length === 0 ? (
+                <Alert
+                  variant="warning"
+                  rounded="rounded-none"
+                  className="text-left border-0 border-b-0"
+                  classNames={{
+                    content: "min-w-0 flex-1",
+                    body: "flex w-full items-center justify-between gap-4",
+                  }}
+                >
+                  <strong className="font-semibold">
+                    Нет доступных моделей для чата
+                  </strong>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="warning-outline"
+                    className="shrink-0"
+                    onClick={() => goTo(APP_PATHS.settings.providers)}
+                  >
+                    Настроить
+                  </Button>
+                </Alert>
+              ) : null}
+              <ChatQuestionCard />
+            </>
+          }
           text={text}
           mode={mode}
           model={model}

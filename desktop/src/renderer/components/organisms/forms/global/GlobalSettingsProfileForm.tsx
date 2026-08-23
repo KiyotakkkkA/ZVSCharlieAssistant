@@ -64,9 +64,9 @@ export const GlobalSettingsProfileForm = observer(
       <form onSubmit={submit} className="space-y-8">
         <section className="space-y-6">
           <Alert variant="info" title="Где это работает">
-            Эти настройки подмешиваются в системное сообщение режимов «Чат» и
-            «Планировщик» при первом сообщении диалога. У агентов и сценариев
-            свои собственные инструкции — на них персонализация не влияет.
+            Эти настройки работают только в режимах «Чат» и «Планировщик» при
+            первом сообщении диалога. У агентов и сценариев свои собственные
+            инструкции — на них персонализация не влияет.
           </Alert>
 
           <GlobalSettingsLabel {...PROFILE_ANCHORS.identity} />
@@ -74,7 +74,7 @@ export const GlobalSettingsProfileForm = observer(
           <div className="space-y-5">
             <Field label="Как к вам обращаться">
               <InputSmall
-                placeholder="Например, Захар"
+                placeholder="Например, Антон"
                 maxLength={120}
                 className="w-full"
                 value={model.displayName}

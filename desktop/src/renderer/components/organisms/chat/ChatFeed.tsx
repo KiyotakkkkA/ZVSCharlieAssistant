@@ -195,31 +195,6 @@ export function ChatFeed({
                 ваших агентов.
               </p>
               <div className="mt-8 grid w-full gap-3 md:grid-cols-3">
-                {textProviderStore.enabledModels.length === 0 && (
-                  <div className="col-span-3">
-                    <Alert
-                      variant="warning"
-                      className="text-left"
-                      classNames={{
-                        content: "min-w-0 flex-1",
-                        body: "flex w-full items-center justify-between gap-4",
-                      }}
-                    >
-                      <strong className="font-semibold">
-                        Нет доступных моделей для чата
-                      </strong>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="warning-outline"
-                        className="shrink-0"
-                        onClick={() => goTo(APP_PATHS.settings.providers)}
-                      >
-                        Настроить
-                      </Button>
-                    </Alert>
-                  </div>
-                )}
                 {suggestions.map((item) => (
                   <button
                     key={item.title}

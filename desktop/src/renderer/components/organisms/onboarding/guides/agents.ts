@@ -1,14 +1,15 @@
 import { APP_PATHS } from "../../../../app/routes";
-import { RobotIcon } from "../../../atoms";
+import { GraphIcon } from "../../../atoms";
 import type { Guide } from "./types";
 
 export const agentsGuide: Guide = {
   id: "agents",
   title: "Агенты",
   description: "Как создать помощника для определённого вида работы.",
-  result: "Вы поймёте, из чего состоит агент и когда он полезнее обычного чата.",
+  result:
+    "Вы поймёте, из чего состоит агент и когда он полезнее обычного чата.",
   duration: "7 минут",
-  icon: RobotIcon,
+  icon: GraphIcon,
   recommendedBefore: ["chat"],
   steps: [
     {
