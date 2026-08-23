@@ -84,10 +84,6 @@ import type {
   PrepareImportInput,
   CommitImportInput,
 } from "../../shared/dto";
-import {
-  parseIpcDto,
-  updateApplicationSettingsDtoSchema,
-} from "../../shared/dto";
 
 export const desktopApi: DesktopApi = {
   getAppInfo: (): Promise<AppInfo> =>
@@ -117,7 +113,7 @@ export const desktopApi: DesktopApi = {
     ): Promise<ApplicationSettings> =>
       ipcRenderer.invoke(
         IPC_CHANNELS.updateApplicationSettings,
-        parseIpcDto(updateApplicationSettingsDtoSchema, input),
+        input,
       ) as Promise<ApplicationSettings>,
   },
   dataTransfer: {
