@@ -112,7 +112,13 @@ export const SkillsListPage = observer(function SkillsListPage() {
             <EmptyState
               icon={<SkillIcon className="size-6" />}
               title="Навыков пока нет"
-              description="Создайте первый навык с пошаговыми инструкциями."
+              description="Навык — переиспользуемая инструкция, которую агент применяет к задаче. Встроенные навыки доступны сразу."
+              action={
+                <PrimaryButton
+                  label="Создать навык"
+                  onClick={() => goTo(APP_PATHS.automation.skills.create)}
+                />
+              }
             />
           </div>
         )}

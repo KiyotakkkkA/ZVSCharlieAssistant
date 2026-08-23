@@ -76,7 +76,7 @@ export const VectorStoresPage = observer(function VectorStoresPage() {
               <EmptyState
                 icon={<StorageIcon className="size-6" />}
                 title="Хранилищ пока нет"
-                description="Создайте базу знаний и выберите embedding-модель."
+                description="Векторная база хранит документы, по которым ассистент ищет подходящие фрагменты для ответа."
                 action={
                   <PrimaryButton
                     label="Добавить хранилище"

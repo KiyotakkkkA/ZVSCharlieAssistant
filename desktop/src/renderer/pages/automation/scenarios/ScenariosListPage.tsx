@@ -97,12 +97,12 @@ export const ScenariosListPage = observer(function ScenariosListPage() {
               description={
                 query
                   ? "Измените поисковый запрос."
-                  : "Создайте первый сценарий автоматизации."
+                  : "Сценарий — граф из триггера, условий и действий для повторяющегося процесса."
               }
               action={
                 query ? undefined : (
                   <PrimaryButton
-                    label="Добавить сценарий"
+                    label="Создать сценарий"
                     onClick={() => goTo(APP_PATHS.automation.scenarios.create)}
                   />
                 )

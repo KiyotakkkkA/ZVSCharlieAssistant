@@ -107,11 +107,11 @@ export const AgentsListPage = observer(function AgentsListPage() {
           <div className="grid min-h-80 place-items-center">
             <EmptyState
               icon={<RobotIcon className="size-6" />}
-              title="Агенты не найдены"
-              description="Измените запрос или создайте нового агента."
+              title={query ? "Агенты не найдены" : "Агентов пока нет"}
+              description={query ? "Измените поисковый запрос." : "Агент — это исполнитель с ролью, моделью и набором инструментов."}
               action={
                 <PrimaryButton
-                  label="Добавить агента"
+                  label="Создать агента"
                   onClick={() => goTo(APP_PATHS.automation.agents.create)}
                 />
               }

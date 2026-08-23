@@ -739,6 +739,13 @@ export const ScenarioGraphEditorPage = observer(
           </div>
         </header>
 
+        {!scenario ? (
+          <details open className="mx-4 mt-3 shrink-0 rounded-xl bg-accent-medium/10 px-4 py-3 text-xs text-main-300 ring-1 ring-accent-light/20">
+            <summary className="cursor-pointer font-medium text-main-100">Как устроен сценарий</summary>
+            <p className="mt-2 leading-5">Начните с триггера, добавьте условия и действия, затем подключите доставку результата. Перетаскивайте узлы из панели слева и соединяйте их порты.</p>
+          </details>
+        ) : null}
+
         <div className="flex min-h-0 flex-1">
           <ResizableSidePanel
             title="Узлы"

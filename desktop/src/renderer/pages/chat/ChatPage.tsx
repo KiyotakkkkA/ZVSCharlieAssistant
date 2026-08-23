@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { observer } from "mobx-react-lite";
 import {
+  Alert,
   Button,
   InputSmall,
   Modal,
   useToasts,
 } from "@kiyotakkkka/zvs-uikit-lib";
+import { useNavigate } from "react-router-dom";
+import { APP_PATHS } from "../../app/routes";
 import {
   ChatComposer,
   ChatFeed,
@@ -32,6 +35,7 @@ import type { StartRunInput } from "../../../shared/dto";
 
 export const ChatPage = observer(function ChatPage() {
   const toasts = useToasts();
+  const navigate = useNavigate();
   const [text, setText] = useState("");
   const [mode, setMode] = useState<ChatMode>("chat");
   const [model, setModel] = useState<ChatModel>("");
@@ -142,6 +146,13 @@ export const ChatPage = observer(function ChatPage() {
   const send = () => {
     const value = text.trim();
     if (!value) return;
+    if (mode !== "scenario" && textProviderStore.enabledModels.length === 0) {
+      toasts.warning({
+        title: "Не подключена ни одна модель",
+        description: "Настройте провайдера и включите модель для отправки сообщения.",
+      });
+      return;
+    }
     setText("");
     void startMessage(value).catch((error: unknown) => {
       setText(value);
@@ -230,7 +241,7 @@ export const ChatPage = observer(function ChatPage() {
           scenarioNodeOutput={new Map(chatStore.scenarioNodeOutput.entries())}
         />
         <ChatComposer
-          topContent={<ChatQuestionCard />}
+          topContent={<>{textProviderStore.enabledModels.length === 0 ? <Alert variant="warning" title="Не подключена ни одна модель" rounded=""><div className="flex flex-wrap items-center justify-between gap-2"><span>Подключите провайдера, чтобы получать ответы в чате.</span><Button variant="ghost" onClick={() => navigate(APP_PATHS.settings.providers)}>Настроить провайдера</Button></div></Alert> : null}<ChatQuestionCard /></>}
           text={text}
           mode={mode}
           model={model}
