@@ -3,6 +3,7 @@ export type {
   AppInfo,
   ApplicationSettings,
   ApplicationSettingsApi,
+  OnboardingState,
   DesktopApi,
   GeneratedArtifactInput,
   UpdateApplicationSettingsInput,

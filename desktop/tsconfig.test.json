@@ -9,6 +9,7 @@
     "tests/**/*.ts",
     "vitest.config.ts",
     "src/default/raw-imports.d.ts",
+    "src/renderer/types/global.d.ts",
     "src/shared/**/*.ts",
     "src/host/**/*.ts"
   ]

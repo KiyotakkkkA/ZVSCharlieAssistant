@@ -19,6 +19,8 @@ import {
   integrationStore,
   memoryStore,
   questionStore,
+  userProfileStore,
+  onboardingStore,
 } from "../stores";
 import { TerminalApprovalModal } from "../components/organisms/modals/TerminalApprovalModal";
 
@@ -27,6 +29,7 @@ const CRITICAL_STORES = [
   ["Чат", () => chatStore.bootstrap()],
   ["Политики терминала", () => terminalPolicyStore.bootstrap()],
   ["Политики директорий", () => directoryPolicyStore.bootstrap()],
+  ["Онбординг", () => onboardingStore.bootstrap()],
 ] as const;
 
 const DEFERRED_STORES = [
@@ -36,6 +39,7 @@ const DEFERRED_STORES = [
   ["Задачи", () => tasksStore.bootstrap()],
   ["Интеграции", () => integrationStore.bootstrap()],
   ["Память", () => memoryStore.bootstrap()],
+  ["Профиль", () => userProfileStore.bootstrap()],
 ] as const;
 
 interface AppProps {
