@@ -13,4 +13,5 @@ export { questionStore } from "./QuestionStore";
 export { userProfileStore } from "./UserProfileStore";
 export { entityGenerationStore } from "./EntityGenerationStore";
 export { onboardingStore } from "./OnboardingStore";
+export { uiStore } from "./UiStore";
 export type { VectorDocument, VectorStoreModel } from "./VectorStoreStore";

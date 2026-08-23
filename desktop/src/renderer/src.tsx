@@ -27,6 +27,7 @@ import "./styles/global.css";
 const ChatPage = lazy(() =>
   import("./pages/chat").then(({ ChatPage }) => ({ default: ChatPage })),
 );
+const HomePage = lazy(() => import("./pages/home").then(({ HomePage }) => ({ default: HomePage })));
 const TaskListPage = lazy(() =>
   import("./pages/tasks").then(({ TaskListPage }) => ({
     default: TaskListPage,
@@ -160,15 +161,7 @@ createRoot(root).render(
       <Routes>
         <Route element={<App initialPalette={initialPalette ?? undefined} />}>
           <Route element={<AppLayout />}>
-            <Route
-              index
-              element={
-                <RoutePage
-                  title="Главная"
-                  description="Начните с чата или откройте раздел автоматизации в боковом меню."
-                />
-              }
-            />
+            <Route index element={<HomePage />} />
             <Route path={APP_PATHS.chat} element={<ChatPage />} />
             <Route path={APP_PATHS.tasks} element={<TaskListPage />} />
             <Route
