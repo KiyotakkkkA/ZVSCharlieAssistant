@@ -118,7 +118,6 @@ export const NavigationSidebar = () => {
                     <NavLink
                       data-tour={`nav-${route.id.replace(/^(automation|storage|settings)-/, "")}`}
                       to={route.path!}
-                      end={route.path === "/"}
                       aria-label={route.label}
                       className={({ isActive }) =>
                         [

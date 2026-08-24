@@ -11,8 +11,7 @@ export type AppCommand =
   | "new-chat"
   | "open-tasks"
   | "open-scenarios"
-  | "open-settings"
-  | "open-home";
+  | "open-settings";
 
 export interface AppInfo {
   name: string;

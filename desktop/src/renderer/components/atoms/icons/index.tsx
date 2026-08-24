@@ -3,13 +3,6 @@ import { FilledIcon, Icon, type IconProps } from "./Icon";
 
 export type SvgIcon = ComponentType<IconProps>;
 
-export const HomeIcon: SvgIcon = (props) => (
-  <Icon {...props}>
-    <path d="m3 11 9-8 9 8" />
-    <path d="M5 10v11h14V10" />
-    <path d="M9 21v-7h6v7" />
-  </Icon>
-);
 export const TasksIcon: SvgIcon = (props) => (
   <Icon {...props}>
     <rect x="3" y="3" width="18" height="18" rx="2" />

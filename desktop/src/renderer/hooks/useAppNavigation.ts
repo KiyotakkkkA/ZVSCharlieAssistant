@@ -19,7 +19,7 @@ export function useAppNavigation() {
   );
 
   const goBack = useCallback(
-    (fallback: To = APP_PATHS.home) => {
+    (fallback: To = APP_PATHS.chat) => {
       const historyIndex = window.history.state?.idx;
       if (typeof historyIndex === "number" && historyIndex > 0) {
         void navigate(-1);
@@ -31,10 +31,7 @@ export function useAppNavigation() {
   );
 
   const isActive = useCallback(
-    (path: AppPath) =>
-      path === APP_PATHS.home
-        ? location.pathname === path
-        : location.pathname.startsWith(path),
+    (path: AppPath) => location.pathname.startsWith(path),
     [location.pathname],
   );
 

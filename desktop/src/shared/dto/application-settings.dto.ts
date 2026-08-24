@@ -3,8 +3,6 @@ import { z } from "zod";
 export const onboardingStateDtoSchema = z.object({
   version: z.number().int().nonnegative(),
   tourCompleted: z.boolean(),
-  checklistDismissed: z.boolean(),
-  completedSteps: z.array(z.string()),
   completedGuides: z.array(z.string()),
   firstLaunchAt: z.string().nullable(),
 });

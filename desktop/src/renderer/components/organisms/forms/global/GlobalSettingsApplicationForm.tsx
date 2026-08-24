@@ -9,8 +9,6 @@ const DEFAULT_SETTINGS: ApplicationSettings = {
   onboarding: {
     version: 2,
     tourCompleted: false,
-    checklistDismissed: false,
-    completedSteps: [],
     completedGuides: [],
     firstLaunchAt: null,
   },

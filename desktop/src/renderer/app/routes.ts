@@ -3,7 +3,6 @@ import {
   ChatIcon,
   FactoryIcon,
   GraphIcon,
-  HomeIcon,
   LockIcon,
   NumbersIcon,
   RobotIcon,
@@ -19,7 +18,6 @@ import {
 } from "../components/atoms";
 
 export const APP_PATHS = {
-  home: "/",
   guides: "/guides",
   chat: "/chat",
   tasks: "/tasks",
@@ -73,7 +71,6 @@ export interface NavigationRoute {
 }
 
 export const NAVIGATION_ROUTES: readonly NavigationRoute[] = [
-  { id: "home", label: "Главная", path: APP_PATHS.home, icon: HomeIcon },
   { id: "chat", label: "Чат", path: APP_PATHS.chat, icon: ChatIcon },
   { id: "tasks", label: "Задачи", path: APP_PATHS.tasks, icon: TasksIcon },
   {

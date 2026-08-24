@@ -67,7 +67,7 @@ describe("ApplicationSettingsRepository", () => {
     });
   });
 
-  it("discards malformed values and de-duplicates completed steps", () => {
+  it("discards obsolete and malformed values and de-duplicates completed guides", () => {
     const repository = createRepository();
     writeFileSync(
       settingsPath(),
@@ -76,7 +76,8 @@ describe("ApplicationSettingsRepository", () => {
         onboarding: {
           version: "one",
           tourCompleted: true,
-          completedSteps: ["profile", 4, "profile", "chat"],
+          checklistDismissed: true,
+          completedSteps: ["profile", "chat"],
           completedGuides: ["beginning", false, "beginning", "chat"],
           firstLaunchAt: 123,
         },
@@ -88,7 +89,6 @@ describe("ApplicationSettingsRepository", () => {
       onboarding: {
         ...defaultOnboarding(),
         tourCompleted: true,
-        completedSteps: ["profile", "chat"],
         completedGuides: ["beginning", "chat"],
       },
     });
@@ -99,8 +99,6 @@ function defaultOnboarding() {
   return {
     version: 2,
     tourCompleted: false,
-    checklistDismissed: false,
-    completedSteps: [],
     completedGuides: [],
     firstLaunchAt: null,
   };

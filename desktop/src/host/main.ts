@@ -358,8 +358,6 @@ app.whenReady().then(() => {
       {
         label: "Приложение",
         submenu: [
-          { label: "Главная", click: () => appWindow.dispatchCommand("open-home") },
-          { type: "separator" },
           { role: "quit", label: "Выйти" },
         ],
       },

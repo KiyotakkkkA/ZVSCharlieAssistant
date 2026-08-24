@@ -9,8 +9,6 @@ const DEFAULT_SETTINGS: ApplicationSettings = {
   onboarding: {
     version: 2,
     tourCompleted: false,
-    checklistDismissed: false,
-    completedSteps: [],
     completedGuides: [],
     firstLaunchAt: null,
   },
@@ -47,9 +45,6 @@ export class ApplicationSettingsRepository {
       onboarding: {
         ...current.onboarding,
         ...input.onboarding,
-        completedSteps: input.onboarding?.completedSteps
-          ? uniqueStrings(input.onboarding.completedSteps)
-          : current.onboarding.completedSteps,
         completedGuides: input.onboarding?.completedGuides
           ? uniqueStrings(input.onboarding.completedGuides)
           : current.onboarding.completedGuides,
@@ -82,11 +77,6 @@ function parseSettings(value: unknown): ApplicationSettings {
         onboarding.tourCompleted,
         DEFAULT_SETTINGS.onboarding.tourCompleted,
       ),
-      checklistDismissed: readBoolean(
-        onboarding.checklistDismissed,
-        DEFAULT_SETTINGS.onboarding.checklistDismissed,
-      ),
-      completedSteps: uniqueStrings(onboarding.completedSteps),
       completedGuides: uniqueStrings(onboarding.completedGuides),
       firstLaunchAt:
         typeof onboarding.firstLaunchAt === "string"
@@ -101,7 +91,6 @@ function createDefaultSettings(): ApplicationSettings {
     ...DEFAULT_SETTINGS,
     onboarding: {
       ...DEFAULT_SETTINGS.onboarding,
-      completedSteps: [],
       completedGuides: [],
     },
   };
@@ -136,20 +125,10 @@ function validateOnboardingPatch(
   ) {
     throw new TypeError("onboarding.version must be a non-negative number");
   }
-  for (const key of [
-    "tourCompleted",
-    "checklistDismissed",
-  ] as const) {
+  for (const key of ["tourCompleted"] as const) {
     if (patch[key] !== undefined && typeof patch[key] !== "boolean") {
       throw new TypeError(`onboarding.${key} must be a boolean`);
     }
-  }
-  if (
-    patch.completedSteps !== undefined &&
-    (!Array.isArray(patch.completedSteps) ||
-      patch.completedSteps.some((item) => typeof item !== "string"))
-  ) {
-    throw new TypeError("onboarding.completedSteps must be an array of strings");
   }
   if (
     patch.completedGuides !== undefined &&

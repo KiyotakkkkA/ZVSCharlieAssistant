@@ -53,7 +53,7 @@ const SETTINGS_FORMS: GlobalSettingsFormDescriptor[] = [
 function findTitle(pathname: string, routes: readonly NavigationRoute[]): string {
   if (pathname === APP_PATHS.guides) return "Уроки";
   for (const route of routes) {
-    if (route.path && (route.path === "/" ? pathname === "/" : pathname.startsWith(route.path))) return route.label;
+    if (route.path && pathname.startsWith(route.path)) return route.label;
     const child = route.children && findTitle(pathname, route.children);
     if (child) return child;
   }
@@ -90,9 +90,6 @@ export const Header = observer(function Header() {
             break;
           case "open-settings":
             uiStore.openSettings();
-            break;
-          case "open-home":
-            navigate(APP_PATHS.home);
             break;
         }
       }),
