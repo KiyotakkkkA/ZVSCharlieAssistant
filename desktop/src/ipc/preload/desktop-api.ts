@@ -137,6 +137,8 @@ export const desktopApi: DesktopApi = {
         DATA_TRANSFER_IPC_CHANNELS.cancelImport,
         sessionId,
       ) as Promise<void>,
+    resetData: (): Promise<void> =>
+      ipcRenderer.invoke(DATA_TRANSFER_IPC_CHANNELS.resetData) as Promise<void>,
   },
   integrations: {
     getSnapshot: (): Promise<IntegrationSnapshot> =>

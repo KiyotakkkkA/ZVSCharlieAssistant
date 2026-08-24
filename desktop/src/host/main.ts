@@ -15,6 +15,7 @@ import { createSqliteDatabase } from "./infrastructure/database/sqlite.database"
 import { SecretStorageRepository } from "./infrastructure/database/secret-storage.repository";
 import { DataTransferService } from "./infrastructure/data-transfer/data-transfer.service";
 import { ConfigurationTransferRepository } from "./infrastructure/data-transfer/configuration-transfer.repository";
+import { ApplicationDataResetService } from "./infrastructure/data-transfer/application-data-reset.service";
 import {
   registerDataTransferHandlers,
   removeDataTransferHandlers,
@@ -143,8 +144,12 @@ let engineLogger: Logger | undefined;
 const appWindow = new AppWindowController();
 let trayController: TrayController | undefined;
 const isPrimaryInstance = app.requestSingleInstanceLock();
+const applicationDataReset = new ApplicationDataResetService(
+  app.getPath("userData"),
+);
 
 if (!isPrimaryInstance) app.quit();
+else applicationDataReset.applyPendingReset();
 
 app.on("second-instance", () => {
   if (app.isReady()) {
@@ -260,6 +265,13 @@ app.whenReady().then(() => {
         integrationRepository,
       ),
     ),
+    () => {
+      applicationDataReset.requestReset();
+      setTimeout(() => {
+        app.relaunch();
+        app.quit();
+      }, 100);
+    },
   );
   const taskPlans = new TaskPlanRepository(database);
   const automationJobs = new AutomationJobRepository(database);

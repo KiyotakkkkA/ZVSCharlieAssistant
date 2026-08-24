@@ -29,6 +29,7 @@ import {
   SkillIcon,
   StorageIcon,
   TransitConnectionIcon,
+  TrashIcon,
   UploadIcon,
 } from "../../../atoms";
 import {
@@ -44,6 +45,7 @@ import {
   textProviderStore,
   vectorStoreStore,
 } from "../../../../stores";
+import { DangerModal } from "../../modals";
 import { DATA_ANCHORS } from "./settings-sections";
 
 export function GlobalSettingsDataForm() {
@@ -69,6 +71,7 @@ export function GlobalSettingsDataForm() {
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [conflictPolicy, setConflictPolicy] =
     useState<DataTransferConflictPolicy>("skip");
+  const [resetModalOpen, setResetModalOpen] = useState(false);
   const [busy, setBusy] = useState<"export" | "prepare" | "commit" | null>(
     null,
   );
@@ -162,6 +165,12 @@ export function GlobalSettingsDataForm() {
     if (preview)
       await window.desktop.dataTransfer.cancelImport(preview.sessionId);
     setPreview(null);
+  };
+
+  const resetData = async () => {
+    if (preview)
+      await window.desktop.dataTransfer.cancelImport(preview.sessionId);
+    await window.desktop.dataTransfer.resetData();
   };
 
   return (
@@ -340,6 +349,50 @@ export function GlobalSettingsDataForm() {
           </div>
         ) : null}
       </section>
+
+      <section className="space-y-5 border-t border-danger-medium/25 pt-8">
+        <GlobalSettingsLabel {...DATA_ANCHORS.reset} />
+        <div className="flex flex-col gap-4 rounded-xl border border-danger-medium/30 bg-danger-medium/5 p-4 md:flex-row md:items-center md:justify-between">
+          <div className="max-w-2xl">
+            <h4 className="text-sm font-medium text-main-100">
+              Вернуть приложение в исходное состояние
+            </h4>
+            <p className="mt-1 text-xs leading-5 text-main-400">
+              Будут удалены диалоги, задачи, настройки, подключения, секреты,
+              агенты, навыки, сценарии и локальные файлы приложения.
+            </p>
+          </div>
+          <Button
+            variant="danger"
+            className="shrink-0 px-3"
+            disabled={busy !== null}
+            onClick={() => setResetModalOpen(true)}
+          >
+            <TrashIcon className="size-4" />
+            Сбросить все данные
+          </Button>
+        </div>
+      </section>
+
+      <DangerModal
+        open={resetModalOpen}
+        model={true}
+        title="Сбросить все данные?"
+        description={
+          <div className="space-y-3">
+            <p>
+              Приложение удалит все свои данные и перезапустится. После запуска
+              оно будет выглядеть так, будто вы открыли его впервые.
+            </p>
+            <p className="font-medium text-danger-light">
+              Это действие нельзя отменить.
+            </p>
+          </div>
+        }
+        confirmLabel="Сбросить всё"
+        onCancel={() => setResetModalOpen(false)}
+        onConfirm={resetData}
+      />
     </div>
   );
 }

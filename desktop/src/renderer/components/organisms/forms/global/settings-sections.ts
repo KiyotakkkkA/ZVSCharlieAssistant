@@ -114,4 +114,12 @@ export const DATA_ANCHORS = {
     keywords: ["импорт", "восстановление", "секреты"],
     icon: StorageIcon,
   },
+  reset: {
+    id: "data-reset",
+    parentId: "data",
+    label: "Сброс данных",
+    description: "Удалите все данные приложения и начните заново.",
+    keywords: ["сброс", "удаление", "очистка", "заводские настройки"],
+    icon: StorageIcon,
+  },
 } satisfies Record<string, GlobalSettingsAnchorDescriptor>;

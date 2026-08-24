@@ -13,6 +13,7 @@ export interface DataTransferApi {
   prepareImport(input: PrepareImportInput): Promise<ImportPreview | null>;
   commitImport(input: CommitImportInput): Promise<ImportResult>;
   cancelImport(sessionId: string): Promise<void>;
+  resetData(): Promise<void>;
 }
 
 export const DATA_TRANSFER_IPC_CHANNELS = {
@@ -20,5 +21,5 @@ export const DATA_TRANSFER_IPC_CHANNELS = {
   prepareImport: "data-transfer:prepare-import",
   commitImport: "data-transfer:commit-import",
   cancelImport: "data-transfer:cancel-import",
+  resetData: "data-transfer:reset",
 } as const;
-
