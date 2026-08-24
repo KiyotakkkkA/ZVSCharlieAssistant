@@ -6,3 +6,5 @@ export { ChatSidebar, type ChatDialog } from "./ChatSidebar";
 export { ChatTaskPanel } from "./ChatTaskPanel";
 export { ChatQuestionCard } from "./ChatQuestionCard";
 export { ChatMemoryModal } from "./ChatMemoryModal";
+export { ChatFileEditsPanel } from "./ChatFileEditsPanel";
+export { ChatProjectModal } from "./ChatProjectModal";

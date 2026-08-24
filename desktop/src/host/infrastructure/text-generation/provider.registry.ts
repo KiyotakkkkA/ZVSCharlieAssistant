@@ -9,6 +9,16 @@ import {
 
 import { ChatRepository } from "../database/chat.repository";
 import { SecretStorageRepository } from "../database/secret-storage.repository";
+export interface ModelRuntimeInfo {
+  modelId: string;
+  remoteId: string;
+  kind: string;
+  contextLength: number | null;
+  maxCompletionTokens: number | null;
+  promptPricePerToken: number;
+  completionPricePerToken: number;
+}
+
 export class ProviderRegistry {
   constructor(
     private readonly data: ChatRepository,
@@ -35,6 +45,24 @@ export class ProviderRegistry {
     return provider.chatModel(row.remote_id);
   }
 
+  modelInfo(modelId: string): ModelRuntimeInfo {
+    const row = this.data.resolveModel(modelId);
+    if (!row) throw new Error("Модель отключена или не найдена");
+    const details = parseJsonDto(
+      textProviderModelDetailsDtoSchema,
+      row.details_json || "{}",
+    );
+    return {
+      modelId: row.id,
+      remoteId: row.remote_id,
+      kind: row.kind,
+      contextLength: details.contextLength ?? null,
+      maxCompletionTokens: details.maxCompletionTokens ?? null,
+      promptPricePerToken: parsePrice(details.promptPrice),
+      completionPricePerToken: parsePrice(details.completionPrice),
+    };
+  }
+
   generationSettings(modelId: string): TextProviderGenerationSettings {
     const row = this.data.resolveModel(modelId);
     if (!row) throw new Error("Модель отключена или не найдена");
@@ -54,4 +82,10 @@ export class ProviderRegistry {
       topP: configured.topP ?? 0.9,
     };
   }
+}
+
+function parsePrice(value: string | undefined): number {
+  if (!value) return 0;
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 }

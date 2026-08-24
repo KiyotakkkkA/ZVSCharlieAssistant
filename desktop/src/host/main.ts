@@ -69,6 +69,17 @@ import {
 } from "../ipc/main/register-terminal-policy-handlers";
 import { NativeSearchService } from "./infrastructure/tools/native-search.service";
 import { DirectoryPolicyRepository } from "./infrastructure/database/directory-policy.repository";
+import { FileEditRepository } from "./infrastructure/database/file-edit.repository";
+import { PathResolver } from "./infrastructure/filesystem/path-resolver";
+import { FileSystemService } from "./infrastructure/filesystem/file-system.service";
+import { CompactionService } from "./application/context/compaction.service";
+import { ModelFailover } from "./infrastructure/text-generation/model-failover";
+import { ProjectRepository } from "./infrastructure/database/project.repository";
+import { ProjectContextService } from "./application/services/project-context.service";
+import {
+  registerProjectHandlers,
+  removeProjectHandlers,
+} from "../ipc/main/register-project-handlers";
 import {
   registerDirectoryPolicyHandlers,
   removeDirectoryPolicyHandlers,
@@ -294,6 +305,15 @@ app.whenReady().then(() => {
     terminalPolicyRepository,
     directoryPolicyRepository,
   );
+  const projectRepository = new ProjectRepository(database);
+  const projectContext = new ProjectContextService(projectRepository);
+  registerProjectHandlers(projectRepository);
+  const fileEditRepository = new FileEditRepository(database);
+  const fileSystemService = new FileSystemService(
+    new PathResolver(directoryPolicyRepository),
+    fileEditRepository,
+    join(app.getPath("userData"), "checkpoints"),
+  );
   const toolRegistry = new ToolRegistry(
     chatRepository,
     automationRepository,
@@ -309,6 +329,8 @@ app.whenReady().then(() => {
     memoryService,
     taskPlans,
     questionService,
+    fileSystemService,
+    chatRepository,
   );
   registerTerminalPolicyHandlers(
     terminalPolicyRepository,
@@ -362,8 +384,13 @@ app.whenReady().then(() => {
       toolRegistry,
       memoryService,
       userProfileRepository,
+      new CompactionService(chatRepository, providerRegistry),
+      new ModelFailover(chatRepository, providerRegistry),
+      projectContext,
       scenarioRuntimeEngine,
     ),
+    fileEditRepository,
+    fileSystemService,
   );
   registerCoreInteractorHandlers(new CoreInteractorService());
   registerAssistantHandlers(memoryService, taskPlans, questionService);
@@ -475,6 +502,7 @@ function shutdownRuntime(): void {
   removeAutomationHandlers();
   removeTextProviderHandlers();
   removeChatHandlers();
+  removeProjectHandlers();
   removeVectorStoreHandlers();
   removeTaskHandlers();
   removeCoreInteractorHandlers();

@@ -9,6 +9,8 @@ import {
   SECRET_IPC_CHANNELS,
   TEXT_PROVIDER_IPC_CHANNELS,
   CHAT_IPC_CHANNELS,
+  PROJECT_IPC_CHANNELS,
+  type Project,
   type AppInfo,
   type AppCommand,
   type ApplicationSettings,
@@ -23,6 +25,9 @@ import {
   type SecretStorageSnapshot,
   type ChatSnapshot,
   type ChatMessagePage,
+  type ContextSegment,
+  type ContextWindow,
+  type FileEditRecord,
   type RunEvent,
   type ScenarioRun,
   type ScenarioRunEvent,
@@ -73,6 +78,7 @@ import type {
   UpsertSecretInput,
   UpsertTerminalPolicyInput,
   UpsertDirectoryPolicyInput,
+  UpsertProjectInput,
   UpsertUserProfileInput,
   StartEntityGenerationInput,
   UpsertTextProviderInput,
@@ -551,11 +557,68 @@ export const desktopApi: DesktopApi = {
         conversationId,
         fromMessageId,
       ) as Promise<void>,
+    compactConversation: (
+      conversationId: string,
+      modelId: string,
+      focus?: string,
+    ): Promise<ContextSegment | null> =>
+      ipcRenderer.invoke(
+        CHAT_IPC_CHANNELS.compactConversation,
+        conversationId,
+        modelId,
+        focus,
+      ) as Promise<ContextSegment | null>,
+    contextWindow: (
+      conversationId: string,
+      modelId: string,
+    ): Promise<ContextWindow> =>
+      ipcRenderer.invoke(
+        CHAT_IPC_CHANNELS.contextWindow,
+        conversationId,
+        modelId,
+      ) as Promise<ContextWindow>,
+    listFileEdits: (conversationId: string): Promise<FileEditRecord[]> =>
+      ipcRenderer.invoke(
+        CHAT_IPC_CHANNELS.listFileEdits,
+        conversationId,
+      ) as Promise<FileEditRecord[]>,
+    revertRun: (
+      runId: string,
+    ): Promise<{ restored: string[]; failed: string[] }> =>
+      ipcRenderer.invoke(CHAT_IPC_CHANNELS.revertRun, runId) as Promise<{
+        restored: string[];
+        failed: string[];
+      }>,
     subscribe: (listener: (event: RunEvent) => void) => {
       const handler = (_event: Electron.IpcRendererEvent, payload: RunEvent) =>
         listener(payload);
       ipcRenderer.on(CHAT_IPC_CHANNELS.event, handler);
       return () => ipcRenderer.removeListener(CHAT_IPC_CHANNELS.event, handler);
     },
+  },
+  projects: {
+    list: (): Promise<Project[]> =>
+      ipcRenderer.invoke(PROJECT_IPC_CHANNELS.list) as Promise<Project[]>,
+    upsert: (input: UpsertProjectInput): Promise<Project> =>
+      ipcRenderer.invoke(
+        PROJECT_IPC_CHANNELS.upsert,
+        input,
+      ) as Promise<Project>,
+    remove: (id: string): Promise<void> =>
+      ipcRenderer.invoke(PROJECT_IPC_CHANNELS.remove, id) as Promise<void>,
+    assignConversation: (
+      conversationId: string,
+      projectId: string | null,
+    ): Promise<void> =>
+      ipcRenderer.invoke(
+        PROJECT_IPC_CHANNELS.assignConversation,
+        conversationId,
+        projectId,
+      ) as Promise<void>,
+    conversationProject: (conversationId: string): Promise<string | null> =>
+      ipcRenderer.invoke(
+        PROJECT_IPC_CHANNELS.conversationProject,
+        conversationId,
+      ) as Promise<string | null>,
   },
 };

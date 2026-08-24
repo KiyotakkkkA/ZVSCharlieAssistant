@@ -5,6 +5,7 @@ import type {
   ChatMessagePage,
   ChatSnapshot,
   ChatToolCall,
+  ContextSegment,
   RunStatus,
 } from "../../../shared/models/chat";
 import {
@@ -16,6 +17,12 @@ import { newEntityId } from "./entity-id";
 import type {
   ChatMessageContentPart,
   ChatUsage,
+  ModelSwitch,
+  RunUsage,
+} from "../../../shared/dto";
+import {
+  modelSwitchDtoSchema,
+  textProviderModelDetailsDtoSchema,
 } from "../../../shared/dto";
 interface ConversationRow {
   id: string;
@@ -32,6 +39,21 @@ interface MessageRow {
   status: ChatMessage["status"];
   content_json: string;
   last_usage: string;
+  compacted_into: string | null;
+  token_count: number;
+  created_at: string;
+}
+interface SegmentRow {
+  id: string;
+  conversation_id: string;
+  from_message_id: string;
+  to_message_id: string;
+  summary: string;
+  model_id: string | null;
+  message_count: number;
+  tokens_before: number;
+  tokens_after: number;
+  reason: ContextSegment["reason"];
   created_at: string;
 }
 export class ChatRepository {
@@ -52,6 +74,7 @@ export class ChatRepository {
       conversations,
       messages: page.messages,
       hasMoreMessages: page.hasMore,
+      segments: targetId ? this.contextSegments(targetId) : [],
     };
   }
   messagePage(
@@ -135,6 +158,26 @@ export class ChatRepository {
     status: ChatMessage["status"],
     usage: ChatUsage,
   ): ChatMessage {
+    const parts: ChatMessageContentPart[] = text
+      ? [{ type: "text", text }]
+      : [];
+    return this.addMessageParts(
+      conversationId,
+      runId,
+      role,
+      parts,
+      status,
+      usage,
+    );
+  }
+  addMessageParts(
+    conversationId: string,
+    runId: string | null,
+    role: ChatMessage["role"],
+    parts: ChatMessageContentPart[],
+    status: ChatMessage["status"],
+    usage: ChatUsage,
+  ): ChatMessage {
     const id = newEntityId();
     this.db
       .prepare(
@@ -146,7 +189,7 @@ export class ChatRepository {
         runId,
         role,
         status,
-        JSON.stringify([{ type: "text", text }]),
+        JSON.stringify(parts),
         JSON.stringify(usage),
       );
     return this.mapMessage(
@@ -178,36 +221,127 @@ export class ChatRepository {
     }));
   }
 
-  writeMessageContent(messageId: string, reasoning: string, text: string) {
-    const parts: ChatMessageContentPart[] = [];
-    if (reasoning) parts.push({ type: "reasoning", text: reasoning });
-    if (text || !parts.length) parts.push({ type: "text", text });
+  writeMessageParts(messageId: string, parts: ChatMessageContentPart[]) {
     this.db
       .prepare("UPDATE chat_messages SET content_json=? WHERE id=?")
       .run(JSON.stringify(parts), messageId);
   }
 
-  historyMessages(
-    conversationId: string,
-    maxMessages: number,
-    maxCharacters: number,
-  ): ChatMessage[] {
-    const rows = (
+  journalMessages(conversationId: string): ChatMessage[] {
+    return (
       this.db
         .prepare(
-          "SELECT * FROM chat_messages WHERE conversation_id=? ORDER BY id DESC LIMIT ?",
+          "SELECT * FROM chat_messages WHERE conversation_id=? ORDER BY id",
         )
-        .all(conversationId, maxMessages) as MessageRow[]
-    ).map((row) => this.mapMessage(row));
-
-    const selected: ChatMessage[] = [];
-    let budget = maxCharacters;
-    for (const message of rows) {
-      budget -= message.text.length;
-      if (budget < 0 && selected.length) break;
-      selected.push(message);
-    }
-    return selected.reverse();
+        .all(conversationId) as MessageRow[]
+    ).map((row) => mapMessage(row));
+  }
+  contextSegments(conversationId: string): ContextSegment[] {
+    return (
+      this.db
+        .prepare(
+          "SELECT * FROM context_segments WHERE conversation_id=? ORDER BY from_message_id",
+        )
+        .all(conversationId) as SegmentRow[]
+    ).map(mapSegment);
+  }
+  createContextSegment(input: {
+    conversationId: string;
+    fromMessageId: string;
+    toMessageId: string;
+    summary: string;
+    modelId: string | null;
+    messageCount: number;
+    tokensBefore: number;
+    tokensAfter: number;
+    reason: ContextSegment["reason"];
+  }): ContextSegment {
+    const id = newEntityId();
+    this.db
+      .prepare(
+        `INSERT INTO context_segments(id,conversation_id,from_message_id,to_message_id,summary,model_id,message_count,tokens_before,tokens_after,reason)
+         VALUES(?,?,?,?,?,?,?,?,?,?)`,
+      )
+      .run(
+        id,
+        input.conversationId,
+        input.fromMessageId,
+        input.toMessageId,
+        input.summary,
+        input.modelId,
+        input.messageCount,
+        input.tokensBefore,
+        input.tokensAfter,
+        input.reason,
+      );
+    return mapSegment(
+      this.db
+        .prepare("SELECT * FROM context_segments WHERE id=?")
+        .get(id) as SegmentRow,
+    );
+  }
+  markCompacted(messageIds: string[], segmentId: string) {
+    if (!messageIds.length) return;
+    const update = this.db.prepare(
+      "UPDATE chat_messages SET compacted_into=? WHERE id=?",
+    );
+    this.db.transaction(() => {
+      for (const id of messageIds) update.run(segmentId, id);
+    })();
+  }
+  toolCallOutput(runId: string, providerCallId: string): unknown {
+    const row = this.db
+      .prepare(
+        "SELECT output_json,error_message FROM generation_tool_calls WHERE run_id=? AND provider_call_id=?",
+      )
+      .get(runId, providerCallId) as
+      | { output_json: string | null; error_message: string | null }
+      | undefined;
+    if (!row) return null;
+    if (row.error_message) return { error: row.error_message };
+    return row.output_json ? JSON.parse(row.output_json) : null;
+  }
+  addRunUsage(runId: string, usage: RunUsage) {
+    this.db
+      .prepare(
+        `UPDATE generation_runs SET
+           input_tokens=input_tokens+?,
+           output_tokens=output_tokens+?,
+           reasoning_tokens=reasoning_tokens+?,
+           cached_input_tokens=cached_input_tokens+?,
+           cost_usd=cost_usd+?
+         WHERE id=?`,
+      )
+      .run(
+        usage.inputTokens,
+        usage.outputTokens,
+        usage.reasoningTokens,
+        usage.cachedInputTokens,
+        usage.costUsd,
+        runId,
+      );
+  }
+  runUsage(runId: string): RunUsage {
+    const row = this.db
+      .prepare(
+        "SELECT input_tokens,output_tokens,reasoning_tokens,cached_input_tokens,cost_usd FROM generation_runs WHERE id=?",
+      )
+      .get(runId) as
+      | {
+          input_tokens: number;
+          output_tokens: number;
+          reasoning_tokens: number;
+          cached_input_tokens: number;
+          cost_usd: number;
+        }
+      | undefined;
+    return {
+      inputTokens: row?.input_tokens ?? 0,
+      outputTokens: row?.output_tokens ?? 0,
+      reasoningTokens: row?.reasoning_tokens ?? 0,
+      cachedInputTokens: row?.cached_input_tokens ?? 0,
+      costUsd: row?.cost_usd ?? 0,
+    };
   }
   replaceText(messageId: string, text: string) {
     this.db
@@ -236,14 +370,26 @@ export class ChatRepository {
     index: number,
     payload: unknown,
     finishReason?: string,
+    usage?: RunUsage,
   ) {
     this.db
       .prepare(
-        `INSERT INTO generation_run_steps(id,run_id,step_index,finish_reason,payload_json)
-         VALUES(?,?,?,?,?) ON CONFLICT(run_id,step_index) DO UPDATE SET
-         finish_reason=excluded.finish_reason,payload_json=excluded.payload_json`,
+        `INSERT INTO generation_run_steps(id,run_id,step_index,finish_reason,payload_json,input_tokens,output_tokens,reasoning_tokens)
+         VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(run_id,step_index) DO UPDATE SET
+         finish_reason=excluded.finish_reason,payload_json=excluded.payload_json,
+         input_tokens=excluded.input_tokens,output_tokens=excluded.output_tokens,
+         reasoning_tokens=excluded.reasoning_tokens`,
       )
-      .run(newEntityId(), runId, index, finishReason ?? null, JSON.stringify(payload));
+      .run(
+        newEntityId(),
+        runId,
+        index,
+        finishReason ?? null,
+        JSON.stringify(payload),
+        usage?.inputTokens ?? 0,
+        usage?.outputTokens ?? 0,
+        usage?.reasoningTokens ?? 0,
+      );
     this.db
       .prepare("UPDATE generation_runs SET current_step=? WHERE id=?")
       .run(index + 1, runId);
@@ -351,6 +497,45 @@ export class ChatRepository {
         .run(conversationId);
     });
     truncate();
+  }
+  listEnabledTextModels(): Array<{
+    id: string;
+    contextLength: number;
+    maxCompletionTokens: number;
+  }> {
+    return (
+      this.db
+        .prepare(
+          "SELECT m.id,m.details_json FROM text_provider_models m JOIN text_provider_configs p ON p.id=m.provider_id WHERE m.enabled=1 AND p.enabled=1 AND p.provider_type='text'",
+        )
+        .all() as Array<{ id: string; details_json: string }>
+    ).map((row) => {
+      const details = parseJsonDto(
+        textProviderModelDetailsDtoSchema,
+        row.details_json || "{}",
+      );
+      return {
+        id: row.id,
+        contextLength: details.contextLength ?? 0,
+        maxCompletionTokens: details.maxCompletionTokens ?? 0,
+      };
+    });
+  }
+  recordModelSwitch(runId: string, change: ModelSwitch) {
+    const history = this.modelSwitches(runId);
+    this.db
+      .prepare("UPDATE generation_runs SET model_switches_json=? WHERE id=?")
+      .run(JSON.stringify([...history, change]), runId);
+  }
+  modelSwitches(runId: string): ModelSwitch[] {
+    const row = this.db
+      .prepare("SELECT model_switches_json FROM generation_runs WHERE id=?")
+      .get(runId) as { model_switches_json: string } | undefined;
+    if (!row) return [];
+    return parseJsonDto(
+      modelSwitchDtoSchema.array(),
+      row.model_switches_json || "[]",
+    );
   }
   resolveModel(id: string) {
     return this.db
@@ -464,6 +649,7 @@ const mapMessage = (r: MessageRow): ChatMessage => {
     scenarioRunId: r.execution_run_id ?? null,
     role: r.role,
     status: r.status,
+    parts,
     text: parts
       .filter((p) => p.type === "text")
       .map((p) => p.text)
@@ -475,6 +661,21 @@ const mapMessage = (r: MessageRow): ChatMessage => {
     error: null,
     toolCalls: [],
     lastUsage: parseJsonDto(chatUsageDtoSchema, r.last_usage),
+    compactedInto: r.compacted_into ?? null,
+    tokenCount: r.token_count ?? 0,
     createdAt: r.created_at,
   };
 };
+const mapSegment = (r: SegmentRow): ContextSegment => ({
+  id: r.id,
+  conversationId: r.conversation_id,
+  fromMessageId: r.from_message_id,
+  toMessageId: r.to_message_id,
+  summary: r.summary,
+  modelId: r.model_id,
+  messageCount: r.message_count,
+  tokensBefore: r.tokens_before,
+  tokensAfter: r.tokens_after,
+  reason: r.reason,
+  createdAt: r.created_at,
+});

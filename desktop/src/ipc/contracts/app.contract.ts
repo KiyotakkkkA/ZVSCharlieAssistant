@@ -31,6 +31,7 @@ export interface DesktopApi {
   textProviders: import("./text-provider.contract").TextProviderApi;
   vectorStores: import("./vector-store.contract").VectorStoreApi;
   chat: import("./chat.contract").ChatApi;
+  projects: import("./project.contract").ProjectApi;
   tasks: import("./tasks.contract").TasksApi;
   terminalPolicy: import("./terminal-policy.contract").TerminalPolicyApi;
   directoryPolicy: import("./directory-policy.contract").DirectoryPolicyApi;

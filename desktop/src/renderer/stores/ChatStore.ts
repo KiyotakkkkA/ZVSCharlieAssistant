@@ -3,6 +3,10 @@ import { parseIpcDto, startRunDtoSchema } from "../../shared/dto";
 import type {
   ChatConversation,
   ChatMessage,
+  ContextSegment,
+  ContextWindow,
+  FileEditRecord,
+  ModelSwitch,
   RunEvent,
   ScenarioNodeRun,
   ScenarioRun,
@@ -29,6 +33,12 @@ class ChatStore {
     nodeId: string;
     prompt: string;
   } | null = null;
+  segments: ContextSegment[] = [];
+  contextWindow: ContextWindow | null = null;
+  fileEdits: FileEditRecord[] = [];
+  compacting = false;
+  modelSwitches: ModelSwitch[] = [];
+  showCompacted = false;
   private unsubscribe?: () => void;
   private readonly pendingTextDeltas = new Map<string, string>();
   private readonly pendingReasoningDeltas = new Map<string, string>();
@@ -63,8 +73,11 @@ class ChatStore {
       this.messages = snapshot.messages;
       this.activeConversationId = snapshot.conversations[0]?.id ?? null;
       this.hasMoreMessages = snapshot.hasMoreMessages;
+      this.segments = snapshot.segments;
       this.scenarioExecutions.clear();
     });
+    if (this.activeConversationId)
+      void this.refreshFileEdits(this.activeConversationId);
     this.unsubscribe?.();
     this.unsubscribe = window.desktop.chat.subscribe(this.handleEvent);
     await this.hydrateScenarioExecutions(snapshot.messages);
@@ -123,10 +136,70 @@ class ChatStore {
     await this.refreshConversations();
   }
 
+  async compact(modelId: string, focus?: string) {
+    const conversationId = this.activeConversationId;
+    if (!conversationId) throw new Error("Диалог не выбран");
+    if (this.activeRunId) throw new Error("Дождитесь завершения ответа");
+    this.compacting = true;
+    try {
+      await window.desktop.chat.compactConversation(
+        conversationId,
+        modelId,
+        focus,
+      );
+      await this.select(conversationId);
+      await this.refreshContextWindow(modelId);
+    } finally {
+      runInAction(() => {
+        this.compacting = false;
+      });
+    }
+  }
+
+  async refreshContextWindow(modelId: string) {
+    const conversationId = this.activeConversationId;
+    if (!conversationId || !modelId) return;
+    try {
+      const window_ = await window.desktop.chat.contextWindow(
+        conversationId,
+        modelId,
+      );
+      runInAction(() => {
+        this.contextWindow = window_;
+      });
+    } catch {
+      runInAction(() => {
+        this.contextWindow = null;
+      });
+    }
+  }
+
+  toggleCompacted() {
+    this.showCompacted = !this.showCompacted;
+  }
+
+  async refreshFileEdits(conversationId: string) {
+    const edits = await window.desktop.chat.listFileEdits(conversationId);
+    runInAction(() => {
+      this.fileEdits = edits;
+    });
+  }
+
+  async revertRun(runId: string) {
+    const result = await window.desktop.chat.revertRun(runId);
+    if (this.activeConversationId)
+      await this.refreshFileEdits(this.activeConversationId);
+    return result;
+  }
+
   newConversation() {
     this.resetPendingDeltas();
     this.activeConversationId = null;
     this.messages = [];
+    this.segments = [];
+    this.contextWindow = null;
+    this.fileEdits = [];
+    this.modelSwitches = [];
     this.activeRunId = null;
     this.hasMoreMessages = false;
     this.activeScenarioRun = null;
@@ -143,11 +216,13 @@ class ChatStore {
       this.conversations = snapshot.conversations;
       this.messages = snapshot.messages;
       this.hasMoreMessages = snapshot.hasMoreMessages;
+      this.segments = snapshot.segments;
       this.activeScenarioRun = null;
       this.scenarioNodeRuns = [];
       this.scenarioNodeOutput.clear();
       this.scenarioExecutions.clear();
     });
+    void this.refreshFileEdits(id);
     await this.hydrateScenarioExecutions(snapshot.messages);
   }
 
@@ -280,6 +355,28 @@ class ChatStore {
               : [...message.toolCalls, next],
           };
         });
+      } else if (event.type === "context.window") {
+        this.contextWindow = event.window;
+      } else if (event.type === "context.compacted") {
+        this.segments = [
+          ...this.segments.filter((item) => item.id !== event.segment.id),
+          event.segment,
+        ];
+        this.messages = this.messages.map((message) =>
+          message.id >= event.segment.fromMessageId &&
+          message.id <= event.segment.toMessageId
+            ? { ...message, compactedInto: event.segment.id }
+            : message,
+        );
+      } else if (event.type === "file.changed") {
+        this.fileEdits = [
+          ...this.fileEdits.filter((item) => item.id !== event.edit.id),
+          event.edit,
+        ];
+      } else if (event.type === "run.model.switched") {
+        this.modelSwitches = [...this.modelSwitches, event.change];
+      } else if (event.type === "run.usage") {
+        void this.refreshConversations();
       } else if (
         event.type === "run.completed" ||
         event.type === "run.cancelled" ||

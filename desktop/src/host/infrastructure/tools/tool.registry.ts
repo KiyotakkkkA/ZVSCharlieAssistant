@@ -13,12 +13,15 @@ import type { ReportDocxService } from "./report-docx.service";
 import type {
   AgentDirectoryPolicy,
   AgentTerminalPolicy,
+  DirectoryGrant,
 } from "../../../shared/dto";
 import type { CommandExecutionService } from "./command-execution.service";
 import type { NativeSearchService } from "./native-search.service";
 import type { MemoryService } from "../../application/services/memory.service";
 import type { TaskPlanRepository } from "../database/task-plan.repository";
 import type { UserQuestionService } from "../../application/services/user-question.service";
+import type { FileSystemService } from "../filesystem/file-system.service";
+import type { FileEditRecord } from "../../../shared/models/chat";
 
 type Emit = (event: RunEvent) => void;
 
@@ -56,7 +59,13 @@ interface ToolRegistryOptions {
   allowedSkillIds?: string[];
   terminalPolicy?: AgentTerminalPolicy;
   directoryPolicy?: AgentDirectoryPolicy;
+  projectGrants?: DirectoryGrant[];
   observer?: ToolExecutionObserver;
+  onFileChanged?: (edit: FileEditRecord) => void;
+}
+
+export interface ToolOutputReader {
+  toolCallOutput(runId: string, providerCallId: string): unknown;
 }
 
 export class ToolRegistry {
@@ -72,6 +81,8 @@ export class ToolRegistry {
     private readonly memory: MemoryService,
     private readonly taskPlans: TaskPlanRepository,
     private readonly questions: UserQuestionService,
+    private readonly files: FileSystemService,
+    private readonly toolOutputs: ToolOutputReader,
   ) {}
 
   create(options: ToolRegistryOptions): ToolSet | undefined {
@@ -89,7 +100,27 @@ export class ToolRegistry {
       agentId,
       memoryRead = false,
       memoryWrite = false,
+      projectGrants,
+      onFileChanged,
     } = options;
+    const fileContext = (toolCallId: string) => ({
+      runId: runId ?? null,
+      conversationId: conversationId ?? null,
+      toolCallId,
+      policy: directoryPolicy,
+      projectGrants,
+    });
+    const reportEdit = (edit: FileEditRecord) => {
+      onFileChanged?.(edit);
+      return {
+        path: edit.path,
+        operation: edit.operation,
+        movedTo: edit.movedTo,
+        bytesBefore: edit.bytesBefore,
+        bytesAfter: edit.bytesAfter,
+        diff: edit.diff,
+      };
+    };
     const tools: ToolSet = {
       cmd_exec: tool({
         description:
@@ -152,7 +183,11 @@ export class ToolRegistry {
                 throw new Error(
                   "Политика доступа агента к директориям не настроена",
                 );
-              return this.search.entitySearch(input, directoryPolicy);
+              return this.search.entitySearch(
+                input,
+                directoryPolicy,
+                projectGrants,
+              );
             },
           ),
       }),
@@ -194,7 +229,11 @@ export class ToolRegistry {
                 throw new Error(
                   "Политика доступа агента к директориям не настроена",
                 );
-              return this.search.regexpSearch(input, directoryPolicy);
+              return this.search.regexpSearch(
+                input,
+                directoryPolicy,
+                projectGrants,
+              );
             },
           ),
       }),
@@ -483,6 +522,167 @@ export class ToolRegistry {
             () => this.reports.create(input),
           ),
       }),
+      fs_read: tool({
+        description:
+          "Читает текстовый файл с нумерацией строк. Обязателен перед любой правкой: редактировать непрочитанный файл запрещено. Большие файлы читай фрагментами через offset и limit.",
+        inputSchema: z.object({
+          path: z.string().trim().min(1).max(4096),
+          offset: z.int().nonnegative().optional(),
+          limit: z.int().min(1).max(5_000).optional(),
+        }),
+        execute: (input, { toolCallId }) =>
+          this.execute(toolCallId, "fs_read", input, signal, observer, () =>
+            Promise.resolve(this.files.read(input, fileContext(toolCallId))),
+          ),
+      }),
+      fs_list: tool({
+        description:
+          "Показывает структуру директории. Служебные каталоги (node_modules, .git, dist, target) пропускаются.",
+        inputSchema: z.object({
+          path: z.string().trim().min(1).max(4096),
+          depth: z.int().min(1).max(8).optional(),
+          limit: z.int().min(1).max(2_000).optional(),
+          includeHidden: z.boolean().optional(),
+        }),
+        execute: (input, { toolCallId }) =>
+          this.execute(toolCallId, "fs_list", input, signal, observer, () =>
+            Promise.resolve(this.files.list(input, fileContext(toolCallId))),
+          ),
+      }),
+      fs_write: tool({
+        description:
+          "Создаёт новый файл или полностью перезаписывает существующий. Для точечных изменений используй fs_edit — он дешевле и безопаснее.",
+        inputSchema: z.object({
+          path: z.string().trim().min(1).max(4096),
+          content: z.string().max(1_000_000),
+        }),
+        execute: (input, { toolCallId }) =>
+          this.execute(toolCallId, "fs_write", input, signal, observer, () =>
+            Promise.resolve(
+              reportEdit(this.files.write(input, fileContext(toolCallId))),
+            ),
+          ),
+      }),
+      fs_edit: tool({
+        description:
+          "Заменяет фрагмент текста в файле. Фрагмент должен встречаться ровно один раз — добавь окружающие строки для однозначности либо укажи replaceAll. Возвращает diff, а не содержимое файла.",
+        inputSchema: z.object({
+          path: z.string().trim().min(1).max(4096),
+          oldText: z.string().min(1).max(100_000),
+          newText: z.string().max(100_000),
+          replaceAll: z.boolean().optional(),
+        }),
+        execute: (input, { toolCallId }) =>
+          this.execute(toolCallId, "fs_edit", input, signal, observer, () =>
+            Promise.resolve(
+              reportEdit(this.files.edit(input, fileContext(toolCallId))),
+            ),
+          ),
+      }),
+      fs_multi_edit: tool({
+        description:
+          "Применяет несколько правок к одному файлу атомарно: если хотя бы одна не применилась, файл не меняется вовсе.",
+        inputSchema: z.object({
+          path: z.string().trim().min(1).max(4096),
+          edits: z
+            .array(
+              z.object({
+                oldText: z.string().min(1).max(100_000),
+                newText: z.string().max(100_000),
+                replaceAll: z.boolean().optional(),
+              }),
+            )
+            .min(1)
+            .max(50),
+        }),
+        execute: (input, { toolCallId }) =>
+          this.execute(
+            toolCallId,
+            "fs_multi_edit",
+            input,
+            signal,
+            observer,
+            () =>
+              Promise.resolve(
+                reportEdit(
+                  this.files.multiEdit(input, fileContext(toolCallId)),
+                ),
+              ),
+          ),
+      }),
+      fs_apply_patch: tool({
+        description:
+          "Применяет unified diff к файлу. Выгоднее fs_write при крупных правках: передаётся только изменённое.",
+        inputSchema: z.object({
+          path: z.string().trim().min(1).max(4096),
+          patch: z.string().min(1).max(500_000),
+        }),
+        execute: (input, { toolCallId }) =>
+          this.execute(
+            toolCallId,
+            "fs_apply_patch",
+            input,
+            signal,
+            observer,
+            () =>
+              Promise.resolve(
+                reportEdit(
+                  this.files.applyPatch(input, fileContext(toolCallId)),
+                ),
+              ),
+          ),
+      }),
+      fs_move: tool({
+        description: "Перемещает или переименовывает файл.",
+        inputSchema: z.object({
+          from: z.string().trim().min(1).max(4096),
+          to: z.string().trim().min(1).max(4096),
+        }),
+        execute: (input, { toolCallId }) =>
+          this.execute(toolCallId, "fs_move", input, signal, observer, () =>
+            Promise.resolve(
+              reportEdit(this.files.move(input, fileContext(toolCallId))),
+            ),
+          ),
+      }),
+      fs_delete: tool({
+        description:
+          "Удаляет файл, перемещая его в корзину задачи. Удаление обратимо через откат правок.",
+        inputSchema: z.object({
+          path: z.string().trim().min(1).max(4096),
+        }),
+        execute: (input, { toolCallId }) =>
+          this.execute(toolCallId, "fs_delete", input, signal, observer, () =>
+            Promise.resolve(
+              reportEdit(this.files.remove(input, fileContext(toolCallId))),
+            ),
+          ),
+      }),
+      read_tool_output: tool({
+        description:
+          "Возвращает полный результат более раннего вызова инструмента, усечённого при сжатии контекста. Передавай идентификатор вызова из подсказки об усечении.",
+        inputSchema: z.object({
+          toolCallId: z.string().trim().min(1).max(200),
+        }),
+        execute: (input, { toolCallId }) =>
+          this.execute(
+            toolCallId,
+            "read_tool_output",
+            input,
+            signal,
+            observer,
+            () => {
+              if (!runId) throw new Error("Вызов вне контекста задачи");
+              return Promise.resolve({
+                toolCallId: input.toolCallId,
+                output: this.toolOutputs.toolCallOutput(
+                  runId,
+                  input.toolCallId,
+                ),
+              });
+            },
+          ),
+      }),
     };
     const available = Object.fromEntries(
       Object.entries(tools).filter(
@@ -490,6 +690,8 @@ export class ToolRegistry {
           (allowedToolIds.includes(id) ||
             (id === "skills.load" && allowedSkillIds.length > 0)) &&
           (id === "cmd_exec" ||
+            FILE_TOOL_IDS.has(id) ||
+            id === "read_tool_output" ||
             id === "tasks_plan" ||
             id === "memory_search" ||
             id === "memory_save" ||
@@ -522,6 +724,7 @@ export class ToolRegistry {
   ) {
     return this.create({
       ...options,
+      onFileChanged: (edit) => emit({ type: "file.changed", runId, edit }),
       observer: {
         requested: ({ callId, toolId, input }) => {
           const id = this.toolCalls.createToolCall(
@@ -593,11 +796,34 @@ export class ToolRegistry {
 const errorMessage = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
 
-const WRITE_TOOL_IDS = new Set(["reports_docx", "memory_save", "tasks_plan"]);
+export const FILE_TOOL_IDS = new Set([
+  "fs_read",
+  "fs_list",
+  "fs_write",
+  "fs_edit",
+  "fs_multi_edit",
+  "fs_apply_patch",
+  "fs_move",
+  "fs_delete",
+]);
+
+const WRITE_TOOL_IDS = new Set([
+  "reports_docx",
+  "memory_save",
+  "tasks_plan",
+  "fs_write",
+  "fs_edit",
+  "fs_multi_edit",
+  "fs_apply_patch",
+  "fs_move",
+]);
+const DESTRUCTIVE_TOOL_IDS = new Set(["fs_delete"]);
 
 function riskOf(toolId: string, input: unknown): string {
-  if (toolId !== "cmd_exec")
+  if (toolId !== "cmd_exec") {
+    if (DESTRUCTIVE_TOOL_IDS.has(toolId)) return "delete";
     return WRITE_TOOL_IDS.has(toolId) ? "write" : "read";
+  }
   const payload = input as { action?: string; script?: string } | undefined;
   if (payload?.action !== "start") return "read";
   const script = payload.script ?? "";

@@ -22,7 +22,7 @@ describe("UUID baseline schema", () => {
 
     expect(
       database.prepare("SELECT COUNT(*) count FROM schema_migrations").get(),
-    ).toEqual({ count: 1 });
+    ).toEqual({ count: 4 });
     expect(
       database
         .prepare("SELECT value FROM schema_metadata WHERE key='schema_generation'")
@@ -66,6 +66,64 @@ describe("UUID baseline schema", () => {
       if (idColumn) expect(idColumn.type, `${table}.id`).toBe("TEXT");
     }
     expect(database.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
+  });
+
+  it("adds coder-mode storage: сегменты сжатия и журнал правок", () => {
+    database = new Database(":memory:");
+    database.pragma("foreign_keys = ON");
+    runMigrations(database);
+
+    const tables = database
+      .prepare("SELECT name FROM sqlite_master WHERE type='table'")
+      .pluck()
+      .all() as string[];
+    expect(tables).toContain("context_segments");
+    expect(tables).toContain("file_checkpoints");
+    expect(tables).toContain("file_edits");
+
+    const messageColumns = (
+      database.prepare("PRAGMA table_info(chat_messages)").all() as Array<{
+        name: string;
+      }>
+    ).map(({ name }) => name);
+    expect(messageColumns).toContain("compacted_into");
+    expect(messageColumns).toContain("token_count");
+
+    const runColumns = (
+      database.prepare("PRAGMA table_info(generation_runs)").all() as Array<{
+        name: string;
+      }>
+    ).map(({ name }) => name);
+    expect(runColumns).toContain("cost_usd");
+    expect(runColumns).toContain("reasoning_tokens");
+    expect(runColumns).toContain("model_switches_json");
+  });
+
+  it("adds project storage: проекты и их гранты", () => {
+    database = new Database(":memory:");
+    database.pragma("foreign_keys = ON");
+    runMigrations(database);
+
+    const tables = database
+      .prepare("SELECT name FROM sqlite_master WHERE type='table'")
+      .pluck()
+      .all() as string[];
+    expect(tables).toContain("projects");
+    expect(tables).toContain("project_directory_grants");
+
+    const conversationColumns = (
+      database.prepare("PRAGMA table_info(chat_conversations)").all() as Array<{
+        name: string;
+      }>
+    ).map(({ name }) => name);
+    expect(conversationColumns).toContain("project_id");
+
+    const memoryColumns = (
+      database.prepare("PRAGMA table_info(memory_entries)").all() as Array<{
+        name: string;
+      }>
+    ).map(({ name }) => name);
+    expect(memoryColumns).toContain("project_id");
   });
 
   it("keeps an integer rowid only as the private FTS5 bridge", () => {

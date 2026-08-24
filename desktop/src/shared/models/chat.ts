@@ -1,6 +1,12 @@
 import type { ScenarioNodeRun, ScenarioRun } from "./automation";
 import type { RunStatus as SharedRunStatus } from "./run";
-import type { ChatUsage } from "../dto";
+import type {
+  ChatMessageContentPart,
+  ChatUsage,
+  ContextWindow,
+  ModelSwitch,
+  RunUsage,
+} from "../dto";
 
 export type RunStatus = SharedRunStatus;
 export interface ChatConversation {
@@ -24,21 +30,38 @@ export interface ChatMessage {
   scenarioRunId: string | null;
   role: "system" | "user" | "assistant" | "tool";
   status: "streaming" | "completed" | "failed" | "cancelled";
+  parts: ChatMessageContentPart[];
   text: string;
   reasoning: string;
   error: string | null;
   toolCalls: ChatToolCall[];
   lastUsage: ChatUsage;
+  compactedInto: string | null;
+  tokenCount: number;
   createdAt: string;
 }
 export interface ChatSnapshot {
   conversations: ChatConversation[];
   messages: ChatMessage[];
   hasMoreMessages: boolean;
+  segments: ContextSegment[];
 }
 export interface ChatMessagePage {
   messages: ChatMessage[];
   hasMore: boolean;
+}
+export interface ContextSegment {
+  id: string;
+  conversationId: string;
+  fromMessageId: string;
+  toMessageId: string;
+  summary: string;
+  modelId: string | null;
+  messageCount: number;
+  tokensBefore: number;
+  tokensAfter: number;
+  reason: "threshold" | "overflow" | "manual" | "model_switch";
+  createdAt: string;
 }
 export type RunEvent =
   | {
@@ -77,5 +100,34 @@ export type RunEvent =
       output?: unknown;
       error?: string;
     }
+  | { type: "run.usage"; runId: string; conversationId: string; usage: RunUsage }
+  | {
+      type: "run.model.switched";
+      runId: string;
+      conversationId: string;
+      change: ModelSwitch;
+    }
+  | { type: "context.window"; window: ContextWindow }
+  | {
+      type: "context.compacted";
+      runId: string | null;
+      conversationId: string;
+      segment: ContextSegment;
+    }
+  | { type: "file.changed"; runId: string; edit: FileEditRecord }
   | { type: "run.completed" | "run.cancelled"; runId: string }
   | { type: "run.failed"; runId: string; message: string };
+
+export interface FileEditRecord {
+  id: string;
+  runId: string | null;
+  conversationId: string | null;
+  path: string;
+  operation: "create" | "modify" | "delete" | "move";
+  movedTo: string | null;
+  diff: string;
+  bytesBefore: number;
+  bytesAfter: number;
+  reverted: boolean;
+  createdAt: string;
+}

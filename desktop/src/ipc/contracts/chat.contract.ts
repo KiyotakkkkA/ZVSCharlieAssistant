@@ -1,9 +1,11 @@
 import type {
   ChatMessagePage,
   ChatSnapshot,
+  ContextSegment,
+  FileEditRecord,
   RunEvent,
 } from "../../shared/models/chat";
-import type { StartRunInput } from "../../shared/dto";
+import type { ContextWindow, StartRunInput } from "../../shared/dto";
 
 export type * from "../../shared/models/chat";
 
@@ -23,6 +25,17 @@ export interface ChatApi {
     conversationId: string,
     fromMessageId: string,
   ): Promise<void>;
+  compactConversation(
+    conversationId: string,
+    modelId: string,
+    focus?: string,
+  ): Promise<ContextSegment | null>;
+  contextWindow(
+    conversationId: string,
+    modelId: string,
+  ): Promise<ContextWindow>;
+  listFileEdits(conversationId: string): Promise<FileEditRecord[]>;
+  revertRun(runId: string): Promise<{ restored: string[]; failed: string[] }>;
   subscribe(listener: (event: RunEvent) => void): () => void;
 }
 
@@ -34,5 +47,9 @@ export const CHAT_IPC_CHANNELS = {
   deleteConversation: "chat:delete-conversation",
   renameConversation: "chat:rename-conversation",
   truncateMessages: "chat:truncate-messages",
+  compactConversation: "chat:compact-conversation",
+  contextWindow: "chat:context-window",
+  listFileEdits: "chat:list-file-edits",
+  revertRun: "chat:revert-run",
   event: "chat:event",
 } as const;

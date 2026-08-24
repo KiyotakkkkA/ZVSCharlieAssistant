@@ -14,3 +14,4 @@ export * from "./user-profile.dto";
 export * from "./entity-generation.dto";
 export * from "./data-transfer.dto";
 export * from "./application-settings.dto";
+export * from "./project.dto";

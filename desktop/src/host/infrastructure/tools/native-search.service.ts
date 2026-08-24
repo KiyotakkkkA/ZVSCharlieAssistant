@@ -1,6 +1,6 @@
 import { createRequire } from "node:module";
 import { join } from "node:path";
-import type { AgentDirectoryPolicy } from "../../../shared/dto";
+import type { AgentDirectoryPolicy, DirectoryGrant } from "../../../shared/dto";
 import type { DirectoryPolicyRepository } from "../database/directory-policy.repository";
 
 export interface EntitySearchInput {
@@ -49,24 +49,38 @@ export class NativeSearchService {
     private readonly policies: DirectoryPolicyRepository,
   ) {}
 
-  entitySearch(input: EntitySearchInput, policy: AgentDirectoryPolicy) {
+  entitySearch(
+    input: EntitySearchInput,
+    policy: AgentDirectoryPolicy,
+    projectGrants?: DirectoryGrant[],
+  ) {
     return this.load().entitySearch({
       ...input,
-      allowedRoots: this.readRoots(policy),
+      allowedRoots: this.readRoots(policy, projectGrants),
     });
   }
 
-  regexpSearch(input: RegexpSearchInput, policy: AgentDirectoryPolicy) {
+  regexpSearch(
+    input: RegexpSearchInput,
+    policy: AgentDirectoryPolicy,
+    projectGrants?: DirectoryGrant[],
+  ) {
     return this.load().regexpSearch({
       ...input,
-      allowedRoots: this.readRoots(policy),
+      allowedRoots: this.readRoots(policy, projectGrants),
     });
   }
 
-  private readRoots(policy: AgentDirectoryPolicy) {
+  private readRoots(
+    policy: AgentDirectoryPolicy,
+    projectGrants?: DirectoryGrant[],
+  ) {
     const requested = new Map(
       policy.grants.map((grant) => [grant.path.toLowerCase(), grant]),
     );
+    const project = projectGrants
+      ? new Map(projectGrants.map((grant) => [grant.path.toLowerCase(), grant]))
+      : undefined;
     const roots = this.policies.get().grants.flatMap((global) => {
       const agent = requested.get(global.path.toLowerCase());
       if (
@@ -75,15 +89,18 @@ export class NativeSearchService {
         !agent.permissions.includes("read")
       )
         return [];
-      return [
-        {
-          path: global.path,
-          recursive: global.recursive && agent.recursive,
-        },
-      ];
+      let recursive = global.recursive && agent.recursive;
+      if (project) {
+        const scoped = project.get(global.path.toLowerCase());
+        if (!scoped || !scoped.permissions.includes("read")) return [];
+        recursive = recursive && scoped.recursive;
+      }
+      return [{ path: global.path, recursive }];
     });
     if (!roots.length)
-      throw new Error("Агенту не разрешено чтение ни одной директории");
+      throw new Error(
+        "Агенту не разрешено чтение ни одной директории в рамках проекта",
+      );
     return roots;
   }
 

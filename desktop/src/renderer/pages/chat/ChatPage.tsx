@@ -11,7 +11,9 @@ import { APP_PATHS } from "../../app/routes";
 import {
   ChatComposer,
   ChatFeed,
+  ChatFileEditsPanel,
   ChatMemoryModal,
+  ChatProjectModal,
   ChatQuestionCard,
   ChatSidebar,
   ChatTaskPanel,
@@ -19,10 +21,12 @@ import {
   type ChatMode,
   type ChatModel,
 } from "../../components/organisms/chat";
+import { ContextMeter } from "../../components/molecules/ContextMeter";
 import {
   automationStore,
   chatStore,
   memoryStore,
+  projectStore,
   questionStore,
   taskPlanStore,
   textProviderStore,
@@ -47,6 +51,8 @@ export const ChatPage = observer(function ChatPage() {
   const [dialogTitle, setDialogTitle] = useState("");
   const [renaming, setRenaming] = useState(false);
   const [memoryOpen, setMemoryOpen] = useState(false);
+  const [editsOpen, setEditsOpen] = useState(false);
+  const [projectsOpen, setProjectsOpen] = useState(false);
   const nextModelOptions = textProviderStore.enabledModels.map((item) => ({
     value: String(item.id),
   }));
@@ -86,6 +92,18 @@ export const ChatPage = observer(function ChatPage() {
     void taskPlanStore.load(chatStore.activeConversationId);
     void questionStore.load(chatStore.activeConversationId);
   }, [chatStore.activeConversationId, chatStore.activeRunId]);
+  useEffect(() => {
+    void projectStore.load();
+  }, []);
+  useEffect(() => {
+    void projectStore.loadForConversation(chatStore.activeConversationId);
+  }, [chatStore.activeConversationId]);
+  const activeModelId =
+    mode === "agent" ? (selectedAgentModelId(agentId) ?? "") : model;
+  useEffect(() => {
+    if (!chatStore.activeConversationId || !activeModelId) return;
+    void chatStore.refreshContextWindow(activeModelId);
+  }, [chatStore.activeConversationId, activeModelId, chatStore.activeRunId]);
   const dialogs = useMemo(
     () =>
       chatStore.conversations
@@ -101,6 +119,51 @@ export const ChatPage = observer(function ChatPage() {
         })),
     [query, chatStore.conversations],
   );
+  const feedMessages = useMemo(() => {
+    const segmentStarts = new Map(
+      chatStore.segments.map((segment) => [segment.fromMessageId, segment]),
+    );
+    const result: Array<{
+      id: string;
+      role: "user" | "assistant";
+      text: string;
+      reasoning: string;
+      error: string | null;
+      toolCalls: (typeof chatStore.messages)[number]["toolCalls"];
+      scenarioRunId: string | null;
+      status: (typeof chatStore.messages)[number]["status"];
+      usageLabel: string;
+    }> = [];
+    for (const item of chatStore.messages) {
+      if (item.role !== "user" && item.role !== "assistant") continue;
+      const segment = segmentStarts.get(item.id);
+      if (segment && !chatStore.showCompacted)
+        result.push({
+          id: `segment-${segment.id}`,
+          role: "assistant",
+          text: segment.summary,
+          reasoning: "",
+          error: null,
+          toolCalls: [],
+          scenarioRunId: null,
+          status: "completed",
+          usageLabel: `Сжато ${segment.messageCount} сообщений · ${segment.tokensBefore} → ${segment.tokensAfter} токенов`,
+        });
+      if (item.compactedInto && !chatStore.showCompacted) continue;
+      result.push({
+        id: item.id,
+        role: item.role as "user" | "assistant",
+        text: item.text,
+        reasoning: item.reasoning,
+        error: item.error,
+        toolCalls: item.toolCalls,
+        scenarioRunId: item.scenarioRunId,
+        status: item.status,
+        usageLabel: formatUsageLabel(item.lastUsage),
+      });
+    }
+    return result;
+  }, [chatStore.messages, chatStore.segments, chatStore.showCompacted]);
   const active = chatStore.conversations.find(
     (item) => item.id === chatStore.activeConversationId,
   );
@@ -186,6 +249,18 @@ export const ChatPage = observer(function ChatPage() {
         <ChatFeed
           title={active?.title ?? "Новый диалог"}
           headerActions={
+            <>
+            <button
+              type="button"
+              title="Проект диалога"
+              className="flex h-8 items-center gap-2 rounded-lg px-2.5 text-xs text-main-400 transition-colors hover:bg-main-700/45 hover:text-main-100"
+              onClick={() => setProjectsOpen(true)}
+            >
+              <span className="hidden sm:inline">Проект:</span>
+              <span className="max-w-40 truncate text-main-200">
+                {projectStore.active?.name ?? "не выбран"}
+              </span>
+            </button>
             <button
               type="button"
               title="Открыть память"
@@ -201,32 +276,29 @@ export const ChatPage = observer(function ChatPage() {
                 </span>
               ) : null}
             </button>
+            </>
           }
           conversationId={chatStore.activeConversationId}
-          messages={chatStore.messages
-            .filter((item) => item.role === "user" || item.role === "assistant")
-            .map((item) => ({
-              id: item.id,
-              role: item.role as "user" | "assistant",
-              text: item.text,
-              reasoning: item.reasoning,
-              error: item.error,
-              toolCalls: item.toolCalls,
-              scenarioRunId: item.scenarioRunId,
-              status: item.status,
-              usageLabel: formatUsageLabel(item.lastUsage),
-            }))}
+          messages={feedMessages}
           onSuggestionSelect={setText}
           hasMore={chatStore.hasMoreMessages}
           loadingEarlier={chatStore.loadingEarlier}
           onLoadEarlier={() => chatStore.loadEarlier()}
           actionsDisabled={chatStore.activeRunId !== null}
           onDeleteMessage={async (messageId) => {
+            if (messageId.startsWith("segment-"))
+              throw new Error(
+                "Это сжатый участок истории. Раскройте сжатое, чтобы работать с исходными сообщениями.",
+              );
             await chatStore.truncateMessages(messageId);
             toasts.success({ title: "Сообщение было успешно удалено" });
           }}
           onEditMessage={async (messageId, nextText) => {
             try {
+              if (messageId.startsWith("segment-"))
+                throw new Error(
+                  "Это сжатый участок истории. Раскройте сжатое, чтобы редактировать исходные сообщения.",
+                );
               await chatStore.truncateMessages(messageId);
               await startMessage(nextText);
               toasts.success({ title: "Сообщение успешно изменено!" });
@@ -244,6 +316,34 @@ export const ChatPage = observer(function ChatPage() {
         <ChatComposer
           topContent={
             <>
+              <ContextMeter
+                window={chatStore.contextWindow}
+                segments={chatStore.segments}
+                compacting={chatStore.compacting}
+                disabled={
+                  chatStore.activeRunId !== null ||
+                  !chatStore.activeConversationId ||
+                  !activeModelId
+                }
+                showCompacted={chatStore.showCompacted}
+                editsCount={chatStore.fileEdits.length}
+                switches={chatStore.modelSwitches}
+                modelLabel={(modelId) =>
+                  textProviderStore.modelLabel(modelId)
+                }
+                onCompact={() => {
+                  void chatStore
+                    .compact(activeModelId)
+                    .catch((error: unknown) =>
+                      toasts.danger({
+                        title: "Не удалось сжать контекст",
+                        description: readableError(error),
+                      }),
+                    );
+                }}
+                onToggleCompacted={() => chatStore.toggleCompacted()}
+                onOpenEdits={() => setEditsOpen(true)}
+              />
               {textProviderStore.enabledModels.length === 0 ? (
                 <Alert
                   variant="warning"
@@ -286,6 +386,17 @@ export const ChatPage = observer(function ChatPage() {
           onSend={send}
           running={chatStore.activeRunId !== null}
           onCancel={() => void chatStore.cancel()}
+        />
+        <ChatProjectModal
+          open={projectsOpen}
+          conversationId={chatStore.activeConversationId}
+          onClose={() => setProjectsOpen(false)}
+        />
+        <ChatFileEditsPanel
+          open={editsOpen}
+          edits={chatStore.fileEdits}
+          onClose={() => setEditsOpen(false)}
+          onRevertRun={(runId) => chatStore.revertRun(runId)}
         />
       </div>
       <DangerModal
@@ -371,6 +482,13 @@ export const ChatPage = observer(function ChatPage() {
     </section>
   );
 });
+
+function selectedAgentModelId(agentId: string): string | undefined {
+  return (
+    automationStore.agents.find((agent) => agent.id === agentId)?.textModelId ??
+    undefined
+  );
+}
 
 function readableError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error);

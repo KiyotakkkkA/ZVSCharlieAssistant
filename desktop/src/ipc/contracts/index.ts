@@ -50,9 +50,15 @@ export type {
   ChatMessagePage,
   ChatSnapshot,
   ChatToolCall,
+  ContextSegment,
+  FileEditRecord,
   RunEvent,
 } from "./chat.contract";
+export type { ContextWindow, ModelSwitch } from "../../shared/dto";
 export { CHAT_IPC_CHANNELS } from "./chat.contract";
+
+export type { Project, ProjectApi, ProjectRepositoryState } from "./project.contract";
+export { PROJECT_IPC_CHANNELS } from "./project.contract";
 
 export type {
   VectorStoreConfig,
