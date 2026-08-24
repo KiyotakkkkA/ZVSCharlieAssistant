@@ -7,6 +7,7 @@
   "include": [
     "electron.vite.config.ts",
     "src/host/**/*.ts",
+    "src/cli/**/*.ts",
     "src/ipc/**/*.ts",
     "src/default/**/*.ts",
     "src/shared/**/*.ts"

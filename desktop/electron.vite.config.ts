@@ -10,6 +10,7 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: resolve("src/host/main.ts"),
+          cli: resolve("src/cli/index.ts"),
           "text-extraction.worker": resolve(
             "src/host/infrastructure/vector-store/text-extraction.worker.ts",
           ),

@@ -14,6 +14,7 @@ import type {
   AgentDirectoryPolicy,
   AgentTerminalPolicy,
   DirectoryGrant,
+  PermissionMode,
 } from "../../../shared/dto";
 import type { CommandExecutionService } from "./command-execution.service";
 import type { NativeSearchService } from "./native-search.service";
@@ -795,6 +796,28 @@ export class ToolRegistry {
 
 const errorMessage = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
+
+const READ_ONLY_TOOL_IDS = new Set([
+  "fs_read",
+  "fs_list",
+  "grep_search",
+  "regexp_search",
+  "vecdb_search",
+  "memory_search",
+  "read_tool_output",
+  "skills.load",
+  "tasks_plan",
+  "ask_user",
+]);
+
+export function filterToolIdsByPermission(
+  toolIds: string[],
+  mode: PermissionMode | undefined,
+): string[] {
+  if (!mode || mode === "edit") return toolIds;
+  if (mode === "deny") return [];
+  return toolIds.filter((id) => READ_ONLY_TOOL_IDS.has(id));
+}
 
 export const FILE_TOOL_IDS = new Set([
   "fs_read",

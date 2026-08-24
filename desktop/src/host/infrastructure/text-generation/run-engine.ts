@@ -9,7 +9,10 @@ import type {
 } from "../../../shared/dto";
 import { ChatRepository } from "../database/chat.repository";
 import { ProviderRegistry } from "./provider.registry";
-import { ToolRegistry } from "../tools/tool.registry";
+import {
+  filterToolIdsByPermission,
+  ToolRegistry,
+} from "../tools/tool.registry";
 import type { ScenarioRuntimeEngine } from "../automation/engine/scenario-runtime-engine";
 import type { MemoryService } from "../../application/services/memory.service";
 import type { UserProfileRepository } from "../database/user-profile.repository";
@@ -386,7 +389,10 @@ export class RunEngine {
               agentId: input.agentId,
               memoryRead: Boolean(agentRuntime?.memoryRead),
               memoryWrite: Boolean(agentRuntime?.memoryWrite),
-              allowedToolIds: agentRuntime?.allowedToolIds ?? [],
+              allowedToolIds: filterToolIdsByPermission(
+                agentRuntime?.allowedToolIds ?? [],
+                input.permissionMode,
+              ),
               allowedVectorStoreIds: agentRuntime?.allowedVectorStoreIds ?? [],
               retrievalLimit: agentRuntime?.retrieval_limit ?? 5,
               allowedSkillIds: agentRuntime?.allowedSkillIds ?? [],

@@ -12,5 +12,6 @@
     "src/ipc/contracts/**/*.ts",
     "src/shared/**/*.ts",
     "src/default/themes/**/*.ts"
-  ]
+  ],
+  "exclude": ["src/shared/bridge/bridge-paths.ts"]
 }

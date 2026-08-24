@@ -80,6 +80,7 @@ import {
   registerProjectHandlers,
   removeProjectHandlers,
 } from "../ipc/main/register-project-handlers";
+import { LocalBridgeServer } from "./infrastructure/bridge/local-bridge.server";
 import {
   registerDirectoryPolicyHandlers,
   removeDirectoryPolicyHandlers,
@@ -152,6 +153,7 @@ let scenarioDeliveryWorker: ScenarioDeliveryWorker | undefined;
 let textExtraction: TextExtractionClient | undefined;
 let questionSweeper: NodeJS.Timeout | undefined;
 let engineLogger: Logger | undefined;
+let localBridge: LocalBridgeServer | undefined;
 const appWindow = new AppWindowController();
 let trayController: TrayController | undefined;
 const isPrimaryInstance = app.requestSingleInstanceLock();
@@ -376,22 +378,35 @@ app.whenReady().then(() => {
     integrationRepository,
     questionService,
   );
+  const runEngine = new RunEngine(
+    chatRepository,
+    providerRegistry,
+    toolRegistry,
+    memoryService,
+    userProfileRepository,
+    new CompactionService(chatRepository, providerRegistry),
+    new ModelFailover(chatRepository, providerRegistry),
+    projectContext,
+    scenarioRuntimeEngine,
+  );
   registerChatHandlers(
     chatRepository,
-    new RunEngine(
-      chatRepository,
-      providerRegistry,
-      toolRegistry,
-      memoryService,
-      userProfileRepository,
-      new CompactionService(chatRepository, providerRegistry),
-      new ModelFailover(chatRepository, providerRegistry),
-      projectContext,
-      scenarioRuntimeEngine,
-    ),
+    runEngine,
     fileEditRepository,
     fileSystemService,
   );
+  localBridge = new LocalBridgeServer({
+    userDataPath: app.getPath("userData"),
+    appVersion: app.getVersion(),
+    chat: chatRepository,
+    engine: runEngine,
+    projects: projectRepository,
+    fileEdits: fileEditRepository,
+    files: fileSystemService,
+    automation: automationRepository,
+    providers: providerRepository,
+  });
+  localBridge.start();
   registerCoreInteractorHandlers(new CoreInteractorService());
   registerAssistantHandlers(memoryService, taskPlans, questionService);
 
@@ -501,6 +516,8 @@ function shutdownRuntime(): void {
   removeDataTransferHandlers();
   removeAutomationHandlers();
   removeTextProviderHandlers();
+  localBridge?.stop();
+  localBridge = undefined;
   removeChatHandlers();
   removeProjectHandlers();
   removeVectorStoreHandlers();

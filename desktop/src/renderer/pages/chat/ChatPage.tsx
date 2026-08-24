@@ -20,6 +20,7 @@ import {
   type ChatDialog,
   type ChatMode,
   type ChatModel,
+  type ChatProjectItem,
 } from "../../components/organisms/chat";
 import { ContextMeter } from "../../components/molecules/ContextMeter";
 import {
@@ -35,6 +36,7 @@ import { BrainIcon } from "@renderer/components/atoms";
 import { PrimaryButton } from "@renderer/components/atoms/buttons";
 import { DangerModal } from "@renderer/components/organisms/modals";
 import type { StartRunInput } from "../../../shared/dto";
+import type { Project } from "../../../ipc/contracts";
 import { useAppNavigation } from "@renderer/hooks";
 
 export const ChatPage = observer(function ChatPage() {
@@ -52,7 +54,11 @@ export const ChatPage = observer(function ChatPage() {
   const [renaming, setRenaming] = useState(false);
   const [memoryOpen, setMemoryOpen] = useState(false);
   const [editsOpen, setEditsOpen] = useState(false);
-  const [projectsOpen, setProjectsOpen] = useState(false);
+  const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
+  const [projectFormOpen, setProjectFormOpen] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState<ChatProjectItem | null>(
+    null,
+  );
   const nextModelOptions = textProviderStore.enabledModels.map((item) => ({
     value: String(item.id),
   }));
@@ -243,24 +249,34 @@ export const ChatPage = observer(function ChatPage() {
           setDialogTitle(dialog.title);
         }}
         onDelete={setDialogToDelete}
+        projects={projectStore.projects.map((project) => ({
+          id: project.id,
+          name: project.name,
+          rootPath: project.rootPath,
+          archived: project.archived,
+        }))}
+        activeProjectId={projectStore.activeProjectId}
+        onProjectSelect={(projectId) => {
+          void projectStore.assign(chatStore.activeConversationId, projectId);
+        }}
+        onProjectCreate={() => {
+          setProjectToEdit(null);
+          setProjectFormOpen(true);
+        }}
+        onProjectEdit={(item) => {
+          setProjectToEdit(
+            projectStore.projects.find((project) => project.id === item.id) ??
+              null,
+          );
+          setProjectFormOpen(true);
+        }}
+        onProjectDelete={setProjectToDelete}
       />
       <div className="relative flex min-w-0 flex-1 flex-col">
         <ChatTaskPanel />
         <ChatFeed
           title={active?.title ?? "Новый диалог"}
           headerActions={
-            <>
-            <button
-              type="button"
-              title="Проект диалога"
-              className="flex h-8 items-center gap-2 rounded-lg px-2.5 text-xs text-main-400 transition-colors hover:bg-main-700/45 hover:text-main-100"
-              onClick={() => setProjectsOpen(true)}
-            >
-              <span className="hidden sm:inline">Проект:</span>
-              <span className="max-w-40 truncate text-main-200">
-                {projectStore.active?.name ?? "не выбран"}
-              </span>
-            </button>
             <button
               type="button"
               title="Открыть память"
@@ -276,7 +292,6 @@ export const ChatPage = observer(function ChatPage() {
                 </span>
               ) : null}
             </button>
-            </>
           }
           conversationId={chatStore.activeConversationId}
           messages={feedMessages}
@@ -387,11 +402,6 @@ export const ChatPage = observer(function ChatPage() {
           running={chatStore.activeRunId !== null}
           onCancel={() => void chatStore.cancel()}
         />
-        <ChatProjectModal
-          open={projectsOpen}
-          conversationId={chatStore.activeConversationId}
-          onClose={() => setProjectsOpen(false)}
-        />
         <ChatFileEditsPanel
           open={editsOpen}
           edits={chatStore.fileEdits}
@@ -399,6 +409,33 @@ export const ChatPage = observer(function ChatPage() {
           onRevertRun={(runId) => chatStore.revertRun(runId)}
         />
       </div>
+      <ChatProjectModal
+        open={projectFormOpen}
+        project={projectToEdit}
+        onClose={() => setProjectFormOpen(false)}
+        onCreated={(project) => {
+          void projectStore.assign(chatStore.activeConversationId, project.id);
+        }}
+      />
+      <DangerModal
+        open={projectToDelete !== null}
+        model={projectToDelete}
+        title="Удалить проект?"
+        description={(project) => (
+          <>
+            Проект «
+            <strong className="font-semibold text-main-50">
+              {project.name}
+            </strong>
+            » будет удалён. Диалоги останутся, но потеряют его указания и доступы.
+          </>
+        )}
+        onCancel={() => setProjectToDelete(null)}
+        onConfirm={async (project) => {
+          await projectStore.remove(project.id);
+          setProjectToDelete(null);
+        }}
+      />
       <DangerModal
         open={chatStore.pendingScenarioApproval !== null}
         model={chatStore.pendingScenarioApproval}

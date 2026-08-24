@@ -1,3 +1,4 @@
+import { Badge, Button, Tooltip } from "@kiyotakkkka/zvs-uikit-lib";
 import type {
   ContextSegment,
   ContextWindow,
@@ -42,7 +43,6 @@ export function ContextMeter({
 }: ContextMeterProps) {
   if (!window && !segments.length && !editsCount && !switches.length)
     return null;
-  const lastSwitch = switches[switches.length - 1];
 
   const used = window?.usedTokens ?? 0;
   const usable = window?.usableTokens ?? 1;
@@ -51,11 +51,15 @@ export function ContextMeter({
     ? Math.min(1, window.compactAtTokens / Math.max(1, usable))
     : 0.78;
   const nearLimit = window ? used >= window.compactAtTokens : false;
+  const lastSwitch = switches[switches.length - 1];
 
   return (
-    <div className="flex flex-wrap items-center gap-3 border-b border-main-700/40 px-4 py-2 text-xs text-main-400">
+    <div className="flex flex-wrap items-center gap-2 border-b border-main-700/40 px-4 py-2 text-xs text-main-400">
       {window ? (
-        <div className="flex min-w-45 flex-1 items-center gap-2">
+        <div
+          className="flex min-w-45 flex-1 items-center gap-2"
+          title={`Порог автоматического сжатия: ${Math.round(thresholdRatio * 100)}% окна модели`}
+        >
           <div className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-main-700/50">
             <div
               className={`h-full rounded-full transition-[width] ${
@@ -66,57 +70,65 @@ export function ContextMeter({
             <span
               className="absolute top-0 h-full w-px bg-main-300/60"
               style={{ left: `${Math.round(thresholdRatio * 100)}%` }}
-              title="Порог автоматического сжатия"
             />
           </div>
-          <span className="tabular-nums whitespace-nowrap">
+          <span className="whitespace-nowrap tabular-nums">
             {formatTokens(used)} / {formatTokens(usable)}
             {window.estimated ? " (оценка)" : ""}
           </span>
         </div>
       ) : null}
 
-      <button
+      <Button
         type="button"
-        className="rounded-lg px-2 py-1 text-main-300 transition-colors hover:bg-main-700/45 hover:text-main-50 disabled:opacity-50"
+        variant="ghost"
+        size="sm"
+        rounded="rounded-lg"
+        className="border-0! shadow-none ring-0! hover:bg-main-700/45"
         disabled={disabled || compacting}
+        loading={compacting}
+        loadingText="Сжимаю..."
         onClick={onCompact}
-        title="Сжать историю диалога, сохранив исходные сообщения"
       >
-        {compacting ? "Сжимаю…" : "Сжать контекст"}
-      </button>
+        Сжать контекст
+      </Button>
 
       {segments.length ? (
-        <button
+        <Button
           type="button"
-          className="rounded-lg px-2 py-1 text-main-300 transition-colors hover:bg-main-700/45 hover:text-main-50"
+          variant="ghost"
+          size="sm"
+          rounded="rounded-lg"
+          className="border-0! shadow-none ring-0! hover:bg-main-700/45"
           onClick={onToggleCompacted}
         >
           {showCompacted
             ? "Скрыть сжатое"
             : `Сжато: ${compactedCount(segments)}`}
-        </button>
+        </Button>
       ) : null}
 
       {lastSwitch ? (
-        <span
-          className="rounded-lg bg-amber-400/10 px-2 py-1 text-amber-200"
-          title={lastSwitch.detail}
-        >
-          ⇄ {modelLabel(lastSwitch.from)} → {modelLabel(lastSwitch.to)}:{" "}
-          {SWITCH_REASONS[lastSwitch.reason]}
-          {switches.length > 1 ? ` (+${switches.length - 1})` : ""}
-        </span>
+        <Tooltip label={lastSwitch.detail} placement="top-left">
+          <Badge variant="warning">
+            {modelLabel(lastSwitch.from)} → {modelLabel(lastSwitch.to)}:{" "}
+            {SWITCH_REASONS[lastSwitch.reason]}
+            {switches.length > 1 ? ` (+${switches.length - 1})` : ""}
+          </Badge>
+        </Tooltip>
       ) : null}
 
       {editsCount ? (
-        <button
+        <Button
           type="button"
-          className="rounded-lg px-2 py-1 text-accent-light transition-colors hover:bg-main-700/45"
+          variant="ghost"
+          size="sm"
+          rounded="rounded-lg"
+          className="border-0! text-accent-light shadow-none ring-0! hover:bg-main-700/45"
           onClick={onOpenEdits}
         >
           Правки файлов: {editsCount}
-        </button>
+        </Button>
       ) : null}
     </div>
   );

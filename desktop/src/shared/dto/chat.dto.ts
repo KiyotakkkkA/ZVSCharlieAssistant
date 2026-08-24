@@ -103,6 +103,8 @@ export const modelSwitchDtoSchema = z.object({
   at: z.string(),
 });
 
+export const permissionModeSchema = z.enum(["plan", "edit", "deny"]);
+
 export const startRunDtoSchema = z.object({
   conversationId: entityIdSchema.optional(),
   mode: chatModeSchema,
@@ -110,6 +112,7 @@ export const startRunDtoSchema = z.object({
   agentId: z.string().optional(),
   scenarioId: z.string().optional(),
   text: z.string(),
+  permissionMode: permissionModeSchema.optional(),
 });
 
 export type ChatTextPart = z.infer<typeof chatTextPartDtoSchema>;
@@ -123,5 +126,6 @@ export type ChatMessageContentPart = z.infer<
 export type RunUsage = z.infer<typeof runUsageDtoSchema>;
 export type ModelSwitchReason = z.infer<typeof modelSwitchReasonSchema>;
 export type ModelSwitch = z.infer<typeof modelSwitchDtoSchema>;
+export type PermissionMode = z.infer<typeof permissionModeSchema>;
 export type ContextWindow = z.infer<typeof contextWindowDtoSchema>;
 export type StartRunInput = z.infer<typeof startRunDtoSchema>;
