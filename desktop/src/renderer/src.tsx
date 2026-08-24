@@ -20,7 +20,6 @@ import {
 } from "./app/typography";
 import { APP_PATHS } from "./app/routes";
 import { Header, NavigationSidebar } from "./components/layouts";
-import { RoutePage } from "./pages/RoutePage";
 import "@fontsource-variable/onest";
 import "./styles/global.css";
 
@@ -163,10 +162,7 @@ createRoot(root).render(
       <Routes>
         <Route element={<App initialPalette={initialPalette ?? undefined} />}>
           <Route element={<AppLayout />}>
-            <Route
-              index
-              element={<Navigate to={APP_PATHS.chat} replace />}
-            />
+            <Route index element={<Navigate to={APP_PATHS.chat} replace />} />
             <Route path={APP_PATHS.guides} element={<GuidesPage />} />
             <Route path={APP_PATHS.chat} element={<ChatPage />} />
             <Route path={APP_PATHS.tasks} element={<TaskListPage />} />

@@ -2,7 +2,11 @@ import { Button, Modal } from "@kiyotakkkka/zvs-uikit-lib";
 import { observer } from "mobx-react-lite";
 import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { APP_PATHS, NAVIGATION_ROUTES, type NavigationRoute } from "../../app/routes";
+import {
+  APP_PATHS,
+  NAVIGATION_ROUTES,
+  type NavigationRoute,
+} from "../../app/routes";
 import { chatStore, uiStore } from "../../stores";
 import {
   CogIcon,
@@ -50,7 +54,10 @@ const SETTINGS_FORMS: GlobalSettingsFormDescriptor[] = [
   },
 ];
 
-function findTitle(pathname: string, routes: readonly NavigationRoute[]): string {
+function findTitle(
+  pathname: string,
+  routes: readonly NavigationRoute[],
+): string {
   if (pathname === APP_PATHS.guides) return "Уроки";
   for (const route of routes) {
     if (route.path && pathname.startsWith(route.path)) return route.label;
@@ -98,12 +105,14 @@ export const Header = observer(function Header() {
   return (
     <>
       <header className="flex h-11 items-center justify-between gap-3 rounded-lg bg-main-800/40 px-3">
-        <h1 className="text-sm font-medium text-main-200">{findTitle(pathname, NAVIGATION_ROUTES)}</h1>
+        <h1 className="text-sm font-medium text-main-200">
+          {findTitle(pathname, NAVIGATION_ROUTES)}
+        </h1>
         <div className="flex items-center gap-1">
           <Button
             data-tour="header-help"
             variant="ghost"
-            title="Уроки"
+            title="Руководства"
             className="size-9 p-0 text-main-400 hover:bg-main-700/70 hover:text-main-50"
             onClick={() => navigate(APP_PATHS.guides)}
           >

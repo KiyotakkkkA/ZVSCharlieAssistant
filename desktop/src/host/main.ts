@@ -268,6 +268,10 @@ app.whenReady().then(() => {
     () => {
       applicationDataReset.requestReset();
       setTimeout(() => {
+        // Трей и фоновые воркеры останавливаются до перезапуска: иначе иконка
+        // старого процесса остаётся в области уведомлений, а слушатели почты и
+        // Telegram продолжают работать поверх удаляемых данных.
+        shutdownRuntime();
         app.relaunch();
         app.quit();
       }, 100);
@@ -439,8 +443,14 @@ app.whenReady().then(() => {
   });
 });
 
-app.on("before-quit", () => {
+/**
+ * Останавливает всё, что живёт дольше окна: трей, фоновые воркеры, таймеры,
+ * IPC-обработчики и базу. Вызывается перед выходом и перед перезапуском
+ * после сброса данных. Повторный вызов безопасен.
+ */
+function shutdownRuntime(): void {
   appWindow.beginQuit();
+  appWindow.setCloseToTray(false);
   trayController?.destroy();
   trayController = undefined;
   if (questionSweeper) clearInterval(questionSweeper);
@@ -478,6 +488,10 @@ app.on("before-quit", () => {
   engineLogger = undefined;
   database?.close();
   database = undefined;
+}
+
+app.on("before-quit", () => {
+  shutdownRuntime();
 });
 
 app.on("window-all-closed", () => {
