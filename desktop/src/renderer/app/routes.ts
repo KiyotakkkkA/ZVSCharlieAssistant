@@ -15,6 +15,7 @@ import {
   PolicyIcon,
   TransitConnectionIcon,
   PaletteIcon,
+  ApplicationIcon,
 } from "../components/atoms";
 
 export const APP_PATHS = {
@@ -46,6 +47,10 @@ export const APP_PATHS = {
     secrets: "/storage/secrets",
     vectorDb: "/storage/vector-db",
   },
+  extensions: {
+    index: "/extensions",
+    cli: "/extensions/cli",
+  },
   settings: {
     index: "/settings",
     providers: "/settings/providers",
@@ -73,6 +78,12 @@ export interface NavigationRoute {
 export const NAVIGATION_ROUTES: readonly NavigationRoute[] = [
   { id: "chat", label: "Чат", path: APP_PATHS.chat, icon: ChatIcon },
   { id: "tasks", label: "Задачи", path: APP_PATHS.tasks, icon: TasksIcon },
+  {
+    id: "extensions",
+    label: "Расширения",
+    path: APP_PATHS.extensions.index,
+    icon: ApplicationIcon,
+  },
   {
     id: "automation",
     label: "Автоматизация",

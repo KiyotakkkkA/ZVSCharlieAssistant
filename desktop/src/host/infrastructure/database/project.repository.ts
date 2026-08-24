@@ -1,5 +1,6 @@
 import type Database from "better-sqlite3";
-import { isAbsolute, normalize } from "node:path";
+import { randomInt } from "node:crypto";
+import { isAbsolute, normalize, resolve } from "node:path";
 import type { Project } from "../../../shared/models/project";
 import {
   directoryGrantDtoSchema,
@@ -47,6 +48,42 @@ export class ProjectRepository {
       | undefined;
     if (!row) return undefined;
     return map(row, this.grantsOf(id));
+  }
+
+  ensureForDirectory(directoryPath: string): Project {
+    if (!directoryPath.trim() || !isAbsolute(directoryPath))
+      throw new Error("Каталог проекта должен быть абсолютным путём");
+
+    const rootPath = resolve(directoryPath);
+    const existing = this.list().find(
+      (project) =>
+        project.rootPath !== null && samePath(project.rootPath, rootPath),
+    );
+    if (existing && !existing.archived) return existing;
+    if (existing)
+      return this.upsert({
+        ...existing,
+        rootPath,
+        archived: false,
+        grants: existing.grants,
+      });
+
+    return this.upsert({
+      name: randomProjectName(),
+      rootPath,
+      instructions: "",
+      defaultAgentId: null,
+      defaultModelId: null,
+      compactThreshold: 0.78,
+      archived: false,
+      grants: [
+        {
+          path: rootPath,
+          recursive: true,
+          permissions: ["read", "create", "modify"],
+        },
+      ],
+    });
   }
 
   upsert(input: UpsertProjectInput): Project {
@@ -174,3 +211,35 @@ const map = (row: ProjectRow, grants: DirectoryGrant[]): Project => ({
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
+
+const PROJECT_ADJECTIVES = [
+  "Янтарный",
+  "Лаймовый",
+  "Северный",
+  "Тихий",
+  "Звёздный",
+  "Быстрый",
+] as const;
+const PROJECT_NOUNS = [
+  "Компас",
+  "Маяк",
+  "Вектор",
+  "Каскад",
+  "Спутник",
+  "Контур",
+] as const;
+
+function randomProjectName(): string {
+  const adjective = PROJECT_ADJECTIVES[randomInt(PROJECT_ADJECTIVES.length)];
+  const noun = PROJECT_NOUNS[randomInt(PROJECT_NOUNS.length)];
+  return `${adjective} ${noun} ${randomInt(100, 1000)}`;
+}
+
+function samePath(left: string, right: string): boolean {
+  const normalizedLeft = resolve(left);
+  const normalizedRight = resolve(right);
+  return process.platform === "win32"
+    ? normalizedLeft.toLocaleLowerCase("en-US") ===
+        normalizedRight.toLocaleLowerCase("en-US")
+    : normalizedLeft === normalizedRight;
+}

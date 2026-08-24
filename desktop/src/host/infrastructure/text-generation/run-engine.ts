@@ -86,6 +86,8 @@ export class RunEngine {
       ...(input.agentId ? { agentId: input.agentId } : {}),
     };
     const conversationId = input.conversationId ?? this.data.createConversation(usage);
+    if (input.projectId)
+      this.projects.assignConversation(conversationId, input.projectId);
     this.data.updateLastUsage(conversationId, usage);
     const maxSteps =
       input.mode === "agent" ? Math.min(agent?.max_tool_calls ?? 8, 20) : 1;

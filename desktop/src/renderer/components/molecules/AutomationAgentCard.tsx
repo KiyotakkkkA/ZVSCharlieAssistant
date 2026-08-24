@@ -23,8 +23,8 @@ export const AutomationAgentCard = ({
   const { goTo } = useAppNavigation();
 
   return (
-    <article className="relative rounded-xl bg-main-800/30 p-5 ring-1 ring-main-700/40 transition-colors hover:bg-main-800/50 hover:ring-main-600">
-      <div className="flex items-start gap-4">
+    <article className="relative flex h-full min-h-44 flex-col rounded-xl bg-main-800/30 p-5 ring-1 ring-main-700/40 transition-colors hover:bg-main-800/50 hover:ring-main-600">
+      <div className="flex flex-1 items-start gap-4">
         <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent-medium/10 text-accent-light">
           <GraphIcon className="size-5" />
         </span>
@@ -32,7 +32,7 @@ export const AutomationAgentCard = ({
           <div className="flex items-center gap-2">
             <h2 className="font-semibold text-main-100">{agent.name}</h2>
           </div>
-          <p className="mt-2 text-sm leading-6 text-main-400">
+          <p className="mt-2 min-h-12 line-clamp-2 text-sm leading-6 text-main-400">
             {agent.description}
           </p>
         </div>
@@ -54,7 +54,7 @@ export const AutomationAgentCard = ({
           />
         </div>
       </div>
-      <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-main-700/40 pt-4">
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-main-700/40 pr-24 pt-4">
         <div className="flex items-center gap-4 text-xs text-main-500">
           <span>{agent.allowedToolIds.length} инструментов</span>
           <span>{agent.runs} запусков</span>

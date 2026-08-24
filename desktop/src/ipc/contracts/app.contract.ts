@@ -32,6 +32,7 @@ export interface DesktopApi {
   vectorStores: import("./vector-store.contract").VectorStoreApi;
   chat: import("./chat.contract").ChatApi;
   projects: import("./project.contract").ProjectApi;
+  extensions: import("./extension.contract").ExtensionApi;
   tasks: import("./tasks.contract").TasksApi;
   terminalPolicy: import("./terminal-policy.contract").TerminalPolicyApi;
   directoryPolicy: import("./directory-policy.contract").DirectoryPolicyApi;

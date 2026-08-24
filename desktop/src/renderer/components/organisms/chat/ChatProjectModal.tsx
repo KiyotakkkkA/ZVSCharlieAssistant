@@ -297,11 +297,6 @@ export const ChatProjectModal = observer(function ChatProjectModal({
                   </div>
                 </div>
               ))}
-
-              <Alert variant="warning" title="Проект только сужает доступ">
-                Итоговые права считаются пересечением глобальной политики,
-                проекта и агента: расширить доступ через проект нельзя.
-              </Alert>
             </div>
 
             <InputCheckBox

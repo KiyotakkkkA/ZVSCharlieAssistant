@@ -10,7 +10,9 @@ import {
   TEXT_PROVIDER_IPC_CHANNELS,
   CHAT_IPC_CHANNELS,
   PROJECT_IPC_CHANNELS,
+  EXTENSION_IPC_CHANNELS,
   type Project,
+  type CliIntegrationStatus,
   type AppInfo,
   type AppCommand,
   type ApplicationSettings,
@@ -620,5 +622,19 @@ export const desktopApi: DesktopApi = {
         PROJECT_IPC_CHANNELS.conversationProject,
         conversationId,
       ) as Promise<string | null>,
+  },
+  extensions: {
+    cliStatus: (): Promise<CliIntegrationStatus> =>
+      ipcRenderer.invoke(
+        EXTENSION_IPC_CHANNELS.cliStatus,
+      ) as Promise<CliIntegrationStatus>,
+    installCli: (): Promise<CliIntegrationStatus> =>
+      ipcRenderer.invoke(
+        EXTENSION_IPC_CHANNELS.installCli,
+      ) as Promise<CliIntegrationStatus>,
+    uninstallCli: (): Promise<CliIntegrationStatus> =>
+      ipcRenderer.invoke(
+        EXTENSION_IPC_CHANNELS.uninstallCli,
+      ) as Promise<CliIntegrationStatus>,
   },
 };

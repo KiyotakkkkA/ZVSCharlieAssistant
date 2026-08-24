@@ -45,6 +45,19 @@ export class AppWindowController {
     dispatch();
   }
 
+  send(channel: string, payload: unknown): void {
+    const window = this.window;
+    if (!window || window.isDestroyed() || window.webContents.isDestroyed())
+      return;
+
+    const dispatch = () => window.webContents.send(channel, payload);
+    if (window.webContents.isLoading()) {
+      window.webContents.once("did-finish-load", dispatch);
+      return;
+    }
+    dispatch();
+  }
+
   setCloseToTray(enabled: boolean): void {
     this.closeToTray = enabled;
   }

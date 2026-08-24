@@ -4,6 +4,7 @@ export type BridgeMethod =
   | "hello"
   | "status"
   | "projects.list"
+  | "projects.ensure-directory"
   | "projects.assign"
   | "models.list"
   | "agents.list"

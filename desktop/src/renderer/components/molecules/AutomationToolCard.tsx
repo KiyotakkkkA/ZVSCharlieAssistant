@@ -9,8 +9,8 @@ interface AutomationToolCardProps {
 
 export function AutomationToolCard({ tool, onOpen }: AutomationToolCardProps) {
   return (
-    <article className="relative rounded-xl bg-main-800/30 p-5 ring-1 ring-main-700/40 transition-colors hover:bg-main-800/50 hover:ring-main-600">
-      <div className="flex items-start gap-4">
+    <article className="relative flex h-full min-h-44 flex-col rounded-xl bg-main-800/30 p-5 ring-1 ring-main-700/40 transition-colors hover:bg-main-800/50 hover:ring-main-600">
+      <div className="flex flex-1 items-start gap-4">
         <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent-medium/10 text-accent-light">
           <ToolsIcon className="size-5" />
         </span>
@@ -23,7 +23,7 @@ export function AutomationToolCard({ tool, onOpen }: AutomationToolCardProps) {
           <p className="mt-1 truncate font-mono text-xs text-main-500">
             {tool.id}
           </p>
-          <p className="mt-2 line-clamp-2 text-sm leading-6 text-main-400">
+          <p className="mt-2 min-h-12 line-clamp-2 text-sm leading-6 text-main-400">
             {tool.description}
           </p>
         </div>
@@ -33,7 +33,7 @@ export function AutomationToolCard({ tool, onOpen }: AutomationToolCardProps) {
           onClick={() => onOpen(tool)}
         />
       </div>
-      <div className="mt-5 flex flex-wrap gap-2 border-t border-main-700/40 pt-4 text-xs text-main-500">
+      <div className="mt-5 flex flex-wrap gap-2 border-t border-main-700/40 pr-24 pt-4 text-xs text-main-500">
         <span>{tool.category}</span>
         <span>·</span>
         <span>

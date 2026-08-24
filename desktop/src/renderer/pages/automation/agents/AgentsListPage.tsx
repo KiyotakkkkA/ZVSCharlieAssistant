@@ -83,7 +83,7 @@ export const AgentsListPage = observer(function AgentsListPage() {
 
       <ScrollArea className="min-h-0 flex-1 p-1">
         {agents.length && viewMode === "cards" ? (
-          <div className="grid gap-3 xl:grid-cols-3">
+          <div className="grid auto-rows-fr gap-3 xl:grid-cols-3">
             {agents.map((agent) => (
               <AutomationAgentCard
                 key={agent.id}

@@ -89,7 +89,7 @@ export const SkillsListPage = observer(function SkillsListPage() {
               onDelete={setRemoving}
             />
           ) : (
-            <div className="grid gap-3 xl:grid-cols-3">
+            <div className="grid auto-rows-fr gap-3 xl:grid-cols-3">
               {items.map((x) => (
                 <AutomationSkillCard
                   key={x.id}

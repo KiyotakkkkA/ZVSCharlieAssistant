@@ -1,7 +1,23 @@
+import { spawnSync } from "node:child_process";
 import { defaultUserDataPath } from "../shared/bridge/bridge-paths";
 import { BridgeClient, BridgeUnavailableError } from "./client";
-import { HELP_TEXT, parseArgs, type CliOptions } from "./args";
+import {
+  CLI_OPTIONS_HELP,
+  CLI_USAGE,
+  HELP_TEXT,
+  parseArgs,
+  type CliOptions,
+} from "./args";
 import { runChat } from "./render";
+import { runRepl } from "./repl";
+import { errorMessage, helpScreen } from "./ui";
+
+if (process.platform === "win32") {
+  spawnSync("chcp.com", ["65001"], {
+    stdio: "ignore",
+    windowsHide: true,
+  });
+}
 
 const EXIT_OK = 0;
 const EXIT_ERROR = 1;
@@ -13,26 +29,40 @@ async function main(): Promise<number> {
   try {
     options = parseArgs(process.argv.slice(2));
   } catch (error) {
-    process.stderr.write(`${messageOf(error)}\n`);
+    errorMessage(messageOf(error), "Используйте zvs help для справки.");
     return EXIT_ERROR;
   }
 
   if (options.command === "help") {
-    process.stdout.write(`${HELP_TEXT}\n`);
+    if (process.stdout.isTTY) helpScreen(CLI_USAGE, CLI_OPTIONS_HELP);
+    else process.stdout.write(`${HELP_TEXT}\n`);
     return EXIT_OK;
   }
 
   const client = new BridgeClient(options.home ?? defaultUserDataPath());
   try {
-    await client.connect();
+    const hello = await client.connect();
+    if (options.projectDirectory) {
+      const project = (await client.request("projects.ensure-directory", {
+        path: process.cwd(),
+      })) as { id: string };
+      options.project = project.id;
+    }
+    if (
+      options.command === "chat" &&
+      !options.prompt &&
+      process.stdin.isTTY &&
+      process.stdout.isTTY
+    )
+      return await runRepl(client, options, hello.version);
     return await dispatch(client, options);
   } catch (error) {
     if (error instanceof BridgeUnavailableError) {
-      process.stderr.write(`${error.message}\n`);
+      errorMessage(error.message, "Запустите приложение ZVS и повторите команду.");
       return EXIT_UNAVAILABLE;
     }
     const message = messageOf(error);
-    process.stderr.write(`${message}\n`);
+    errorMessage(message);
     return /запрещ|не разрешен|вне разрешённых|политик/i.test(message)
       ? EXIT_DENIED
       : EXIT_ERROR;
@@ -92,7 +122,8 @@ async function dispatch(
     case "chat":
       return runChat(client, options);
     default:
-      process.stdout.write(`${HELP_TEXT}\n`);
+      if (process.stdout.isTTY) helpScreen(CLI_USAGE, CLI_OPTIONS_HELP);
+      else process.stdout.write(`${HELP_TEXT}\n`);
       return EXIT_OK;
   }
 }
@@ -152,6 +183,6 @@ main()
     process.exitCode = code;
   })
   .catch((error: unknown) => {
-    process.stderr.write(`${messageOf(error)}\n`);
+    errorMessage(messageOf(error));
     process.exitCode = EXIT_ERROR;
   });

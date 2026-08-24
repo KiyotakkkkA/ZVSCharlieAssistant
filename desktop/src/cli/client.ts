@@ -20,6 +20,8 @@ interface Pending {
   resolve: (value: unknown) => void;
   reject: (error: Error) => void;
   onEvent?: (event: string, payload: unknown) => void;
+  responseResolved: boolean;
+  terminalSeen: boolean;
 }
 
 export class BridgeClient {
@@ -36,7 +38,9 @@ export class BridgeClient {
     this.socket = await openSocket(path);
     this.socket.setEncoding("utf8");
     this.socket.on("data", (chunk: string) => this.receive(chunk));
-    this.socket.on("close", () => this.failAll("Соединение с приложением закрыто"));
+    this.socket.on("close", () =>
+      this.failAll("Соединение с приложением закрыто"),
+    );
     this.socket.on("error", (error) => this.failAll(error.message));
     return (await this.request("hello", { token })) as {
       version: string;
@@ -55,11 +59,18 @@ export class BridgeClient {
     onEvent?: (event: string, payload: unknown) => void,
   ): Promise<unknown> {
     const socket = this.socket;
-    if (!socket) throw new BridgeUnavailableError("Нет соединения с приложением");
+    if (!socket)
+      throw new BridgeUnavailableError("Нет соединения с приложением");
     const id = this.nextId++;
     const frame: BridgeRequest = { id, method, params };
     return new Promise((resolve, reject) => {
-      this.pending.set(id, { resolve, reject, onEvent });
+      this.pending.set(id, {
+        resolve,
+        reject,
+        onEvent,
+        responseResolved: false,
+        terminalSeen: false,
+      });
       socket.write(encodeFrame(frame));
     });
   }
@@ -71,12 +82,18 @@ export class BridgeClient {
       if (!entry) continue;
       if (isBridgeEvent(frame)) {
         entry.onEvent?.(frame.event, frame.payload);
+        if (isTerminalRunEvent(frame.event)) {
+          entry.terminalSeen = true;
+          if (entry.responseResolved) this.pending.delete(frame.id);
+        }
         continue;
       }
-      this.pending.delete(frame.id);
       const response = frame as BridgeResponse;
+      entry.responseResolved = true;
       if (response.ok) entry.resolve(response.result);
       else entry.reject(new Error(response.error ?? "Ошибка выполнения"));
+      if (!entry.onEvent || entry.terminalSeen || !response.ok)
+        this.pending.delete(frame.id);
     }
   }
 
@@ -90,10 +107,18 @@ export class BridgeClient {
       return readFileSync(bridgeTokenPath(this.userDataPath), "utf8").trim();
     } catch {
       throw new BridgeUnavailableError(
-        "Приложение ZVS не запущено: не найден токен локального моста",
+        "Приложение ZVS не запущено: главное приложение не запущено",
       );
     }
   }
+}
+
+function isTerminalRunEvent(event: string): boolean {
+  return (
+    event === "run.completed" ||
+    event === "run.failed" ||
+    event === "run.cancelled"
+  );
 }
 
 function openSocket(path: string): Promise<Socket> {

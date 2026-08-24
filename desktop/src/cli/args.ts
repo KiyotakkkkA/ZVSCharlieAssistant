@@ -15,6 +15,7 @@ export interface CliOptions {
   model?: string;
   agent?: string;
   project?: string;
+  projectDirectory: boolean;
   conversation?: string;
   runId?: string;
   focus?: string;
@@ -41,6 +42,7 @@ export function parseArgs(argv: string[]): CliOptions {
     command: "chat",
     permissionMode: "edit",
     output: "text",
+    projectDirectory: false,
     positional: [],
   };
 
@@ -75,6 +77,10 @@ export function parseArgs(argv: string[]): CliOptions {
         break;
       case "--project":
         options.project = next();
+        break;
+      case "--pd":
+      case "--project-dir":
+        options.projectDirectory = true;
         break;
       case "--conversation":
         options.conversation = next();
@@ -118,31 +124,53 @@ export function parseArgs(argv: string[]): CliOptions {
     options.prompt = options.positional.join(" ");
   if (!options.runId && options.command === "undo" && options.positional[0])
     options.runId = options.positional[0];
+  if (options.projectDirectory && options.project)
+    throw new Error("Параметры --project и --pd нельзя использовать вместе");
 
   return options;
 }
 
-export const HELP_TEXT = `zvs — командная строка ассистента ZVS
+export const CLI_USAGE = [
+  ["zvs", "интерактивный режим"],
+  ['zvs -p "почини тесты"', "отправить задачу и выйти"],
+  ['zvs chat -p "..." --json', "машинный вывод одним объектом"],
+  ['zvs chat -p "..." --stream-json', "поток событий JSON Lines"],
+  ["zvs status", "состояние приложения и моста"],
+  ["zvs projects", "список проектов"],
+  ["zvs models", "включённые текстовые модели"],
+  ["zvs agents", "доступные агенты"],
+  ['zvs compact --focus "..."', "сжать контекст текущего диалога"],
+  ["zvs diff", "правки файлов в диалоге"],
+  ["zvs undo <runId>", "откатить правки задачи"],
+] as const;
 
-Использование:
-  zvs -p "почини падающие тесты"        отправить задачу в запущенное приложение
-  zvs chat -p "..." --json              машинный вывод одним объектом
-  zvs chat -p "..." --stream-json       поток событий по строке на событие
-  zvs status                            состояние приложения и моста
-  zvs projects                          список проектов
-  zvs models                            включённые текстовые модели
-  zvs agents                            доступные агенты
-  zvs compact --focus "..."             сжать контекст текущего диалога
-  zvs diff                              правки файлов в диалоге
-  zvs undo <runId>                      откатить правки задачи
+export const CLI_OPTIONS_HELP = [
+  ["--model <id>", "модель для режимов chat и planner"],
+  ["--agent <id>", "агент и его инструменты"],
+  ["--project <id>", "привязать диалог к проекту"],
+  ["--pd, --project-dir", "создать или выбрать проект для текущего каталога"],
+  ["--conversation <id>", "продолжить существующий диалог"],
+  ["--permission-mode <m>", "plan | edit | deny, по умолчанию edit"],
+  ["--home <path>", "каталог данных приложения"],
+  ["-h, --help", "эта справка"],
+] as const;
 
-Параметры:
-  --model <id>            модель для режимов chat и planner
-  --agent <id>            агент (включает инструменты)
-  --project <id>          привязать диалог к проекту
-  --conversation <id>     продолжить существующий диалог
-  --permission-mode <m>   plan | edit | deny, по умолчанию edit
-  --home <path>           каталог данных приложения
-  -h, --help              эта справка
+function plainSection(
+  title: string,
+  rows: ReadonlyArray<readonly [string, string]>,
+): string {
+  const width = rows.reduce((max, [left]) => Math.max(max, left.length), 0);
+  return `${title}:\n${rows
+    .map(([left, right]) => `  ${left.padEnd(width)}  ${right}`)
+    .join("\n")}`;
+}
 
-Коды возврата: 0 успех, 1 ошибка, 2 запрещено политикой, 3 приложение недоступно.`;
+export const HELP_TEXT = `ZVS Assistant — интерактивная командная оболочка
+
+${plainSection("Использование", CLI_USAGE)}
+
+${plainSection("Параметры", CLI_OPTIONS_HELP)}
+
+Интерактивно: Tab — команды, ↑↓ — история, Ctrl+C — отмена задачи или выход, /help — помощь.
+
+Коды возврата: 0 успех, 1 ошибка, 2 запрещено, 3 приложение недоступно.`;

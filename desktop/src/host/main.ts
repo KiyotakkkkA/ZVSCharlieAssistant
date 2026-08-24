@@ -1,5 +1,6 @@
 import { app, Menu } from "electron";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { AppWindowController } from "./infrastructure/electron/app-window.controller";
 import { ApplicationSettingsRepository } from "./infrastructure/electron/application-settings.repository";
 import { TrayController } from "./infrastructure/electron/tray.controller";
@@ -41,6 +42,7 @@ import {
   registerChatHandlers,
   removeChatHandlers,
 } from "../ipc/main/register-chat-handlers";
+import { CHAT_IPC_CHANNELS } from "../ipc/contracts";
 import {
   registerTextProviderHandlers,
   removeTextProviderHandlers,
@@ -81,6 +83,11 @@ import {
   removeProjectHandlers,
 } from "../ipc/main/register-project-handlers";
 import { LocalBridgeServer } from "./infrastructure/bridge/local-bridge.server";
+import { CliInstallerService } from "./infrastructure/extensions/cli-installer.service";
+import {
+  registerExtensionHandlers,
+  removeExtensionHandlers,
+} from "../ipc/main/register-extension-handlers";
 import {
   registerDirectoryPolicyHandlers,
   removeDirectoryPolicyHandlers,
@@ -405,8 +412,17 @@ app.whenReady().then(() => {
     files: fileSystemService,
     automation: automationRepository,
     providers: providerRepository,
+    publishChatEvent: (event) =>
+      appWindow.send(CHAT_IPC_CHANNELS.event, event),
   });
   localBridge.start();
+  registerExtensionHandlers(
+    new CliInstallerService(
+      app.getPath("userData"),
+      process.execPath,
+      join(dirname(fileURLToPath(import.meta.url)), "cli.js"),
+    ),
+  );
   registerCoreInteractorHandlers(new CoreInteractorService());
   registerAssistantHandlers(memoryService, taskPlans, questionService);
 
@@ -520,6 +536,7 @@ function shutdownRuntime(): void {
   localBridge = undefined;
   removeChatHandlers();
   removeProjectHandlers();
+  removeExtensionHandlers();
   removeVectorStoreHandlers();
   removeTaskHandlers();
   removeCoreInteractorHandlers();

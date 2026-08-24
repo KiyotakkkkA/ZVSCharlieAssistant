@@ -26,6 +26,13 @@ export class ProjectContextService {
     return project?.archived ? undefined : project;
   }
 
+  assignConversation(conversationId: string, projectId: string): void {
+    const project = this.projects.find(projectId);
+    if (!project || project.archived)
+      throw new Error("Проект не найден или архивирован");
+    this.projects.assignConversation(conversationId, projectId);
+  }
+
   promptBlock(project: Project | undefined): string {
     if (!project) return "";
     const sections: string[] = [`Проект: ${project.name}`];

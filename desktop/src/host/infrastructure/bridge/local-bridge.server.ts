@@ -21,6 +21,7 @@ import type { FileSystemService } from "../filesystem/file-system.service";
 import type { RunEngine } from "../text-generation/run-engine";
 import type { AutomationRepository } from "../database/automation.repository";
 import type { TextProviderRepository } from "../database/text-provider.repository";
+import type { RunEvent } from "../../../shared/models/chat";
 
 interface BridgeDependencies {
   userDataPath: string;
@@ -32,6 +33,7 @@ interface BridgeDependencies {
   files: FileSystemService;
   automation: AutomationRepository;
   providers: TextProviderRepository;
+  publishChatEvent?: (event: RunEvent) => void;
 }
 
 interface Session {
@@ -145,6 +147,12 @@ export class LocalBridgeServer {
         };
       case "projects.list":
         return this.deps.projects.list();
+      case "projects.ensure-directory": {
+        const params = request.params as { path?: unknown } | undefined;
+        if (typeof params?.path !== "string")
+          throw new Error("Не указан каталог проекта");
+        return this.deps.projects.ensureForDirectory(params.path);
+      }
       case "projects.assign": {
         const params = request.params as {
           conversationId: string;
@@ -169,13 +177,9 @@ export class LocalBridgeServer {
           startRunDtoSchema,
           request.params,
         );
-        const started = await this.deps.engine.start(input, (event) =>
-          this.send(session, {
-            id: request.id,
-            event: event.type,
-            payload: event,
-          }),
-        );
+        const started = await this.deps.engine.start(input, (event) => {
+          this.sendRunEvent(session, request.id, event);
+        });
         this.send(session, { id: request.id, ok: true, result: started });
         return SKIP_RESPONSE;
       }
@@ -194,12 +198,7 @@ export class LocalBridgeServer {
           params.conversationId,
           params.modelId,
           params.focus,
-          (event) =>
-            this.send(session, {
-              id: request.id,
-              event: event.type,
-              payload: event,
-            }),
+          (event) => this.sendRunEvent(session, request.id, event),
         );
       }
       case "chat.context": {
@@ -223,6 +222,15 @@ export class LocalBridgeServer {
       default:
         throw new Error(`Неизвестный метод моста: ${request.method}`);
     }
+  }
+
+  private sendRunEvent(session: Session, requestId: number, event: RunEvent) {
+    this.send(session, {
+      id: requestId,
+      event: event.type,
+      payload: event,
+    });
+    this.deps.publishChatEvent?.(event);
   }
 }
 

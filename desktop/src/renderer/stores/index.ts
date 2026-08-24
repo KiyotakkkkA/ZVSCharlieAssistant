@@ -15,4 +15,5 @@ export { entityGenerationStore } from "./EntityGenerationStore";
 export { onboardingStore } from "./OnboardingStore";
 export { uiStore } from "./UiStore";
 export { projectStore } from "./ProjectStore";
+export { extensionStore } from "./ExtensionStore";
 export type { VectorDocument, VectorStoreModel } from "./VectorStoreStore";

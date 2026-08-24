@@ -111,6 +111,7 @@ export const startRunDtoSchema = z.object({
   modelId: entityIdSchema.optional(),
   agentId: z.string().optional(),
   scenarioId: z.string().optional(),
+  projectId: entityIdSchema.optional(),
   text: z.string(),
   permissionMode: permissionModeSchema.optional(),
 });

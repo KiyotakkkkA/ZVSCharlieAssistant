@@ -96,6 +96,11 @@ const SettingsPoliciesPage = lazy(() =>
     default: SettingsPoliciesPage,
   })),
 );
+const ExtensionsPage = lazy(() =>
+  import("./pages/extensions").then(({ ExtensionsPage }) => ({
+    default: ExtensionsPage,
+  })),
+);
 const SettingsIntegrationsPage = lazy(() =>
   import("./pages/settings/integrations").then(
     ({ SettingsIntegrationsPage }) => ({ default: SettingsIntegrationsPage }),
@@ -114,6 +119,7 @@ function AppLayout() {
     pathname.startsWith(`${APP_PATHS.automation.scenarios.index}/`) ||
     pathname === APP_PATHS.storage.secrets ||
     pathname === APP_PATHS.storage.vectorDb ||
+    pathname === APP_PATHS.extensions.index ||
     pathname === APP_PATHS.settings.policies ||
     pathname === APP_PATHS.settings.integrations;
 
@@ -219,6 +225,14 @@ createRoot(root).render(
             <Route
               path={APP_PATHS.storage.index}
               element={<Navigate to={APP_PATHS.storage.vectorDb} replace />}
+            />
+            <Route
+              path={APP_PATHS.extensions.index}
+              element={<ExtensionsPage />}
+            />
+            <Route
+              path={APP_PATHS.extensions.cli}
+              element={<Navigate to={APP_PATHS.extensions.index} replace />}
             />
             <Route
               path={APP_PATHS.settings.index}

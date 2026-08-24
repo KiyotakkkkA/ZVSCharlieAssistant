@@ -255,6 +255,21 @@ class ChatStore {
   private handleEvent(event: RunEvent) {
     runInAction(() => {
       if (event.type === "run.started") {
+        const conversationChanged =
+          this.activeConversationId !== null &&
+          this.activeConversationId !== event.conversationId;
+        if (conversationChanged) {
+          this.resetPendingDeltas();
+          this.messages = [];
+          this.segments = [];
+          this.contextWindow = null;
+          this.fileEdits = [];
+          this.modelSwitches = [];
+          this.activeScenarioRun = null;
+          this.scenarioNodeRuns = [];
+          this.scenarioNodeOutput.clear();
+          this.scenarioExecutions.clear();
+        }
         this.activeRunId = event.runId;
         this.activeConversationId = event.conversationId;
         this.messages = [
