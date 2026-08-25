@@ -28,10 +28,16 @@ import {
   type ContextBudget,
 } from "../../application/context/context-budget";
 import { newEntityId } from "../database/entity-id";
+import {
+  generationLimitKind,
+  limitFailureMessage,
+} from "./generation-finish";
 type Emit = (event: RunEvent) => void;
 
 const CONTENT_FLUSH_MS = 400;
 const MAX_OUTPUT_CONTINUATIONS = 3;
+const CONTINUATION_PROMPT =
+  "Продолжи предыдущий ответ строго с места остановки. Не повторяй уже выведенный текст и не начинай ответ заново.";
 
 export class RunEngine {
   private controllers = new Map<string, AbortController>();
@@ -411,6 +417,7 @@ export class RunEngine {
           : undefined;
 
       let continuations = 0;
+      let continuationRequested = false;
       for (let step = 0; step < maxSteps + continuations; step += 1) {
         controller.signal.throwIfAborted();
         flushContent();
@@ -470,12 +477,19 @@ export class RunEngine {
             },
           });
 
+          const stepMessages = continuationRequested
+            ? [
+                ...context.messages,
+                { role: "user" as const, content: CONTINUATION_PROMPT },
+              ]
+            : context.messages;
+
           try {
             stepResult = await this.runStep({
               runId,
               step,
               system,
-              messages: context.messages,
+              messages: stepMessages,
               modelId: activeModelId,
               generationSettings,
               tools,
@@ -486,6 +500,7 @@ export class RunEngine {
               appendText,
               scheduleFlush,
             });
+            continuationRequested = false;
             break;
           } catch (error) {
             if (controller.signal.aborted) throw error;
@@ -525,18 +540,45 @@ export class RunEngine {
         if (!stepResult) break;
         if (stepResult.hasToolCalls) continue;
 
-        if (
-          stepResult.finishReason === "length" &&
-          continuations < MAX_OUTPUT_CONTINUATIONS
-        ) {
+        const limitKind = generationLimitKind(
+          stepResult.finishReason,
+          stepResult.rawFinishReason,
+        );
+        if (limitKind) {
+          if (continuations >= MAX_OUTPUT_CONTINUATIONS)
+            throw new Error(limitFailureMessage(limitKind));
+
           continuations += 1;
-          const wider = this.failover.widerOutputModel(activeModelId);
+          continuationRequested = true;
+          const compactedSegment =
+            limitKind === "context_overflow"
+              ? await this.forceCompaction({
+                  conversationId,
+                  runId,
+                  system,
+                  budget: this.budgetFor(
+                    activeModelId,
+                    project?.compactThreshold,
+                  ),
+                  modelId: activeModelId,
+                  protectedFromMessageId: userMessageId,
+                  emit,
+                })
+              : undefined;
+          const wider = compactedSegment
+            ? undefined
+            : limitKind === "context_overflow"
+              ? this.failover.widerContextModel(activeModelId)
+              : this.failover.widerOutputModel(activeModelId);
           if (wider) {
             const change = this.failover.record(runId, conversationId, {
               from: activeModelId,
               to: wider,
-              reason: "output_limit",
-              detail: "Ответ не поместился в лимит вывода модели",
+              reason: limitKind,
+              detail:
+                limitKind === "context_overflow"
+                  ? `Контекст достиг лимита (${stepResult.rawFinishReason ?? stepResult.finishReason ?? "unknown"})`
+                  : `Ответ достиг лимита (${stepResult.rawFinishReason ?? stepResult.finishReason ?? "unknown"})`,
             });
             activeModelId = wider;
             emit({
@@ -548,6 +590,14 @@ export class RunEngine {
           }
           continue;
         }
+        if (stepResult.finishReason === "error")
+          throw new Error(
+            `Провайдер остановил генерацию с ошибкой${stepResult.rawFinishReason ? `: ${stepResult.rawFinishReason}` : ""}`,
+          );
+        if (stepResult.finishReason === "content-filter")
+          throw new Error(
+            "Провайдер остановил генерацию из-за политики содержимого",
+          );
         break;
       }
 
@@ -614,6 +664,7 @@ export class RunEngine {
         conversationId: input.conversationId,
         segment,
       });
+    return segment;
   }
 
   private async compactIfNeeded(input: {
@@ -677,6 +728,7 @@ export class RunEngine {
     let hasToolCalls = false;
     let usage: RunUsage | undefined;
     let finishReason: string | undefined;
+    let rawFinishReason: string | undefined;
 
     const result = streamText({
       model: this.providers.resolve(input.modelId),
@@ -736,6 +788,7 @@ export class RunEngine {
         scheduleFlush();
       } else if (part.type === "finish-step" || part.type === "finish") {
         finishReason = part.finishReason ?? finishReason;
+        rawFinishReason = part.rawFinishReason ?? rawFinishReason;
         usage = normalizeUsage(part.usage ?? part.totalUsage, input.modelId, this.providers) ?? usage;
       }
     }
@@ -744,17 +797,18 @@ export class RunEngine {
     this.data.addStep(
       runId,
       input.step,
-      { messages: input.messages.length, hasToolCalls },
+      { messages: input.messages.length, hasToolCalls, rawFinishReason },
       finishReason,
       usage,
     );
-    return { hasToolCalls, finishReason };
+    return { hasToolCalls, finishReason, rawFinishReason };
   }
 }
 
 interface StepResult {
   hasToolCalls: boolean;
   finishReason: string | undefined;
+  rawFinishReason: string | undefined;
 }
 
 function delay(ms: number): Promise<void> {
@@ -773,6 +827,7 @@ interface StreamPart {
   input?: unknown;
   output?: unknown;
   finishReason?: string;
+  rawFinishReason?: string;
   usage?: RawUsage;
   totalUsage?: RawUsage;
 }
@@ -822,7 +877,7 @@ function normalizeStreamError(error: unknown): Error {
   if (error && typeof error === "object" && "message" in error) {
     const message = (error as { message?: unknown }).message;
     if (typeof message === "string" && message.trim())
-      return new Error(message);
+      return Object.assign(new Error(message, { cause: error }), error);
   }
   return new Error("Ошибка при обращении к модели");
 }

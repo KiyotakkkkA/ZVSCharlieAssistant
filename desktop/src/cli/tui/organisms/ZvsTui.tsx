@@ -15,7 +15,7 @@ import {
   type TuiAction,
   type TuiState,
 } from "../state";
-import { SessionHeader } from "./SessionHeader";
+import { SessionFooter } from "./SessionFooter";
 import { Transcript } from "./Transcript";
 
 export interface TuiMenu {
@@ -27,6 +27,7 @@ export interface ZvsTuiProps {
   version: string;
   model: string;
   project: string;
+  projectPath?: string;
   permission: string;
   fileRoot?: string;
   recentSessions: RecentChatSession[];
@@ -268,15 +269,8 @@ export function ZvsTui(props: ZvsTuiProps) {
   return (
     <Box
       flexDirection="column"
-      height={Math.max(1, (stdout.rows ?? 24) - 1)}
+      height={Math.max(1, stdout.rows ?? 24)}
     >
-      <SessionHeader
-        version={props.version}
-        model={props.model}
-        project={props.project}
-        permission={props.permission}
-        phase={state.phase}
-      />
       <Box flexDirection="column" flexGrow={1} overflowY="hidden">
         {state.transcript.length === 0 ? (
           <WelcomePanel sessions={props.recentSessions} />
@@ -309,6 +303,14 @@ export function ZvsTui(props: ZvsTuiProps) {
         value={state.draft}
         cursor={cursor}
         queued={state.queued.length}
+      />
+      <SessionFooter
+        version={props.version}
+        model={props.model}
+        project={props.project}
+        projectPath={props.projectPath}
+        permission={props.permission}
+        phase={state.phase}
       />
     </Box>
   );

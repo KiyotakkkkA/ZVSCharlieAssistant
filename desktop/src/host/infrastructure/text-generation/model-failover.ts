@@ -56,11 +56,21 @@ export class ModelFailover {
     if (
       text.includes("context length") ||
       text.includes("context_length") ||
+      text.includes("context window") ||
       text.includes("too many tokens") ||
       text.includes("maximum context") ||
-      text.includes("prompt is too long")
+      text.includes("prompt is too long") ||
+      text.includes("input is too long") ||
+      text.includes("input length") ||
+      text.includes("num_ctx")
     )
       return "context_overflow";
+    if (
+      text.includes("max output tokens") ||
+      text.includes("maximum output tokens") ||
+      text.includes("max completion tokens")
+    )
+      return "output_limit";
     if (text.includes("moderation") || text.includes("content policy"))
       return "moderation";
     if (status !== undefined && status >= 500) return "transient";
@@ -91,6 +101,18 @@ export class ModelFailover {
             kind: "switch",
             modelId: wider,
             reason: "context_overflow",
+            detail,
+          }
+        : { kind: "fail" };
+    }
+
+    if (kind === "output_limit") {
+      const wider = this.widerOutputModel(state.activeModelId);
+      return wider
+        ? {
+            kind: "switch",
+            modelId: wider,
+            reason: "output_limit",
             detail,
           }
         : { kind: "fail" };
@@ -129,6 +151,10 @@ export class ModelFailover {
       .filter((model) => model.maxCompletionTokens > current.maxOutput)
       .sort((left, right) => right.maxCompletionTokens - left.maxCompletionTokens)
       .map((model) => model.id)[0];
+  }
+
+  widerContextModel(modelId: string): string | undefined {
+    return this.widerModel(modelId);
   }
 
   markDegraded(modelId: string, cooldownMs = DEGRADE_COOLDOWN_MS) {
@@ -200,11 +226,51 @@ function statusOf(error: unknown): number | undefined {
 }
 
 function messageOf(error: unknown): string {
-  if (error instanceof Error) return error.message;
+  if (error instanceof Error) {
+    const candidate = error as Error & {
+      responseBody?: unknown;
+      data?: unknown;
+      cause?: unknown;
+    };
+    return [
+      error.message,
+      serializableText(candidate.responseBody),
+      serializableText(candidate.data),
+      candidate.cause === undefined || candidate.cause === error
+        ? ""
+        : messageOf(candidate.cause),
+    ]
+      .filter(Boolean)
+      .join(" ");
+  }
   if (typeof error === "string") return error;
-  if (error && typeof error === "object" && "message" in error) {
-    const message = (error as { message?: unknown }).message;
-    if (typeof message === "string") return message;
+  if (error && typeof error === "object") {
+    const candidate = error as {
+      message?: unknown;
+      responseBody?: unknown;
+      data?: unknown;
+      cause?: unknown;
+    };
+    return [
+      typeof candidate.message === "string" ? candidate.message : "",
+      serializableText(candidate.responseBody),
+      serializableText(candidate.data),
+      candidate.cause === undefined || candidate.cause === error
+        ? ""
+        : messageOf(candidate.cause),
+    ]
+      .filter(Boolean)
+      .join(" ");
   }
   return String(error);
+}
+
+function serializableText(value: unknown): string {
+  if (value === undefined || value === null) return "";
+  if (typeof value === "string") return value;
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
 }

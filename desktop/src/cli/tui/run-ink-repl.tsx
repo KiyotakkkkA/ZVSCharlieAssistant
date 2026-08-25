@@ -265,18 +265,25 @@ function InkRuntime(props: {
           );
           return true;
         }
-        case "/status":
+        case "/status": {
+          const selectedProject = props.projects.find(
+            (item) => item.id === settings.projectId,
+          );
           appendSystem(
             [
               "# Текущая сессия",
               `- Модель: **${props.models.find((item) => item.id === settings.modelId)?.name ?? settings.modelId ?? "не выбрана"}**`,
               `- Агент: **${props.agents.find((item) => item.id === settings.agentId)?.name ?? "без агента"}**`,
-              `- Проект: **${props.projects.find((item) => item.id === settings.projectId)?.name ?? "без проекта"}**`,
+              `- Проект: **${selectedProject?.name ?? "без проекта"}**`,
+              ...(selectedProject?.rootPath
+                ? [`- Папка: \`${selectedProject.rootPath}\``]
+                : []),
               `- Доступ: \`${settings.permission}\``,
               `- Диалог: \`${conversationId.current ?? "новый"}\``,
             ].join("\n"),
           );
           return true;
+        }
         case "/compact": {
           if (!conversationId.current || !settings.modelId) {
             appendSystem("Нечего сжимать", true);
@@ -629,11 +636,15 @@ function InkRuntime(props: {
   const currentProject =
     props.projects.find((item) => item.id === settings.projectId)?.name ??
     "без проекта";
+  const currentProjectPath = props.projects.find(
+    (item) => item.id === settings.projectId,
+  )?.rootPath;
   return (
     <ZvsTui
       version={props.version}
       model={currentModel}
       project={currentProject}
+      projectPath={currentProjectPath ?? undefined}
       permission={settings.permission}
       recentSessions={recentSessions}
       fileRoot={

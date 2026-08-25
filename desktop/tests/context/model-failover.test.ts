@@ -40,6 +40,16 @@ describe("классификация отказов провайдера", () =>
     expect(
       failover.classify(new Error("This model's maximum context length is 8192")),
     ).toBe("context_overflow");
+    expect(
+      failover.classify(
+        Object.assign(new Error("Bad request"), {
+          responseBody: '{"error":"context window exceeded"}',
+        }),
+      ),
+    ).toBe("context_overflow");
+    expect(failover.classify(new Error("max output tokens reached"))).toBe(
+      "output_limit",
+    );
     expect(failover.classify(new Error("blocked by content policy"))).toBe(
       "moderation",
     );
@@ -123,5 +133,17 @@ describe("классификация отказов провайдера", () =>
     const failover = createFailover();
     expect(failover.widerOutputModel("small")).toBe("large");
     expect(failover.widerOutputModel("large")).toBeUndefined();
+    expect(failover.widerContextModel("small")).toBe("large");
+
+    const decision = failover.decide(new Error("max output tokens reached"), {
+      activeModelId: "small",
+      attempt: 0,
+      compacted: false,
+    });
+    expect(decision).toMatchObject({
+      kind: "switch",
+      modelId: "large",
+      reason: "output_limit",
+    });
   });
 });
