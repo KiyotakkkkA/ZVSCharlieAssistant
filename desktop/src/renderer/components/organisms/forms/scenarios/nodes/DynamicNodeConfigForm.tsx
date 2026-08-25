@@ -351,7 +351,6 @@ const NodeField = observer(function NodeField({
   }
 });
 
-
 function OptionSelect({
   value,
   options,
@@ -371,6 +370,7 @@ function OptionSelect({
       className="w-full"
       placeholder={placeholder}
       searchable={options.length > 8}
+      classNames={{ search: "mb-3" }}
     >
       <Select.Trigger className="w-full" />
       <Select.Menu>

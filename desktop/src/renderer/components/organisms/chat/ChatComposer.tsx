@@ -164,44 +164,44 @@ export function ChatComposer(props: ChatComposerProps) {
                 </Dropdown>
               ) : null}
               <div data-tour="chat-composer-mode">
-              <Dropdown
-                className="shrink-0"
-                menuWidth={260}
-                menuPlacement="top-left"
-              >
-                <Dropdown.Trigger
-                  rounded="rounded-full"
-                  className="inline-flex h-9 items-center gap-2 border-0! px-3 text-xs text-main-300 shadow-none ring-0! hover:bg-main-600/70 hover:text-main-50"
+                <Dropdown
+                  className="shrink-0"
+                  menuWidth={260}
+                  menuPlacement="top-left"
                 >
-                  <span className="flex items-center gap-2">
-                    <selectedMode.icon className="size-4 shrink-0" />
-                    <span>{selectedMode.label}</span>
-                  </span>
-                </Dropdown.Trigger>
-                <Dropdown.Menu
-                  rounded="rounded-4xl"
-                  className="p-1.5 space-y-1!"
-                >
-                  {modes.map((item) => (
-                    <Dropdown.Item
-                      key={item.value}
-                      active={props.mode === item.value}
-                      icon={<item.icon className="size-4" />}
-                      className="rounded-3xl"
-                      onClick={() => props.onModeChange(item.value)}
-                    >
-                      <span className="block text-left">
-                        <span className="block text-sm font-medium">
-                          {item.label}
+                  <Dropdown.Trigger
+                    rounded="rounded-full"
+                    className="inline-flex h-9 items-center gap-2 border-0! px-3 text-xs text-main-300 shadow-none ring-0! hover:bg-main-600/70 hover:text-main-50"
+                  >
+                    <span className="flex items-center gap-2">
+                      <selectedMode.icon className="size-4 shrink-0" />
+                      <span>{selectedMode.label}</span>
+                    </span>
+                  </Dropdown.Trigger>
+                  <Dropdown.Menu
+                    rounded="rounded-4xl"
+                    className="p-1.5 space-y-1!"
+                  >
+                    {modes.map((item) => (
+                      <Dropdown.Item
+                        key={item.value}
+                        active={props.mode === item.value}
+                        icon={<item.icon className="size-4" />}
+                        className="rounded-3xl"
+                        onClick={() => props.onModeChange(item.value)}
+                      >
+                        <span className="block text-left">
+                          <span className="block text-sm font-medium">
+                            {item.label}
+                          </span>
+                          <span className="block text-xs text-main-500">
+                            {item.description}
+                          </span>
                         </span>
-                        <span className="block text-xs text-main-500">
-                          {item.description}
-                        </span>
-                      </span>
-                    </Dropdown.Item>
-                  ))}
-                </Dropdown.Menu>
-              </Dropdown>
+                      </Dropdown.Item>
+                    ))}
+                  </Dropdown.Menu>
+                </Dropdown>
               </div>
               {props.mode === "agent" ? (
                 <Select
@@ -215,6 +215,7 @@ export function ChatComposer(props: ChatComposerProps) {
                   searchPlaceholder="Найти агента"
                   emptyMessage="Агенты не найдены"
                   menuWidth={240}
+                  classNames={{ search: "mb-3" }}
                   menuPlacement="top-left"
                 >
                   <Select.Trigger
@@ -245,6 +246,7 @@ export function ChatComposer(props: ChatComposerProps) {
                       : "Нет сценариев"
                   }
                   searchable
+                  classNames={{ search: "mb-3" }}
                   searchPlaceholder="Найти сценарий"
                   emptyMessage="Сценарии не найдены"
                   menuWidth={260}
@@ -269,13 +271,13 @@ export function ChatComposer(props: ChatComposerProps) {
             <div className="flex items-center gap-1.5">
               {!["agent", "scenario"].includes(props.mode) && (
                 <div data-tour="chat-composer-model">
-                <ModelOrientedSelect
-                  variant="ghost"
-                  value={props.model}
-                  onChange={props.onModelChange}
-                  menuWidth={280}
-                  menuPlacement="top-right"
-                />
+                  <ModelOrientedSelect
+                    variant="ghost"
+                    value={props.model}
+                    onChange={props.onModelChange}
+                    menuWidth={280}
+                    menuPlacement="top-right"
+                  />
                 </div>
               )}
               <Tooltip

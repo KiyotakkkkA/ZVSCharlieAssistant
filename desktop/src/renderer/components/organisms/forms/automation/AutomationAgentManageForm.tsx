@@ -414,6 +414,7 @@ export const AutomationAgentManageForm = observer(
                 }))}
                 placeholder="Выберите модель"
                 searchable
+                classNames={{ search: "mb-3" }}
               >
                 <Select.Trigger />
                 <Select.Menu>
@@ -675,7 +676,10 @@ function FormSection({
   children: React.ReactNode;
 }) {
   return (
-    <section data-tour={dataTour} className="grid gap-4 rounded-xl bg-main-800/20 p-5 ring-1 ring-main-700/35 xl:grid-cols-[220px_1fr] ">
+    <section
+      data-tour={dataTour}
+      className="grid gap-4 rounded-xl bg-main-800/20 p-5 ring-1 ring-main-700/35 xl:grid-cols-[220px_1fr] "
+    >
       <div>
         <h2 className="text-sm font-semibold text-main-100">{title}</h2>
         <p className="mt-1 text-xs leading-5 text-main-500">{description}</p>

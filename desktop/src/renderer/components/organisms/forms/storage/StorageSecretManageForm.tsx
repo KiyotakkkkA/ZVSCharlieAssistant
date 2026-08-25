@@ -72,8 +72,15 @@ export function StorageSecretManageForm({
   };
 
   return (
-    <form data-tour="secret-form" onSubmit={(event) => void handleSubmit(event)} className="space-y-5">
-      <label data-tour="secret-form-name" className="grid gap-2 text-sm text-main-200">
+    <form
+      data-tour="secret-form"
+      onSubmit={(event) => void handleSubmit(event)}
+      className="space-y-5"
+    >
+      <label
+        data-tour="secret-form-name"
+        className="grid gap-2 text-sm text-main-200"
+      >
         Название
         <InputSmall
           value={label}
@@ -85,7 +92,10 @@ export function StorageSecretManageForm({
         />
       </label>
 
-      <div data-tour="secret-form-category" className="grid gap-2 text-sm text-main-200">
+      <div
+        data-tour="secret-form-category"
+        className="grid gap-2 text-sm text-main-200"
+      >
         Категория
         <Select
           value={categoryId}
@@ -93,6 +103,7 @@ export function StorageSecretManageForm({
           options={options}
           placeholder="Выберите категорию"
           searchable
+          classNames={{ search: "mb-3" }}
         >
           <Select.Trigger className="w-full" />
           <Select.Menu>
@@ -103,7 +114,10 @@ export function StorageSecretManageForm({
         </Select>
       </div>
 
-      <label data-tour="secret-form-value" className="grid gap-2 text-sm text-main-200">
+      <label
+        data-tour="secret-form-value"
+        className="grid gap-2 text-sm text-main-200"
+      >
         Содержимое
         <InputSmall
           preset="password"

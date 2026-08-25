@@ -140,7 +140,10 @@ export const StorageVecdbManageForm = observer(function StorageVecdbManageForm({
             ) : null}
           </div>
         ) : tab === "settings" ? (
-          <div data-tour="knowledge-settings" className="grid gap-5 p-5 xl:grid-cols-[220px_minmax(0,1fr)]">
+          <div
+            data-tour="knowledge-settings"
+            className="grid gap-5 p-5 xl:grid-cols-[220px_minmax(0,1fr)]"
+          >
             <Lead
               title="Основное"
               description="Основная информация о базе данных"
@@ -216,6 +219,7 @@ export const StorageVecdbManageForm = observer(function StorageVecdbManageForm({
                   }))}
                   placeholder="Выберите embedding-модель"
                   searchable
+                  classNames={{ search: "mb-3" }}
                 >
                   <Select.Trigger className="w-full" />
                   <Select.Menu>
@@ -329,7 +333,10 @@ export const StorageVecdbManageForm = observer(function StorageVecdbManageForm({
             </div>
           </div>
         ) : (
-          <div data-tour="knowledge-search" className="mx-auto max-w-4xl space-y-5 p-5">
+          <div
+            data-tour="knowledge-search"
+            className="mx-auto max-w-4xl space-y-5 p-5"
+          >
             <div className="flex gap-2">
               <InputSmall
                 className="w-lg"

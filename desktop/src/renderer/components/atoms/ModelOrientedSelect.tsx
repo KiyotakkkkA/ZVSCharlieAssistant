@@ -50,6 +50,7 @@ export const ModelOrientedSelect = observer(function ModelOrientedSelect({
       emptyMessage={emptyMessage}
       disabled={selectProps.disabled || options.length === 0}
       searchable
+      classNames={{ search: "mb-3" }}
     >
       <Select.Trigger
         rounded={ghost ? "rounded-full" : undefined}

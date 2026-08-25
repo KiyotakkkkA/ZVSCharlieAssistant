@@ -32,7 +32,10 @@ export const ToolsListPage = observer(function ToolsListPage() {
   }, [query, automationStore.tools]);
 
   return (
-    <section data-tour="tools-page" className="flex h-full min-h-0 flex-col overflow-hidden p-4">
+    <section
+      data-tour="tools-page"
+      className="flex h-full min-h-0 flex-col overflow-hidden p-4"
+    >
       <PageHeader
         title="Инструменты"
         description="Встроенные возможности приложения, которые можно разрешать агентам."
@@ -67,10 +70,7 @@ export const ToolsListPage = observer(function ToolsListPage() {
                 data-tour={index === 0 ? "tools-first" : undefined}
                 className="h-full"
               >
-                <AutomationToolCard
-                  tool={tool}
-                  onOpen={setSelectedTool}
-                />
+                <AutomationToolCard tool={tool} onOpen={setSelectedTool} />
               </div>
             ))}
           </div>

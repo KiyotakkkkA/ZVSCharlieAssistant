@@ -33,6 +33,7 @@ export const SecretOrientedSelect = observer(function SecretOrientedSelect({
       emptyMessage={emptyMessage}
       className={className}
       searchable
+      classNames={{ search: "mb-3" }}
     >
       <Select.Trigger className={triggerClassName} />
       <Select.Menu className={menuClassName}>
