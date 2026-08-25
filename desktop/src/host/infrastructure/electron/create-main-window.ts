@@ -20,7 +20,13 @@ function restrictNavigation(window: BrowserWindow): void {
   );
 }
 
-export function createMainWindow(): BrowserWindow {
+interface CreateMainWindowOptions {
+  showOnReady?: boolean;
+}
+
+export function createMainWindow({
+  showOnReady = true,
+}: CreateMainWindowOptions = {}): BrowserWindow {
   const window = new BrowserWindow({
     minWidth: 760,
     minHeight: 520,
@@ -39,7 +45,7 @@ export function createMainWindow(): BrowserWindow {
 
   window.maximize();
 
-  window.once("ready-to-show", () => window.show());
+  if (showOnReady) window.once("ready-to-show", () => window.show());
 
   if (process.env.ELECTRON_RENDERER_URL) {
     void window.loadURL(process.env.ELECTRON_RENDERER_URL);

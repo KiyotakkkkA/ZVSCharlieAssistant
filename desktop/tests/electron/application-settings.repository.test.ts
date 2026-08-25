@@ -28,19 +28,25 @@ describe("ApplicationSettingsRepository", () => {
     const repository = createRepository();
     expect(repository.get()).toEqual({
       runInBackground: true,
+      launchAtLogin: false,
       onboarding: defaultOnboarding(),
     });
 
-    expect(repository.update({ runInBackground: false })).toEqual({
+    expect(
+      repository.update({ runInBackground: false, launchAtLogin: true }),
+    ).toEqual({
       runInBackground: false,
+      launchAtLogin: true,
       onboarding: defaultOnboarding(),
     });
     expect(repository.get()).toEqual({
       runInBackground: false,
+      launchAtLogin: true,
       onboarding: defaultOnboarding(),
     });
     expect(JSON.parse(readFileSync(settingsPath(), "utf8"))).toEqual({
       runInBackground: false,
+      launchAtLogin: true,
       onboarding: defaultOnboarding(),
     });
   });
@@ -52,6 +58,7 @@ describe("ApplicationSettingsRepository", () => {
 
     expect(repository.get()).toEqual({
       runInBackground: true,
+      launchAtLogin: false,
       onboarding: defaultOnboarding(),
     });
     expect(log).toHaveBeenCalledOnce();
@@ -63,6 +70,7 @@ describe("ApplicationSettingsRepository", () => {
 
     expect(repository.update({ onboarding: { tourCompleted: true } })).toEqual({
       runInBackground: false,
+      launchAtLogin: false,
       onboarding: { ...defaultOnboarding(), tourCompleted: true },
     });
   });
@@ -86,6 +94,7 @@ describe("ApplicationSettingsRepository", () => {
 
     expect(repository.get()).toEqual({
       runInBackground: true,
+      launchAtLogin: false,
       onboarding: {
         ...defaultOnboarding(),
         tourCompleted: true,

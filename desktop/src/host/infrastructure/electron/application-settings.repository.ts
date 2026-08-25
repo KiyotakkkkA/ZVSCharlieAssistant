@@ -6,6 +6,7 @@ import type {
 
 const DEFAULT_SETTINGS: ApplicationSettings = {
   runInBackground: true,
+  launchAtLogin: false,
   onboarding: {
     version: 2,
     tourCompleted: false,
@@ -35,6 +36,12 @@ export class ApplicationSettingsRepository {
     ) {
       throw new TypeError("runInBackground must be a boolean");
     }
+    if (
+      input.launchAtLogin !== undefined &&
+      typeof input.launchAtLogin !== "boolean"
+    ) {
+      throw new TypeError("launchAtLogin must be a boolean");
+    }
     validateOnboardingPatch(input.onboarding);
     const current = this.get();
     const settings: ApplicationSettings = {
@@ -42,6 +49,9 @@ export class ApplicationSettingsRepository {
       ...(input.runInBackground === undefined
         ? {}
         : { runInBackground: input.runInBackground }),
+      ...(input.launchAtLogin === undefined
+        ? {}
+        : { launchAtLogin: input.launchAtLogin }),
       onboarding: {
         ...current.onboarding,
         ...input.onboarding,
@@ -62,6 +72,7 @@ function parseSettings(value: unknown): ApplicationSettings {
   if (!value || typeof value !== "object") return createDefaultSettings();
   const record = value as Record<string, unknown>;
   const runInBackground = record.runInBackground;
+  const launchAtLogin = record.launchAtLogin;
   const onboarding =
     record.onboarding && typeof record.onboarding === "object"
       ? (record.onboarding as Record<string, unknown>)
@@ -71,6 +82,10 @@ function parseSettings(value: unknown): ApplicationSettings {
       typeof runInBackground === "boolean"
         ? runInBackground
         : DEFAULT_SETTINGS.runInBackground,
+    launchAtLogin:
+      typeof launchAtLogin === "boolean"
+        ? launchAtLogin
+        : DEFAULT_SETTINGS.launchAtLogin,
     onboarding: {
       version: readNumber(onboarding.version, DEFAULT_SETTINGS.onboarding.version),
       tourCompleted: readBoolean(

@@ -7,11 +7,11 @@ export class AppWindowController {
   private closeToTray = false;
   private quitting = false;
 
-  create(): BrowserWindow {
+  create(options: { showOnReady?: boolean } = {}): BrowserWindow {
     const current = this.window;
     if (current && !current.isDestroyed()) return current;
 
-    const window = createMainWindow();
+    const window = createMainWindow(options);
     this.window = window;
 
     window.on("close", (event) => {

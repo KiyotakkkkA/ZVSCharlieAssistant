@@ -101,16 +101,16 @@ export const NAVIGATION_ROUTES: readonly NavigationRoute[] = [
         icon: ToolsIcon,
       },
       {
-        id: "automation-scenarios",
-        label: "Сценарии",
-        path: APP_PATHS.automation.scenarios.index,
-        icon: ScriptIcon,
-      },
-      {
         id: "automation-skills",
         label: "Навыки",
         path: APP_PATHS.automation.skills.index,
         icon: SkillIcon,
+      },
+      {
+        id: "automation-scenarios",
+        label: "Сценарии",
+        path: APP_PATHS.automation.scenarios.index,
+        icon: ScriptIcon,
       },
     ],
   },

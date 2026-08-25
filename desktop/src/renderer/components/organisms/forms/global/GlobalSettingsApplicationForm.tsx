@@ -6,6 +6,7 @@ import { APPLICATION_ANCHORS } from "./settings-sections";
 
 const DEFAULT_SETTINGS: ApplicationSettings = {
   runInBackground: true,
+  launchAtLogin: false,
   onboarding: {
     version: 2,
     tourCompleted: false,
@@ -44,14 +45,16 @@ export function GlobalSettingsApplicationForm() {
     };
   }, [toasts]);
 
-  const setRunInBackground = async (runInBackground: boolean) => {
+  const updateSetting = async (
+    input: Partial<
+      Pick<ApplicationSettings, "runInBackground" | "launchAtLogin">
+    >,
+  ) => {
     const previous = settings;
-    setSettings({ ...settings, runInBackground });
+    setSettings({ ...settings, ...input });
     setSaving(true);
     try {
-      const updated = await window.desktop.applicationSettings.update({
-        runInBackground,
-      });
+      const updated = await window.desktop.applicationSettings.update(input);
       setSettings(updated);
     } catch (error) {
       setSettings(previous);
@@ -84,7 +87,26 @@ export function GlobalSettingsApplicationForm() {
             <InputCheckSlided
               checked={settings.runInBackground}
               disabled={loading || saving}
-              onChange={(checked) => void setRunInBackground(checked)}
+              onChange={(checked) =>
+                void updateSetting({ runInBackground: checked })
+              }
+            />
+          </div>
+          <div className="flex items-center justify-between gap-6 border-t border-main-700/60 py-3">
+            <div className="min-w-0 pr-8">
+              <h4 className="text-sm font-medium text-main-100">
+                Автозапуск при входе в систему
+              </h4>
+              <p className="mt-1 max-w-2xl text-xs leading-5 text-main-400">
+                Приложение запустится при включении компьютера
+              </p>
+            </div>
+            <InputCheckSlided
+              checked={settings.launchAtLogin}
+              disabled={loading || saving}
+              onChange={(checked) =>
+                void updateSetting({ launchAtLogin: checked })
+              }
             />
           </div>
         </div>

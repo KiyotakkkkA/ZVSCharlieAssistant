@@ -9,11 +9,13 @@ export const onboardingStateDtoSchema = z.object({
 
 export const applicationSettingsDtoSchema = z.object({
   runInBackground: z.boolean(),
+  launchAtLogin: z.boolean(),
   onboarding: onboardingStateDtoSchema,
 });
 
 export const updateApplicationSettingsDtoSchema = z.object({
   runInBackground: z.boolean().optional(),
+  launchAtLogin: z.boolean().optional(),
   onboarding: onboardingStateDtoSchema.partial().optional(),
 });
 

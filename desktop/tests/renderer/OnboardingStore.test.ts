@@ -15,6 +15,7 @@ beforeEach(() => {
 
     return {
       runInBackground: true,
+      launchAtLogin: false,
       onboarding: { ...onboarding, ...clonedPatch },
     };
   });
@@ -29,6 +30,7 @@ describe("OnboardingStore", () => {
     const store = new OnboardingStore();
     store.settings = {
       runInBackground: true,
+      launchAtLogin: false,
       onboarding: {
         ...onboarding,
         completedGuides: observable.array<string>([]),

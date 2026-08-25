@@ -3,6 +3,10 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { AppWindowController } from "./infrastructure/electron/app-window.controller";
 import { ApplicationSettingsRepository } from "./infrastructure/electron/application-settings.repository";
+import {
+  BACKGROUND_LAUNCH_ARGUMENT,
+  LoginItemService,
+} from "./infrastructure/electron/login-item.service";
 import { TrayController } from "./infrastructure/electron/tray.controller";
 import {
   registerAppHandlers,
@@ -173,7 +177,8 @@ const applicationDataReset = new ApplicationDataResetService(
 if (!isPrimaryInstance) app.quit();
 else applicationDataReset.applyPendingReset();
 
-app.on("second-instance", () => {
+app.on("second-instance", (_event, commandLine) => {
+  if (commandLine.includes(BACKGROUND_LAUNCH_ARGUMENT)) return;
   if (app.isReady()) {
     appWindow.show();
     return;
@@ -215,10 +220,29 @@ app.whenReady().then(() => {
   const applicationSettings = new ApplicationSettingsRepository(
     join(app.getPath("userData"), "application-settings.json"),
   );
+  const loginItem = new LoginItemService(app);
+  const initialApplicationSettings = applicationSettings.get();
+  const launchedInBackground = loginItem.wasLaunchedInBackground(process.argv);
+  try {
+    loginItem.setEnabled(initialApplicationSettings.launchAtLogin);
+  } catch (error) {
+    console.error("Failed to synchronize login item", error);
+  }
   registerAppHandlers(new ElectronGeneratedArtifactExporter(reportsRoot), {
     get: () => applicationSettings.get(),
     update: (input) => {
+      const previous = applicationSettings.get();
       const updated = applicationSettings.update(input);
+      if (input.launchAtLogin !== undefined) {
+        try {
+          loginItem.setEnabled(updated.launchAtLogin);
+        } catch (error) {
+          applicationSettings.update({
+            launchAtLogin: previous.launchAtLogin,
+          });
+          throw error;
+        }
+      }
       appWindow.setCloseToTray(
         trayController !== undefined && updated.runInBackground,
       );
@@ -439,7 +463,9 @@ app.whenReady().then(() => {
   registerCoreInteractorHandlers(new CoreInteractorService());
   registerAssistantHandlers(memoryService, taskPlans, questionService);
 
-  appWindow.create();
+  appWindow.create({
+    showOnReady: !launchedInBackground,
+  });
   Menu.setApplicationMenu(
     Menu.buildFromTemplate([
       {
@@ -473,6 +499,7 @@ app.whenReady().then(() => {
   } catch (error) {
     trayController = undefined;
     console.error("Failed to initialize Tray", error);
+    if (launchedInBackground) appWindow.show();
   }
   scenarioJobWorker = new ScenarioJobWorker(
     automationJobs,
