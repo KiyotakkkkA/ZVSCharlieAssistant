@@ -15,6 +15,17 @@ export interface ChatConversation {
   lastUsage: ChatUsage;
   updatedAt: string;
 }
+export interface RecentChatSession {
+  conversationId: string;
+  title: string;
+  updatedAt: string;
+  usage: ChatUsage;
+  project: {
+    id: string;
+    name: string;
+    rootPath: string | null;
+  } | null;
+}
 export interface ChatToolCall {
   id: string;
   toolId: string;

@@ -135,6 +135,7 @@ import { MemoryService } from "./application/services/memory.service";
 import { TaskPlanRepository } from "./infrastructure/database/task-plan.repository";
 import { UserQuestionRepository } from "./infrastructure/database/user-question.repository";
 import { UserQuestionService } from "./application/services/user-question.service";
+import { RecentChatSessionsService } from "./application/services/recent-chat-sessions.service";
 import {
   registerAssistantHandlers,
   removeAssistantHandlers,
@@ -412,6 +413,11 @@ app.whenReady().then(() => {
     files: fileSystemService,
     automation: automationRepository,
     providers: providerRepository,
+    questions: questionService,
+    recentSessions: new RecentChatSessionsService(
+      chatRepository,
+      projectRepository,
+    ),
     publishChatEvent: (event) =>
       appWindow.send(CHAT_IPC_CHANNELS.event, event),
   });

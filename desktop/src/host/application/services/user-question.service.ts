@@ -38,6 +38,7 @@ export interface ScenarioAskContext {
 type PendingChatQuestion = {
   resolve: (answer: string[]) => void;
   timer: NodeJS.Timeout;
+  detachAbort: () => void;
 };
 
 const CHAT_DEFAULT_TIMEOUT_SECONDS = 300;
@@ -69,6 +70,7 @@ export class UserQuestionService {
   async askInChat(
     input: AskInput,
     context: { conversationId: string; runId: string },
+    signal?: AbortSignal,
   ): Promise<string[]> {
     const timeoutMs =
       Math.min(
@@ -89,16 +91,34 @@ export class UserQuestionService {
       expiresAt: new Date(Date.now() + timeoutMs).toISOString(),
     });
     this.listener?.(question);
-    return new Promise<string[]>((resolve) => {
+    return new Promise<string[]>((resolve, reject) => {
+      const detachAbort = () => signal?.removeEventListener("abort", onAbort);
+      const onAbort = () => {
+        const waiter = this.chatWaiters.get(question.id);
+        if (!waiter) return;
+        clearTimeout(waiter.timer);
+        this.chatWaiters.delete(question.id);
+        this.data.close(question.id, "cancelled");
+        const cancelled = this.data.find(question.id);
+        if (cancelled) this.listener?.(cancelled);
+        reject(new Error("Выполнение отменено"));
+      };
       const timer = setTimeout(() => {
         this.chatWaiters.delete(question.id);
+        detachAbort();
         this.data.close(question.id, "timed_out");
         const fallback = this.data.find(question.id);
         if (fallback) this.listener?.(fallback);
         resolve([input.defaultAnswer ?? "Ответ не получен"]);
       }, timeoutMs);
       timer.unref();
-      this.chatWaiters.set(question.id, { resolve, timer });
+      this.chatWaiters.set(question.id, {
+        resolve,
+        timer,
+        detachAbort,
+      });
+      signal?.addEventListener("abort", onAbort, { once: true });
+      if (signal?.aborted) onAbort();
     });
   }
 
@@ -149,6 +169,7 @@ export class UserQuestionService {
     if (waiter) {
       clearTimeout(waiter.timer);
       this.chatWaiters.delete(id);
+      waiter.detachAbort();
       waiter.resolve(answer);
       return question;
     }

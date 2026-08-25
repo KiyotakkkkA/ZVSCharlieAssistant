@@ -455,6 +455,7 @@ export class ToolRegistry {
                   multiSelect: Boolean(input.multiSelect),
                 },
                 { conversationId, runId },
+                signal,
               );
               return { answer };
             },

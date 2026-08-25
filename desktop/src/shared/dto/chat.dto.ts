@@ -3,11 +3,13 @@ import { entityIdSchema, jsonValueSchema } from "./ipc-dto";
 
 export const chatModeSchema = z.enum(["chat", "planner", "agent", "scenario"]);
 export type ChatMode = z.infer<typeof chatModeSchema>;
+export const permissionModeSchema = z.enum(["plan", "edit", "deny"]);
 export interface ChatUsage {
   mode: ChatMode;
   modelId?: string;
   agentId?: string;
   scenarioId?: string;
+  permissionMode?: PermissionMode;
 }
 export const chatUsageDtoSchema: z.ZodType<ChatUsage> = z.object({
   mode: chatModeSchema,
@@ -25,6 +27,7 @@ export const chatUsageDtoSchema: z.ZodType<ChatUsage> = z.object({
     .nullable()
     .optional()
     .transform((value) => value ?? undefined),
+  permissionMode: permissionModeSchema.optional(),
 });
 
 export const chatTextPartDtoSchema = z.object({
@@ -102,8 +105,6 @@ export const modelSwitchDtoSchema = z.object({
   detail: z.string(),
   at: z.string(),
 });
-
-export const permissionModeSchema = z.enum(["plan", "edit", "deny"]);
 
 export const startRunDtoSchema = z.object({
   conversationId: entityIdSchema.optional(),

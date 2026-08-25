@@ -4,6 +4,7 @@ import { isValidElement, memo, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { ChatToolCall } from "../../../ipc/contracts";
+import type { ChatMessageContentPart } from "../../../shared/dto";
 import {
   BrainIcon,
   ChatIcon,
@@ -27,6 +28,7 @@ export interface ChatAssistantMsgBlockProps {
   status?: "streaming" | "completed" | "failed" | "cancelled";
   error?: string | null;
   toolCalls?: ChatToolCall[];
+  parts?: ChatMessageContentPart[];
   beforeContent?: ReactNode;
   actions?: ReactNode;
   disabled?: boolean;
@@ -41,6 +43,7 @@ export const ChatAssistantMsgBlock = memo(function ChatAssistantMsgBlock({
   status,
   error,
   toolCalls,
+  parts,
   beforeContent,
   actions,
   disabled = false,
@@ -54,23 +57,13 @@ export const ChatAssistantMsgBlock = memo(function ChatAssistantMsgBlock({
       </span>
       <div className="min-w-0 w-full max-w-3xl py-1 text-[14px] leading-7 text-main-200">
         {beforeContent}
-        {reasoning ? (
-          <Accordion className="mb-4 overflow-hidden rounded-xl bg-main-800/45 ring-1 ring-main-700/35">
-            <Accordion.Summary className="w-full px-3.5 py-2.5 text-left text-xs font-medium text-main-400 transition-colors hover:bg-main-700/30 hover:text-main-200">
-              Ход рассуждений
-            </Accordion.Summary>
-            <Accordion.Content className="border-t border-main-700/30 px-3.5 py-3 text-xs leading-5 text-main-500 whitespace-pre-wrap">
-              {reasoning}
-            </Accordion.Content>
-          </Accordion>
-        ) : null}
-        {toolCalls?.length ? (
-          <div className="mb-4 space-y-2">
-            {toolCalls.map((call) => (
-              <ToolCallDetails key={call.id} call={call} />
-            ))}
-          </div>
-        ) : null}
+        <AssistantContentTimeline
+          parts={parts}
+          text={text}
+          reasoning={reasoning}
+          toolCalls={toolCalls}
+          streaming={status === "streaming"}
+        />
         {status === "failed" && error ? (
           <Alert
             variant="danger"
@@ -80,16 +73,6 @@ export const ChatAssistantMsgBlock = memo(function ChatAssistantMsgBlock({
             {error}
           </Alert>
         ) : null}
-        {!text && status === "streaming" ? (
-          <AssistantSkeleton />
-        ) : (
-          <MarkdownContent
-            remarkPlugins={[remarkGfm]}
-            components={markdownComponents}
-          >
-            {text}
-          </MarkdownContent>
-        )}
         {actions}
         <div className="mt-1 flex justify-between items-center opacity-0 transition-opacity group-hover/message:opacity-100">
           <div className="flex gap-1">
@@ -115,6 +98,101 @@ export const ChatAssistantMsgBlock = memo(function ChatAssistantMsgBlock({
     </div>
   );
 });
+
+function AssistantContentTimeline({
+  parts,
+  text,
+  reasoning,
+  toolCalls = [],
+  streaming,
+}: {
+  parts?: ChatMessageContentPart[];
+  text: string;
+  reasoning?: string;
+  toolCalls?: ChatToolCall[];
+  streaming: boolean;
+}) {
+  if (!parts?.length) {
+    return (
+      <>
+        {reasoning ? <ReasoningBlock text={reasoning} /> : null}
+        {toolCalls.length ? (
+          <div className="mb-4 space-y-2">
+            {toolCalls.map((call) => (
+              <ToolCallDetails key={call.id} call={call} />
+            ))}
+          </div>
+        ) : null}
+        {!text && streaming ? <AssistantSkeleton /> : <AnswerBlock text={text} />}
+      </>
+    );
+  }
+
+  const resultByCallId = new Map(
+    parts
+      .filter((part) => part.type === "tool-result")
+      .map((part) => [part.toolCallId, part]),
+  );
+  const visibleParts = parts.filter((part) => part.type !== "tool-result");
+
+  return (
+    <div className="space-y-4">
+      {visibleParts.map((part, index) => {
+        if (part.type === "reasoning")
+          return <ReasoningBlock key={`reasoning-${index}`} text={part.text} />;
+        if (part.type === "text")
+          return <AnswerBlock key={`text-${index}`} text={part.text} />;
+        if (part.type === "summary")
+          return <AnswerBlock key={`summary-${part.segmentId}`} text={part.text} />;
+        if (part.type === "tool-call") {
+          const liveCall = toolCalls.find(
+            (call) => call.id === part.toolCallId,
+          );
+          const result = resultByCallId.get(part.toolCallId);
+          const call: ChatToolCall = liveCall ?? {
+            id: part.toolCallId,
+            toolId: part.toolName,
+            status: result?.isError ? "failed" : result ? "completed" : "requested",
+            input: part.input,
+            output: result?.output ?? null,
+            error:
+              result?.isError &&
+              typeof result.output === "object" &&
+              result.output !== null &&
+              "error" in result.output
+                ? String(result.output.error)
+                : null,
+          };
+          return <ToolCallDetails key={`tool-${part.toolCallId}`} call={call} />;
+        }
+        return null;
+      })}
+      {streaming && visibleParts.length === 0 ? <AssistantSkeleton /> : null}
+    </div>
+  );
+}
+
+function ReasoningBlock({ text }: { text: string }) {
+  return (
+    <Accordion className="overflow-hidden rounded-xl bg-main-800/45 ring-1 ring-main-700/35">
+      <Accordion.Summary className="w-full px-3.5 py-2.5 text-left text-xs font-medium text-main-400 transition-colors hover:bg-main-700/30 hover:text-main-200">
+        Ход рассуждений
+      </Accordion.Summary>
+      <Accordion.Content className="border-t border-main-700/30 px-3.5 py-3 text-xs leading-5 text-main-500 whitespace-pre-wrap">
+        {text}
+      </Accordion.Content>
+    </Accordion>
+  );
+}
+
+function AnswerBlock({ text }: { text: string }) {
+  if (!text) return null;
+  return (
+    <MarkdownContent remarkPlugins={[remarkGfm]} components={markdownComponents}>
+      {text}
+    </MarkdownContent>
+  );
+}
 
 const MarkdownContent = memo(
   ReactMarkdown,

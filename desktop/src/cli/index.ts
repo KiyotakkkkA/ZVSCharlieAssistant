@@ -10,7 +10,7 @@ import {
 } from "./args";
 import { runChat } from "./render";
 import { runRepl } from "./repl";
-import { errorMessage, helpScreen } from "./ui";
+import { errorMessage, helpScreen } from "./tui/output";
 
 if (process.platform === "win32") {
   spawnSync("chcp.com", ["65001"], {

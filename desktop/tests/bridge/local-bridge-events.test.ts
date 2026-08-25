@@ -33,4 +33,39 @@ describe("события локального CLI-моста", () => {
       payload: event,
     });
   });
+
+  it("передаёт вопросы и ответы между CLI и сервисом", async () => {
+    const conversationId = "0198f4b8-7b1a-7000-8000-000000000001";
+    const questionId = "0198f4b8-7b1a-7000-8000-000000000002";
+    const pendingForConversation = vi.fn(() => [{ id: questionId }]);
+    const answer = vi.fn(() => ({ id: questionId, status: "answered" }));
+    const server = new LocalBridgeServer({
+      questions: { pendingForConversation, answer },
+    } as unknown as ConstructorParameters<typeof LocalBridgeServer>[0]);
+    const internal = server as unknown as {
+      handle(session: unknown, request: unknown): Promise<unknown>;
+    };
+
+    await expect(
+      internal.handle({}, {
+        id: 1,
+        method: "questions.pending",
+        params: { conversationId },
+      }),
+    ).resolves.toEqual([{ id: questionId }]);
+    await expect(
+      internal.handle({}, {
+        id: 2,
+        method: "questions.answer",
+        params: { questionId, answer: ["Продолжить"] },
+      }),
+    ).resolves.toEqual({ id: questionId, status: "answered" });
+
+    expect(pendingForConversation).toHaveBeenCalledWith(conversationId);
+    expect(answer).toHaveBeenCalledWith(
+      questionId,
+      ["Продолжить"],
+      "ui",
+    );
+  });
 });

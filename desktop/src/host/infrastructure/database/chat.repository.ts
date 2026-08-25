@@ -58,14 +58,20 @@ interface SegmentRow {
 }
 export class ChatRepository {
   constructor(private readonly db: Database.Database) {}
+  conversations(limit?: number): ChatConversation[] {
+    const sql =
+      limit === undefined
+        ? "SELECT id,title,last_usage,updated_at FROM chat_conversations ORDER BY updated_at DESC"
+        : "SELECT id,title,last_usage,updated_at FROM chat_conversations ORDER BY updated_at DESC LIMIT ?";
+    const statement = this.db.prepare(sql);
+    const rows = (limit === undefined
+      ? statement.all()
+      : statement.all(Math.max(0, Math.trunc(limit)))) as ConversationRow[];
+    return rows.map(mapConversation);
+  }
+
   snapshot(conversationId?: string): ChatSnapshot {
-    const conversations = (
-      this.db
-        .prepare(
-          "SELECT id,title,last_usage,updated_at FROM chat_conversations ORDER BY updated_at DESC",
-        )
-        .all() as ConversationRow[]
-    ).map(mapConversation);
+    const conversations = this.conversations();
     const targetId = conversationId ?? conversations[0]?.id;
     const page = targetId
       ? this.messagePage(targetId)

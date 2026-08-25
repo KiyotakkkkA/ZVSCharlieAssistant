@@ -84,6 +84,7 @@ export class RunEngine {
       mode: input.mode,
       modelId,
       ...(input.agentId ? { agentId: input.agentId } : {}),
+      permissionMode: input.permissionMode ?? "edit",
     };
     const conversationId = input.conversationId ?? this.data.createConversation(usage);
     if (input.projectId)
@@ -201,7 +202,11 @@ export class RunEngine {
     if (!this.scenarios) throw new Error("Движок сценариев недоступен");
     if (!input.scenarioId) throw new Error("Сценарий не выбран");
     this.scenarios.assertRunnable(input.scenarioId);
-    const usage = { mode: "scenario" as const, scenarioId: input.scenarioId };
+    const usage = {
+      mode: "scenario" as const,
+      scenarioId: input.scenarioId,
+      permissionMode: input.permissionMode ?? "edit",
+    };
     const conversationId =
       input.conversationId ?? this.data.createConversation(usage);
     this.data.updateLastUsage(conversationId, usage);

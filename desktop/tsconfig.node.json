@@ -2,12 +2,14 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "composite": true,
+    "jsx": "react-jsx",
     "types": ["node", "electron"]
   },
   "include": [
     "electron.vite.config.ts",
     "src/host/**/*.ts",
     "src/cli/**/*.ts",
+    "src/cli/**/*.tsx",
     "src/ipc/**/*.ts",
     "src/default/**/*.ts",
     "src/shared/**/*.ts"

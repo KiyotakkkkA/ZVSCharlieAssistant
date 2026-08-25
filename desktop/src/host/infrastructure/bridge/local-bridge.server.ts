@@ -12,7 +12,12 @@ import {
   bridgeSocketPath,
   bridgeTokenPath,
 } from "../../../shared/bridge/bridge-paths";
-import { parseIpcDto, startRunDtoSchema } from "../../../shared/dto";
+import {
+  answerQuestionDtoSchema,
+  entityIdSchema,
+  parseIpcDto,
+  startRunDtoSchema,
+} from "../../../shared/dto";
 import type { StartRunInput } from "../../../shared/dto";
 import type { ChatRepository } from "../database/chat.repository";
 import type { ProjectRepository } from "../database/project.repository";
@@ -22,6 +27,8 @@ import type { RunEngine } from "../text-generation/run-engine";
 import type { AutomationRepository } from "../database/automation.repository";
 import type { TextProviderRepository } from "../database/text-provider.repository";
 import type { RunEvent } from "../../../shared/models/chat";
+import type { UserQuestionService } from "../../application/services/user-question.service";
+import type { RecentChatSessionsService } from "../../application/services/recent-chat-sessions.service";
 
 interface BridgeDependencies {
   userDataPath: string;
@@ -33,6 +40,8 @@ interface BridgeDependencies {
   files: FileSystemService;
   automation: AutomationRepository;
   providers: TextProviderRepository;
+  questions: UserQuestionService;
+  recentSessions: RecentChatSessionsService;
   publishChatEvent?: (event: RunEvent) => void;
 }
 
@@ -172,6 +181,24 @@ export class LocalBridgeServer {
         return this.deps.automation.listAgents();
       case "conversations.list":
         return this.deps.chat.snapshot().conversations;
+      case "sessions.recent":
+        return this.deps.recentSessions.list();
+      case "conversations.rename": {
+        const params = request.params as
+          | { conversationId?: unknown; title?: unknown }
+          | undefined;
+        const conversationId = parseIpcDto(
+          entityIdSchema,
+          params?.conversationId,
+        );
+        if (typeof params?.title !== "string" || !params.title.trim())
+          throw new Error("Не указано название диалога");
+        this.deps.chat.renameConversation(
+          conversationId,
+          params.title.trim().slice(0, 120),
+        );
+        return { id: conversationId, title: params.title.trim().slice(0, 120) };
+      }
       case "chat.start": {
         const input: StartRunInput = parseIpcDto(
           startRunDtoSchema,
@@ -210,6 +237,16 @@ export class LocalBridgeServer {
           params.conversationId,
           params.modelId,
         );
+      }
+      case "questions.pending": {
+        const params = request.params as { conversationId?: unknown } | undefined;
+        return this.deps.questions.pendingForConversation(
+          parseIpcDto(entityIdSchema, params?.conversationId),
+        );
+      }
+      case "questions.answer": {
+        const input = parseIpcDto(answerQuestionDtoSchema, request.params);
+        return this.deps.questions.answer(input.questionId, input.answer, "ui");
       }
       case "files.edits": {
         const params = request.params as { conversationId: string };

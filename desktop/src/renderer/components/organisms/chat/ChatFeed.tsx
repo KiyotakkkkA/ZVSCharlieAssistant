@@ -23,6 +23,7 @@ import { ChatAssistantMsgBlock } from "../../molecules/ChatAssistantMsgBlock";
 import { ChatUserMsgBlock } from "../../molecules/ChatUserMsgBlock";
 import type { ScenarioNodeRun, ScenarioRun } from "../../../../ipc/contracts";
 import type { ChatToolCall } from "../../../../ipc/contracts";
+import type { ChatMessageContentPart } from "../../../../shared/dto";
 import {
   ChatSourcePanel,
   collectChatSources,
@@ -54,6 +55,7 @@ interface ChatMessage {
   reasoning?: string;
   error?: string | null;
   toolCalls?: ChatToolCall[];
+  parts?: ChatMessageContentPart[];
   scenarioRunId?: string | null;
   status?: "streaming" | "completed" | "failed" | "cancelled";
   usageLabel: string;
@@ -243,6 +245,7 @@ export function ChatFeed({
                     status={message.status}
                     error={message.error}
                     toolCalls={message.toolCalls}
+                    parts={message.parts}
                     disabled={actionsDisabled}
                     onCopy={() => void copyMessage(message.text)}
                     onDelete={() => setMessageToDelete(message)}

@@ -11,7 +11,11 @@ import type {
   ScenarioNodeRun,
   ScenarioRun,
 } from "../../ipc/contracts";
-import type { StartRunInput } from "../../shared/dto";
+import type {
+  ChatMessageContentPart,
+  JsonValue,
+  StartRunInput,
+} from "../../shared/dto";
 
 class ChatStore {
   conversations: ChatConversation[] = [];
@@ -42,6 +46,11 @@ class ChatStore {
   private unsubscribe?: () => void;
   private readonly pendingTextDeltas = new Map<string, string>();
   private readonly pendingReasoningDeltas = new Map<string, string>();
+  private readonly pendingContentDeltas: Array<{
+    messageId: string;
+    type: "text" | "reasoning";
+    delta: string;
+  }> = [];
   private readonly pendingScenarioDeltas = new Map<string, string>();
   private deltaTimer: number | null = null;
 
@@ -51,6 +60,7 @@ class ChatStore {
       | "unsubscribe"
       | "pendingTextDeltas"
       | "pendingReasoningDeltas"
+      | "pendingContentDeltas"
       | "pendingScenarioDeltas"
       | "deltaTimer"
     >(
@@ -59,6 +69,7 @@ class ChatStore {
         unsubscribe: false,
         pendingTextDeltas: false,
         pendingReasoningDeltas: false,
+        pendingContentDeltas: false,
         pendingScenarioDeltas: false,
         deltaTimer: false,
       },
@@ -326,6 +337,11 @@ class ChatStore {
           event.messageId,
           (this.pendingTextDeltas.get(event.messageId) ?? "") + event.delta,
         );
+        this.pendingContentDeltas.push({
+          messageId: event.messageId,
+          type: "text",
+          delta: event.delta,
+        });
         this.scheduleDeltaFlush();
       } else if (event.type === "reasoning.delta") {
         this.pendingReasoningDeltas.set(
@@ -333,12 +349,20 @@ class ChatStore {
           (this.pendingReasoningDeltas.get(event.messageId) ?? "") +
             event.delta,
         );
+        this.pendingContentDeltas.push({
+          messageId: event.messageId,
+          type: "reasoning",
+          delta: event.delta,
+        });
         this.scheduleDeltaFlush();
       } else if (
         event.type === "tool.requested" ||
         event.type === "tool.running" ||
         event.type === "tool.completed"
       ) {
+        // A pending reasoning/text chunk happened before this tool event. Flush it
+        // first so the content-part timeline cannot jump across the tool block.
+        this.flushPendingDeltas();
         this.messages = this.messages.map((message) => {
           if (message.role !== "assistant" || message.runId !== event.runId)
             return message;
@@ -361,8 +385,45 @@ class ChatStore {
             output: event.output ?? existing?.output ?? null,
             error: event.error ?? existing?.error ?? null,
           };
+          let parts = message.parts;
+          const hasCallPart = parts.some(
+            (part) =>
+              part.type === "tool-call" &&
+              part.toolCallId === event.toolCallId,
+          );
+          if (!hasCallPart) {
+            parts = [
+              ...parts,
+              {
+                type: "tool-call",
+                toolCallId: event.toolCallId,
+                toolName: event.toolId,
+                input: (event.input ?? null) as JsonValue,
+              },
+            ];
+          }
+          const hasResultPart = parts.some(
+            (part) =>
+              part.type === "tool-result" &&
+              part.toolCallId === event.toolCallId,
+          );
+          if (event.type === "tool.completed" && !hasResultPart) {
+            parts = [
+              ...parts,
+              {
+                type: "tool-result",
+                toolCallId: event.toolCallId,
+                toolName: event.toolId,
+                output: (event.error
+                  ? { error: event.error }
+                  : (event.output ?? null)) as JsonValue,
+                isError: Boolean(event.error) || undefined,
+              },
+            ];
+          }
           return {
             ...message,
+            parts,
             toolCalls: existing
               ? message.toolCalls.map((call) =>
                   call.id === next.id ? next : call,
@@ -431,16 +492,26 @@ class ChatStore {
     if (this.pendingTextDeltas.size || this.pendingReasoningDeltas.size) {
       const text = new Map(this.pendingTextDeltas);
       const reasoning = new Map(this.pendingReasoningDeltas);
+      const content = [...this.pendingContentDeltas];
       this.pendingTextDeltas.clear();
       this.pendingReasoningDeltas.clear();
+      this.pendingContentDeltas.length = 0;
       this.messages = this.messages.map((message) => {
         const textDelta = text.get(message.id);
         const reasoningDelta = reasoning.get(message.id);
+        const messageContent = content.filter(
+          (delta) => delta.messageId === message.id,
+        );
         return textDelta || reasoningDelta
           ? {
               ...message,
               text: message.text + (textDelta ?? ""),
               reasoning: message.reasoning + (reasoningDelta ?? ""),
+              parts: messageContent.reduce(
+                (parts, delta) =>
+                  appendContentDelta(parts, delta.type, delta.delta),
+                message.parts,
+              ),
             }
           : message;
       });
@@ -459,6 +530,7 @@ class ChatStore {
     this.deltaTimer = null;
     this.pendingTextDeltas.clear();
     this.pendingReasoningDeltas.clear();
+    this.pendingContentDeltas.length = 0;
     this.pendingScenarioDeltas.clear();
   }
 
@@ -500,3 +572,19 @@ class ChatStore {
   }
 }
 export const chatStore = new ChatStore();
+
+function appendContentDelta(
+  parts: ChatMessageContentPart[],
+  type: "text" | "reasoning",
+  delta: string,
+): ChatMessageContentPart[] {
+  if (!delta) return parts;
+  const last = parts.at(-1);
+  if (last?.type === type) {
+    return [
+      ...parts.slice(0, -1),
+      { ...last, text: last.text + delta },
+    ];
+  }
+  return [...parts, { type, text: delta }];
+}

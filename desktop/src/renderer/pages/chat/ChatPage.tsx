@@ -136,6 +136,7 @@ export const ChatPage = observer(function ChatPage() {
       reasoning: string;
       error: string | null;
       toolCalls: (typeof chatStore.messages)[number]["toolCalls"];
+      parts: (typeof chatStore.messages)[number]["parts"];
       scenarioRunId: string | null;
       status: (typeof chatStore.messages)[number]["status"];
       usageLabel: string;
@@ -151,6 +152,7 @@ export const ChatPage = observer(function ChatPage() {
           reasoning: "",
           error: null,
           toolCalls: [],
+          parts: [{ type: "summary", text: segment.summary, segmentId: segment.id, messageCount: segment.messageCount, tokensBefore: segment.tokensBefore, tokensAfter: segment.tokensAfter }],
           scenarioRunId: null,
           status: "completed",
           usageLabel: `Сжато ${segment.messageCount} сообщений · ${segment.tokensBefore} → ${segment.tokensAfter} токенов`,
@@ -163,6 +165,7 @@ export const ChatPage = observer(function ChatPage() {
         reasoning: item.reasoning,
         error: item.error,
         toolCalls: item.toolCalls,
+        parts: item.parts,
         scenarioRunId: item.scenarioRunId,
         status: item.status,
         usageLabel: formatUsageLabel(item.lastUsage),

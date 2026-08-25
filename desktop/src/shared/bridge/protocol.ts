@@ -9,10 +9,14 @@ export type BridgeMethod =
   | "models.list"
   | "agents.list"
   | "conversations.list"
+  | "conversations.rename"
+  | "sessions.recent"
   | "chat.start"
   | "chat.cancel"
   | "chat.compact"
   | "chat.context"
+  | "questions.pending"
+  | "questions.answer"
   | "files.edits"
   | "files.revert";
 
