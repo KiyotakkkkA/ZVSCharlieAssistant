@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { observer } from "mobx-react-lite";
 import {
+  Alert,
   Button,
   EmptyState,
   InputSmall,
@@ -113,6 +114,12 @@ export const ToolsListPage = observer(function ToolsListPage() {
               <p className="text-sm leading-6 text-main-300">
                 {selectedTool.description}
               </p>
+              {!selectedTool.enabled ? (
+                <Alert variant="danger" title="Инструмент отключён">
+                  {selectedTool.disabledReason ??
+                    "Инструмент недоступен из-за текущей конфигурации приложения."}
+                </Alert>
+              ) : null}
               <div className="grid gap-3 sm:grid-cols-3">
                 <MetaItem label="Категория" value={selectedTool.category} />
                 <MetaItem label="Источник" value="Встроенный" />

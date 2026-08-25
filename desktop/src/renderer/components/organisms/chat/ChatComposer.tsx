@@ -141,22 +141,16 @@ export function ChatComposer(props: ChatComposerProps) {
                       <span className="sr-only">Прикрепить файлы</span>
                     </Dropdown.Trigger>
                   </Tooltip>
-                  <Dropdown.Menu rounded="rounded-xl" className="p-1.5">
+                  <Dropdown.Menu rounded="rounded-3xl" className="p-1.5">
                     <Dropdown.Item
                       icon={<UploadIcon className="size-4" />}
-                      className="rounded-lg"
+                      rounded="rounded-full"
                     >
                       Загрузить с устройства
                     </Dropdown.Item>
                     <Dropdown.Item
-                      icon={<FileIcon className="size-4" />}
-                      className="rounded-lg"
-                    >
-                      Добавить документ
-                    </Dropdown.Item>
-                    <Dropdown.Item
                       icon={<StorageIcon className="size-4" />}
-                      className="rounded-lg"
+                      rounded="rounded-full"
                     >
                       Выбрать из хранилища
                     </Dropdown.Item>

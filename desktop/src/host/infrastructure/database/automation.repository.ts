@@ -22,6 +22,7 @@ import {
 import type { SkillContentStore } from "../../application/ports/automation-runtime.ports";
 import { TerminalPolicyRepository } from "./terminal-policy.repository";
 import { DirectoryPolicyRepository } from "./directory-policy.repository";
+import { getToolDisabledReason } from "../automation/tool-availability";
 
 interface AgentRow {
   id: string;
@@ -632,17 +633,18 @@ export class AutomationRepository {
         secretId: binding.secret_id,
       }),
     );
+    const disabledReason = getToolDisabledReason(
+      tool,
+      secretBindings,
+      this.terminalPolicies.get().enabled,
+    );
     return {
       ...tool,
       inputSchema: { ...tool.inputSchema },
       outputSchema: { ...tool.outputSchema },
       secretRequirements: tool.secretRequirements.map((r) => ({ ...r })),
-      enabled:
-        tool.enabled &&
-        (tool.id !== "cmd_exec" || this.terminalPolicies.get().enabled) &&
-        tool.secretRequirements
-          .filter((r) => r.required)
-          .every((r) => secretBindings.some((b) => b.key === r.key)),
+      enabled: disabledReason === null,
+      disabledReason,
       secretBindings,
     };
   }

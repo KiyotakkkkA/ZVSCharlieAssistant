@@ -25,6 +25,7 @@ export interface AutomationTool {
   builtin: true;
   internal?: boolean;
   enabled: boolean;
+  disabledReason?: string | null;
   requiresConfirmation: boolean;
   inputSchema: Record<string, unknown>;
   outputSchema: Record<string, unknown>;
