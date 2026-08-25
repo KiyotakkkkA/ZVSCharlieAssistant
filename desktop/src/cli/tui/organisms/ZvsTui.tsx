@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useReducer, useState } from "react";
-import { Box, useInput, useStdout } from "ink";
+import { Box, useInput, useWindowSize } from "ink";
 import type { UserQuestion } from "../../../shared/models/user-question";
 import type { RecentChatSession } from "../../../shared/models/chat";
 import { fileSuggestions, type CompletionItem } from "../autocomplete";
@@ -59,7 +59,7 @@ export function ZvsTui(props: ZvsTuiProps) {
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
   const [history, setHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
-  const { stdout } = useStdout();
+  const { rows } = useWindowSize();
   const options = state.question?.options ?? [];
   const commands = commandSuggestions(state.draft);
   const suggestions: CompletionItem[] = state.draft.startsWith("/")
@@ -79,6 +79,10 @@ export function ZvsTui(props: ZvsTuiProps) {
       : state.draft.startsWith("!") && !state.draft.includes(" ")
         ? "!"
         : undefined;
+  const suggestionsVisible =
+    !props.menu &&
+    !state.question &&
+    (suggestions.length > 0 || specialPrefix !== undefined);
 
   useEffect(() => setCursor(state.draft.length), [state.question?.id]);
   useEffect(() => {
@@ -269,9 +273,16 @@ export function ZvsTui(props: ZvsTuiProps) {
   return (
     <Box
       flexDirection="column"
-      height={Math.max(1, stdout.rows ?? 24)}
+      height={Math.max(1, rows)}
     >
-      <Box flexDirection="column" flexGrow={1} overflowY="hidden">
+      <Box
+        flexDirection="column"
+        flexGrow={1}
+        flexShrink={1}
+        minHeight={0}
+        overflowY="hidden"
+        justifyContent="flex-end"
+      >
         {state.transcript.length === 0 ? (
           <WelcomePanel sessions={props.recentSessions} />
         ) : null}
@@ -290,19 +301,21 @@ export function ZvsTui(props: ZvsTuiProps) {
             selected={selectedMenuItem}
           />
         )}
-        {!props.menu && !state.question && (
-          <SuggestionPopup
-            items={suggestions}
-            selected={selectedSuggestion}
-            prefix={specialPrefix}
-          />
-        )}
       </Box>
+      {suggestionsVisible && (
+        <SuggestionPopup
+          items={suggestions}
+          selected={selectedSuggestion}
+          prefix={specialPrefix}
+          maxItems={Math.max(1, Math.min(8, rows - 6))}
+        />
+      )}
       <Composer
         prompt={prompt}
         value={state.draft}
         cursor={cursor}
         queued={state.queued.length}
+        attached={suggestionsVisible}
       />
       <SessionFooter
         version={props.version}

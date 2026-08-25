@@ -1,5 +1,5 @@
 import { ipcMain } from "electron";
-import type { ProjectRepository } from "../../host/infrastructure/database/project.repository";
+import type { ProjectManagementService } from "../../host/application/services/project-management.service";
 import { PROJECT_IPC_CHANNELS } from "../contracts";
 import {
   assignConversationProjectDtoSchema,
@@ -9,7 +9,7 @@ import {
   type UpsertProjectInput,
 } from "../../shared/dto";
 
-export function registerProjectHandlers(projects: ProjectRepository) {
+export function registerProjectHandlers(projects: ProjectManagementService) {
   ipcMain.handle(PROJECT_IPC_CHANNELS.list, () => projects.list());
   ipcMain.handle(
     PROJECT_IPC_CHANNELS.upsert,

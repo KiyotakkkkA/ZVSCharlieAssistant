@@ -71,6 +71,7 @@ import {
 } from "../ipc/main/register-terminal-policy-handlers";
 import { NativeSearchService } from "./infrastructure/tools/native-search.service";
 import { DirectoryPolicyRepository } from "./infrastructure/database/directory-policy.repository";
+import { ProjectManagementService } from "./application/services/project-management.service";
 import { FileEditRepository } from "./infrastructure/database/file-edit.repository";
 import { PathResolver } from "./infrastructure/filesystem/path-resolver";
 import { FileSystemService } from "./infrastructure/filesystem/file-system.service";
@@ -316,8 +317,12 @@ app.whenReady().then(() => {
     directoryPolicyRepository,
   );
   const projectRepository = new ProjectRepository(database);
+  const projectManagement = new ProjectManagementService(
+    projectRepository,
+    directoryPolicyRepository,
+  );
   const projectContext = new ProjectContextService(projectRepository);
-  registerProjectHandlers(projectRepository);
+  registerProjectHandlers(projectManagement);
   const fileEditRepository = new FileEditRepository(database);
   const fileSystemService = new FileSystemService(
     new PathResolver(directoryPolicyRepository),
@@ -408,7 +413,7 @@ app.whenReady().then(() => {
     appVersion: app.getVersion(),
     chat: chatRepository,
     engine: runEngine,
-    projects: projectRepository,
+    projects: projectManagement,
     fileEdits: fileEditRepository,
     files: fileSystemService,
     automation: automationRepository,

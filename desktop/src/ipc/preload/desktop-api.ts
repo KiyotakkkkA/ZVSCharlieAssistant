@@ -97,10 +97,8 @@ export const desktopApi: DesktopApi = {
   getAppInfo: (): Promise<AppInfo> =>
     ipcRenderer.invoke(IPC_CHANNELS.getAppInfo) as Promise<AppInfo>,
   subscribeToCommands: (listener: (command: AppCommand) => void) => {
-    const handler = (
-      _event: Electron.IpcRendererEvent,
-      command: AppCommand,
-    ) => listener(command);
+    const handler = (_event: Electron.IpcRendererEvent, command: AppCommand) =>
+      listener(command);
     ipcRenderer.on(IPC_CHANNELS.command, handler);
     return () => ipcRenderer.removeListener(IPC_CHANNELS.command, handler);
   },

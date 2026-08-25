@@ -51,4 +51,31 @@ export class DirectoryPolicyRepository {
       .run(JSON.stringify(grants), GLOBAL_ENTITY_IDS.directoryPolicy);
     return this.get();
   }
+
+  ensureGrant(
+    grant: UpsertDirectoryPolicyInput["grants"][number],
+  ): DirectoryPolicy {
+    if (!isAbsolute(grant.path))
+      throw new Error("Разрешённая директория должна иметь абсолютный путь");
+    const path = normalize(grant.path);
+    const key = path.toLowerCase();
+    const current = this.get();
+    const existing = current.grants.find(
+      (item) => normalize(item.path).toLowerCase() === key,
+    );
+    const ensured = existing
+      ? {
+          ...existing,
+          recursive: existing.recursive || grant.recursive,
+          permissions: [
+            ...new Set([...existing.permissions, ...grant.permissions]),
+          ],
+        }
+      : { ...grant, path };
+    return this.upsert({
+      grants: existing
+        ? current.grants.map((item) => (item === existing ? ensured : item))
+        : [...current.grants, ensured],
+    });
+  }
 }

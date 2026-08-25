@@ -68,7 +68,7 @@ function toDraft(project: Project | null): Draft {
     grants: project.grants.map((grant) => ({
       path: grant.path,
       recursive: grant.recursive,
-      permissions: grant.permissions,
+      permissions: [...grant.permissions],
     })),
   };
 }
@@ -118,7 +118,7 @@ export const ChatProjectModal = observer(function ChatProjectModal({
         grants: draft.grants.map((grant) => ({
           path: grant.path,
           recursive: grant.recursive,
-          permissions: grant.permissions,
+          permissions: [...grant.permissions],
         })),
       })
       .then((saved) => {

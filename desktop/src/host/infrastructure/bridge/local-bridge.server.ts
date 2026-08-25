@@ -20,7 +20,7 @@ import {
 } from "../../../shared/dto";
 import type { StartRunInput } from "../../../shared/dto";
 import type { ChatRepository } from "../database/chat.repository";
-import type { ProjectRepository } from "../database/project.repository";
+import type { ProjectManagementService } from "../../application/services/project-management.service";
 import type { FileEditRepository } from "../database/file-edit.repository";
 import type { FileSystemService } from "../filesystem/file-system.service";
 import type { RunEngine } from "../text-generation/run-engine";
@@ -35,7 +35,7 @@ interface BridgeDependencies {
   appVersion: string;
   chat: ChatRepository;
   engine: RunEngine;
-  projects: ProjectRepository;
+  projects: ProjectManagementService;
   fileEdits: FileEditRepository;
   files: FileSystemService;
   automation: AutomationRepository;

@@ -14,8 +14,7 @@ import {
   ToolsIcon,
   PolicyIcon,
   TransitConnectionIcon,
-  PaletteIcon,
-  ApplicationIcon,
+  PuzzleIcon,
 } from "../components/atoms";
 
 export const APP_PATHS = {
@@ -82,7 +81,7 @@ export const NAVIGATION_ROUTES: readonly NavigationRoute[] = [
     id: "extensions",
     label: "Расширения",
     path: APP_PATHS.extensions.index,
-    icon: ApplicationIcon,
+    icon: PuzzleIcon,
   },
   {
     id: "automation",

@@ -4,16 +4,13 @@ import {
   Alert,
   Badge,
   Button,
+  Code,
   ScrollArea,
   useToasts,
 } from "@kiyotakkkka/zvs-uikit-lib";
 import { PageHeader } from "@renderer/components/organisms";
 import { PrimaryButton } from "@renderer/components/atoms/buttons";
-import {
-  ApplicationIcon,
-  CopyIcon,
-  ScriptIcon,
-} from "@renderer/components/atoms";
+import { CopyIcon, PuzzleIcon, ScriptIcon } from "@renderer/components/atoms";
 import { extensionStore } from "@renderer/stores";
 
 const QUICK_COMMANDS: Array<{ command: string; description: string }> = [
@@ -98,9 +95,6 @@ export const ExtensionsPage = observer(function ExtensionsPage() {
                     <h2 className="text-sm font-semibold text-main-100">
                       Командная строка
                     </h2>
-                    <code className="rounded bg-main-800/70 px-1.5 py-0.5 font-mono text-xs text-accent-light">
-                      zvs
-                    </code>
                     {status ? (
                       <Badge
                         variant={
@@ -154,6 +148,13 @@ export const ExtensionsPage = observer(function ExtensionsPage() {
               </div>
             </div>
 
+            {status && status.entryExists ? (
+              <div className="mt-4 text-sm text-main-400">
+                Попробуйте <Code>zvs</Code> или <Code>zvs help</Code> в
+                командной строке
+              </div>
+            ) : null}
+
             {status && !status.entryExists ? (
               <Alert
                 variant="warning"
@@ -164,7 +165,6 @@ export const ExtensionsPage = observer(function ExtensionsPage() {
                 каталоге desktop и обновите страницу.
               </Alert>
             ) : null}
-
             {status?.error ? (
               <Alert
                 variant="warning"
@@ -175,7 +175,6 @@ export const ExtensionsPage = observer(function ExtensionsPage() {
                 PATH вручную.
               </Alert>
             ) : null}
-
             {status?.installed && !status.onPath && !status.error ? (
               <Alert
                 variant="info"
@@ -189,7 +188,6 @@ export const ExtensionsPage = observer(function ExtensionsPage() {
                   : ""}
               </Alert>
             ) : null}
-
             <Alert
               variant="warning"
               title="Для работы расширения - основное приложение должно быть запущено"
@@ -200,7 +198,7 @@ export const ExtensionsPage = observer(function ExtensionsPage() {
           <section className="rounded-xl bg-main-800/10 p-5 text-xs text-main-500 ring-1 ring-main-700/25">
             <div className="flex items-center gap-3">
               <span className="grid size-9 place-items-center rounded-xl bg-main-700/35 text-main-400">
-                <ApplicationIcon className="size-5" />
+                <PuzzleIcon className="size-5" />
               </span>
               <div>
                 <p className="text-sm font-medium text-main-300">

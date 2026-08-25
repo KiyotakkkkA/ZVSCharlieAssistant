@@ -60,7 +60,7 @@ export async function runInkRepl(
         finish(code);
       }}
     />,
-    { exitOnCtrlC: false },
+    { exitOnCtrlC: false, alternateScreen: true },
   );
   void instance.waitUntilExit().then(() => finish(0));
   return completion;
