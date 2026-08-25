@@ -401,6 +401,8 @@ app.whenReady().then(() => {
     new ModelFailover(chatRepository, providerRegistry),
     projectContext,
     scenarioRuntimeEngine,
+    vectorService,
+    textExtraction,
   );
   registerChatHandlers(
     chatRepository,

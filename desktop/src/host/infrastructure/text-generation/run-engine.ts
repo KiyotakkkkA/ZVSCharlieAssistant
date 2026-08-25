@@ -32,12 +32,17 @@ import {
   generationLimitKind,
   limitFailureMessage,
 } from "./generation-finish";
+import type { VectorStoreService } from "../vector-store/vector-store.service";
+import type { TextExtractionClient } from "../vector-store/text-extraction.client";
 type Emit = (event: RunEvent) => void;
 
 const CONTENT_FLUSH_MS = 400;
 const MAX_OUTPUT_CONTINUATIONS = 3;
 const CONTINUATION_PROMPT =
   "Продолжи предыдущий ответ строго с места остановки. Не повторяй уже выведенный текст и не начинай ответ заново.";
+const MAX_ATTACHMENT_BYTES = 20 * 1_048_576;
+const MAX_ATTACHMENTS_TOTAL_BYTES = 40 * 1_048_576;
+const MAX_ATTACHMENT_CONTEXT_CHARS = 48_000;
 
 export class RunEngine {
   private controllers = new Map<string, AbortController>();
@@ -53,6 +58,8 @@ export class RunEngine {
     private readonly failover: ModelFailover,
     private readonly projects: ProjectContextService,
     private readonly scenarios?: ScenarioRuntimeEngine,
+    private readonly vectorStores?: VectorStoreService,
+    private readonly textExtraction?: TextExtractionClient,
   ) {}
 
   private profileBlock(conversationId: string, mode: string): string {
@@ -388,9 +395,22 @@ export class RunEngine {
       });
       const project = this.projects.forConversation(conversationId);
       const projectBlock = this.projects.promptBlock(project);
+      const attachmentBlock = await this.attachmentContextBlock(
+        input.attachments ?? [],
+        controller.signal,
+      );
+      const retrieval = await this.retrieveVectorContext(
+        runId,
+        input.vectorStoreIds ?? [],
+        input.text,
+        controller.signal,
+        emit,
+        parts,
+      );
+      const retrievalBlock = vectorContextBlock(retrieval);
       const system = `${baseSystem}${profileBlock}${projectBlock}${this.tools.skillCatalog(
         agentRuntime?.allowedSkillIds ?? [],
-      )}${memoryBlock}`;
+      )}${memoryBlock}${attachmentBlock}${retrievalBlock}`;
 
       let activeModelId = input.modelId;
 
@@ -639,6 +659,135 @@ export class RunEngine {
     }
   }
 
+  private async attachmentContextBlock(
+    attachments: NonNullable<StartRunInput["attachments"]>,
+    signal: AbortSignal,
+  ): Promise<string> {
+    if (!attachments.length) return "";
+    if (!this.textExtraction)
+      throw new Error("Обработка вложений недоступна");
+    if (
+      attachments.reduce((total, item) => total + item.data.byteLength, 0) >
+      MAX_ATTACHMENTS_TOTAL_BYTES
+    )
+      throw new Error("Общий размер вложений больше 40 МБ");
+
+    const sections: string[] = [];
+    let remaining = MAX_ATTACHMENT_CONTEXT_CHARS;
+    for (const attachment of attachments) {
+      signal.throwIfAborted();
+      if (attachment.data.byteLength > MAX_ATTACHMENT_BYTES)
+        throw new Error(
+          `Файл «${attachment.fileName}» больше ${MAX_ATTACHMENT_BYTES / 1_048_576} МБ`,
+        );
+      if (!isSupportedAttachment(attachment.fileName, attachment.mimeType))
+        throw new Error(
+          `Формат файла «${attachment.fileName}» не поддерживается`,
+        );
+      const text = (isPlainTextAttachment(
+        attachment.fileName,
+        attachment.mimeType,
+      )
+        ? new TextDecoder().decode(new Uint8Array(attachment.data))
+        : await this.textExtraction.extract(
+            attachment.fileName,
+            attachment.data.slice(0),
+          )
+      ).trim();
+      const excerpt = text.slice(0, Math.max(0, remaining));
+      remaining -= excerpt.length;
+      sections.push(`### ${attachment.fileName}\n${excerpt}`);
+      if (remaining <= 0) break;
+    }
+    return sections.length
+      ? `\n\nВложения пользователя. Используй их как источник для текущего ответа:\n${sections.join("\n\n")}`
+      : "";
+  }
+
+  private async retrieveVectorContext(
+    runId: string,
+    vectorStoreIds: string[],
+    query: string,
+    signal: AbortSignal,
+    emit: Emit,
+    parts: ChatMessageContentPart[],
+  ) {
+    if (!vectorStoreIds.length) return [];
+    if (!this.vectorStores)
+      throw new Error("Векторный поиск недоступен");
+    signal.throwIfAborted();
+
+    const input = { query, storeIds: vectorStoreIds, limit: 5 };
+    const toolCallId = this.data.createToolCall(
+      runId,
+      `composer-retrieval-${newEntityId()}`,
+      "vecdb_search",
+      "read",
+      input,
+      "requested",
+    );
+    parts.push({
+      type: "tool-call",
+      toolCallId,
+      toolName: "vecdb_search",
+      input,
+    });
+    emit({
+      type: "tool.requested",
+      runId,
+      toolCallId,
+      toolId: "vecdb_search",
+      input,
+    });
+    emit({
+      type: "tool.running",
+      runId,
+      toolCallId,
+      toolId: "vecdb_search",
+    });
+    try {
+      const result = await this.vectorStores.search({
+        vectorStoreIds,
+        query,
+        limit: 5,
+      });
+      signal.throwIfAborted();
+      this.data.finishToolCall(toolCallId, "completed", result);
+      parts.push({
+        type: "tool-result",
+        toolCallId,
+        toolName: "vecdb_search",
+        output: result as unknown as JsonValue,
+      });
+      emit({
+        type: "tool.completed",
+        runId,
+        toolCallId,
+        toolId: "vecdb_search",
+        output: result,
+      });
+      return result;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.data.finishToolCall(toolCallId, "failed", undefined, message);
+      parts.push({
+        type: "tool-result",
+        toolCallId,
+        toolName: "vecdb_search",
+        output: { error: message },
+        isError: true,
+      });
+      emit({
+        type: "tool.completed",
+        runId,
+        toolCallId,
+        toolId: "vecdb_search",
+        error: message,
+      });
+      throw error;
+    }
+  }
+
   private async forceCompaction(input: {
     conversationId: string;
     runId: string;
@@ -880,4 +1029,29 @@ function normalizeStreamError(error: unknown): Error {
       return Object.assign(new Error(message, { cause: error }), error);
   }
   return new Error("Ошибка при обращении к модели");
+}
+
+function vectorContextBlock(
+  results: Awaited<ReturnType<VectorStoreService["search"]>>,
+): string {
+  if (!results.length) return "";
+  return `\n\nРелевантные фрагменты из выбранных пользователем хранилищ. Опирайся на них в ответе и не выдумывай отсутствующие факты:\n${results
+    .map(
+      (item, index) =>
+        `[${index + 1}] ${item.fileName}${item.pageNumber ? `, стр. ${item.pageNumber}` : ""}\n${item.content}`,
+    )
+    .join("\n\n")}`;
+}
+
+const PLAIN_TEXT_FILE_PATTERN =
+  /\.(txt|md|jsonl?|csv|tsx?|jsx?|mjs|cjs|py|java|kt|go|rs|c|h|cpp|hpp|cs|php|rb|swift|html?|css|scss|less|xml|ya?ml|toml|ini|sql|sh|ps1|bat|cmd|log)$/i;
+
+function isPlainTextAttachment(fileName: string, mimeType: string) {
+  return mimeType.startsWith("text/") || PLAIN_TEXT_FILE_PATTERN.test(fileName);
+}
+
+function isSupportedAttachment(fileName: string, mimeType: string) {
+  return (
+    isPlainTextAttachment(fileName, mimeType) || /\.(pdf|docx)$/i.test(fileName)
+  );
 }

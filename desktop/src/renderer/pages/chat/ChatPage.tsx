@@ -31,6 +31,7 @@ import {
   questionStore,
   taskPlanStore,
   textProviderStore,
+  vectorStoreStore,
 } from "../../stores";
 import { BrainIcon } from "@renderer/components/atoms";
 import { PrimaryButton } from "@renderer/components/atoms/buttons";
@@ -47,6 +48,8 @@ export const ChatPage = observer(function ChatPage() {
   const [model, setModel] = useState<ChatModel>("");
   const [agentId, setAgentId] = useState("");
   const [scenarioId, setScenarioId] = useState("");
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const [vectorStoreIds, setVectorStoreIds] = useState<string[]>([]);
   const [query, setQuery] = useState("");
   const [dialogToEdit, setDialogToEdit] = useState<ChatDialog | null>(null);
   const [dialogToDelete, setDialogToDelete] = useState<ChatDialog | null>(null);
@@ -83,6 +86,22 @@ export const ChatPage = observer(function ChatPage() {
   const modelOptions = useStableOptions(nextModelOptions);
   const agentOptions = useStableOptions(nextAgentOptions);
   const scenarioOptions = useStableOptions(nextScenarioOptions);
+  const vectorStoreOptions = vectorStoreStore.stores
+    .filter(
+      (store) =>
+        store.status !== "disabled" &&
+        vectorStoreStore
+          .documentsFor(store.id)
+          .some((document) => document.status === "ready"),
+    )
+    .map((store) => ({
+      id: store.id,
+      name: store.name,
+      description: store.description,
+      documentsCount: vectorStoreStore
+        .documentsFor(store.id)
+        .filter((document) => document.status === "ready").length,
+    }));
   useEffect(() => {
     if (!modelOptions.some((item) => item.value === model))
       setModel(modelOptions[0]?.value ?? "");
@@ -94,6 +113,14 @@ export const ChatPage = observer(function ChatPage() {
     if (!scenarioOptions.some((item) => item.value === scenarioId))
       setScenarioId(scenarioOptions[0]?.value ?? "");
   }, [scenarioId, scenarioOptions]);
+  useEffect(() => {
+    const available = new Set(vectorStoreOptions.map((item) => item.id));
+    setVectorStoreIds((current) =>
+      current.every((id) => available.has(id))
+        ? current
+        : current.filter((id) => available.has(id)),
+    );
+  }, [JSON.stringify(vectorStoreOptions.map((item) => item.id))]);
   useEffect(() => {
     void taskPlanStore.load(chatStore.activeConversationId);
     void questionStore.load(chatStore.activeConversationId);
@@ -199,6 +226,7 @@ export const ChatPage = observer(function ChatPage() {
             : undefined,
       agentId: mode === "agent" ? agentId : undefined,
       scenarioId: mode === "scenario" ? scenarioId : undefined,
+      vectorStoreIds,
     },
   ) => {
     if (!value) throw new Error("Сообщение не может быть пустым");
@@ -226,17 +254,42 @@ export const ChatPage = observer(function ChatPage() {
       });
       return;
     }
+    const sentAttachments = [...attachments];
     setText("");
-    void startMessage(value).catch((error: unknown) => {
-      setText(value);
-      toasts.danger({
-        title:
-          mode === "scenario"
-            ? "Не удалось запустить сценарий"
-            : "Не удалось отправить сообщение",
-        description: readableError(error),
+    setAttachments([]);
+    void Promise.all(
+      sentAttachments.map(async (file) => ({
+        fileName: file.name,
+        mimeType: file.type || "application/octet-stream",
+        data: await file.arrayBuffer(),
+      })),
+    )
+      .then((files) =>
+        startMessage(value, {
+          mode,
+          modelId:
+            mode === "agent"
+              ? (selectedAgent?.textModelId ?? undefined)
+              : mode === "chat" || mode === "planner"
+                ? model
+                : undefined,
+          agentId: mode === "agent" ? agentId : undefined,
+          scenarioId: mode === "scenario" ? scenarioId : undefined,
+          attachments: files,
+          vectorStoreIds,
+        }),
+      )
+      .catch((error: unknown) => {
+        setText(value);
+        setAttachments(sentAttachments);
+        toasts.danger({
+          title:
+            mode === "scenario"
+              ? "Не удалось запустить сценарий"
+              : "Не удалось отправить сообщение",
+          description: readableError(error),
+        });
       });
-    });
   };
   return (
     <section data-tour="chat-page" className="flex h-full min-h-0 overflow-hidden rounded-lg">
@@ -402,6 +455,31 @@ export const ChatPage = observer(function ChatPage() {
           onAgentChange={setAgentId}
           onScenarioChange={setScenarioId}
           onSend={send}
+          attachments={attachments}
+          vectorStoreIds={vectorStoreIds}
+          vectorStoreOptions={vectorStoreOptions}
+          onFilesSelected={(files) => {
+            const selected = selectChatAttachments(attachments, files);
+            setAttachments(selected.files);
+            if (selected.rejected)
+              toasts.warning({
+                title: "Некоторые файлы не добавлены",
+                description:
+                  "Можно прикрепить до 10 файлов, не более 20 МБ каждый и 40 МБ суммарно.",
+              });
+          }}
+          onAttachmentRemove={(file) =>
+            setAttachments((current) =>
+              current.filter((item) => item !== file),
+            )
+          }
+          onVectorStoreToggle={(id) =>
+            setVectorStoreIds((current) =>
+              current.includes(id)
+                ? current.filter((item) => item !== id)
+                : [...current, id].slice(0, 10),
+            )
+          }
           running={chatStore.activeRunId !== null}
           onCancel={() => void chatStore.cancel()}
         />
@@ -551,4 +629,29 @@ function useStableOptions<T>(options: T[]): T[] {
   const cache = useRef({ key, options });
   if (cache.current.key !== key) cache.current = { key, options };
   return cache.current.options;
+}
+
+function selectChatAttachments(current: File[], incoming: File[]) {
+  const unique = [...current, ...incoming].filter(
+    (file, index, all) =>
+      all.findIndex(
+        (item) =>
+          item.name === file.name &&
+          item.size === file.size &&
+          item.lastModified === file.lastModified,
+      ) === index,
+  );
+  const files: File[] = [];
+  let total = 0;
+  for (const file of unique) {
+    if (
+      files.length >= 10 ||
+      file.size > 20 * 1_048_576 ||
+      total + file.size > 40 * 1_048_576
+    )
+      continue;
+    files.push(file);
+    total += file.size;
+  }
+  return { files, rejected: files.length !== unique.length };
 }

@@ -115,6 +115,17 @@ export const startRunDtoSchema = z.object({
   projectId: entityIdSchema.optional(),
   text: z.string(),
   permissionMode: permissionModeSchema.optional(),
+  attachments: z
+    .array(
+      z.object({
+        fileName: z.string().trim().min(1).max(255),
+        mimeType: z.string().trim().max(255),
+        data: z.instanceof(ArrayBuffer),
+      }),
+    )
+    .max(10)
+    .optional(),
+  vectorStoreIds: z.array(entityIdSchema).max(10).optional(),
 });
 
 export type ChatTextPart = z.infer<typeof chatTextPartDtoSchema>;

@@ -1,5 +1,6 @@
 import {
   useRef,
+  useState,
   type KeyboardEvent,
   type MouseEvent,
   type ReactNode,
@@ -7,7 +8,10 @@ import {
 import {
   Button,
   Dropdown,
+  InputCheckBox,
   InputBig,
+  Modal,
+  ScrollArea,
   Select,
   Tooltip,
   type SelectOption,
@@ -27,6 +31,12 @@ import {
 
 export type ChatMode = "chat" | "planner" | "agent" | "scenario";
 export type ChatModel = string;
+export interface ChatVectorStoreOption {
+  id: string;
+  name: string;
+  description: string;
+  documentsCount: number;
+}
 const modes = [
   {
     value: "chat" as const,
@@ -68,6 +78,12 @@ interface ChatComposerProps {
   onAgentChange: (value: string) => void;
   onScenarioChange: (value: string) => void;
   onSend: () => void;
+  attachments: readonly File[];
+  vectorStoreIds: readonly string[];
+  vectorStoreOptions: readonly ChatVectorStoreOption[];
+  onFilesSelected: (files: File[]) => void;
+  onAttachmentRemove: (file: File) => void;
+  onVectorStoreToggle: (id: string) => void;
   running?: boolean;
   onCancel?: () => void;
   topContent?: ReactNode;
@@ -75,6 +91,8 @@ interface ChatComposerProps {
 
 export function ChatComposer(props: ChatComposerProps) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [storageOpen, setStorageOpen] = useState(false);
   const selectedMode = modes.find((item) => item.value === props.mode)!;
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Enter" && !event.shiftKey) {
@@ -107,6 +125,41 @@ export function ChatComposer(props: ChatComposerProps) {
             <div className="-mx-2 -mt-2 mb-2 overflow-hidden rounded-t-[23px]">
               {props.topContent}
             </div>
+          ) : null}
+          {props.attachments.length || props.vectorStoreIds.length ? (
+            <ScrollArea
+              orientation="horizontal"
+              showScrollbar
+              className="mx-2 mb-1 max-w-full pb-1"
+              data-no-composer-focus
+            >
+              <div className="flex w-max min-w-full gap-2 px-1 py-1">
+                {props.attachments.map((file) => (
+                  <AttachmentChip
+                    key={`${file.name}:${file.size}:${file.lastModified}`}
+                    icon={<FileIcon className="size-4" />}
+                    title={file.name}
+                    meta={formatBytes(file.size)}
+                    onRemove={() => props.onAttachmentRemove(file)}
+                  />
+                ))}
+                {props.vectorStoreIds.map((id) => {
+                  const store = props.vectorStoreOptions.find(
+                    (item) => item.id === id,
+                  );
+                  if (!store) return null;
+                  return (
+                    <AttachmentChip
+                      key={id}
+                      icon={<StorageIcon className="size-4" />}
+                      title={store.name}
+                      meta={`${store.documentsCount} документов`}
+                      onRemove={() => props.onVectorStoreToggle(id)}
+                    />
+                  );
+                })}
+              </div>
+            </ScrollArea>
           ) : null}
           <InputBig
             ref={inputRef}
@@ -145,18 +198,32 @@ export function ChatComposer(props: ChatComposerProps) {
                     <Dropdown.Item
                       icon={<UploadIcon className="size-4" />}
                       rounded="rounded-full"
+                      onClick={() => fileInputRef.current?.click()}
                     >
                       Загрузить с устройства
                     </Dropdown.Item>
                     <Dropdown.Item
                       icon={<StorageIcon className="size-4" />}
                       rounded="rounded-full"
+                      onClick={() => setStorageOpen(true)}
                     >
                       Выбрать из хранилища
                     </Dropdown.Item>
                   </Dropdown.Menu>
                 </Dropdown>
               ) : null}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.docx,.txt,.md,.json,.jsonl,.csv,.ts,.tsx,.js,.jsx,.mjs,.cjs,.py,.java,.kt,.go,.rs,.c,.h,.cpp,.hpp,.cs,.php,.rb,.swift,.html,.css,.scss,.less,.xml,.yaml,.yml,.toml,.ini,.sql,.sh,.ps1,.bat,.cmd,.log"
+                multiple
+                className="hidden"
+                onChange={(event) => {
+                  const files = [...(event.target.files ?? [])];
+                  if (files.length) props.onFilesSelected(files);
+                  event.target.value = "";
+                }}
+              />
               <div data-tour="chat-composer-mode">
                 <Dropdown
                   className="shrink-0"
@@ -312,6 +379,94 @@ export function ChatComposer(props: ChatComposerProps) {
           информацию.
         </p>
       </div>
+      <Modal
+        open={storageOpen}
+        rounded="rounded-4xl"
+        className="max-w-lg"
+        onClose={() => setStorageOpen(false)}
+      >
+        <Modal.Header>
+          <div>
+            <h2 className="text-lg font-semibold text-main-50">
+              Источники из хранилища
+            </h2>
+            <p className="mt-1 text-xs text-main-500">
+              Перед ответом будут найдены релевантные фрагменты документов.
+            </p>
+          </div>
+        </Modal.Header>
+        <Modal.Content>
+          {props.vectorStoreOptions.length ? (
+            <div className="space-y-2">
+              {props.vectorStoreOptions.map((store) => (
+                <InputCheckBox
+                  key={store.id}
+                  checked={props.vectorStoreIds.includes(store.id)}
+                  onChange={() => props.onVectorStoreToggle(store.id)}
+                  className="flex w-full cursor-pointer items-start gap-3 rounded-xl bg-main-800/45 p-3 ring-1 ring-main-700/35 hover:bg-main-700/35"
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium text-main-100">
+                      {store.name}
+                    </span>
+                    <span className="mt-1 block text-xs leading-5 text-main-500">
+                      {store.description || "Описание не задано"} ·{" "}
+                      {store.documentsCount} документов
+                    </span>
+                  </span>
+                </InputCheckBox>
+              ))}
+            </div>
+          ) : (
+            <p className="py-8 text-center text-sm text-main-500">
+              Нет настроенных хранилищ с готовыми документами.
+            </p>
+          )}
+        </Modal.Content>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setStorageOpen(false)}>
+            Готово
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
+}
+
+function AttachmentChip({
+  icon,
+  title,
+  meta,
+  onRemove,
+}: {
+  icon: ReactNode;
+  title: string;
+  meta: string;
+  onRemove: () => void;
+}) {
+  return (
+    <div className="flex max-w-64 shrink-0 items-center gap-2 rounded-xl bg-main-700/45 px-3 py-2 ring-1 ring-main-600/35">
+      <span className="shrink-0 text-accent-light">{icon}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-xs font-medium text-main-100">
+          {title}
+        </span>
+        <span className="block text-[10px] text-main-500">{meta}</span>
+      </span>
+      <button
+        type="button"
+        className="shrink-0 rounded-full px-1 text-main-500 hover:bg-main-600 hover:text-main-100"
+        aria-label={`Убрать ${title}`}
+        onClick={onRemove}
+      >
+        ×
+      </button>
+    </div>
+  );
+}
+
+function formatBytes(value: number) {
+  return value < 1_048_576
+    ? `${Math.max(1, Math.round(value / 1024))} КБ`
+    : `${(value / 1_048_576).toFixed(1)} МБ`;
 }
