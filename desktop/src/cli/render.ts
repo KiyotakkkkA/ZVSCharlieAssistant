@@ -62,7 +62,7 @@ export async function runChat(
   let cancelRequested = false;
   let cancellationSent = false;
   const sendCancellation = () => {
-    if (cancellationSent || !activeRunId) return;
+    if (!cancelRequested || cancellationSent || !activeRunId) return;
     cancellationSent = true;
     void client.request("chat.cancel", { runId: activeRunId });
   };

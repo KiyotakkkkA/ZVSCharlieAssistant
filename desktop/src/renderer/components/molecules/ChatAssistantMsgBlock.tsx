@@ -15,6 +15,10 @@ import {
 } from "../atoms";
 import { ControlButton } from "../atoms/buttons";
 import { CompactToolStatus } from "./CompactToolStatus";
+import {
+  FileSystemToolStatus,
+  isFileSystemTool,
+} from "./FileSystemToolStatus";
 
 export interface ChatAssistantMsgBlockProps {
   text: string;
@@ -135,6 +139,9 @@ function AssistantSkeleton() {
 }
 
 function ToolCallDetails({ call }: { call: ChatToolCall }) {
+  if (isFileSystemTool(call.toolId)) {
+    return <FileSystemToolStatus call={call} />;
+  }
   if (call.toolId === "memory_save" || call.toolId === "memory_search") {
     const saving = call.toolId === "memory_save";
     return (

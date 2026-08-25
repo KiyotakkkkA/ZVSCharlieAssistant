@@ -360,6 +360,7 @@ export class RunEngine {
     try {
       if (!input.modelId) throw new Error("Модель не выбрана");
       this.data.setRunStatus(runId, "running");
+      controller.signal.throwIfAborted();
 
       const agentRuntime =
         input.mode === "agent"
@@ -406,7 +407,7 @@ export class RunEngine {
 
       let continuations = 0;
       for (let step = 0; step < maxSteps + continuations; step += 1) {
-        if (controller.signal.aborted) break;
+        controller.signal.throwIfAborted();
         flushContent();
 
         let attempt = 0;
@@ -414,7 +415,7 @@ export class RunEngine {
         let stepResult: StepResult | undefined;
 
         for (;;) {
-          if (controller.signal.aborted) break;
+          controller.signal.throwIfAborted();
           const budget = this.budgetFor(
             activeModelId,
             project?.compactThreshold,
@@ -545,6 +546,7 @@ export class RunEngine {
         break;
       }
 
+      controller.signal.throwIfAborted();
       stopFlushing();
       this.data.setMessageStatus(assistantMessageId, "completed");
       this.data.setRunStatus(runId, "completed");

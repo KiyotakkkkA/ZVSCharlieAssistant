@@ -124,10 +124,10 @@ export async function runRepl(
 
   let cancelRequested = false;
   let closed = false;
+  let cancelActiveRun: (() => void) | undefined;
   rl.on("SIGINT", () => {
-    if (state.running && state.lastRunId) {
-      cancelRequested = true;
-      void client.request("chat.cancel", { runId: state.lastRunId });
+    if (state.running) {
+      cancelActiveRun?.();
       return;
     }
     rl.close();
@@ -154,17 +154,19 @@ export async function runRepl(
     spinner.start();
 
     const sendCancellation = () => {
-      if (cancellationSent || !activeRunId) return;
+      if (!cancelRequested || cancellationSent || !activeRunId) return;
       cancellationSent = true;
       void client.request("chat.cancel", { runId: activeRunId });
     };
-    const releaseCancellation = captureRunCancellation(() => {
+    const requestCancellation = () => {
       if (cancelRequested) return;
       cancelRequested = true;
       spinner.stop();
       bullet("отменяю генерацию…", "danger");
       sendCancellation();
-    });
+    };
+    cancelActiveRun = requestCancellation;
+    const releaseCancellation = captureRunCancellation(requestCancellation);
     const openSection = (next: "reasoning" | "answer") => {
       spinner.stop();
       if (section === next) return;
@@ -280,6 +282,7 @@ export async function runRepl(
     } catch (error) {
       failure = error instanceof Error ? error.message : String(error);
     } finally {
+      cancelActiveRun = undefined;
       releaseCancellation();
       spinner.stop();
       state.running = false;
