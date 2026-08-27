@@ -35,18 +35,20 @@ export const VectorStoresPage = observer(function VectorStoresPage() {
         description="Загружайте документы и управляйте базами знаний для агентов и сценариев."
         breadcrumbs={[{ label: "Хранилище" }, { label: "Векторные базы" }]}
       >
-        <PrimaryButton
-          label="Добавить хранилище"
-          onClick={() => {
-            void store.createStore().catch((error) =>
-              toasts.danger({
-                title: "Не удалось создать хранилище",
-                description:
-                  error instanceof Error ? error.message : String(error),
-              }),
-            );
-          }}
-        />
+        <div data-tour="knowledge-add">
+          <PrimaryButton
+            label="Добавить хранилище"
+            onClick={() => {
+              void store.createStore().catch((error) =>
+                toasts.danger({
+                  title: "Не удалось создать хранилище",
+                  description:
+                    error instanceof Error ? error.message : String(error),
+                }),
+              );
+            }}
+          />
+        </div>
       </PageHeader>
       <div className="flex min-h-0 flex-1 gap-3">
         <aside className="flex w-80 shrink-0 flex-col overflow-hidden rounded-xl bg-main-800/40">

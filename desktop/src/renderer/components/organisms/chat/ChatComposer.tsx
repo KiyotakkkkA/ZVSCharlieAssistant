@@ -329,9 +329,12 @@ export function ChatComposer(props: ChatComposerProps) {
                 </Select>
               ) : null}
             </div>
-            <div className="flex items-center gap-1.5">
+            <div
+              data-tour="chat-composer-model-controls"
+              className="flex items-center gap-1.5"
+            >
               {!["agent", "scenario"].includes(props.mode) && (
-                <div data-tour="chat-composer-model">
+                <div>
                   <ModelOrientedSelect
                     variant="ghost"
                     value={props.model}

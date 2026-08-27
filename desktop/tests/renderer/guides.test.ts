@@ -26,6 +26,16 @@ describe("GUIDES", () => {
   it("keeps every guide independently launchable", () => {
     for (const guide of GUIDES) expect(guide.steps.length).toBeGreaterThan(0);
   });
+
+  it("uses state-independent targets for conditional guide controls", () => {
+    const steps = GUIDES.flatMap((guide) => guide.steps);
+    const knowledgeForm = steps.find((step) => step.id === "knowledge-form");
+    expect(knowledgeForm?.target).toBe("knowledge-form");
+    expect(knowledgeForm?.openTarget).toBe("knowledge-add");
+    expect(steps.find((step) => step.id === "chat-model")?.target).toBe(
+      "chat-composer-model-controls",
+    );
+  });
 });
 
 function collectPaths(value: unknown): string[] {

@@ -1,5 +1,6 @@
 export const IPC_CHANNELS = {
   getAppInfo: "app:get-info",
+  openAppLocation: "app:open-location",
   command: "app:command",
   saveGeneratedArtifact: "app:save-generated-artifact",
   selectDirectory: "app:select-directory",
@@ -8,16 +9,26 @@ export const IPC_CHANNELS = {
 } as const;
 
 export type AppCommand =
-  "new-chat" | "open-tasks" | "open-scenarios" | "open-settings";
+  | "new-chat"
+  | "open-tasks"
+  | "open-scenarios"
+  | "open-settings";
 
 export interface AppInfo {
   name: string;
   version: string;
   platform: string;
+  arch: string;
+  updatedAt: string;
+  installPath: string;
+  userDataPath: string;
 }
+
+export type AppLocation = "install" | "userData";
 
 export interface DesktopApi {
   getAppInfo(): Promise<AppInfo>;
+  openAppLocation(location: AppLocation): Promise<void>;
   subscribeToCommands(listener: (command: AppCommand) => void): () => void;
   saveGeneratedArtifact(input: GeneratedArtifactInput): Promise<boolean>;
   selectDirectory(): Promise<string | null>;

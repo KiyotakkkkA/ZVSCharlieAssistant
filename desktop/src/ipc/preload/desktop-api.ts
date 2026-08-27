@@ -14,6 +14,7 @@ import {
   type Project,
   type CliIntegrationStatus,
   type AppInfo,
+  type AppLocation,
   type AppCommand,
   type ApplicationSettings,
   type UpdateApplicationSettingsInput,
@@ -96,6 +97,8 @@ import type {
 export const desktopApi: DesktopApi = {
   getAppInfo: (): Promise<AppInfo> =>
     ipcRenderer.invoke(IPC_CHANNELS.getAppInfo) as Promise<AppInfo>,
+  openAppLocation: (location: AppLocation): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.openAppLocation, location) as Promise<void>,
   subscribeToCommands: (listener: (command: AppCommand) => void) => {
     const handler = (_event: Electron.IpcRendererEvent, command: AppCommand) =>
       listener(command);

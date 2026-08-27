@@ -1,7 +1,8 @@
-import { Button, Modal } from "@kiyotakkkka/zvs-uikit-lib";
+import { Button, Dropdown, Modal } from "@kiyotakkkka/zvs-uikit-lib";
 import { observer } from "mobx-react-lite";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import type { AppInfo, AppLocation } from "../../../ipc/contracts";
 import {
   APP_PATHS,
   NAVIGATION_ROUTES,
@@ -10,6 +11,9 @@ import {
 import { chatStore, uiStore } from "../../stores";
 import {
   CogIcon,
+  FolderIcon,
+  InformationIcon,
+  OpenInNewIcon,
   QuestionIcon,
   GlobalSettingsProvider,
   useGlobalSettings,
@@ -80,6 +84,17 @@ const SettingsAnchorBridge = observer(function SettingsAnchorBridge() {
 export const Header = observer(function Header() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
+
+  const openAbout = () => {
+    setAboutOpen(true);
+    if (!appInfo) void window.desktop.getAppInfo().then(setAppInfo);
+  };
+
+  const openLocation = (location: AppLocation) => {
+    void window.desktop.openAppLocation(location);
+  };
 
   useEffect(
     () =>
@@ -109,15 +124,33 @@ export const Header = observer(function Header() {
           {findTitle(pathname, NAVIGATION_ROUTES)}
         </h1>
         <div className="flex items-center gap-1">
-          <Button
-            data-tour="header-help"
-            variant="ghost"
-            title="Руководства"
-            className="size-9 p-0 text-main-400 hover:bg-main-700/70 hover:text-main-50"
-            onClick={() => navigate(APP_PATHS.guides)}
-          >
-            <QuestionIcon className="size-5" />
-          </Button>
+          <Dropdown menuWidth={220} menuPlacement="bottom-right">
+            <Dropdown.Trigger
+              data-tour="header-help"
+              icon={<QuestionIcon className="size-5" />}
+              aria-label="Помощь"
+              title="Помощь"
+              className="size-9! justify-center! gap-0! border-0! bg-transparent px-0! py-0! text-main-400 shadow-none ring-0! hover:bg-main-700/70! hover:text-main-50"
+            >
+              <span className="sr-only">Помощь</span>
+            </Dropdown.Trigger>
+            <Dropdown.Menu rounded="rounded-2xl" className="p-1.5">
+              <Dropdown.Item
+                icon={<QuestionIcon className="size-4" />}
+                rounded="rounded-xl"
+                onClick={() => navigate(APP_PATHS.guides)}
+              >
+                Руководства
+              </Dropdown.Item>
+              <Dropdown.Item
+                icon={<InformationIcon className="size-4" />}
+                rounded="rounded-xl"
+                onClick={openAbout}
+              >
+                О приложении
+              </Dropdown.Item>
+            </Dropdown.Menu>
+          </Dropdown>
           <Button
             data-tour="header-settings"
             variant="ghost"
@@ -150,6 +183,109 @@ export const Header = observer(function Header() {
           </Modal.Content>
         </Modal>
       </GlobalSettingsProvider>
+      <Modal
+        open={aboutOpen}
+        rounded="rounded-3xl"
+        className="max-w-2xl overflow-hidden"
+        onClose={() => setAboutOpen(false)}
+      >
+        <Modal.Header>
+          <div>
+            <h2 className="text-base font-semibold text-main-50">
+              О приложении
+            </h2>
+            <p className="mt-1 text-xs text-main-500">ZVS Assistant</p>
+          </div>
+        </Modal.Header>
+        <Modal.Content className="space-y-5">
+          {appInfo ? (
+            <>
+              <dl className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-6 gap-y-3 rounded-2xl bg-main-800/45 p-4 text-sm ring-1 ring-main-700/35">
+                <dt className="text-main-400">Версия</dt>
+                <dd className="font-medium text-main-100">{appInfo.version}</dd>
+                <dt className="text-main-400">Последнее обновление</dt>
+                <dd className="font-medium text-main-100">
+                  {formatUpdatedAt(appInfo.updatedAt)}
+                </dd>
+                <dt className="text-main-400">Система</dt>
+                <dd className="font-medium text-main-100">
+                  {formatPlatform(appInfo.platform)} · {appInfo.arch}
+                </dd>
+                <dt className="text-main-400">Electron</dt>
+              </dl>
+
+              <section>
+                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-main-500">
+                  Расположение
+                </h3>
+                <div className="space-y-2">
+                  <LocationRow
+                    label="Установка"
+                    path={appInfo.installPath}
+                    onOpen={() => openLocation("install")}
+                  />
+                  <LocationRow
+                    label="Пользовательские данные"
+                    path={appInfo.userDataPath}
+                    onOpen={() => openLocation("userData")}
+                  />
+                </div>
+              </section>
+            </>
+          ) : (
+            <p className="py-8 text-center text-sm text-main-400">
+              Загрузка информации…
+            </p>
+          )}
+        </Modal.Content>
+      </Modal>
     </>
   );
 });
+
+function LocationRow({
+  label,
+  path,
+  onOpen,
+}: {
+  label: string;
+  path: string;
+  onOpen: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-2xl bg-main-800/45 p-3 ring-1 ring-main-700/35">
+      <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-main-700/45 text-main-300">
+        <FolderIcon className="size-4" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-medium text-main-200">{label}</p>
+        <p className="mt-1 truncate text-xs text-main-500" title={path}>
+          {path}
+        </p>
+      </div>
+      <Button
+        variant="ghost"
+        label={`Открыть: ${label}`}
+        title="Открыть в проводнике"
+        className="size-9 shrink-0 p-0 text-main-400 hover:bg-main-700/70 hover:text-main-50"
+        onClick={onOpen}
+      >
+        <OpenInNewIcon className="size-4" />
+      </Button>
+    </div>
+  );
+}
+
+function formatUpdatedAt(value: string): string {
+  return new Intl.DateTimeFormat("ru-RU", {
+    dateStyle: "long",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
+function formatPlatform(platform: string): string {
+  if (platform === "win32") return "Windows";
+  if (platform === "darwin") return "macOS";
+  if (platform === "linux") return "Linux";
+  return platform;
+}

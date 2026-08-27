@@ -27,6 +27,7 @@ export const knowledgeGuide: Guide = {
     {
       id: "knowledge-form",
       target: "knowledge-form",
+      openTarget: "knowledge-add",
       title: "Выбор базы",
       description:
         "Заводите отдельную базу под каждый набор документов: смешанные предметные области ухудшают поиск.",

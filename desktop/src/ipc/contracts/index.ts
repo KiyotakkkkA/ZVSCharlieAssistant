@@ -1,6 +1,7 @@
 export type {
   AppCommand,
   AppInfo,
+  AppLocation,
   ApplicationSettings,
   ApplicationSettingsApi,
   OnboardingState,
