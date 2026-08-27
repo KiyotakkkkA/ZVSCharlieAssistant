@@ -19,10 +19,12 @@ export function SuggestionPopup(props: {
       <Box
         borderStyle="round"
         borderColor={tuiColors.accent}
+        backgroundColor={tuiColors.panel}
         flexDirection="column"
         paddingX={1}
+        width="100%"
       >
-        <Text color={tuiColors.warning}>
+        <Text color={tuiColors.warning} backgroundColor={tuiColors.panel}>
           {props.prefix === "@"
             ? "@ — добавить файл или путь в контекст"
             : "! — выполнить shell-команду (будет добавлено следующим этапом)"}
@@ -34,8 +36,10 @@ export function SuggestionPopup(props: {
     <Box
       borderStyle="round"
       borderColor={tuiColors.accent}
+      backgroundColor={tuiColors.panel}
       flexDirection="column"
       paddingX={1}
+      width="100%"
     >
       {visibleItems.map((item, index) => {
         const absoluteIndex = start + index;
@@ -47,6 +51,7 @@ export function SuggestionPopup(props: {
                 ? tuiColors.accent
                 : tuiColors.muted
             }
+            backgroundColor={tuiColors.panel}
           >
             {absoluteIndex === props.selected ? "›" : " "}{" "}
             {item.kind === "directory" ? "▸" : item.kind === "file" ? "▪" : ""}{" "}
@@ -54,7 +59,7 @@ export function SuggestionPopup(props: {
           </Text>
         );
       })}
-      <Text color={tuiColors.muted}>
+      <Text color={tuiColors.muted} backgroundColor={tuiColors.panel}>
         ↑↓ выбрать · Tab дополнить · Enter выполнить
       </Text>
     </Box>

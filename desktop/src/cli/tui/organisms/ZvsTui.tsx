@@ -328,32 +328,43 @@ export function ZvsTui(props: ZvsTuiProps) {
   return (
     <Box flexDirection="column" height={Math.max(1, rows)}>
       <Box
+        position="relative"
         flexDirection="column"
         flexGrow={1}
         flexShrink={1}
         minHeight={0}
         overflowY="hidden"
-        justifyContent="flex-end"
       >
-        {state.transcript.length === 0 ? (
-          <WelcomePanel sessions={props.recentSessions} />
+        <Transcript
+          entries={state.transcript}
+          scrollEnabled={!props.menu && !state.question}
+          emptyContent={<WelcomePanel sessions={props.recentSessions} />}
+        />
+        {suggestionsVisible ? (
+          <Box position="absolute" bottom={0} width="100%">
+            <SuggestionPopup
+              items={suggestions}
+              selected={selectedSuggestion}
+              prefix={specialPrefix}
+              maxItems={Math.max(1, Math.min(8, rows - 6))}
+            />
+          </Box>
         ) : null}
-        <Transcript entries={state.transcript} />
-        {state.question && (
-          <QuestionPanel
-            question={state.question}
-            selected={selectedOption}
-            selectedValues={selectedOptions}
-          />
-        )}
-        {props.menu && (
-          <SelectionPanel
-            title={props.menu.title}
-            items={props.menu.items}
-            selected={selectedMenuItem}
-          />
-        )}
       </Box>
+      {state.question && (
+        <QuestionPanel
+          question={state.question}
+          selected={selectedOption}
+          selectedValues={selectedOptions}
+        />
+      )}
+      {props.menu && (
+        <SelectionPanel
+          title={props.menu.title}
+          items={props.menu.items}
+          selected={selectedMenuItem}
+        />
+      )}
       {busy && (
         <StatusLine
           phase={state.phase}
@@ -362,21 +373,12 @@ export function ZvsTui(props: ZvsTuiProps) {
           queued={state.queued.length}
         />
       )}
-      {suggestionsVisible && (
-        <SuggestionPopup
-          items={suggestions}
-          selected={selectedSuggestion}
-          prefix={specialPrefix}
-          maxItems={Math.max(1, Math.min(8, rows - 6))}
-        />
-      )}
       <Composer
         prompt={prompt}
         value={state.draft}
         cursor={cursor}
         queued={state.queued}
         attachments={props.attachments}
-        attached={suggestionsVisible}
       />
       <SessionFooter
         version={props.version}

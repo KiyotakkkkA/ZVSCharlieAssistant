@@ -16,12 +16,11 @@ export function Composer(props: {
   cursor: number;
   queued: string[];
   attachments: readonly CliAttachment[];
-  attached?: boolean;
 }) {
   const visibleQueue = props.queued.slice(0, 3);
   const hiddenQueueCount = props.queued.length - visibleQueue.length;
   return (
-    <Box flexDirection="column" marginTop={props.attached ? 0 : 1}>
+    <Box flexShrink={0} flexDirection="column" marginTop={1}>
       {visibleQueue.length > 0 && (
         <Box flexDirection="column" marginBottom={0}>
           {visibleQueue.map((message, index) => (
