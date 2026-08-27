@@ -346,6 +346,7 @@ export const ChatPage = observer(function ChatPage() {
           headerActions={
             <button
               type="button"
+              data-tour="chat-memory"
               title="Открыть память"
               aria-label={`Открыть память${memoryStore.total ? `, записей: ${memoryStore.total}` : ""}`}
               className="flex h-8 items-center gap-2 rounded-lg px-2.5 text-xs text-main-400 transition-colors hover:bg-main-700/45 hover:text-main-100"

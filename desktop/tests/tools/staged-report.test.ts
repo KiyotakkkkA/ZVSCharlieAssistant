@@ -83,9 +83,7 @@ describe("ReportDocxService staged reports", () => {
       "conversation-1",
     );
 
-    // Завершение или ошибка run-1 очищает только ресурсы этого run,
-    // но не транзакцию, принадлежащую всему диалогу.
-    service.abortOwner("run-1");
+    service.abortConversation("run-1");
 
     expect(
       service.addBlocks(

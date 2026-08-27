@@ -142,6 +142,12 @@ export class ChatRepository {
         conversationId,
       );
   }
+  usage(conversationId: string): ChatUsage | undefined {
+    const row = this.db
+      .prepare("SELECT last_usage FROM chat_conversations WHERE id=?")
+      .get(conversationId) as { last_usage: string } | undefined;
+    return row ? parseJsonDto(chatUsageDtoSchema, row.last_usage) : undefined;
+  }
   createRun(
     conversationId: string,
     agentId: string | undefined,

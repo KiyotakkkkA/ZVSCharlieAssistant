@@ -21,7 +21,7 @@ export const AgentManagerPage = observer(function AgentManagerPage() {
   }
 
   return (
-    <section className="mx-auto w-full max-w-6xl p-4">
+    <section className="mx-auto w-full max-w-[100rem] p-4">
       <PageHeader
         title={model ? `Настройка: ${model.name}` : "Новый агент"}
         description="Агент является переиспользуемым профилем исполнения для сценариев."

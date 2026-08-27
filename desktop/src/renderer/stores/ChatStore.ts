@@ -360,8 +360,6 @@ class ChatStore {
         event.type === "tool.running" ||
         event.type === "tool.completed"
       ) {
-        // A pending reasoning/text chunk happened before this tool event. Flush it
-        // first so the content-part timeline cannot jump across the tool block.
         this.flushPendingDeltas();
         this.messages = this.messages.map((message) => {
           if (message.role !== "assistant" || message.runId !== event.runId)

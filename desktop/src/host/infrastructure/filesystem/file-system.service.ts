@@ -451,10 +451,19 @@ export class FileSystemService {
     return { restored, failed };
   }
 
+  /**
+   * Called when a run finishes. Staged writes are keyed to the conversation,
+   * not the run, so they survive a cancelled/failed run and can be resumed
+   * from the next message — only the read-tracking is run-scoped.
+   */
   forgetRun(runId: string) {
     this.reads.delete(runId);
+  }
+
+  forgetConversation(conversationId: string) {
     for (const session of this.stagedWrites.values())
-      if (session.runId === runId) this.removeStagedWrite(session);
+      if (session.conversationId === conversationId)
+        this.removeStagedWrite(session);
   }
 
   private stagedWrite(
@@ -465,11 +474,8 @@ export class FileSystemService {
     const session = this.stagedWrites.get(sessionId);
     if (!session)
       throw new Error("Сессия поэтапной записи не найдена или истекла");
-    if (
-      session.runId !== context.runId ||
-      session.conversationId !== context.conversationId
-    )
-      throw new Error("Сессия поэтапной записи принадлежит другой задаче");
+    if (session.conversationId !== context.conversationId)
+      throw new Error("Сессия поэтапной записи принадлежит другому диалогу");
     return session;
   }
 

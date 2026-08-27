@@ -66,6 +66,7 @@ export function ContextMeter({
       {window ? (
         <Dropdown menuWidth={320} menuPlacement="top-left">
           <Dropdown.Anchor
+            data-tour="chat-context-meter"
             className="flex shrink-0 cursor-pointer items-center text-main-400 hover:text-main-200"
             aria-label="Расход токенов контекста"
           >

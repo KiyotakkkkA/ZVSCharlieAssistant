@@ -3,6 +3,7 @@ import type { ChatRepository } from "../../host/infrastructure/database/chat.rep
 import type { RunEngine } from "../../host/infrastructure/text-generation/run-engine";
 import type { FileEditRepository } from "../../host/infrastructure/database/file-edit.repository";
 import type { FileSystemService } from "../../host/infrastructure/filesystem/file-system.service";
+import type { ToolRegistry } from "../../host/infrastructure/tools/tool.registry";
 import { CHAT_IPC_CHANNELS } from "../contracts";
 import {
   entityIdSchema,
@@ -16,6 +17,7 @@ export function registerChatHandlers(
   engine: RunEngine,
   fileEdits: FileEditRepository,
   files: FileSystemService,
+  tools: ToolRegistry,
 ) {
   ipcMain.handle(CHAT_IPC_CHANNELS.getSnapshot, (_event, id?: string) =>
     data.snapshot(parseIpcDto(entityIdSchema.optional(), id)),
@@ -37,9 +39,11 @@ export function registerChatHandlers(
   ipcMain.handle(CHAT_IPC_CHANNELS.cancelRun, (_event, id: string) =>
     engine.cancel(parseIpcDto(entityIdSchema, id)),
   );
-  ipcMain.handle(CHAT_IPC_CHANNELS.deleteConversation, (_event, id: string) =>
-    data.deleteConversation(parseIpcDto(entityIdSchema, id)),
-  );
+  ipcMain.handle(CHAT_IPC_CHANNELS.deleteConversation, (_event, id: string) => {
+    const conversationId = parseIpcDto(entityIdSchema, id);
+    tools.forgetConversation(conversationId);
+    return data.deleteConversation(conversationId);
+  });
   ipcMain.handle(
     CHAT_IPC_CHANNELS.renameConversation,
     (_event, id: string, title: string) =>

@@ -53,7 +53,6 @@ const MAX_ATTACHMENT_CONTEXT_CHARS = 48_000;
 export class RunEngine {
   private controllers = new Map<string, AbortController>();
   private scenarioRunIds = new Set<string>();
-  private profileBlocks = new Map<string, string>();
   constructor(
     private readonly data: ChatRepository,
     private readonly providers: ProviderRegistry,
@@ -68,13 +67,17 @@ export class RunEngine {
     private readonly textExtraction?: TextExtractionClient,
   ) {}
 
-  private profileBlock(conversationId: string, mode: string): string {
+  private profileBlock(mode: string): string {
     if (mode !== "chat" && mode !== "planner") return "";
-    const cached = this.profileBlocks.get(conversationId);
-    if (cached !== undefined) return cached;
-    const block = this.userProfile.promptBlock();
-    this.profileBlocks.set(conversationId, block);
-    return block;
+    return this.userProfile.promptBlock();
+  }
+
+  /** Chat/planner read memory by default; an agent needs `memoryRead` granted. */
+  private mayReadMemory(
+    mode: string,
+    agentRuntime: { memoryRead: boolean } | undefined,
+  ): boolean {
+    return mode === "agent" ? Boolean(agentRuntime?.memoryRead) : true;
   }
   async start(
     input: StartRunInput,
@@ -187,11 +190,15 @@ export class RunEngine {
   contextWindow(conversationId: string, modelId: string) {
     const project = this.projects.forConversation(conversationId);
     const budget = this.budgetFor(modelId, project?.compactThreshold);
+    const usage = this.data.usage(conversationId);
+    const mode = usage?.mode ?? "chat";
+    const agentRuntime =
+      mode === "agent" ? this.data.resolveAgent(usage?.agentId) : undefined;
     const baseSystem = "Ты полезный ассистент. Отвечай по существу.";
-    const profileBlock = this.profileBlock(conversationId, "chat");
+    const profileBlock = this.profileBlock(mode);
     const projectBlock = this.projects.promptBlock(project);
     const memoryBlock = this.memory.contextBlock({
-      agentMayRead: false,
+      mayRead: this.mayReadMemory(mode, agentRuntime),
       query: "",
     });
     const system = `${baseSystem}${profileBlock}${projectBlock}${memoryBlock}`;
@@ -441,9 +448,9 @@ export class RunEngine {
           ? "Составь практичный пошаговый план. Не выполняй действия без необходимости."
           : (agentInstructions ??
             "Ты полезный ассистент. Отвечай по существу.");
-      const profileBlock = this.profileBlock(conversationId, input.mode);
+      const profileBlock = this.profileBlock(input.mode);
       const memoryBlock = this.memory.contextBlock({
-        agentMayRead: Boolean(agentRuntime?.memoryRead),
+        mayRead: this.mayReadMemory(input.mode, agentRuntime),
         query: input.text,
       });
       const project = this.projects.forConversation(conversationId);

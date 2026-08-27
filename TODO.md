@@ -1,15 +1,7 @@
 # TODO
 
-## 9. Память
+## 1. Execution id для инструментов сценариев
 
-- Добавить версионируемые summary длинных диалогов без удаления исходных сообщений.
-- Реализовать долгосрочную типизированную память (`fact`, `preference`, `instruction`, `episode`).
-- Начать с SQLite FTS5 и явной команды записи памяти.
-- Позднее добавить embeddings и vector search как сменный адаптер.
-
-## 10. MCP и durable-сценарии
-
-- Добавить MCP как внешний адаптер `ToolRegistry`, не меняя внутренний контракт инструментов.
-- Реализовать отдельные разрешения и approval policy для каждого MCP server/tool.
-- Подключить LangGraph только для долгоживущих графовых сценариев, checkpoint/resume и human-in-the-loop.
-- Связать узлы существующего графового редактора с исполняемыми LangGraph nodes/subgraphs.
+- `CreateToolsRequest` (`desktop/src/host/infrastructure/automation/engine/services.ts`) не несёт `executionId`/`conversationId`; `HostScenarioEngineServices.createTools` (`host-services.adapter.ts:126-143`) вызывает `ToolRegistry.create` без них.
+- Из-за этого `reportOwnerId` в `ToolRegistry.create` (`tool.registry.ts:118`, `conversationId ?? runId ?? "standalone"`) у любого сценария падает на литерал `"standalone"` — staged-сессии `fs_write_begin`/`reports_begin` двух параллельных сценариев делят один owner id и могут прервать или закоммитить чужую сессию.
+- Нужно прокинуть стабильный `executionId` по цепочке `services.ts` → `host-services.adapter.ts` → `ai.executors.ts`, чтобы `ToolRegistry.create` передавал его вместо `"standalone"`.

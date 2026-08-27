@@ -46,13 +46,9 @@ export class MemoryService {
     return this.snapshot();
   }
 
-  contextBlock(options: { agentMayRead: boolean; query?: string }): string {
+  contextBlock(options: { mayRead: boolean; query?: string }): string {
     const policy = this.data.policy();
-    if (
-      !policy.enabled ||
-      !options.agentMayRead ||
-      policy.injectedEntries === 0
-    )
+    if (!policy.enabled || !options.mayRead || policy.injectedEntries === 0)
       return "";
     const entries = options.query?.trim()
       ? dedupe([

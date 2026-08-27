@@ -435,6 +435,7 @@ app.whenReady().then(() => {
     runEngine,
     fileEditRepository,
     fileSystemService,
+    toolRegistry,
   );
   localBridge = new LocalBridgeServer({
     userDataPath: app.getPath("userData"),
@@ -544,11 +545,6 @@ app.whenReady().then(() => {
   });
 });
 
-/**
- * Останавливает всё, что живёт дольше окна: трей, фоновые воркеры, таймеры,
- * IPC-обработчики и базу. Вызывается перед выходом и перед перезапуском
- * после сброса данных. Повторный вызов безопасен.
- */
 function shutdownRuntime(): void {
   appWindow.beginQuit();
   appWindow.setCloseToTray(false);

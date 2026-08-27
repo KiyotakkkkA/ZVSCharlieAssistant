@@ -925,9 +925,18 @@ export class ToolRegistry {
     });
   }
 
+  /**
+   * Only read-tracking is run-scoped. Staged fs_write and report-docx
+   * sessions are keyed by conversation and survive a run ending — see
+   * FileSystemService.forgetConversation / ReportDocxService.abortConversation.
+   */
   cleanupRun(runId: string): void {
     this.files.forgetRun(runId);
-    this.reports.abortOwner(runId);
+  }
+
+  forgetConversation(conversationId: string): void {
+    this.files.forgetConversation(conversationId);
+    this.reports.abortConversation(conversationId);
   }
 
   private async execute(

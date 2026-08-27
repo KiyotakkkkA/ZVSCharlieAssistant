@@ -43,13 +43,14 @@ function fixture() {
     edits,
     join(root, "checkpoints"),
   );
-  const context = {
-    runId: "run-1",
-    conversationId: "conversation-1",
+  const contextFor = (runId: string, conversationId: string) => ({
+    runId,
+    conversationId,
     toolCallId: "tool-1",
     policy: undefined,
-  };
-  return { root, service, context };
+  });
+  const context = contextFor("run-1", "conversation-1");
+  return { root, service, context, contextFor };
 }
 
 describe("FileSystemService staged writes", () => {
@@ -79,7 +80,7 @@ describe("FileSystemService staged writes", () => {
     );
   });
 
-  it("rejects out-of-order chunks and removes abandoned temporary files", () => {
+  it("rejects out-of-order chunks", () => {
     const { root, service, context } = fixture();
     const target = join(root, "large.txt");
     const started = service.beginWrite({ path: target }, context);
@@ -90,11 +91,67 @@ describe("FileSystemService staged writes", () => {
         context,
       ),
     ).toThrow("Ожидалась часть №0");
+  });
+
+  it("survives forgetRun and resumes from a new run in the same conversation", () => {
+    const { root, service, context, contextFor } = fixture();
+    const target = join(root, "resumable.txt");
+    const started = service.beginWrite({ path: target }, context);
+    service.appendWrite(
+      { sessionId: started.sessionId, sequence: 0, content: "first" },
+      context,
+    );
 
     service.forgetRun("run-1");
-    expect(existsSync(target)).toBe(false);
-    expect(readdirSync(root).some((name) => name.endsWith(".zvs-staged"))).toBe(
-      false,
+    expect(
+      readdirSync(root).some((name) => name.endsWith(".zvs-staged")),
+    ).toBe(true);
+
+    const nextRunContext = contextFor("run-2", "conversation-1");
+    expect(
+      service.appendWrite(
+        { sessionId: started.sessionId, sequence: 1, content: "-second" },
+        nextRunContext,
+      ).nextSequence,
+    ).toBe(2);
+    const edit = service.commitWrite(
+      { sessionId: started.sessionId },
+      nextRunContext,
     );
+    expect(readFileSync(target, "utf8")).toBe("first-second");
+    expect(edit.operation).toBe("create");
+  });
+
+  it("rejects a session from a different conversation", () => {
+    const { service, context, contextFor, root } = fixture();
+    const target = join(root, "private.txt");
+    const started = service.beginWrite({ path: target }, context);
+
+    const otherConversation = contextFor("run-2", "conversation-2");
+    expect(() =>
+      service.appendWrite(
+        { sessionId: started.sessionId, sequence: 0, content: "x" },
+        otherConversation,
+      ),
+    ).toThrow("принадлежит другому диалогу");
+  });
+
+  it("removes abandoned sessions on forgetConversation", () => {
+    const { root, service, context } = fixture();
+    const target = join(root, "abandoned.txt");
+    const started = service.beginWrite({ path: target }, context);
+    service.appendWrite(
+      { sessionId: started.sessionId, sequence: 0, content: "partial" },
+      context,
+    );
+
+    service.forgetConversation("conversation-1");
+    expect(existsSync(target)).toBe(false);
+    expect(
+      readdirSync(root).some((name) => name.endsWith(".zvs-staged")),
+    ).toBe(false);
+    expect(() =>
+      service.commitWrite({ sessionId: started.sessionId }, context),
+    ).toThrow("Сессия поэтапной записи не найдена или истекла");
   });
 });
