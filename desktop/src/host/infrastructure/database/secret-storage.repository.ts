@@ -219,10 +219,7 @@ export class SecretStorageRepository {
     conflictPolicy: DataTransferConflictPolicy,
   ): Pick<ImportResult, "categories" | "secrets" | "skipped"> {
     return this.database.transaction(() => {
-      const result: Pick<
-        ImportResult,
-        "categories" | "secrets" | "skipped"
-      > = {
+      const result: Pick<ImportResult, "categories" | "secrets" | "skipped"> = {
         categories: { create: 0, update: 0 },
         secrets: { create: 0, update: 0 },
         skipped: 0,
@@ -310,9 +307,7 @@ export class SecretStorageRepository {
          FROM secret_categories
          WHERE id = ? OR (? IS NOT NULL AND system_key = ?)`,
       )
-      .get(id, systemKey ?? null, systemKey ?? null) as
-      | CategoryRow
-      | undefined;
+      .get(id, systemKey ?? null, systemKey ?? null) as CategoryRow | undefined;
     return row ? mapCategory(row) : undefined;
   }
 
@@ -353,7 +348,9 @@ export class SecretStorageRepository {
 
   findCategory(id: string): SecretCategory | undefined {
     const row = this.database
-      .prepare("SELECT id, system_key, label, builtin FROM secret_categories WHERE id = ?")
+      .prepare(
+        "SELECT id, system_key, label, builtin FROM secret_categories WHERE id = ?",
+      )
       .get(id) as CategoryRow | undefined;
 
     return row ? mapCategory(row) : undefined;
@@ -401,12 +398,7 @@ export class SecretStorageRepository {
           `INSERT INTO secret_entities (id, category_id, label, content)
            VALUES (?, ?, ?, ?)`,
         )
-        .run(
-          id,
-          input.categoryId,
-          input.label,
-          encryptSecret(input.content!),
-        );
+        .run(id, input.categoryId, input.label, encryptSecret(input.content!));
       return this.findSecret(id)!;
     }
 

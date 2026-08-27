@@ -253,9 +253,9 @@ export function ChatFeed({
                       message.scenarioRunId &&
                       scenarioExecutions.get(message.scenarioRunId) ? (
                         <ScenarioExecutionHistory
-                          execution={
-                            scenarioExecutions.get(message.scenarioRunId)!
-                          }
+                          execution={scenarioExecutions.get(
+                            message.scenarioRunId,
+                          )!}
                           liveOutput={scenarioNodeOutput}
                         />
                       ) : null

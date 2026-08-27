@@ -15,16 +15,34 @@ export function SelectionPanel(props: {
   multiSelect?: boolean;
 }) {
   return (
-    <Box marginTop={1} borderStyle="round" borderColor={tuiColors.accent} flexDirection="column" paddingX={1}>
-      <Text bold color={tuiColors.accent}>{props.title}</Text>
+    <Box
+      marginTop={1}
+      borderStyle="round"
+      borderColor={tuiColors.accent}
+      flexDirection="column"
+      paddingX={1}
+    >
+      <Text bold color={tuiColors.accent}>
+        {props.title}
+      </Text>
       {props.items.map((item, index) => {
         const checked = props.selectedValues?.includes(item.value) ?? false;
         const marker = props.multiSelect
-          ? checked ? "◉" : "○"
-          : index === props.selected ? "●" : "○";
+          ? checked
+            ? "◉"
+            : "○"
+          : index === props.selected
+            ? "●"
+            : "○";
         return (
-          <Text key={item.value} color={index === props.selected ? tuiColors.accent : tuiColors.muted}>
-            {marker} {item.label}{item.hint ? ` · ${item.hint}` : ""}
+          <Text
+            key={item.value}
+            color={
+              index === props.selected ? tuiColors.accent : tuiColors.muted
+            }
+          >
+            {marker} {item.label}
+            {item.hint ? ` · ${item.hint}` : ""}
           </Text>
         );
       })}

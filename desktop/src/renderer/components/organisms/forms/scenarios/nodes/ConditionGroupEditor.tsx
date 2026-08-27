@@ -1,4 +1,9 @@
-import { Button, InputCheckBox, InputSmall, Select } from "@kiyotakkkka/zvs-uikit-lib";
+import {
+  Button,
+  InputCheckBox,
+  InputSmall,
+  Select,
+} from "@kiyotakkkka/zvs-uikit-lib";
 import {
   UNARY_OPERATORS,
   type ComparisonOperator,
@@ -46,7 +51,9 @@ export function ConditionGroupEditor({
               <div className="min-w-0 flex-1 space-y-2">
                 <InputSmall
                   value={String(condition.left ?? "")}
-                  onChange={(event) => patch(index, { left: event.target.value })}
+                  onChange={(event) =>
+                    patch(index, { left: event.target.value })
+                  }
                   placeholder="{{ $json.status }}"
                   className="w-full font-mono text-xs"
                 />
@@ -99,7 +106,9 @@ export function ConditionGroupEditor({
                 title="Удалить условие"
                 className="shrink-0"
                 onClick={() =>
-                  onChange(conditions.filter((_, position) => position !== index))
+                  onChange(
+                    conditions.filter((_, position) => position !== index),
+                  )
                 }
               />
             </div>

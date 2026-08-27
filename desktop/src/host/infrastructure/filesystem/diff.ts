@@ -1,4 +1,3 @@
-
 const CONTEXT_LINES = 3;
 const LCS_LINE_LIMIT = 4_000;
 const APPLY_FUZZ_LINES = 60;
@@ -155,10 +154,12 @@ function groupHunks(operations: Operation[]): Hunk[] {
       cursor += 1;
     }
     const slice = operations.slice(from, to + 1);
-    const beforeCount = slice.filter((operation) => operation.kind !== "add")
-      .length;
-    const afterCount = slice.filter((operation) => operation.kind !== "remove")
-      .length;
+    const beforeCount = slice.filter(
+      (operation) => operation.kind !== "add",
+    ).length;
+    const afterCount = slice.filter(
+      (operation) => operation.kind !== "remove",
+    ).length;
     hunks.push({
       beforeStart: beforeCount ? beforeLine : beforeLine - 1,
       beforeCount,

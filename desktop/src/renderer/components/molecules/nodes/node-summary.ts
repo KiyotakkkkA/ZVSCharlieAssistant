@@ -33,12 +33,16 @@ export function nodeSummary(
     }
     case "trigger.interval": {
       const seconds = number("intervalSeconds");
-      return seconds ? `Каждые ${humanInterval(seconds)}` : "Расписание не задано";
+      return seconds
+        ? `Каждые ${humanInterval(seconds)}`
+        : "Расписание не задано";
     }
     case "trigger.telegram": {
       const command = text("command");
       if (command) return `Команда ${command}`;
-      return config.allowAnyChat ? "Любой чат" : chatCount(config.allowedChatIds);
+      return config.allowAnyChat
+        ? "Любой чат"
+        : chatCount(config.allowedChatIds);
     }
     case "trigger.email": {
       const subject = text("subjectContains");
@@ -61,7 +65,9 @@ export function nodeSummary(
       const categories = Array.isArray(config.categories)
         ? config.categories.length
         : 0;
-      return categories ? `${categories} ${plural(categories, "категория", "категории", "категорий")}` : "Категории не заданы";
+      return categories
+        ? `${categories} ${plural(categories, "категория", "категории", "категорий")}`
+        : "Категории не заданы";
     }
     case "knowledgeStore": {
       const store = names.vectorStores.get(text("vectorStoreId"));
@@ -81,7 +87,9 @@ export function nodeSummary(
     }
     case "switch": {
       const rules = Array.isArray(config.rules) ? config.rules.length : 0;
-      return rules ? `${rules} ${plural(rules, "ветка", "ветки", "веток")}` : "Ветки не заданы";
+      return rules
+        ? `${rules} ${plural(rules, "ветка", "ветки", "веток")}`
+        : "Ветки не заданы";
     }
     case "filter":
       return "Пропускает подходящие";
@@ -104,22 +112,30 @@ export function nodeSummary(
             String(field.name ?? "").trim(),
           ).length
         : 0;
-      return fields ? `${fields} ${plural(fields, "поле", "поля", "полей")}` : "Поля не заданы";
+      return fields
+        ? `${fields} ${plural(fields, "поле", "поля", "полей")}`
+        : "Поля не заданы";
     }
     case "aggregate":
       return "Собирает в один";
     case "splitOut":
-      return text("field") ? `Разворачивает ${text("field")}` : "Поле не задано";
+      return text("field")
+        ? `Разворачивает ${text("field")}`
+        : "Поле не задано";
     case "sort": {
       const rules = Array.isArray(config.rules) ? config.rules.length : 0;
-      return rules ? `По ${rules} ${plural(rules, "полю", "полям", "полям")}` : "Поля не заданы";
+      return rules
+        ? `По ${rules} ${plural(rules, "полю", "полям", "полям")}`
+        : "Поля не заданы";
     }
     case "deduplicate":
       return "Убирает повторы";
 
     case "http": {
       const url = text("url");
-      return url ? `${text("method") || "GET"} ${shorten(url)}` : "URL не задан";
+      return url
+        ? `${text("method") || "GET"} ${shorten(url)}`
+        : "URL не задан";
     }
     case "downloadFiles":
       return `До ${number("maxFiles") || 20} файлов`;

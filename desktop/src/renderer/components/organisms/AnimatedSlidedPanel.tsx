@@ -27,16 +27,12 @@ interface AnimatedSlidedPanelProps {
   maxWidth?: number;
   resizable?: boolean;
   transitionDuration?: number;
-  className?:
-    | string
-    | ((state: AnimatedSlidedPanelState) => string);
+  className?: string | ((state: AnimatedSlidedPanelState) => string);
   style?: CSSProperties;
   header?: (state: AnimatedSlidedPanelState) => ReactNode;
   children: ReactNode;
   collapsedContent?: ReactNode;
-  contentClassName?:
-    | string
-    | ((state: AnimatedSlidedPanelState) => string);
+  contentClassName?: string | ((state: AnimatedSlidedPanelState) => string);
   onCollapsedChange?: (collapsed: boolean) => void;
 }
 
@@ -62,7 +58,12 @@ export function AnimatedSlidedPanel({
   onCollapsedChange,
 }: AnimatedSlidedPanelProps) {
   const [width, setWidth] = useState(() =>
-    readNumber(storageKey && `${storageKey}.width`, defaultWidth, minWidth, maxWidth),
+    readNumber(
+      storageKey && `${storageKey}.width`,
+      defaultWidth,
+      minWidth,
+      maxWidth,
+    ),
   );
   const [collapsed, setCollapsed] = useState(() =>
     readFlag(storageKey && `${storageKey}.collapsed`, defaultCollapsed),
@@ -74,8 +75,7 @@ export function AnimatedSlidedPanel({
   const timers = useRef<number[]>([]);
 
   useEffect(() => {
-    if (storageKey)
-      localStorage.setItem(`${storageKey}.width`, String(width));
+    if (storageKey) localStorage.setItem(`${storageKey}.width`, String(width));
   }, [storageKey, width]);
 
   useEffect(() => {
@@ -102,13 +102,10 @@ export function AnimatedSlidedPanel({
           return next;
         });
         timers.current.push(
-          window.setTimeout(
-            () => {
-              setContentVisible(true);
-              timers.current = [];
-            },
-            transitionDuration,
-          ),
+          window.setTimeout(() => {
+            setContentVisible(true);
+            timers.current = [];
+          }, transitionDuration),
         );
       }, FADE_OUT_MS),
     );
@@ -171,9 +168,7 @@ export function AnimatedSlidedPanel({
       data-side={side}
       className={[
         "relative shrink-0",
-        resizing
-          ? ""
-          : "transition-[width,background-color] ease-out",
+        resizing ? "" : "transition-[width,background-color] ease-out",
         resolvedClassName,
       ].join(" ")}
       style={{

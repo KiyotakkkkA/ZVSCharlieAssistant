@@ -8,9 +8,17 @@ export function InlineMarkup({ children }: { children: string }) {
     <Text>
       {tokens.map((token, index) => {
         if (token.startsWith("**") && token.endsWith("**"))
-          return <Text key={index} bold>{token.slice(2, -2)}</Text>;
+          return (
+            <Text key={index} bold>
+              {token.slice(2, -2)}
+            </Text>
+          );
         if (token.startsWith("`") && token.endsWith("`"))
-          return <Text key={index} color={tuiColors.cyan}>{token.slice(1, -1)}</Text>;
+          return (
+            <Text key={index} color={tuiColors.cyan}>
+              {token.slice(1, -1)}
+            </Text>
+          );
         return <Fragment key={index}>{token}</Fragment>;
       })}
     </Text>

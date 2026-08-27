@@ -265,8 +265,9 @@ export const dataTransferPayloadSchema = z
   });
 
 export type DataTransferPayload = z.infer<typeof dataTransferPayloadSchema>;
-export type PortableSecretStorage =
-  NonNullable<DataTransferPayload["sections"]["secretStorage"]>;
+export type PortableSecretStorage = NonNullable<
+  DataTransferPayload["sections"]["secretStorage"]
+>;
 export type PortableSkill = NonNullable<
   DataTransferPayload["sections"]["skills"]
 >["items"][number];

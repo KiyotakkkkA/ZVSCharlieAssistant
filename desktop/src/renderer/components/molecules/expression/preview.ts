@@ -15,10 +15,7 @@ const TYPE_NAMES: Record<string, string> = {
   undefined: "пусто",
 };
 
-export function preview(
-  source: string,
-  scope: ExpressionScope,
-): PreviewResult {
+export function preview(source: string, scope: ExpressionScope): PreviewResult {
   if (!source.trim()) return { state: "empty" };
 
   try {

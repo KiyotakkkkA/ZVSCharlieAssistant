@@ -20,7 +20,11 @@ describe("протокол локального моста", () => {
 
   it("собирает кадры из произвольно нарезанных чанков", () => {
     const decoder = new FrameDecoder();
-    const payload = encodeFrame({ id: 7, ok: true, result: { value: "текст" } });
+    const payload = encodeFrame({
+      id: 7,
+      ok: true,
+      result: { value: "текст" },
+    });
     const half = Math.floor(payload.length / 2);
 
     expect(decoder.push(payload.slice(0, half))).toEqual([]);

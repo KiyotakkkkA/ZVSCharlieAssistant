@@ -73,7 +73,10 @@ export const NavigationSidebar = () => {
         </div>
       )}
       collapsedContent={
-        <nav aria-label="Основная навигация" className="space-y-1 overflow-visible">
+        <nav
+          aria-label="Основная навигация"
+          className="space-y-1 overflow-visible"
+        >
           {compactRoutes.map((route) => {
             const RouteIcon = route.icon;
             return (

@@ -15,7 +15,10 @@ export function collectChatArtifacts(
 ): ChatArtifact[] {
   const artifacts = new Map<string, ChatArtifact>();
   for (const call of toolCalls ?? []) {
-    if (call.toolId === "reports_docx" && call.status === "completed")
+    if (
+      (call.toolId === "reports_docx" || call.toolId === "reports_commit") &&
+      call.status === "completed"
+    )
       addArtifact(artifacts, call.output);
   }
   for (const node of scenarioNodes ?? []) {

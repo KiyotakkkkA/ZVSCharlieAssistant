@@ -39,7 +39,10 @@ export const ScenariosListPage = observer(function ScenariosListPage() {
       APP_PATHS.automation.scenarios.edit.replace(":scenarioId", scenario.id),
     );
   return (
-    <section data-tour="scenarios-page" className="flex h-full min-h-0 flex-col overflow-hidden p-4">
+    <section
+      data-tour="scenarios-page"
+      className="flex h-full min-h-0 flex-col overflow-hidden p-4"
+    >
       <PageHeader
         title="Сценарии"
         description="Объединяйте агентов в управляемые последовательности выполнения."

@@ -22,7 +22,11 @@ export function SuggestionPopup(props: {
         flexDirection="column"
         paddingX={1}
       >
-        <Text color={tuiColors.warning}>{props.prefix === "@" ? "@ — добавить файл или путь в контекст" : "! — выполнить shell-команду (будет добавлено следующим этапом)"}</Text>
+        <Text color={tuiColors.warning}>
+          {props.prefix === "@"
+            ? "@ — добавить файл или путь в контекст"
+            : "! — выполнить shell-команду (будет добавлено следующим этапом)"}
+        </Text>
       </Box>
     );
   if (!props.items.length) return null;
@@ -45,16 +49,14 @@ export function SuggestionPopup(props: {
             }
           >
             {absoluteIndex === props.selected ? "›" : " "}{" "}
-            {item.kind === "directory"
-              ? "▸"
-              : item.kind === "file"
-                ? "▪"
-                : ""}{" "}
+            {item.kind === "directory" ? "▸" : item.kind === "file" ? "▪" : ""}{" "}
             {item.label} · {item.description}
           </Text>
         );
       })}
-      <Text color={tuiColors.muted}>↑↓ выбрать · Tab дополнить · Enter выполнить</Text>
+      <Text color={tuiColors.muted}>
+        ↑↓ выбрать · Tab дополнить · Enter выполнить
+      </Text>
     </Box>
   );
 }

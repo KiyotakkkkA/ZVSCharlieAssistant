@@ -16,6 +16,10 @@ const FILE_SYSTEM_TOOL_IDS = [
   "fs_read",
   "fs_list",
   "fs_write",
+  "fs_write_begin",
+  "fs_write_chunk",
+  "fs_write_commit",
+  "fs_write_abort",
   "fs_edit",
   "fs_multi_edit",
   "fs_apply_patch",
@@ -50,6 +54,30 @@ const PRESENTATION: Record<FileSystemToolId, ToolPresentation> = {
     action: "Запись файла",
     running: "Записывает",
     completed: "Записан",
+  },
+  fs_write_begin: {
+    icon: FilePlusIcon,
+    action: "Подготовка записи",
+    running: "Готовит запись",
+    completed: "Запись подготовлена для",
+  },
+  fs_write_chunk: {
+    icon: FileSyncIcon,
+    action: "Часть файла",
+    running: "Добавляет часть в",
+    completed: "Часть добавлена в",
+  },
+  fs_write_commit: {
+    icon: FilePlusIcon,
+    action: "Завершение записи",
+    running: "Сохраняет",
+    completed: "Атомарно записан",
+  },
+  fs_write_abort: {
+    icon: FileRemoveIcon,
+    action: "Отмена записи",
+    running: "Отменяет запись",
+    completed: "Запись отменена для",
   },
   fs_edit: {
     icon: FileEditIcon,
@@ -91,8 +119,11 @@ export function FileSystemToolStatus({ call }: { call: ChatToolCall }) {
   if (!isFileSystemTool(call.toolId)) return null;
 
   const input = asRecord(call.input);
+  const output = asRecord(call.output);
   const presentation = PRESENTATION[call.toolId];
-  const target = shortPath(primaryPath(call.toolId, input));
+  const target = shortPath(
+    stringValue(output.path) ?? primaryPath(call.toolId, input),
+  );
 
   return (
     <CompactToolStatus defaultExpanded={call.status === "failed"}>
@@ -141,7 +172,10 @@ function FileSystemToolDetails({
             {statusLabel(call.status)}
           </span>
         </div>
-        <PathLine label={toolId === "fs_move" ? "Откуда" : "Путь"} path={path} />
+        <PathLine
+          label={toolId === "fs_move" ? "Откуда" : "Путь"}
+          path={path}
+        />
         {toolId === "fs_move" && destination ? (
           <PathLine label="Куда" path={destination} className="mt-1.5" />
         ) : null}
@@ -203,7 +237,8 @@ function collectMetrics(
   output: Record<string, unknown>,
 ): Metric[] {
   if (toolId === "fs_read") {
-    const from = numberValue(output.from) ?? (numberValue(input.offset) ?? 0) + 1;
+    const from =
+      numberValue(output.from) ?? (numberValue(input.offset) ?? 0) + 1;
     const outputTo = numberValue(output.to);
     const requestedLimit = numberValue(input.limit);
     const to = outputTo ?? (requestedLimit ? from + requestedLimit - 1 : null);
@@ -247,6 +282,39 @@ function collectMetrics(
     ]);
   }
 
+  if (toolId === "fs_write_begin") {
+    return compactMetrics([
+      metric("Следующая часть", numberValue(output.nextSequence)),
+      metric(
+        "Размер части",
+        numberValue(output.recommendedChunkChars),
+        " символов",
+      ),
+    ]);
+  }
+
+  if (toolId === "fs_write_chunk") {
+    return compactMetrics([
+      metric(
+        "Часть",
+        numberValue(output.acceptedSequence) ?? numberValue(input.sequence),
+      ),
+      metric("Записано", numberValue(output.bytesWritten), " Б"),
+      metric("Следующая", numberValue(output.nextSequence)),
+    ]);
+  }
+
+  if (toolId === "fs_write_commit") {
+    return compactMetrics([
+      diffMetric("Добавлено", changes.added),
+      diffMetric("Удалено", changes.removed),
+      sizeChange ? { label: "Размер", value: sizeChange } : null,
+    ]);
+  }
+
+  if (toolId === "fs_write_abort")
+    return [{ label: "Результат", value: "временные данные удалены" }];
+
   if (toolId === "fs_multi_edit") {
     return compactMetrics([
       {
@@ -283,12 +351,19 @@ function collectMetrics(
   ]);
 }
 
-function primaryPath(
-  toolId: FileSystemToolId,
-  input: Record<string, unknown>,
-) {
+function primaryPath(toolId: FileSystemToolId, input: Record<string, unknown>) {
   if (toolId === "fs_move") return stringValue(input.from) ?? "файл";
+  if (
+    toolId === "fs_write_chunk" ||
+    toolId === "fs_write_commit" ||
+    toolId === "fs_write_abort"
+  )
+    return `сессия ${shortId(stringValue(input.sessionId))}`;
   return stringValue(input.path) ?? "файл";
+}
+
+function shortId(value: string | null) {
+  return value ? value.slice(0, 8) : "записи";
 }
 
 function shortPath(path: string) {
@@ -334,7 +409,11 @@ function signed(value: number) {
   return value > 0 ? `+${value}` : String(value);
 }
 
-function metric(label: string, value: number | null, suffix = ""): Metric | null {
+function metric(
+  label: string,
+  value: number | null,
+  suffix = "",
+): Metric | null {
   return value === null ? null : { label, value: `${value}${suffix}` };
 }
 

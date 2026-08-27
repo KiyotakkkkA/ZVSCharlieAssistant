@@ -15,6 +15,22 @@ const MIGRATIONS: Migration[] = [
   { version: 2, name: "coder-mode", sql: CODER_MODE_SCHEMA_SQL },
   { version: 3, name: "model-chain", sql: MODEL_CHAIN_SCHEMA_SQL },
   { version: 4, name: "projects", sql: PROJECT_SCHEMA_SQL },
+  {
+    version: 5,
+    name: "raise-legacy-output-limit",
+    sql: `
+      UPDATE text_provider_configs
+      SET generation_settings_json = json_set(
+        generation_settings_json,
+        '$.maxOutputTokens',
+        8192
+      )
+      WHERE json_extract(
+        generation_settings_json,
+        '$.maxOutputTokens'
+      ) = 2048;
+    `,
+  },
 ];
 
 export function runMigrations(database: Database.Database): void {

@@ -85,8 +85,7 @@ export class TextProviderRepository {
             limits ? JSON.stringify(limits) : null,
             JSON.stringify(input.generationSettings),
           );
-      }
-      else {
+      } else {
         const result = this.database
           .prepare(
             "UPDATE text_provider_configs SET kind=?, provider_type=?, name=?, base_url=?, api_key_secret_id=?, enabled=?, checked_at=?, limits_json=?, generation_settings_json=?, updated_at=CURRENT_TIMESTAMP WHERE id=?",
@@ -170,7 +169,7 @@ const parseGenerationSettings = (
     .partial()
     .parse(JSON.parse(value || "{}") as unknown);
   return {
-    maxOutputTokens: parsed.maxOutputTokens ?? 2048,
+    maxOutputTokens: parsed.maxOutputTokens ?? 8192,
     temperature: parsed.temperature ?? 0.7,
     topP: parsed.topP ?? 0.9,
   };

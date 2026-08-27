@@ -42,7 +42,6 @@ interface AgentRow {
   memory_write: number;
 }
 
-
 const STATUSES = new Set<AutomationStatus>(["draft", "active", "disabled"]);
 
 const normalizeText = (
@@ -258,8 +257,7 @@ export class AutomationRepository {
     const skillsById = new Map(this.listSkillsFull().map((s) => [s.id, s]));
     for (const skillId of allowedSkillIds) {
       const skill = skillsById.get(skillId);
-      if (!skill)
-        throw new Error(`Навык #${skillId} не найден`);
+      if (!skill) throw new Error(`Навык #${skillId} не найден`);
       if (skill.status !== "active")
         throw new Error(`Навык «${skill.name}» не активен`);
       const missingTool = skill.requiredToolIds.find(
@@ -712,5 +710,4 @@ export class AutomationRepository {
       updatedAt: row.updated_at,
     };
   }
-
 }

@@ -4,10 +4,7 @@ import type {
 } from "../../../shared/models/automation";
 
 export function getToolDisabledReason(
-  tool: Pick<
-    AutomationTool,
-    "id" | "enabled" | "secretRequirements"
-  >,
+  tool: Pick<AutomationTool, "id" | "enabled" | "secretRequirements">,
   secretBindings: readonly AutomationToolSecretBinding[],
   terminalEnabled: boolean,
 ): string | null {

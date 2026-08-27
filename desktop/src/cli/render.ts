@@ -163,18 +163,14 @@ function apply(event: RunEvent, outcome: ChatOutcome, streaming: boolean) {
       break;
     case "tool.running":
       if (streaming)
-        process.stderr.write(
-          `  → ${event.toolId} · выполняется\n`,
-        );
+        process.stderr.write(`  → ${event.toolId} · выполняется\n`);
       break;
     case "tool.completed":
       if (event.error) {
         const last = outcome.toolCalls[outcome.toolCalls.length - 1];
         if (last) last.error = event.error;
         if (streaming)
-          process.stderr.write(
-            `  × ${event.toolId}: ${event.error}\n`,
-          );
+          process.stderr.write(`  × ${event.toolId}: ${event.error}\n`);
       } else if (streaming)
         process.stderr.write(
           `  ✓ ${event.toolId}${event.output === undefined ? "" : ` ${compactValue(event.output)}`}\n`,
@@ -218,10 +214,12 @@ function apply(event: RunEvent, outcome: ChatOutcome, streaming: boolean) {
 
 function writeSummary(outcome: ChatOutcome) {
   const parts: string[] = [];
-  if (outcome.files.length) parts.push(`файлов изменено: ${outcome.files.length}`);
+  if (outcome.files.length)
+    parts.push(`файлов изменено: ${outcome.files.length}`);
   if (outcome.toolCalls.length)
     parts.push(`вызовов инструментов: ${outcome.toolCalls.length}`);
-  if (outcome.compactions) parts.push(`сжатий контекста: ${outcome.compactions}`);
+  if (outcome.compactions)
+    parts.push(`сжатий контекста: ${outcome.compactions}`);
   if (outcome.switches.length)
     parts.push(`переключений модели: ${outcome.switches.length}`);
   if (parts.length) process.stderr.write(`${parts.join(", ")}\n`);

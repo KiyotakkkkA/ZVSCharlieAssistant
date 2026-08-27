@@ -5,7 +5,9 @@ import { ContentBlock } from "../molecules/ContentBlock";
 export function Transcript({ entries }: { entries: TranscriptEntry[] }) {
   return (
     <Box flexDirection="column" flexShrink={0}>
-      {entries.map((entry) => <ContentBlock key={entry.id} entry={entry} />)}
+      {entries.map((entry) => (
+        <ContentBlock key={entry.id} entry={entry} />
+      ))}
     </Box>
   );
 }

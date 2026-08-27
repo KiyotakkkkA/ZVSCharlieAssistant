@@ -136,9 +136,7 @@ describe("узел approval", () => {
     resetIds();
     const services = fakeServices({
       askApproval: () => {
-        throw new ScenarioSuspended(
-          "019cba09-8f30-7000-8000-000000000205",
-        );
+        throw new ScenarioSuspended("019cba09-8f30-7000-8000-000000000205");
       },
     });
     const trigger = node("trigger.manual", { name: "Старт" });
@@ -184,9 +182,7 @@ describe("узел subScenario", () => {
     resetIds();
     const services = fakeServices({
       runSubScenario: async (input) => {
-        expect(input.scenarioId).toBe(
-          "019cba09-8f30-7000-8000-000000000208",
-        );
+        expect(input.scenarioId).toBe("019cba09-8f30-7000-8000-000000000208");
         return { done: true };
       },
     });

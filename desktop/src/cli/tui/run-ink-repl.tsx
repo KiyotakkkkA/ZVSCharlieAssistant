@@ -77,7 +77,11 @@ function InkRuntime(props: {
   recentSessions: RecentChatSession[];
   onExit: (code: number) => void;
 }) {
-  const [state, dispatch] = useReducer(reduceTuiState, undefined, initialTuiState);
+  const [state, dispatch] = useReducer(
+    reduceTuiState,
+    undefined,
+    initialTuiState,
+  );
   const initialSession = props.recentSessions.find(
     (session) => session.conversationId === props.options.conversation,
   );
@@ -89,10 +93,9 @@ function InkRuntime(props: {
     projectId?: string;
     permission: CliOptions["permissionMode"];
   }>({
-    mode:
-      props.options.agent
-        ? "agent"
-        : (initialSession?.usage.mode ?? "chat"),
+    mode: props.options.agent
+      ? "agent"
+      : (initialSession?.usage.mode ?? "chat"),
     modelId:
       props.options.model ?? initialSession?.usage.modelId ?? props.modelId,
     agentId: props.options.agent ?? initialSession?.usage.agentId,
@@ -109,7 +112,9 @@ function InkRuntime(props: {
   const lastRunId = useRef<string | undefined>(undefined);
   const runStarting = useRef(false);
   const queuedMessages = useRef<string[]>([]);
-  const startRunRef = useRef<(message: string) => Promise<void>>(async () => undefined);
+  const startRunRef = useRef<(message: string) => Promise<void>>(
+    async () => undefined,
+  );
   const sequence = useRef(0);
 
   const appendSystem = useCallback((text: string, error = false) => {
@@ -167,7 +172,10 @@ function InkRuntime(props: {
         case "/agent":
           showMenu("agent", "Агент", [
             { label: "без агента", hint: "обычный чат", value: "" },
-            ...props.agents.map((item) => ({ label: item.name, value: item.id })),
+            ...props.agents.map((item) => ({
+              label: item.name,
+              value: item.id,
+            })),
           ]);
           return true;
         case "/project":
@@ -308,7 +316,12 @@ function InkRuntime(props: {
           }
           const edits = (await props.client.request("files.edits", {
             conversationId: conversationId.current,
-          })) as Array<{ path: string; operation: string; reverted: boolean; diff: string }>;
+          })) as Array<{
+            path: string;
+            operation: string;
+            reverted: boolean;
+            diff: string;
+          }>;
           appendSystem(
             edits.length
               ? edits
@@ -348,7 +361,8 @@ function InkRuntime(props: {
           appendSystem(`Неизвестная команда ${name}; используйте /help`, true);
           return true;
       }
-    }, [appendSystem, props, settings, showMenu],
+    },
+    [appendSystem, props, settings, showMenu],
   );
 
   const startRun = useCallback(
@@ -412,7 +426,7 @@ function InkRuntime(props: {
                 callId: event.toolCallId,
                 toolId: event.toolId,
                 status: "requested",
-                summary: `${event.toolId}${event.input === undefined ? "" : ` · ${compactValue(event.input)}`}`,
+                summary: toolEventSummary(event.toolId, event.input),
               },
             });
             break;
@@ -423,19 +437,27 @@ function InkRuntime(props: {
                 callId: event.toolCallId,
                 toolId: event.toolId,
                 status: "running",
-                summary: `${event.toolId} · выполняется`,
+                summary: `${toolDisplayName(event.toolId)} · выполняется`,
               },
             });
             if (event.toolId === "ask_user")
-              void loadQuestion(props.client, conversationId.current, activeRunId.current).then(
+              void loadQuestion(
+                props.client,
+                conversationId.current,
+                activeRunId.current,
+              ).then(
                 (question) => {
                   if (question) {
                     dispatch({ type: "question.requested", question });
                     return;
                   }
-                  appendSystem("Не удалось получить вопрос агента через CLI-мост", true);
+                  appendSystem(
+                    "Не удалось получить вопрос агента через CLI-мост",
+                    true,
+                  );
                   const runId = activeRunId.current;
-                  if (runId) void props.client.request("chat.cancel", { runId });
+                  if (runId)
+                    void props.client.request("chat.cancel", { runId });
                 },
                 (error: unknown) => {
                   appendSystem(
@@ -453,8 +475,8 @@ function InkRuntime(props: {
                 toolId: event.toolId,
                 status: event.error ? "failed" : "completed",
                 summary: event.error
-                  ? `${event.toolId} · ${event.error}`
-                  : `${event.toolId}${event.output === undefined ? "" : ` · ${compactValue(event.output)}`}`,
+                  ? `${toolDisplayName(event.toolId)} · ${event.error}`
+                  : toolEventSummary(event.toolId, event.output),
               },
             });
             break;
@@ -483,7 +505,11 @@ function InkRuntime(props: {
             finishAndContinue();
             break;
           case "run.cancelled":
-            dispatch({ type: "run.failed", id: localId, error: "Прервано пользователем" });
+            dispatch({
+              type: "run.failed",
+              id: localId,
+              error: "Прервано пользователем",
+            });
             finishAndContinue();
             break;
           case "run.completed":
@@ -523,7 +549,9 @@ function InkRuntime(props: {
         });
         finishAndContinue();
       }
-    }, [appendSystem, inputPrompt, props.client, runCommand, settings]);
+    },
+    [appendSystem, inputPrompt, props.client, runCommand, settings],
+  );
   startRunRef.current = startRun;
 
   const cancel = useCallback(() => {
@@ -536,7 +564,10 @@ function InkRuntime(props: {
   const answer = useCallback(
     (question: UserQuestion, values: string[]) => {
       void props.client
-        .request("questions.answer", { questionId: question.id, answer: values })
+        .request("questions.answer", {
+          questionId: question.id,
+          answer: values,
+        })
         .then(
           () => dispatch({ type: "question.answered" }),
           (error: unknown) =>
@@ -549,7 +580,10 @@ function InkRuntime(props: {
     [appendSystem, props.client],
   );
 
-  const externalDispatch = useCallback((action: TuiAction) => dispatch(action), []);
+  const externalDispatch = useCallback(
+    (action: TuiAction) => dispatch(action),
+    [],
+  );
   const selectMenuItem = useCallback(
     (value: string) => {
       const kind = menu?.kind;
@@ -562,7 +596,9 @@ function InkRuntime(props: {
           agentId: undefined,
           scenarioId: undefined,
         }));
-        appendSystem(`Модель: ${props.models.find((item) => item.id === value)?.name ?? value}`);
+        appendSystem(
+          `Модель: ${props.models.find((item) => item.id === value)?.name ?? value}`,
+        );
       } else if (kind === "agent") {
         setSettings((current) => ({
           ...current,
@@ -570,20 +606,29 @@ function InkRuntime(props: {
           agentId: value || undefined,
           scenarioId: undefined,
         }));
-        appendSystem(`Агент: ${props.agents.find((item) => item.id === value)?.name ?? "без агента"}`);
+        appendSystem(
+          `Агент: ${props.agents.find((item) => item.id === value)?.name ?? "без агента"}`,
+        );
       } else if (kind === "project") {
-        setSettings((current) => ({ ...current, projectId: value || undefined }));
+        setSettings((current) => ({
+          ...current,
+          projectId: value || undefined,
+        }));
         if (conversationId.current)
-          void props.client.request("projects.assign", {
-            conversationId: conversationId.current,
-            projectId: value || null,
-          }).catch((error: unknown) =>
-            appendSystem(
-              error instanceof Error ? error.message : String(error),
-              true,
-            ),
-          );
-        appendSystem(`Проект: ${props.projects.find((item) => item.id === value)?.name ?? "без проекта"}`);
+          void props.client
+            .request("projects.assign", {
+              conversationId: conversationId.current,
+              projectId: value || null,
+            })
+            .catch((error: unknown) =>
+              appendSystem(
+                error instanceof Error ? error.message : String(error),
+                true,
+              ),
+            );
+        appendSystem(
+          `Проект: ${props.projects.find((item) => item.id === value)?.name ?? "без проекта"}`,
+        );
       } else if (kind === "permission") {
         setSettings((current) => ({
           ...current,
@@ -626,13 +671,14 @@ function InkRuntime(props: {
       recentSessions,
     ],
   );
-  const currentModel = settings.mode === "scenario"
-    ? `сценарий · ${settings.scenarioId ?? "не выбран"}`
-    : settings.agentId
-    ? `${props.agents.find((item) => item.id === settings.agentId)?.name ?? settings.agentId} · агент`
-    : props.models.find((item) => item.id === settings.modelId)?.name ??
-      settings.modelId ??
-      "не выбрана";
+  const currentModel =
+    settings.mode === "scenario"
+      ? `сценарий · ${settings.scenarioId ?? "не выбран"}`
+      : settings.agentId
+        ? `${props.agents.find((item) => item.id === settings.agentId)?.name ?? settings.agentId} · агент`
+        : (props.models.find((item) => item.id === settings.modelId)?.name ??
+          settings.modelId ??
+          "не выбрана");
   const currentProject =
     props.projects.find((item) => item.id === settings.projectId)?.name ??
     "без проекта";
@@ -648,13 +694,15 @@ function InkRuntime(props: {
       permission={settings.permission}
       recentSessions={recentSessions}
       fileRoot={
-        props.projects.find((item) => item.id === settings.projectId)?.rootPath ??
-        process.cwd()
+        props.projects.find((item) => item.id === settings.projectId)
+          ?.rootPath ?? process.cwd()
       }
       state={state}
       dispatch={externalDispatch}
       menu={menu}
-      inputPrompt={inputPrompt === "rename" ? "Новое название диалога" : undefined}
+      inputPrompt={
+        inputPrompt === "rename" ? "Новое название диалога" : undefined
+      }
       onSubmit={(value) => void startRun(value)}
       onQueue={(value) => queuedMessages.current.push(value)}
       onCancel={cancel}
@@ -676,13 +724,60 @@ function sessionHint(
   agents: Named[],
 ): string {
   const actor = session.usage.agentId
-    ? agents.find((item) => item.id === session.usage.agentId)?.name ??
-      session.usage.agentId
+    ? (agents.find((item) => item.id === session.usage.agentId)?.name ??
+      session.usage.agentId)
     : session.usage.modelId
-      ? models.find((item) => item.id === session.usage.modelId)?.name ??
-        session.usage.modelId
-      : session.usage.scenarioId ?? session.usage.mode;
+      ? (models.find((item) => item.id === session.usage.modelId)?.name ??
+        session.usage.modelId)
+      : (session.usage.scenarioId ?? session.usage.mode);
   return `${actor} · ${session.project?.name ?? "без проекта"} · ${session.usage.permissionMode ?? "edit"}`;
+}
+
+const TOOL_DISPLAY_NAMES: Record<string, string> = {
+  fs_write_begin: "Подготовка записи файла",
+  fs_write_chunk: "Запись части файла",
+  fs_write_commit: "Сохранение файла",
+  fs_write_abort: "Отмена записи файла",
+  reports_begin: "Подготовка DOCX",
+  reports_add_blocks: "Добавление части отчёта",
+  reports_commit: "Сборка DOCX",
+  reports_abort: "Отмена сборки DOCX",
+};
+
+function toolDisplayName(toolId: string): string {
+  return TOOL_DISPLAY_NAMES[toolId] ?? toolId;
+}
+
+function toolEventSummary(toolId: string, value: unknown): string {
+  const label = toolDisplayName(toolId);
+  if (value === undefined) return label;
+  if (typeof value !== "object" || value === null || Array.isArray(value))
+    return `${label} · ${compactValue(value)}`;
+  const record = value as Record<string, unknown>;
+  const target =
+    typeof record.path === "string"
+      ? record.path
+      : typeof record.fileName === "string"
+        ? record.fileName
+        : null;
+  const sequence =
+    typeof record.acceptedSequence === "number"
+      ? record.acceptedSequence
+      : typeof record.sequence === "number"
+        ? record.sequence
+        : null;
+  const detail = [
+    target,
+    sequence === null ? null : `часть ${sequence + 1}`,
+    typeof record.bytesWritten === "number"
+      ? `${record.bytesWritten} Б`
+      : typeof record.blocksReceived === "number"
+        ? `${record.blocksReceived} блоков`
+        : null,
+  ].filter((item): item is string => item !== null);
+  return detail.length
+    ? `${label} · ${detail.join(" · ")}`
+    : `${label} · ${compactValue(value)}`;
 }
 
 async function loadQuestion(

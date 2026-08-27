@@ -1,12 +1,7 @@
 import type { UserQuestion } from "../../shared/models/user-question";
 
 export type TuiPhase =
-  | "idle"
-  | "running"
-  | "waiting-user"
-  | "cancelling"
-  | "failed"
-  | "completed";
+  "idle" | "running" | "waiting-user" | "cancelling" | "failed" | "completed";
 
 export interface TranscriptEntry {
   id: string;
@@ -83,7 +78,12 @@ export function reduceTuiState(state: TuiState, action: TuiAction): TuiState {
         error: undefined,
         transcript: [
           ...state.transcript,
-          { id: `${action.id}:user`, runId: action.id, kind: "user", text: action.message },
+          {
+            id: `${action.id}:user`,
+            runId: action.id,
+            kind: "user",
+            text: action.message,
+          },
         ],
       };
     case "reasoning.delta":
@@ -116,10 +116,7 @@ export function reduceTuiState(state: TuiState, action: TuiAction): TuiState {
   }
 }
 
-function finishRun(
-  state: TuiState,
-  phase: "completed" | "failed",
-): TuiState {
+function finishRun(state: TuiState, phase: "completed" | "failed"): TuiState {
   return {
     ...state,
     phase,
@@ -171,8 +168,7 @@ function upsertTool(state: TuiState, tool: ToolActivity): TuiState {
     toolCallId: tool.callId,
     toolStatus: tool.status,
   };
-  if (index < 0)
-    return { ...state, transcript: [...state.transcript, entry] };
+  if (index < 0) return { ...state, transcript: [...state.transcript, entry] };
   return {
     ...state,
     transcript: state.transcript.map((current, position) =>

@@ -1,4 +1,5 @@
 import { mkdir, writeFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import {
   AlignmentType,
@@ -47,9 +48,124 @@ export interface CreateReportInput {
 
 const FONT = "Times New Roman";
 const cm = (value: number) => Math.round(value * 567);
+const REPORT_SESSION_TTL_MS = 30 * 60_000;
+const REPORT_SESSION_MAX_BYTES = 2_000_000;
+const REPORT_SESSION_MAX_BLOCKS = 2_000;
+
+interface ReportSession {
+  id: string;
+  ownerId: string;
+  fileName: string;
+  template: "mirea-report-gost";
+  title?: string;
+  blocks: ReportBlock[];
+  nextSequence: number;
+  bytesReceived: number;
+  touchedAt: number;
+}
 
 export class ReportDocxService {
+  private readonly sessions = new Map<string, ReportSession>();
+
   constructor(private readonly outputRoot: string) {}
+
+  begin(
+    input: Omit<CreateReportInput, "blocks">,
+    ownerId: string,
+  ): {
+    sessionId: string;
+    fileName: string;
+    nextSequence: number;
+    recommendedBlocksPerChunk: number;
+  } {
+    this.cleanupExpiredSessions();
+    const id = randomUUID();
+    this.sessions.set(id, {
+      id,
+      ownerId,
+      ...input,
+      blocks: [],
+      nextSequence: 0,
+      bytesReceived: 0,
+      touchedAt: Date.now(),
+    });
+    return {
+      sessionId: id,
+      fileName: input.fileName,
+      nextSequence: 0,
+      recommendedBlocksPerChunk: 2,
+    };
+  }
+
+  addBlocks(
+    input: { sessionId: string; sequence: number; blocks: ReportBlock[] },
+    ownerId: string,
+  ): {
+    sessionId: string;
+    fileName: string;
+    acceptedSequence: number;
+    nextSequence: number;
+    blocksReceived: number;
+    bytesReceived: number;
+  } {
+    const session = this.session(input.sessionId, ownerId);
+    if (input.sequence !== session.nextSequence)
+      throw new Error(
+        `Ожидалась часть отчёта №${session.nextSequence}, получена №${input.sequence}`,
+      );
+    if (session.blocks.length + input.blocks.length > REPORT_SESSION_MAX_BLOCKS)
+      throw new Error(
+        `Отчёт не может содержать больше ${REPORT_SESSION_MAX_BLOCKS} блоков`,
+      );
+    const bytes = Buffer.byteLength(JSON.stringify(input.blocks), "utf8");
+    if (session.bytesReceived + bytes > REPORT_SESSION_MAX_BYTES)
+      throw new Error(
+        `Структура отчёта превышает ${REPORT_SESSION_MAX_BYTES} байт`,
+      );
+    session.blocks.push(...input.blocks);
+    session.bytesReceived += bytes;
+    session.nextSequence += 1;
+    session.touchedAt = Date.now();
+    return {
+      sessionId: session.id,
+      fileName: session.fileName,
+      acceptedSequence: input.sequence,
+      nextSequence: session.nextSequence,
+      blocksReceived: session.blocks.length,
+      bytesReceived: session.bytesReceived,
+    };
+  }
+
+  async commit(
+    input: { sessionId: string },
+    ownerId: string,
+  ): Promise<{ path: string; fileName: string; blocks: number }> {
+    const session = this.session(input.sessionId, ownerId);
+    if (!session.blocks.length)
+      throw new Error("Нельзя создать DOCX без содержимого");
+    const result = await this.create({
+      fileName: session.fileName,
+      template: session.template,
+      title: session.title,
+      blocks: session.blocks,
+    });
+    this.sessions.delete(session.id);
+    return result;
+  }
+
+  abort(
+    input: { sessionId: string },
+    ownerId: string,
+  ): { sessionId: string; fileName: string; aborted: true } {
+    const session = this.session(input.sessionId, ownerId);
+    this.sessions.delete(session.id);
+    return { sessionId: session.id, fileName: session.fileName, aborted: true };
+  }
+
+  abortOwner(ownerId: string): void {
+    for (const session of this.sessions.values())
+      if (session.ownerId === ownerId) this.sessions.delete(session.id);
+  }
 
   async create(
     input: CreateReportInput,
@@ -256,6 +372,22 @@ export class ReportDocxService {
       caption,
       new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows }),
     ];
+  }
+
+  private session(sessionId: string, ownerId: string): ReportSession {
+    this.cleanupExpiredSessions();
+    const session = this.sessions.get(sessionId);
+    if (!session)
+      throw new Error("Сессия сборки отчёта не найдена или истекла");
+    if (session.ownerId !== ownerId)
+      throw new Error("Сессия сборки отчёта принадлежит другой задаче");
+    return session;
+  }
+
+  private cleanupExpiredSessions(): void {
+    const expiresBefore = Date.now() - REPORT_SESSION_TTL_MS;
+    for (const session of this.sessions.values())
+      if (session.touchedAt < expiresBefore) this.sessions.delete(session.id);
   }
 
   private heading(

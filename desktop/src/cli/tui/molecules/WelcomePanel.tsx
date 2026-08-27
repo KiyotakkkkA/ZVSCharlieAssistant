@@ -16,7 +16,8 @@ export function WelcomePanel({ sessions }: { sessions: RecentChatSession[] }) {
             <Text color={tuiColors.muted}>Последние сессии · /resume</Text>
             {sessions.slice(0, 5).map((session, index) => (
               <Text key={session.conversationId} color={tuiColors.muted}>
-                {index + 1}. {session.title} · {session.project?.name ?? "без проекта"}
+                {index + 1}. {session.title} ·{" "}
+                {session.project?.name ?? "без проекта"}
               </Text>
             ))}
           </Box>

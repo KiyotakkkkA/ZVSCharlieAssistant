@@ -4,10 +4,7 @@ import {
   measureContext,
 } from "../../src/host/application/context/context-builder";
 import { resolveContextBudget } from "../../src/host/application/context/context-budget";
-import type {
-  ChatMessage,
-  ContextSegment,
-} from "../../src/shared/models/chat";
+import type { ChatMessage, ContextSegment } from "../../src/shared/models/chat";
 import type { ChatMessageContentPart } from "../../src/shared/dto";
 
 function message(

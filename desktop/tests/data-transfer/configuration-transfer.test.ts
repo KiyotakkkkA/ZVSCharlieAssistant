@@ -87,13 +87,17 @@ describe("configuration transfer", () => {
 
     expect(
       target
-        .prepare("SELECT api_key_secret_id FROM text_provider_configs WHERE id=?")
+        .prepare(
+          "SELECT api_key_secret_id FROM text_provider_configs WHERE id=?",
+        )
         .pluck()
         .get(ids.provider),
     ).toBe(ids.secret);
     expect(
       target
-        .prepare("SELECT embedding_model_id,status FROM vector_stores WHERE id=?")
+        .prepare(
+          "SELECT embedding_model_id,status FROM vector_stores WHERE id=?",
+        )
         .get(ids.store),
     ).toEqual({ embedding_model_id: ids.model, status: "disabled" });
     expect(
@@ -112,7 +116,9 @@ describe("configuration transfer", () => {
     ).toBe(ids.store);
     expect(
       target
-        .prepare("SELECT status,checked_at FROM integration_profiles WHERE id=?")
+        .prepare(
+          "SELECT status,checked_at FROM integration_profiles WHERE id=?",
+        )
         .get(ids.integration),
     ).toEqual({ status: "unchecked", checked_at: null });
     expect(

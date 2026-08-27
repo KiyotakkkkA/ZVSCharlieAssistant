@@ -1,8 +1,5 @@
 import { makeAutoObservable, runInAction } from "mobx";
-import type {
-  ApplicationSettings,
-  OnboardingState,
-} from "../../ipc/contracts";
+import type { ApplicationSettings, OnboardingState } from "../../ipc/contracts";
 import {
   parseIpcDto,
   updateApplicationSettingsDtoSchema,

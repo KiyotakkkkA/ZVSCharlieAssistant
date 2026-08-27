@@ -281,4 +281,3 @@ export function createLogger(options: LoggerOptions): Logger {
 export function disposeLogger(logger: Logger): void {
   if (logger instanceof FileLogger) logger.dispose();
 }
-

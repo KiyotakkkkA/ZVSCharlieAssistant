@@ -22,15 +22,19 @@ describe("UUID baseline schema", () => {
 
     expect(
       database.prepare("SELECT COUNT(*) count FROM schema_migrations").get(),
-    ).toEqual({ count: 4 });
+    ).toEqual({ count: 5 });
     expect(
       database
-        .prepare("SELECT value FROM schema_metadata WHERE key='schema_generation'")
+        .prepare(
+          "SELECT value FROM schema_metadata WHERE key='schema_generation'",
+        )
         .get(),
     ).toEqual({ value: SCHEMA_GENERATION });
 
     const ids = database
-      .prepare("SELECT id,system_key FROM secret_categories ORDER BY system_key")
+      .prepare(
+        "SELECT id,system_key FROM secret_categories ORDER BY system_key",
+      )
       .all() as Array<{ id: string; system_key: string }>;
     expect(ids).toContainEqual({
       id: SYSTEM_SECRET_CATEGORY_IDS.apiKeys,
@@ -144,9 +148,7 @@ describe("UUID baseline schema", () => {
 
     const id = "019cba09-8f30-7000-8000-000000000001";
     database
-      .prepare(
-        "INSERT INTO memory_entries(id,title,content) VALUES(?,?,?)",
-      )
+      .prepare("INSERT INTO memory_entries(id,title,content) VALUES(?,?,?)")
       .run(id, "SQLite", "Стабильный полнотекстовый поиск");
     expect(
       database
@@ -160,4 +162,37 @@ describe("UUID baseline schema", () => {
     ).toBe(id);
   });
 
+  it("raises the legacy default output limit for existing providers", () => {
+    database = new Database(":memory:");
+    database.pragma("foreign_keys = ON");
+    runMigrations(database);
+    database
+      .prepare(
+        `INSERT INTO text_provider_configs(
+           id,kind,name,base_url,enabled,checked_at,generation_settings_json
+         ) VALUES(?,?,?,?,?,?,?)`,
+      )
+      .run(
+        "provider-1",
+        "ollama",
+        "Legacy Ollama",
+        "http://localhost:11434",
+        1,
+        new Date().toISOString(),
+        JSON.stringify({ maxOutputTokens: 2048, temperature: 0.7, topP: 0.9 }),
+      );
+    database.prepare("DELETE FROM schema_migrations WHERE version=5").run();
+
+    runMigrations(database);
+
+    const limits = database
+      .prepare(
+        `SELECT json_extract(generation_settings_json, '$.maxOutputTokens')
+         FROM text_provider_configs`,
+      )
+      .pluck()
+      .all() as number[];
+    expect(limits.length).toBeGreaterThan(0);
+    expect(limits.every((value) => value === 8192)).toBe(true);
+  });
 });

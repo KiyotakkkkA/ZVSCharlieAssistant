@@ -58,7 +58,14 @@ export class TaskPlanRepository {
          VALUES(?,?,?,?,?,?)`,
       );
       items.forEach((item, index) =>
-        insert.run(newEntityId(), planId, index, item.subject, item.detail, item.status),
+        insert.run(
+          newEntityId(),
+          planId,
+          index,
+          item.subject,
+          item.detail,
+          item.status,
+        ),
       );
       this.db
         .prepare(

@@ -95,9 +95,7 @@ function Trigger({
       <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-main-800/60 text-main-400">
         <Icon className="size-4" />
       </span>
-      <span className="min-w-0 flex-1 text-left">
-        {label}
-      </span>
+      <span className="min-w-0 flex-1 text-left">{label}</span>
       {expandable ? (
         <ChevronDownIcon
           aria-hidden="true"

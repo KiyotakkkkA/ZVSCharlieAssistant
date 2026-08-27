@@ -449,8 +449,7 @@ app.whenReady().then(() => {
       chatRepository,
       projectRepository,
     ),
-    publishChatEvent: (event) =>
-      appWindow.send(CHAT_IPC_CHANNELS.event, event),
+    publishChatEvent: (event) => appWindow.send(CHAT_IPC_CHANNELS.event, event),
   });
   localBridge.start();
   registerExtensionHandlers(
@@ -470,9 +469,7 @@ app.whenReady().then(() => {
     Menu.buildFromTemplate([
       {
         label: "Приложение",
-        submenu: [
-          { role: "quit", label: "Выйти" },
-        ],
+        submenu: [{ role: "quit", label: "Выйти" }],
       },
       { role: "editMenu", label: "Правка" },
       { role: "viewMenu", label: "Вид" },

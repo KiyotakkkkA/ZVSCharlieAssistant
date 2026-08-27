@@ -37,7 +37,7 @@ CREATE TABLE text_provider_configs (
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   provider_type TEXT NOT NULL DEFAULT 'text' CHECK(provider_type IN ('text','embedding')),
   limits_json TEXT,
-  generation_settings_json TEXT NOT NULL DEFAULT '{"maxOutputTokens":2048,"temperature":0.7,"topP":0.9}'
+  generation_settings_json TEXT NOT NULL DEFAULT '{"maxOutputTokens":8192,"temperature":0.7,"topP":0.9}'
 );
 CREATE INDEX idx_text_provider_configs_type ON text_provider_configs(provider_type,enabled);
 CREATE TABLE text_provider_models (

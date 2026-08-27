@@ -1,7 +1,4 @@
-export {
-  ExpressionInput,
-  ExpressionScopeProvider,
-} from "./ExpressionInput";
+export { ExpressionInput, ExpressionScopeProvider } from "./ExpressionInput";
 export { ExpressionField } from "./ExpressionField";
 export { AutomationAgentCard } from "./AutomationAgentCard";
 export { AutomationScenarioCard } from "./AutomationScenarioCard";

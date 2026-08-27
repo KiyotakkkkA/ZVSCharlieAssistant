@@ -1,4 +1,9 @@
-import { generateObject as aiGenerateObject, stepCountIs, streamText, type ToolSet } from "ai";
+import {
+  generateObject as aiGenerateObject,
+  stepCountIs,
+  streamText,
+  type ToolSet,
+} from "ai";
 import { ScenarioSuspended as SharedScenarioSuspended } from "../../../../shared/scenario/errors";
 import { PermanentError } from "../../../../shared/scenario/errors";
 import type { ScenarioFileReference } from "../../../../shared/dto/scenario-trigger-event.dto";
@@ -78,11 +83,16 @@ export class HostScenarioEngineServices implements ScenarioEngineServices {
           ? request.prompt
           : JSON.stringify(request.prompt),
       abortSignal: request.signal,
-      maxOutputTokens: Math.min(request.maxOutputTokens, settings.maxOutputTokens),
+      maxOutputTokens: Math.min(
+        request.maxOutputTokens,
+        settings.maxOutputTokens,
+      ),
       temperature: request.temperature ?? settings.temperature,
       topP: request.topP ?? settings.topP,
       tools: request.tools,
-      stopWhen: request.tools ? stepCountIs(request.maxToolCalls ?? 10) : undefined,
+      stopWhen: request.tools
+        ? stepCountIs(request.maxToolCalls ?? 10)
+        : undefined,
     });
     let text = "";
     for await (const delta of result.textStream) {
@@ -160,7 +170,9 @@ export class HostScenarioEngineServices implements ScenarioEngineServices {
     return this.secrets.findSecret(secretId)?.content;
   }
 
-  async downloadFiles(request: DownloadFilesRequest): Promise<DownloadedFile[]> {
+  async downloadFiles(
+    request: DownloadFilesRequest,
+  ): Promise<DownloadedFile[]> {
     const files = await this.fileDownloads.downloadForNode({
       executionId: request.executionId,
       nodeRunId: request.nodeRunId,
@@ -196,13 +208,22 @@ export class HostScenarioEngineServices implements ScenarioEngineServices {
       throw new PermanentError("Запуск вложенных сценариев недоступен", {});
     const engine = this.runSubScenarioEngine();
     return new Promise((resolve, reject) => {
-      const run = engine.start(request.scenarioId, request.input, "background", (event) => {
-        if (event.type === "run.completed") resolve(event.run.output);
-        else if (event.type === "run.failed")
-          reject(new Error(event.run.error ?? "Вложенный сценарий завершился с ошибкой"));
-        else if (event.type === "run.cancelled")
-          reject(new Error("Вложенный сценарий отменён"));
-      });
+      const run = engine.start(
+        request.scenarioId,
+        request.input,
+        "background",
+        (event) => {
+          if (event.type === "run.completed") resolve(event.run.output);
+          else if (event.type === "run.failed")
+            reject(
+              new Error(
+                event.run.error ?? "Вложенный сценарий завершился с ошибкой",
+              ),
+            );
+          else if (event.type === "run.cancelled")
+            reject(new Error("Вложенный сценарий отменён"));
+        },
+      );
       if (request.mode === "fireAndForget") resolve(run);
     });
   }

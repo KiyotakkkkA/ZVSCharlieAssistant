@@ -247,7 +247,10 @@ export const BUILTIN_AUTOMATION_TOOLS: readonly AutomationTool[] = [
       required: ["path", "patch"],
       properties: {
         path: { type: "string" },
-        patch: { type: "string", description: "Текст патча в формате unified diff" },
+        patch: {
+          type: "string",
+          description: "Текст патча в формате unified diff",
+        },
       },
     },
     outputSchema: { type: "object" },
@@ -524,7 +527,10 @@ export const BUILTIN_AUTOMATION_TOOLS: readonly AutomationTool[] = [
       properties: {
         name: { type: "string", description: "Имя агента" },
         description: { type: "string", description: "Описание одной строкой" },
-        instructions: { type: "string", description: "Системный промпт агента" },
+        instructions: {
+          type: "string",
+          description: "Системный промпт агента",
+        },
         allowedToolIds: { type: "array", items: { type: "string" } },
         memoryRead: { type: "boolean" },
         memoryWrite: { type: "boolean" },

@@ -97,7 +97,6 @@ export function emptyScenarioGraph(): ScenarioGraph {
   return scenarioGraphSchema.parse({ version: SCENARIO_GRAPH_VERSION });
 }
 
-
 export interface ScenarioValidationIssue {
   nodeId?: string;
   edgeId?: string;

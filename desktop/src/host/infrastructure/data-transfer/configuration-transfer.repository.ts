@@ -60,7 +60,12 @@ export class ConfigurationTransferRepository {
         ? { providers: { version: 1 as const, items: this.providers() } }
         : {}),
       ...(entities.has("integrations")
-        ? { integrations: { version: 1 as const, items: this.integrationProfiles() } }
+        ? {
+            integrations: {
+              version: 1 as const,
+              items: this.integrationProfiles(),
+            },
+          }
         : {}),
       ...(entities.has("vectorStores")
         ? { vectorStores: { version: 1 as const, items: this.vectorStores() } }
@@ -75,7 +80,12 @@ export class ConfigurationTransferRepository {
           }
         : {}),
       ...(entities.has("scenarios")
-        ? { scenarios: { version: 1 as const, items: this.scenarioDefinitions() } }
+        ? {
+            scenarios: {
+              version: 1 as const,
+              items: this.scenarioDefinitions(),
+            },
+          }
         : {}),
     };
   }
@@ -106,7 +116,8 @@ export class ConfigurationTransferRepository {
           .prepare(
             "SELECT id FROM text_provider_models WHERE provider_id=? AND remote_id=? AND id<>?",
           )
-          .get(provider.id, model.remoteId, model.id) as { id: string } | undefined;
+          .get(provider.id, model.remoteId, model.id) as
+          { id: string } | undefined;
         if (collision)
           conflicts.push({
             kind: "providers",
@@ -167,7 +178,9 @@ export class ConfigurationTransferRepository {
       .prepare("SELECT * FROM text_provider_configs ORDER BY name,id")
       .all() as Array<Record<string, unknown>>;
     const models = this.db
-      .prepare("SELECT * FROM text_provider_models ORDER BY provider_id,name,id")
+      .prepare(
+        "SELECT * FROM text_provider_models ORDER BY provider_id,name,id",
+      )
       .all() as Array<Record<string, unknown>>;
     return providers.map((row) => ({
       id: String(row.id),
@@ -206,9 +219,9 @@ export class ConfigurationTransferRepository {
 
   private vectorStores(): PortableVectorStore[] {
     return (
-      this.db.prepare("SELECT * FROM vector_stores ORDER BY name,id").all() as Array<
-        Record<string, unknown>
-      >
+      this.db
+        .prepare("SELECT * FROM vector_stores ORDER BY name,id")
+        .all() as Array<Record<string, unknown>>
     ).map((row) => ({
       id: String(row.id),
       name: String(row.name),
@@ -221,16 +234,21 @@ export class ConfigurationTransferRepository {
   }
 
   private agents(): PortableAgent[] {
-    const rows = this.db.prepare("SELECT * FROM automation_agents ORDER BY name,id").all() as Array<
-      Record<string, unknown>
-    >;
+    const rows = this.db
+      .prepare("SELECT * FROM automation_agents ORDER BY name,id")
+      .all() as Array<Record<string, unknown>>;
     const relations = (table: string, valueColumn: string) =>
-      this.db.prepare(`SELECT agent_id,${valueColumn} value FROM ${table}`).all() as Array<{
+      this.db
+        .prepare(`SELECT agent_id,${valueColumn} value FROM ${table}`)
+        .all() as Array<{
         agent_id: string;
         value: string;
       }>;
     const tools = relations("automation_agent_tools", "tool_id");
-    const stores = relations("automation_agent_vector_stores", "vector_store_id");
+    const stores = relations(
+      "automation_agent_vector_stores",
+      "vector_store_id",
+    );
     const skills = relations("automation_agent_skills", "skill_id");
     return rows.map((row) => ({
       id: String(row.id),
@@ -258,7 +276,11 @@ export class ConfigurationTransferRepository {
         .prepare(
           "SELECT tool_id,binding_key,secret_id FROM automation_tool_secret_bindings ORDER BY tool_id,binding_key",
         )
-        .all() as Array<{ tool_id: string; binding_key: string; secret_id: string }>
+        .all() as Array<{
+        tool_id: string;
+        binding_key: string;
+        secret_id: string;
+      }>
     ).map((row) => ({
       toolId: row.tool_id,
       key: row.binding_key,
@@ -277,7 +299,10 @@ export class ConfigurationTransferRepository {
     }));
   }
 
-  private importProviders(payload: DataTransferPayload, policy: "skip" | "overwrite") {
+  private importProviders(
+    payload: DataTransferPayload,
+    policy: "skip" | "overwrite",
+  ) {
     const counts = emptyImportCounts();
     let skipped = 0;
     for (const provider of payload.sections.providers?.items ?? []) {
@@ -349,7 +374,10 @@ export class ConfigurationTransferRepository {
     return { counts, skipped };
   }
 
-  private importIntegrations(payload: DataTransferPayload, policy: "skip" | "overwrite") {
+  private importIntegrations(
+    payload: DataTransferPayload,
+    policy: "skip" | "overwrite",
+  ) {
     const counts = emptyImportCounts();
     let skipped = 0;
     for (const profile of payload.sections.integrations?.items ?? []) {
@@ -366,8 +394,16 @@ export class ConfigurationTransferRepository {
              config_json=excluded.config_json,status='unchecked',checked_at=NULL,last_error=NULL,
              connection_metadata_json='{}',updated_at=CURRENT_TIMESTAMP`,
         )
-        .run(profile.id, profile.kind, profile.name, Number(profile.enabled), JSON.stringify(profile.config));
-      this.db.prepare("DELETE FROM integration_secret_bindings WHERE profile_id=?").run(profile.id);
+        .run(
+          profile.id,
+          profile.kind,
+          profile.name,
+          Number(profile.enabled),
+          JSON.stringify(profile.config),
+        );
+      this.db
+        .prepare("DELETE FROM integration_secret_bindings WHERE profile_id=?")
+        .run(profile.id);
       const insert = this.db.prepare(
         "INSERT INTO integration_secret_bindings(profile_id,binding_key,secret_id) VALUES(?,?,?)",
       );
@@ -378,7 +414,10 @@ export class ConfigurationTransferRepository {
     return { counts, skipped };
   }
 
-  private importVectorStores(payload: DataTransferPayload, policy: "skip" | "overwrite") {
+  private importVectorStores(
+    payload: DataTransferPayload,
+    policy: "skip" | "overwrite",
+  ) {
     const counts = emptyImportCounts();
     let skipped = 0;
     for (const store of payload.sections.vectorStores?.items ?? []) {
@@ -411,7 +450,10 @@ export class ConfigurationTransferRepository {
     return { counts, skipped };
   }
 
-  private importAgents(payload: DataTransferPayload, policy: "skip" | "overwrite") {
+  private importAgents(
+    payload: DataTransferPayload,
+    policy: "skip" | "overwrite",
+  ) {
     const counts = emptyImportCounts();
     let skipped = 0;
     for (const agent of payload.sections.agents?.items ?? []) {
@@ -469,15 +511,24 @@ export class ConfigurationTransferRepository {
   private replaceAgentRelations(agent: PortableAgent): void {
     const replace = (table: string, column: string, values: string[]) => {
       this.db.prepare(`DELETE FROM ${table} WHERE agent_id=?`).run(agent.id);
-      const insert = this.db.prepare(`INSERT INTO ${table}(agent_id,${column}) VALUES(?,?)`);
+      const insert = this.db.prepare(
+        `INSERT INTO ${table}(agent_id,${column}) VALUES(?,?)`,
+      );
       for (const value of [...new Set(values)]) insert.run(agent.id, value);
     };
     replace("automation_agent_tools", "tool_id", agent.allowedToolIds);
-    replace("automation_agent_vector_stores", "vector_store_id", agent.allowedVectorStoreIds);
+    replace(
+      "automation_agent_vector_stores",
+      "vector_store_id",
+      agent.allowedVectorStoreIds,
+    );
     replace("automation_agent_skills", "skill_id", agent.allowedSkillIds);
   }
 
-  private importScenarios(payload: DataTransferPayload, policy: "skip" | "overwrite") {
+  private importScenarios(
+    payload: DataTransferPayload,
+    policy: "skip" | "overwrite",
+  ) {
     const counts = emptyImportCounts();
     let skipped = 0;
     for (const scenario of payload.sections.scenarios?.items ?? []) {
@@ -503,13 +554,25 @@ export class ConfigurationTransferRepository {
   ): MissingDependency[] {
     const missing: MissingDependency[] = [];
     const packageIds = {
-      secret: new Set(payload.sections.secretStorage?.secrets.map((item) => item.id) ?? []),
+      secret: new Set(
+        payload.sections.secretStorage?.secrets.map((item) => item.id) ?? [],
+      ),
       model: packageModelIds,
-      integration: new Set(payload.sections.integrations?.items.map((item) => item.id) ?? []),
-      vectorStore: new Set(payload.sections.vectorStores?.items.map((item) => item.id) ?? []),
-      skill: new Set(payload.sections.skills?.items.map((item) => item.id) ?? []),
-      agent: new Set(payload.sections.agents?.items.map((item) => item.id) ?? []),
-      scenario: new Set(payload.sections.scenarios?.items.map((item) => item.id) ?? []),
+      integration: new Set(
+        payload.sections.integrations?.items.map((item) => item.id) ?? [],
+      ),
+      vectorStore: new Set(
+        payload.sections.vectorStores?.items.map((item) => item.id) ?? [],
+      ),
+      skill: new Set(
+        payload.sections.skills?.items.map((item) => item.id) ?? [],
+      ),
+      agent: new Set(
+        payload.sections.agents?.items.map((item) => item.id) ?? [],
+      ),
+      scenario: new Set(
+        payload.sections.scenarios?.items.map((item) => item.id) ?? [],
+      ),
     };
     const require = (
       ownerKind: string,
@@ -531,8 +594,10 @@ export class ConfigurationTransferRepository {
       require("vectorStore", store.id, "model", store.embeddingModelId);
     for (const agent of payload.sections.agents?.items ?? []) {
       require("agent", agent.id, "model", agent.textModelId);
-      for (const id of agent.allowedVectorStoreIds) require("agent", agent.id, "vectorStore", id);
-      for (const id of agent.allowedSkillIds) require("agent", agent.id, "skill", id);
+      for (const id of agent.allowedVectorStoreIds)
+        require("agent", agent.id, "vectorStore", id);
+      for (const id of agent.allowedSkillIds)
+        require("agent", agent.id, "skill", id);
     }
     for (const binding of payload.sections.agents?.toolSecretBindings ?? [])
       require("tool", binding.toolId, "secret", binding.secretId);
@@ -546,7 +611,9 @@ export class ConfigurationTransferRepository {
   }
 
   private exists(table: string, id: string): boolean {
-    return Boolean(this.db.prepare(`SELECT 1 FROM ${table} WHERE id=?`).get(id));
+    return Boolean(
+      this.db.prepare(`SELECT 1 FROM ${table} WHERE id=?`).get(id),
+    );
   }
 }
 
@@ -580,7 +647,9 @@ function nullableString(value: unknown): string | null {
   return value === null || value === undefined ? null : String(value);
 }
 
-function normalizeModelDetails(source: string): PortableProvider["models"][number]["details"] {
+function normalizeModelDetails(
+  source: string,
+): PortableProvider["models"][number]["details"] {
   const parsed = JSON.parse(source) as Record<string, unknown>;
   return {
     parentModel: "",
@@ -629,8 +698,12 @@ function scanReferences(
 }
 
 function deduplicateMissing(items: MissingDependency[]): MissingDependency[] {
-  return [...new Map(items.map((item) => [
-    `${item.ownerKind}:${item.ownerId}:${item.dependencyKind}:${item.dependencyId}`,
-    item,
-  ])).values()];
+  return [
+    ...new Map(
+      items.map((item) => [
+        `${item.ownerKind}:${item.ownerId}:${item.dependencyKind}:${item.dependencyId}`,
+        item,
+      ]),
+    ).values(),
+  ];
 }

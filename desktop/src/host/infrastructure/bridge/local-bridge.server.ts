@@ -185,8 +185,7 @@ export class LocalBridgeServer {
         return this.deps.recentSessions.list();
       case "conversations.rename": {
         const params = request.params as
-          | { conversationId?: unknown; title?: unknown }
-          | undefined;
+          { conversationId?: unknown; title?: unknown } | undefined;
         const conversationId = parseIpcDto(
           entityIdSchema,
           params?.conversationId,
@@ -239,7 +238,8 @@ export class LocalBridgeServer {
         );
       }
       case "questions.pending": {
-        const params = request.params as { conversationId?: unknown } | undefined;
+        const params = request.params as
+          { conversationId?: unknown } | undefined;
         return this.deps.questions.pendingForConversation(
           parseIpcDto(entityIdSchema, params?.conversationId),
         );

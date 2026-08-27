@@ -18,11 +18,7 @@ describe("события локального CLI-моста", () => {
       ): void;
     };
 
-    internal.sendRunEvent(
-      { socket: { destroyed: false, write } },
-      42,
-      event,
-    );
+    internal.sendRunEvent({ socket: { destroyed: false, write } }, 42, event);
 
     expect(publishChatEvent).toHaveBeenCalledOnce();
     expect(publishChatEvent).toHaveBeenCalledWith(event);
@@ -47,25 +43,27 @@ describe("события локального CLI-моста", () => {
     };
 
     await expect(
-      internal.handle({}, {
-        id: 1,
-        method: "questions.pending",
-        params: { conversationId },
-      }),
+      internal.handle(
+        {},
+        {
+          id: 1,
+          method: "questions.pending",
+          params: { conversationId },
+        },
+      ),
     ).resolves.toEqual([{ id: questionId }]);
     await expect(
-      internal.handle({}, {
-        id: 2,
-        method: "questions.answer",
-        params: { questionId, answer: ["Продолжить"] },
-      }),
+      internal.handle(
+        {},
+        {
+          id: 2,
+          method: "questions.answer",
+          params: { questionId, answer: ["Продолжить"] },
+        },
+      ),
     ).resolves.toEqual({ id: questionId, status: "answered" });
 
     expect(pendingForConversation).toHaveBeenCalledWith(conversationId);
-    expect(answer).toHaveBeenCalledWith(
-      questionId,
-      ["Продолжить"],
-      "ui",
-    );
+    expect(answer).toHaveBeenCalledWith(questionId, ["Продолжить"], "ui");
   });
 });

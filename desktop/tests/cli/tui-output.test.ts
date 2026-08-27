@@ -4,7 +4,9 @@ import { compactValue } from "../../src/cli/tui/output";
 
 describe("вывод CLI", () => {
   it("компактно и безопасно отображает значения инструментов", () => {
-    expect(compactValue({ path: "src/index.ts" }, 80)).toContain("src/index.ts");
+    expect(compactValue({ path: "src/index.ts" }, 80)).toContain(
+      "src/index.ts",
+    );
     expect(compactValue("очень длинная строка", 10)).toHaveLength(10);
     expect(compactValue("очень длинная строка", 10).endsWith("…")).toBe(true);
   });

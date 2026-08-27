@@ -64,9 +64,11 @@ export class ChatRepository {
         ? "SELECT id,title,last_usage,updated_at FROM chat_conversations ORDER BY updated_at DESC"
         : "SELECT id,title,last_usage,updated_at FROM chat_conversations ORDER BY updated_at DESC LIMIT ?";
     const statement = this.db.prepare(sql);
-    const rows = (limit === undefined
-      ? statement.all()
-      : statement.all(Math.max(0, Math.trunc(limit)))) as ConversationRow[];
+    const rows = (
+      limit === undefined
+        ? statement.all()
+        : statement.all(Math.max(0, Math.trunc(limit)))
+    ) as ConversationRow[];
     return rows.map(mapConversation);
   }
 
@@ -119,9 +121,7 @@ export class ChatRepository {
         .all(conversationId) as MessageRow[]
     ).map((row) => this.mapMessage(row));
   }
-  createConversation(
-    usage: ChatUsage,
-  ): string {
+  createConversation(usage: ChatUsage): string {
     const id = newEntityId();
     this.db
       .prepare(
@@ -301,8 +301,7 @@ export class ChatRepository {
         "SELECT output_json,error_message FROM generation_tool_calls WHERE run_id=? AND provider_call_id=?",
       )
       .get(runId, providerCallId) as
-      | { output_json: string | null; error_message: string | null }
-      | undefined;
+      { output_json: string | null; error_message: string | null } | undefined;
     if (!row) return null;
     if (row.error_message) return { error: row.error_message };
     return row.output_json ? JSON.parse(row.output_json) : null;

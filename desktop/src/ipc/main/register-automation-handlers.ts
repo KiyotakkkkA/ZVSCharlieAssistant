@@ -26,7 +26,10 @@ import {
 import { scenarioTriggerInputDtoSchema } from "../../shared/dto/scenario-trigger-event.dto";
 import { ScenarioCompiler } from "../../shared/scenario/compiler";
 import { scenarioDescriptors } from "../../shared/scenario/descriptors";
-import { scenarioGraphSchema, type ScenarioGraph } from "../../shared/scenario/graph";
+import {
+  scenarioGraphSchema,
+  type ScenarioGraph,
+} from "../../shared/scenario/graph";
 import { AutomationRepository } from "@host/infrastructure/database/automation.repository";
 
 const compiler = new ScenarioCompiler(scenarioDescriptors);
@@ -151,7 +154,9 @@ export function registerAutomationHandlers(
   ipcMain.handle(
     AUTOMATION_IPC_CHANNELS.getLatestScenarioRun,
     (_event, scenarioId: string) => {
-      const run = executions.latestRun(parseIpcDto(entityKeySchema, scenarioId));
+      const run = executions.latestRun(
+        parseIpcDto(entityKeySchema, scenarioId),
+      );
       if (!run) return null;
       return { run, nodes: executions.nodeRuns(run.id) };
     },

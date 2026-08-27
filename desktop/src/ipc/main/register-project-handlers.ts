@@ -32,7 +32,9 @@ export function registerProjectHandlers(projects: ProjectManagementService) {
   ipcMain.handle(
     PROJECT_IPC_CHANNELS.conversationProject,
     (_event, conversationId: string) =>
-      projects.conversationProjectId(parseIpcDto(entityIdSchema, conversationId)),
+      projects.conversationProjectId(
+        parseIpcDto(entityIdSchema, conversationId),
+      ),
   );
 }
 

@@ -43,7 +43,10 @@ export const AgentsListPage = observer(function AgentsListPage() {
   }, [query, automationStore.agents]);
 
   return (
-    <section data-tour="agents-page" className="flex h-full min-h-0 flex-col overflow-hidden p-4">
+    <section
+      data-tour="agents-page"
+      className="flex h-full min-h-0 flex-col overflow-hidden p-4"
+    >
       <PageHeader
         title="Агенты"
         description="Настраивайте инструкции, инструменты и разрешения исполнителей."
@@ -108,7 +111,11 @@ export const AgentsListPage = observer(function AgentsListPage() {
             <EmptyState
               icon={<RobotIcon className="size-6" />}
               title={query ? "Агенты не найдены" : "Агентов пока нет"}
-              description={query ? "Измените поисковый запрос." : "Агент — это исполнитель с ролью, моделью и набором инструментов."}
+              description={
+                query
+                  ? "Измените поисковый запрос."
+                  : "Агент — это исполнитель с ролью, моделью и набором инструментов."
+              }
               action={
                 <PrimaryButton
                   label="Создать агента"

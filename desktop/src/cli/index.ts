@@ -58,7 +58,10 @@ async function main(): Promise<number> {
     return await dispatch(client, options);
   } catch (error) {
     if (error instanceof BridgeUnavailableError) {
-      errorMessage(error.message, "Запустите приложение ZVS и повторите команду.");
+      errorMessage(
+        error.message,
+        "Запустите приложение ZVS и повторите команду.",
+      );
       return EXIT_UNAVAILABLE;
     }
     const message = messageOf(error);
@@ -111,7 +114,9 @@ async function dispatch(
     }
     case "undo": {
       if (!options.runId) {
-        process.stderr.write("Укажите идентификатор задачи: zvs undo <runId>\n");
+        process.stderr.write(
+          "Укажите идентификатор задачи: zvs undo <runId>\n",
+        );
         return EXIT_ERROR;
       }
       return print(

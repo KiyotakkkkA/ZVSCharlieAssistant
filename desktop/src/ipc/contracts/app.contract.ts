@@ -8,10 +8,7 @@ export const IPC_CHANNELS = {
 } as const;
 
 export type AppCommand =
-  | "new-chat"
-  | "open-tasks"
-  | "open-scenarios"
-  | "open-settings";
+  "new-chat" | "open-tasks" | "open-scenarios" | "open-settings";
 
 export interface AppInfo {
   name: string;

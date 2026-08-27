@@ -388,8 +388,7 @@ class ChatStore {
           let parts = message.parts;
           const hasCallPart = parts.some(
             (part) =>
-              part.type === "tool-call" &&
-              part.toolCallId === event.toolCallId,
+              part.type === "tool-call" && part.toolCallId === event.toolCallId,
           );
           if (!hasCallPart) {
             parts = [
@@ -581,10 +580,7 @@ function appendContentDelta(
   if (!delta) return parts;
   const last = parts.at(-1);
   if (last?.type === type) {
-    return [
-      ...parts.slice(0, -1),
-      { ...last, text: last.text + delta },
-    ];
+    return [...parts.slice(0, -1), { ...last, text: last.text + delta }];
   }
   return [...parts, { type, text: delta }];
 }

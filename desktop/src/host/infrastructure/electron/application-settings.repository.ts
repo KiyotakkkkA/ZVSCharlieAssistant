@@ -87,7 +87,10 @@ function parseSettings(value: unknown): ApplicationSettings {
         ? launchAtLogin
         : DEFAULT_SETTINGS.launchAtLogin,
     onboarding: {
-      version: readNumber(onboarding.version, DEFAULT_SETTINGS.onboarding.version),
+      version: readNumber(
+        onboarding.version,
+        DEFAULT_SETTINGS.onboarding.version,
+      ),
       tourCompleted: readBoolean(
         onboarding.tourCompleted,
         DEFAULT_SETTINGS.onboarding.tourCompleted,
@@ -123,7 +126,11 @@ function readNumber(value: unknown, fallback: number): number {
 
 function uniqueStrings(value: unknown): string[] {
   return Array.isArray(value)
-    ? [...new Set(value.filter((item): item is string => typeof item === "string"))]
+    ? [
+        ...new Set(
+          value.filter((item): item is string => typeof item === "string"),
+        ),
+      ]
     : [];
 }
 
@@ -136,7 +143,9 @@ function validateOnboardingPatch(
   }
   if (
     patch.version !== undefined &&
-    (typeof patch.version !== "number" || !Number.isFinite(patch.version) || patch.version < 0)
+    (typeof patch.version !== "number" ||
+      !Number.isFinite(patch.version) ||
+      patch.version < 0)
   ) {
     throw new TypeError("onboarding.version must be a non-negative number");
   }
@@ -150,7 +159,9 @@ function validateOnboardingPatch(
     (!Array.isArray(patch.completedGuides) ||
       patch.completedGuides.some((item) => typeof item !== "string"))
   ) {
-    throw new TypeError("onboarding.completedGuides must be an array of strings");
+    throw new TypeError(
+      "onboarding.completedGuides must be an array of strings",
+    );
   }
   if (
     patch.firstLaunchAt !== undefined &&

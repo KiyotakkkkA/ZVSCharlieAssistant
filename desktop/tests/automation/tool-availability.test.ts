@@ -2,9 +2,7 @@ import { describe, expect, it } from "vitest";
 import { getToolDisabledReason } from "../../src/host/infrastructure/automation/tool-availability";
 import type { AutomationTool } from "../../src/shared/models/automation";
 
-const tool = (
-  overrides: Partial<AutomationTool> = {},
-): AutomationTool => ({
+const tool = (overrides: Partial<AutomationTool> = {}): AutomationTool => ({
   id: "web_search",
   name: "Поиск в интернете",
   description: "",
@@ -21,9 +19,9 @@ const tool = (
 
 describe("доступность инструментов", () => {
   it("объясняет отключение глобальной политикой терминала", () => {
-    expect(
-      getToolDisabledReason(tool({ id: "cmd_exec" }), [], false),
-    ).toBe("Выполнение команд отключено глобальной политикой терминала.");
+    expect(getToolDisabledReason(tool({ id: "cmd_exec" }), [], false)).toBe(
+      "Выполнение команд отключено глобальной политикой терминала.",
+    );
   });
 
   it("перечисляет отсутствующие обязательные секреты", () => {

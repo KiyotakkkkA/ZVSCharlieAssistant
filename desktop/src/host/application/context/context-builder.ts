@@ -81,9 +81,7 @@ export function buildContext(input: BuildContextInput): BuiltContext {
 }
 
 export function measureContext(input: BuildContextInput): number {
-  return (
-    estimateTextTokens(input.system) + totalTokens(prepare(input))
-  );
+  return estimateTextTokens(input.system) + totalTokens(prepare(input));
 }
 
 function prepare(input: BuildContextInput): WorkingMessage[] {
@@ -215,7 +213,10 @@ function truncateOutput(
 }
 
 function dedupeReads(working: WorkingMessage[]) {
-  const lastSeen = new Map<string, { message: WorkingMessage; index: number }>();
+  const lastSeen = new Map<
+    string,
+    { message: WorkingMessage; index: number }
+  >();
   for (const message of working) {
     if (message.protectedMessage) continue;
     message.parts.forEach((part, index) => {
@@ -223,7 +224,8 @@ function dedupeReads(working: WorkingMessage[]) {
       if (!READ_TOOL_NAMES.has(part.toolName)) return;
       const key = `${part.toolName}:${safeStringify(readTarget(part))}`;
       const previous = lastSeen.get(key);
-      if (previous) collapseResultFor(previous, "Заменено более свежим чтением");
+      if (previous)
+        collapseResultFor(previous, "Заменено более свежим чтением");
       lastSeen.set(key, { message, index });
     });
   }
@@ -292,7 +294,10 @@ function expand(working: WorkingMessage[]): ModelMessage[] {
 
   for (const message of working) {
     if (message.role === "user") {
-      messages.push({ role: "user", content: renderUserContent(message.parts) });
+      messages.push({
+        role: "user",
+        content: renderUserContent(message.parts),
+      });
       continue;
     }
     if (message.role === "tool") {
@@ -347,7 +352,8 @@ function expand(working: WorkingMessage[]): ModelMessage[] {
         continue;
       }
       flushTools();
-      if (part.type === "text") assistantBuffer.push({ type: "text", text: part.text });
+      if (part.type === "text")
+        assistantBuffer.push({ type: "text", text: part.text });
       else if (part.type === "tool-call") assistantBuffer.push(part);
       else if (part.type === "summary")
         assistantBuffer.push({ type: "text", text: part.text });

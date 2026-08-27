@@ -12,7 +12,9 @@ export function QuestionPanel(props: {
     return (
       <Box flexDirection="column">
         <Box marginTop={1} paddingX={1} flexDirection="column">
-          <Text bold color={tuiColors.warning}>{props.question.header || "Требуется решение"}</Text>
+          <Text bold color={tuiColors.warning}>
+            {props.question.header || "Требуется решение"}
+          </Text>
           <Text>{props.question.question}</Text>
         </Box>
         <SelectionPanel
@@ -29,10 +31,20 @@ export function QuestionPanel(props: {
       </Box>
     );
   return (
-    <Box marginTop={1} borderStyle="round" borderColor={tuiColors.warning} paddingX={1} flexDirection="column">
-      <Text bold color={tuiColors.warning}>{props.question.header || "Требуется решение"}</Text>
+    <Box
+      marginTop={1}
+      borderStyle="round"
+      borderColor={tuiColors.warning}
+      paddingX={1}
+      flexDirection="column"
+    >
+      <Text bold color={tuiColors.warning}>
+        {props.question.header || "Требуется решение"}
+      </Text>
       <Text>{props.question.question}</Text>
-      <Text color={tuiColors.muted}>Введите ответ в composer · Esc отменить</Text>
+      <Text color={tuiColors.muted}>
+        Введите ответ в composer · Esc отменить
+      </Text>
     </Box>
   );
 }

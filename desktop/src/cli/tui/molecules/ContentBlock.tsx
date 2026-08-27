@@ -48,6 +48,9 @@ export function ContentBlock({ entry }: { entry: TranscriptEntry }) {
   return (
     <Box
       marginTop={1}
+      borderTop={false}
+      borderRight={false}
+      borderBottom={false}
       borderStyle="round"
       borderColor={config.color}
       flexDirection="column"

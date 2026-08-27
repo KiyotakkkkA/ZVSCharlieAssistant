@@ -73,7 +73,7 @@ export class ProviderRegistry {
       textProviderModelDetailsDtoSchema,
       row.details_json || "{}",
     );
-    const requested = configured.maxOutputTokens ?? 2048;
+    const requested = configured.maxOutputTokens ?? 8192;
     return {
       maxOutputTokens: details.maxCompletionTokens
         ? Math.min(requested, details.maxCompletionTokens)

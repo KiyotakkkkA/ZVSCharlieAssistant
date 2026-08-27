@@ -37,7 +37,8 @@ export class AppWindowController {
     const window = this.create();
     this.show();
 
-    const dispatch = () => window.webContents.send(IPC_CHANNELS.command, command);
+    const dispatch = () =>
+      window.webContents.send(IPC_CHANNELS.command, command);
     if (window.webContents.isLoading()) {
       window.webContents.once("did-finish-load", dispatch);
       return;

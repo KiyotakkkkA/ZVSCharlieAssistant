@@ -171,10 +171,7 @@ export class EntityGenerationService {
   }
 }
 
-function capture<T>(
-  outcome: { failure: string | null },
-  action: () => T,
-): T {
+function capture<T>(outcome: { failure: string | null }, action: () => T): T {
   try {
     return action();
   } catch (error) {

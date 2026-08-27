@@ -35,10 +35,7 @@ const plainEnvelopeSchema = envelopeBaseSchema
   })
   .strict();
 
-const envelopeSchema = z.union([
-  encryptedEnvelopeSchema,
-  plainEnvelopeSchema,
-]);
+const envelopeSchema = z.union([encryptedEnvelopeSchema, plainEnvelopeSchema]);
 
 const SCRYPT_OPTIONS = { N: 32768, r: 8, p: 1, maxmem: 64 * 1024 * 1024 };
 
@@ -97,7 +94,10 @@ export function createJsonContainer(
   );
 }
 
-export function decryptJsonContainer(source: string, password: string): unknown {
+export function decryptJsonContainer(
+  source: string,
+  password: string,
+): unknown {
   try {
     const envelope = envelopeSchema.parse(JSON.parse(source));
     if (envelope.encryption === null) return envelope.payload;

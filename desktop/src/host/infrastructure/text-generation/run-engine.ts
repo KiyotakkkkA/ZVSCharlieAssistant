@@ -30,6 +30,7 @@ import {
 import { newEntityId } from "../database/entity-id";
 import {
   generationLimitKind,
+  isMissingFinishReasonError,
   limitFailureMessage,
 } from "./generation-finish";
 import type { VectorStoreService } from "../vector-store/vector-store.service";
@@ -40,6 +41,8 @@ const CONTENT_FLUSH_MS = 400;
 const MAX_OUTPUT_CONTINUATIONS = 3;
 const CONTINUATION_PROMPT =
   "Продолжи предыдущий ответ строго с места остановки. Не повторяй уже выведенный текст и не начинай ответ заново.";
+const TOOL_INPUT_CONTINUATION_PROMPT =
+  'Предыдущая генерация оборвалась при подготовке вызова инструмента из-за лимита вывода. Продолжи текущую операцию, не повторяя завершённые инструменты. Если fs_write_begin или reports_begin уже завершён, возьми sessionId и nextSequence из его результата и продолжай через fs_write_chunk либо reports_add_blocks; не создавай новую сессию. Если сессия ещё не создана, начни её. Для paragraph используй строго {"type":"paragraph","paragraphs":["текст"]}, поля text у него нет. Передавай компактные части и в конце обязательно вызови fs_write_commit либо reports_commit.';
 const MAX_ATTACHMENT_BYTES = 20 * 1_048_576;
 const MAX_ATTACHMENTS_TOTAL_BYTES = 40 * 1_048_576;
 const MAX_ATTACHMENT_CONTEXT_CHARS = 48_000;
@@ -99,7 +102,8 @@ export class RunEngine {
       ...(input.agentId ? { agentId: input.agentId } : {}),
       permissionMode: input.permissionMode ?? "edit",
     };
-    const conversationId = input.conversationId ?? this.data.createConversation(usage);
+    const conversationId =
+      input.conversationId ?? this.data.createConversation(usage);
     if (input.projectId)
       this.projects.assignConversation(conversationId, input.projectId);
     this.data.updateLastUsage(conversationId, usage);
@@ -387,7 +391,8 @@ export class RunEngine {
       const baseSystem =
         input.mode === "planner"
           ? "Составь практичный пошаговый план. Не выполняй действия без необходимости."
-          : (agentInstructions ?? "Ты полезный ассистент. Отвечай по существу.");
+          : (agentInstructions ??
+            "Ты полезный ассистент. Отвечай по существу.");
       const profileBlock = this.profileBlock(conversationId, input.mode);
       const memoryBlock = this.memory.contextBlock({
         agentMayRead: Boolean(agentRuntime?.memoryRead),
@@ -438,6 +443,7 @@ export class RunEngine {
 
       let continuations = 0;
       let continuationRequested = false;
+      let continuationPrompt = CONTINUATION_PROMPT;
       for (let step = 0; step < maxSteps + continuations; step += 1) {
         controller.signal.throwIfAborted();
         flushContent();
@@ -500,7 +506,7 @@ export class RunEngine {
           const stepMessages = continuationRequested
             ? [
                 ...context.messages,
-                { role: "user" as const, content: CONTINUATION_PROMPT },
+                { role: "user" as const, content: continuationPrompt },
               ]
             : context.messages;
 
@@ -558,7 +564,6 @@ export class RunEngine {
 
         flushContent();
         if (!stepResult) break;
-        if (stepResult.hasToolCalls) continue;
 
         const limitKind = generationLimitKind(
           stepResult.finishReason,
@@ -570,6 +575,10 @@ export class RunEngine {
 
           continuations += 1;
           continuationRequested = true;
+          continuationPrompt =
+            stepResult.interruptedToolInput || stepResult.recoverableStreamEnd
+              ? TOOL_INPUT_CONTINUATION_PROMPT
+              : CONTINUATION_PROMPT;
           const compactedSegment =
             limitKind === "context_overflow"
               ? await this.forceCompaction({
@@ -610,6 +619,7 @@ export class RunEngine {
           }
           continue;
         }
+        if (stepResult.hasToolCalls) continue;
         if (stepResult.finishReason === "error")
           throw new Error(
             `Провайдер остановил генерацию с ошибкой${stepResult.rawFinishReason ? `: ${stepResult.rawFinishReason}` : ""}`,
@@ -655,6 +665,7 @@ export class RunEngine {
             },
       );
     } finally {
+      this.tools.cleanupRun?.(runId);
       this.controllers.delete(runId);
     }
   }
@@ -664,8 +675,7 @@ export class RunEngine {
     signal: AbortSignal,
   ): Promise<string> {
     if (!attachments.length) return "";
-    if (!this.textExtraction)
-      throw new Error("Обработка вложений недоступна");
+    if (!this.textExtraction) throw new Error("Обработка вложений недоступна");
     if (
       attachments.reduce((total, item) => total + item.data.byteLength, 0) >
       MAX_ATTACHMENTS_TOTAL_BYTES
@@ -684,15 +694,13 @@ export class RunEngine {
         throw new Error(
           `Формат файла «${attachment.fileName}» не поддерживается`,
         );
-      const text = (isPlainTextAttachment(
-        attachment.fileName,
-        attachment.mimeType,
-      )
-        ? new TextDecoder().decode(new Uint8Array(attachment.data))
-        : await this.textExtraction.extract(
-            attachment.fileName,
-            attachment.data.slice(0),
-          )
+      const text = (
+        isPlainTextAttachment(attachment.fileName, attachment.mimeType)
+          ? new TextDecoder().decode(new Uint8Array(attachment.data))
+          : await this.textExtraction.extract(
+              attachment.fileName,
+              attachment.data.slice(0),
+            )
       ).trim();
       const excerpt = text.slice(0, Math.max(0, remaining));
       remaining -= excerpt.length;
@@ -713,8 +721,7 @@ export class RunEngine {
     parts: ChatMessageContentPart[],
   ) {
     if (!vectorStoreIds.length) return [];
-    if (!this.vectorStores)
-      throw new Error("Векторный поиск недоступен");
+    if (!this.vectorStores) throw new Error("Векторный поиск недоступен");
     signal.throwIfAborted();
 
     const input = { query, storeIds: vectorStoreIds, limit: 5 };
@@ -856,7 +863,11 @@ export class RunEngine {
     system: string;
     messages: ModelMessage[];
     modelId: string;
-    generationSettings: { maxOutputTokens: number; temperature: number; topP: number };
+    generationSettings: {
+      maxOutputTokens: number;
+      temperature: number;
+      topP: number;
+    };
     tools: ToolSet | undefined;
     controller: AbortController;
     emit: Emit;
@@ -878,6 +889,11 @@ export class RunEngine {
     let usage: RunUsage | undefined;
     let finishReason: string | undefined;
     let rawFinishReason: string | undefined;
+    let streamError: Error | undefined;
+    const partialToolInputs = new Map<
+      string,
+      { toolName: string; receivedBytes: number }
+    >();
 
     const result = streamText({
       model: this.providers.resolve(input.modelId),
@@ -892,7 +908,16 @@ export class RunEngine {
     for await (const raw of result.stream) {
       const part = raw as unknown as StreamPart;
       if (part.type === "error") {
-        throw normalizeStreamError(part.error);
+        streamError ??= normalizeStreamError(part.error);
+      } else if (part.type === "tool-input-start") {
+        partialToolInputs.set(part.id ?? "", {
+          toolName: part.toolName ?? "unknown",
+          receivedBytes: 0,
+        });
+      } else if (part.type === "tool-input-delta") {
+        const current = partialToolInputs.get(part.id ?? "");
+        if (current)
+          current.receivedBytes += Buffer.byteLength(part.delta ?? "", "utf8");
       } else if (part.type === "text-delta") {
         appendText("text", part.text ?? "");
         emit({
@@ -911,6 +936,7 @@ export class RunEngine {
         });
       } else if (part.type === "tool-call") {
         hasToolCalls = true;
+        partialToolInputs.delete(part.toolCallId ?? "");
         parts.push({
           type: "tool-call",
           toolCallId: part.toolCallId ?? "",
@@ -938,11 +964,27 @@ export class RunEngine {
       } else if (part.type === "finish-step" || part.type === "finish") {
         finishReason = part.finishReason ?? finishReason;
         rawFinishReason = part.rawFinishReason ?? rawFinishReason;
-        usage = normalizeUsage(part.usage ?? part.totalUsage, input.modelId, this.providers) ?? usage;
+        usage =
+          normalizeUsage(
+            part.usage ?? part.totalUsage,
+            input.modelId,
+            this.providers,
+          ) ?? usage;
       }
     }
 
     if (usage) this.data.addRunUsage(runId, usage);
+    const interruptedToolInput = partialToolInputs.values().next().value as
+      { toolName: string; receivedBytes: number } | undefined;
+    const recoverableStreamEnd = Boolean(
+      streamError && isMissingFinishReasonError(streamError),
+    );
+    if (streamError && (interruptedToolInput || recoverableStreamEnd)) {
+      finishReason = "length";
+      rawFinishReason = interruptedToolInput
+        ? `incomplete_tool_input:${interruptedToolInput.toolName}`
+        : "stream_ended_without_finish_reason";
+    }
     this.data.addStep(
       runId,
       input.step,
@@ -950,7 +992,15 @@ export class RunEngine {
       finishReason,
       usage,
     );
-    return { hasToolCalls, finishReason, rawFinishReason };
+    if (streamError && !interruptedToolInput && !recoverableStreamEnd)
+      throw streamError;
+    return {
+      hasToolCalls,
+      finishReason,
+      rawFinishReason,
+      interruptedToolInput,
+      recoverableStreamEnd,
+    };
   }
 }
 
@@ -958,6 +1008,8 @@ interface StepResult {
   hasToolCalls: boolean;
   finishReason: string | undefined;
   rawFinishReason: string | undefined;
+  interruptedToolInput?: { toolName: string; receivedBytes: number };
+  recoverableStreamEnd?: boolean;
 }
 
 function delay(ms: number): Promise<void> {
@@ -969,6 +1021,8 @@ function delay(ms: number): Promise<void> {
 
 interface StreamPart {
   type: string;
+  id?: string;
+  delta?: string;
   text?: string;
   error?: unknown;
   toolCallId?: string;

@@ -83,7 +83,10 @@ export const AutomationSkillManageForm = observer(
           });
         }}
       >
-        <section data-tour="skill-form-main" className="grid gap-4 rounded-xl bg-main-800/20 p-5 ring-1 ring-main-700/35 md:grid-cols-2">
+        <section
+          data-tour="skill-form-main"
+          className="grid gap-4 rounded-xl bg-main-800/20 p-5 ring-1 ring-main-700/35 md:grid-cols-2"
+        >
           <Field
             label={
               <ParameterLabel description="Отображаемое название навыка в списках и настройках агентов.">
@@ -188,7 +191,10 @@ export const AutomationSkillManageForm = observer(
             </Select>
           </Field>
         </section>
-        <section data-tour="skill-form-instructions" className="rounded-xl bg-main-800/20 p-5 ring-1 ring-main-700/35">
+        <section
+          data-tour="skill-form-instructions"
+          className="rounded-xl bg-main-800/20 p-5 ring-1 ring-main-700/35"
+        >
           <h2 className="mb-1 text-sm font-semibold">
             <ParameterLabel description="Полное содержимое SKILL.md: цель, последовательность действий, ограничения и формат итогового результата.">
               Инструкции навыка
@@ -208,7 +214,10 @@ export const AutomationSkillManageForm = observer(
             disabled={readOnly}
           />
         </section>
-        <section data-tour="skill-form-tools" className="rounded-xl bg-main-800/20 p-5 ring-1 ring-main-700/35">
+        <section
+          data-tour="skill-form-tools"
+          className="rounded-xl bg-main-800/20 p-5 ring-1 ring-main-700/35"
+        >
           <h2 className="mb-1 text-sm font-semibold">
             <ParameterLabel description="Инструменты, без которых инструкции навыка не могут быть выполнены. Их также потребуется разрешить назначенному агенту.">
               Необходимые инструменты

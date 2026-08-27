@@ -27,7 +27,10 @@ export class CliInstallerService {
   }
 
   get launcherPath(): string {
-    return join(this.binDir, process.platform === "win32" ? `${COMMAND}.cmd` : COMMAND);
+    return join(
+      this.binDir,
+      process.platform === "win32" ? `${COMMAND}.cmd` : COMMAND,
+    );
   }
 
   private get powershellLauncherPath(): string {
@@ -37,8 +40,7 @@ export class CliInstallerService {
   status(): CliIntegrationStatus {
     const installed =
       existsSync(this.launcherPath) &&
-      (process.platform !== "win32" ||
-        existsSync(this.powershellLauncherPath));
+      (process.platform !== "win32" || existsSync(this.powershellLauncherPath));
     return {
       command: COMMAND,
       platform: process.platform,

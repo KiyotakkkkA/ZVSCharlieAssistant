@@ -16,7 +16,8 @@ function createFailover() {
   } as unknown as ChatRepository;
   const providers = {
     modelInfo: (id: string) => ({
-      contextLength: MODELS.find((model) => model.id === id)?.contextLength ?? 0,
+      contextLength:
+        MODELS.find((model) => model.id === id)?.contextLength ?? 0,
     }),
     generationSettings: (id: string) => ({
       maxOutputTokens:
@@ -38,7 +39,9 @@ describe("классификация отказов провайдера", () =>
     expect(failover.classify(httpError(401))).toBe("auth");
     expect(failover.classify(new Error("socket hang up"))).toBe("transient");
     expect(
-      failover.classify(new Error("This model's maximum context length is 8192")),
+      failover.classify(
+        new Error("This model's maximum context length is 8192"),
+      ),
     ).toBe("context_overflow");
     expect(
       failover.classify(

@@ -60,16 +60,11 @@ export class DataTransferService {
     const sections: DataTransferPayload["sections"] = {
       ...this.configuration.exportSections(entities),
     };
-    if (
-      entities.has("secretCategories") ||
-      entities.has("secrets")
-    ) {
+    if (entities.has("secretCategories") || entities.has("secrets")) {
       const secretStorage = this.secrets.exportPortable();
       sections.secretStorage = {
         ...secretStorage,
-        secrets: entities.has("secrets")
-          ? secretStorage.secrets
-          : [],
+        secrets: entities.has("secrets") ? secretStorage.secrets : [],
       };
     }
     if (entities.has("terminalPolicy")) {
@@ -113,7 +108,9 @@ export class DataTransferService {
     return true;
   }
 
-  async prepareImport(input: PrepareImportInput): Promise<ImportPreview | null> {
+  async prepareImport(
+    input: PrepareImportInput,
+  ): Promise<ImportPreview | null> {
     this.removeExpiredSessions();
     const result = await dialog.showOpenDialog({
       title: "Импорт данных",

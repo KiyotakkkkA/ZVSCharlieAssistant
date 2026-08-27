@@ -38,13 +38,11 @@ describe("последние сессии чата", () => {
         modelId: modelIds[index],
         permissionMode: "plan",
       });
-      database!.prepare(
-        "UPDATE chat_conversations SET title=?,updated_at=? WHERE id=?",
-      ).run(
-        `Сессия ${index}`,
-        `2026-08-2${index + 1} 12:00:00`,
-        id,
-      );
+      database!
+        .prepare(
+          "UPDATE chat_conversations SET title=?,updated_at=? WHERE id=?",
+        )
+        .run(`Сессия ${index}`, `2026-08-2${index + 1} 12:00:00`, id);
       return id;
     });
     projects.assignConversation(ids[5]!, project.id);

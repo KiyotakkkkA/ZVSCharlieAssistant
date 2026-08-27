@@ -111,6 +111,7 @@ export class ToolRegistry {
       policy: directoryPolicy,
       projectGrants,
     });
+    const reportOwnerId = conversationId ?? runId ?? "standalone";
     const reportEdit = (edit: FileEditRecord) => {
       onFileChanged?.(edit);
       return {
@@ -137,7 +138,7 @@ export class ToolRegistry {
           }),
           z.object({
             action: z.enum(["status", "output", "wait", "cancel"]),
-            sessionId: z.string().uuid(),
+            sessionId: z.uuid(),
             timeoutSeconds: z.int().min(1).max(30).optional(),
           }),
         ]),
@@ -463,7 +464,7 @@ export class ToolRegistry {
       }),
       reports_docx: tool({
         description:
-          "Создаёт единый DOCX-файл из структурированных блоков по шаблону оформления РТУ МИРЭА/ГОСТ 7.32–2017. Передавай весь документ за один вызов.",
+          "Создаёт небольшой DOCX до 12 блоков. Для полноценного отчёта обязательно используй reports_begin, несколько reports_add_blocks и reports_commit.",
         inputSchema: z.object({
           fileName: z.string().trim().min(1).max(180),
           template: z.literal("mirea-report-gost"),
@@ -512,7 +513,7 @@ export class ToolRegistry {
               ]),
             )
             .min(1)
-            .max(2_000),
+            .max(12),
         }),
         execute: (input, { toolCallId }) =>
           this.execute(
@@ -522,6 +523,71 @@ export class ToolRegistry {
             signal,
             observer,
             () => this.reports.create(input),
+          ),
+      }),
+      reports_begin: tool({
+        description:
+          "Начинает поэтапную сборку большого DOCX-отчёта и возвращает sessionId с nextSequence=0.",
+        inputSchema: z.object({
+          fileName: z.string().trim().min(1).max(180),
+          template: z.literal("mirea-report-gost"),
+          title: z.string().trim().max(500).optional(),
+        }),
+        execute: (input, { toolCallId }) =>
+          this.execute(
+            toolCallId,
+            "reports_begin",
+            input,
+            signal,
+            observer,
+            () => {
+              return Promise.resolve(this.reports.begin(input, reportOwnerId));
+            },
+          ),
+      }),
+      reports_add_blocks: tool({
+        description:
+          'Добавляет до 2 компактных последовательных блоков в DOCX. Передавай точный nextSequence. Форматы: paragraph={"type":"paragraph","paragraphs":["текст"]}; heading={"type":"heading","level":1,"text":"заголовок"}; list={"type":"list","style":"bullet","items":["пункт"]}; code={"type":"code","title":"название","content":"код"}. У paragraph нет поля text. Длинный текст разбивай между вызовами.',
+        inputSchema: z.object({
+          sessionId: z.uuid(),
+          sequence: z.int().nonnegative(),
+          blocks: z.array(reportBlockSchema()).min(1).max(2),
+        }),
+        execute: (input, { toolCallId }) =>
+          this.execute(
+            toolCallId,
+            "reports_add_blocks",
+            input,
+            signal,
+            observer,
+            () => Promise.resolve(this.reports.addBlocks(input, reportOwnerId)),
+          ),
+      }),
+      reports_commit: tool({
+        description:
+          "Собирает и сохраняет DOCX после успешной передачи всех блоков.",
+        inputSchema: z.object({ sessionId: z.uuid() }),
+        execute: (input, { toolCallId }) =>
+          this.execute(
+            toolCallId,
+            "reports_commit",
+            input,
+            signal,
+            observer,
+            () => this.reports.commit(input, reportOwnerId),
+          ),
+      }),
+      reports_abort: tool({
+        description: "Отменяет незавершённую сборку DOCX.",
+        inputSchema: z.object({ sessionId: z.uuid() }),
+        execute: (input, { toolCallId }) =>
+          this.execute(
+            toolCallId,
+            "reports_abort",
+            input,
+            signal,
+            observer,
+            () => Promise.resolve(this.reports.abort(input, reportOwnerId)),
           ),
       }),
       fs_read: tool({
@@ -553,16 +619,107 @@ export class ToolRegistry {
       }),
       fs_write: tool({
         description:
-          "Создаёт новый файл или полностью перезаписывает существующий. Для точечных изменений используй fs_edit — он дешевле и безопаснее.",
+          "Создаёт или полностью перезаписывает небольшой файл. Если содержимое длиннее 6000 символов, обязательно используй fs_write_begin, fs_write_chunk и fs_write_commit.",
         inputSchema: z.object({
           path: z.string().trim().min(1).max(4096),
-          content: z.string().max(1_000_000),
+          content: z.string().max(6_000),
         }),
         execute: (input, { toolCallId }) =>
           this.execute(toolCallId, "fs_write", input, signal, observer, () =>
             Promise.resolve(
               reportEdit(this.files.write(input, fileContext(toolCallId))),
             ),
+          ),
+      }),
+      fs_write_begin: tool({
+        description:
+          "Начинает атомарную поэтапную запись большого файла. Вернёт sessionId и nextSequence=0. Существующий файл необходимо предварительно прочитать через fs_read.",
+        inputSchema: z.object({
+          path: z.string().trim().min(1).max(4096),
+        }),
+        execute: (input, { toolCallId }) =>
+          this.execute(
+            toolCallId,
+            "fs_write_begin",
+            input,
+            signal,
+            observer,
+            () => {
+              const context = fileContext(toolCallId);
+              const result = this.files.beginWrite(input, context);
+              signal.addEventListener(
+                "abort",
+                () => {
+                  try {
+                    this.files.abortWrite(
+                      { sessionId: result.sessionId },
+                      context,
+                    );
+                  } catch {
+                    // The session may already be committed or explicitly aborted.
+                  }
+                },
+                { once: true },
+              );
+              return Promise.resolve(result);
+            },
+          ),
+      }),
+      fs_write_chunk: tool({
+        description:
+          "Добавляет следующую часть к поэтапной записи. Передавай не более 6000 символов и точный nextSequence из результата предыдущего вызова.",
+        inputSchema: z.object({
+          sessionId: z.uuid(),
+          sequence: z.int().nonnegative(),
+          content: z.string().min(1).max(6_000),
+        }),
+        execute: (input, { toolCallId }) =>
+          this.execute(
+            toolCallId,
+            "fs_write_chunk",
+            input,
+            signal,
+            observer,
+            () =>
+              Promise.resolve(
+                this.files.appendWrite(input, fileContext(toolCallId)),
+              ),
+          ),
+      }),
+      fs_write_commit: tool({
+        description:
+          "Атомарно завершает поэтапную запись и только после этого изменяет целевой файл.",
+        inputSchema: z.object({ sessionId: z.uuid() }),
+        execute: (input, { toolCallId }) =>
+          this.execute(
+            toolCallId,
+            "fs_write_commit",
+            input,
+            signal,
+            observer,
+            () =>
+              Promise.resolve(
+                reportEdit(
+                  this.files.commitWrite(input, fileContext(toolCallId)),
+                ),
+              ),
+          ),
+      }),
+      fs_write_abort: tool({
+        description:
+          "Отменяет незавершённую поэтапную запись, не изменяя целевой файл.",
+        inputSchema: z.object({ sessionId: z.uuid() }),
+        execute: (input, { toolCallId }) =>
+          this.execute(
+            toolCallId,
+            "fs_write_abort",
+            input,
+            signal,
+            observer,
+            () =>
+              Promise.resolve(
+                this.files.abortWrite(input, fileContext(toolCallId)),
+              ),
           ),
       }),
       fs_edit: tool({
@@ -689,7 +846,7 @@ export class ToolRegistry {
     const available = Object.fromEntries(
       Object.entries(tools).filter(
         ([id]) =>
-          (allowedToolIds.includes(id) ||
+          (isToolAllowed(id, allowedToolIds) ||
             (id === "skills.load" && allowedSkillIds.length > 0)) &&
           (id === "cmd_exec" ||
             FILE_TOOL_IDS.has(id) ||
@@ -703,6 +860,7 @@ export class ToolRegistry {
             id === "vecdb_search" ||
             id === "skills.load" ||
             id === "reports_docx" ||
+            STAGED_REPORT_TOOL_IDS.has(id) ||
             this.automationCatalog.toolSecretId(id, "ollamaApiKey") !==
               undefined),
       ),
@@ -772,6 +930,11 @@ export class ToolRegistry {
     });
   }
 
+  cleanupRun(runId: string): void {
+    this.files.forgetRun(runId);
+    this.reports.abortOwner(runId);
+  }
+
   private async execute(
     callId: string,
     toolId: string,
@@ -824,6 +987,10 @@ export const FILE_TOOL_IDS = new Set([
   "fs_read",
   "fs_list",
   "fs_write",
+  "fs_write_begin",
+  "fs_write_chunk",
+  "fs_write_commit",
+  "fs_write_abort",
   "fs_edit",
   "fs_multi_edit",
   "fs_apply_patch",
@@ -833,15 +1000,80 @@ export const FILE_TOOL_IDS = new Set([
 
 const WRITE_TOOL_IDS = new Set([
   "reports_docx",
+  "reports_begin",
+  "reports_add_blocks",
+  "reports_commit",
+  "reports_abort",
   "memory_save",
   "tasks_plan",
   "fs_write",
+  "fs_write_begin",
+  "fs_write_chunk",
+  "fs_write_commit",
+  "fs_write_abort",
   "fs_edit",
   "fs_multi_edit",
   "fs_apply_patch",
   "fs_move",
 ]);
 const DESTRUCTIVE_TOOL_IDS = new Set(["fs_delete"]);
+
+const STAGED_FILE_TOOL_IDS = new Set([
+  "fs_write_begin",
+  "fs_write_chunk",
+  "fs_write_commit",
+  "fs_write_abort",
+]);
+const STAGED_REPORT_TOOL_IDS = new Set([
+  "reports_begin",
+  "reports_add_blocks",
+  "reports_commit",
+  "reports_abort",
+]);
+
+function isToolAllowed(toolId: string, allowedToolIds: string[]): boolean {
+  if (allowedToolIds.includes(toolId)) return true;
+  if (STAGED_FILE_TOOL_IDS.has(toolId))
+    return allowedToolIds.includes("fs_write");
+  if (STAGED_REPORT_TOOL_IDS.has(toolId))
+    return allowedToolIds.includes("reports_docx");
+  return false;
+}
+
+function reportBlockSchema() {
+  return z.discriminatedUnion("type", [
+    z.object({
+      type: z.literal("heading"),
+      level: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+      text: z.string().trim().min(1).max(500),
+      numbered: z.boolean().optional(),
+    }),
+    z.object({
+      type: z.literal("paragraph"),
+      paragraphs: z.array(z.string().trim().min(1).max(1_000)).min(1).max(4),
+    }),
+    z.object({
+      type: z.literal("list"),
+      style: z.enum(["bullet", "numbered"]),
+      items: z.array(z.string().trim().min(1).max(400)).min(1).max(10),
+    }),
+    z.object({
+      type: z.literal("table"),
+      number: z.string().trim().max(30).optional(),
+      title: z.string().trim().min(1).max(500),
+      headers: z.array(z.string().max(200)).min(1).max(10),
+      rows: z.array(z.array(z.string().max(200)).max(10)).max(5),
+    }),
+    z.object({
+      type: z.literal("code"),
+      number: z.string().trim().max(30).optional(),
+      title: z.string().trim().min(1).max(500),
+      language: z.string().trim().max(50).optional(),
+      content: z.string().max(4_000),
+    }),
+    z.object({ type: z.literal("pageBreak") }),
+  ]);
+}
 
 function riskOf(toolId: string, input: unknown): string {
   if (toolId !== "cmd_exec") {

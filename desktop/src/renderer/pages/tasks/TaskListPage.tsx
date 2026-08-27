@@ -66,7 +66,10 @@ export const TaskListPage = observer(function TaskListPage() {
   const empty = tab === "scenarios-runs" ? !runs.length : !creationRuns.length;
 
   return (
-    <section data-tour="tasks-page" className="flex h-full min-h-0 flex-col overflow-hidden p-4">
+    <section
+      data-tour="tasks-page"
+      className="flex h-full min-h-0 flex-col overflow-hidden p-4"
+    >
       <PageHeader
         title="Задачи"
         description="История запусков фоновых задач."
@@ -77,14 +80,14 @@ export const TaskListPage = observer(function TaskListPage() {
               value={tab}
               onChange={(value) => setTab(value as TaskTab)}
               options={[
-              {
-                value: "scenarios-runs",
-                label: `Сценарии · ${tasksStore.agentRuns.length}`,
-              },
-              {
-                value: "creation-runs",
-                label: `Создание · ${entityGenerationStore.runs.length}`,
-              },
+                {
+                  value: "scenarios-runs",
+                  label: `Сценарии · ${tasksStore.agentRuns.length}`,
+                },
+                {
+                  value: "creation-runs",
+                  label: `Создание · ${entityGenerationStore.runs.length}`,
+                },
               ]}
             />
           </div>

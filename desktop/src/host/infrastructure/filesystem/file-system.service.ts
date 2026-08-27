@@ -1,5 +1,6 @@
 import {
   copyFileSync,
+  appendFileSync,
   existsSync,
   mkdirSync,
   readFileSync,
@@ -29,6 +30,8 @@ const READ_MAX_BYTES = 400_000;
 const DEFAULT_READ_LINES = 800;
 const BINARY_PROBE_BYTES = 8_192;
 const LIST_DEFAULT_LIMIT = 300;
+const STAGED_WRITE_MAX_BYTES = 1_000_000;
+const STAGED_WRITE_TTL_MS = 30 * 60_000;
 
 const IGNORED_DIRECTORIES = new Set([
   "node_modules",
@@ -44,12 +47,28 @@ interface FileShape {
   bom: boolean;
 }
 
+interface StagedWriteSession {
+  id: string;
+  path: string;
+  temporaryPath: string;
+  before: string;
+  existed: boolean;
+  originalMtimeMs: number | null;
+  originalSize: number;
+  runId: string | null;
+  conversationId: string | null;
+  nextSequence: number;
+  bytesWritten: number;
+  createdAt: number;
+}
+
 export class FileSystemService {
   private readonly resolver: PathResolver;
   private readonly reads = new Map<
     string,
     Map<string, { mtimeMs: number; size: number }>
   >();
+  private readonly stagedWrites = new Map<string, StagedWriteSession>();
 
   constructor(
     resolver: PathResolver,
@@ -77,7 +96,10 @@ export class FileSystemService {
     const { text } = decode(buffer);
     const lines = splitLines(text);
     const offset = Math.max(0, input.offset ?? 0);
-    const limit = Math.max(1, Math.min(input.limit ?? DEFAULT_READ_LINES, 5_000));
+    const limit = Math.max(
+      1,
+      Math.min(input.limit ?? DEFAULT_READ_LINES, 5_000),
+    );
     const slice = lines.slice(offset, offset + limit);
 
     this.rememberRead(context.runId, path, stats);
@@ -105,9 +127,15 @@ export class FileSystemService {
   ) {
     const root = this.resolver.resolve(input.path, "read", policiesOf(context));
     const maxDepth = Math.max(1, Math.min(input.depth ?? 2, 8));
-    const limit = Math.max(1, Math.min(input.limit ?? LIST_DEFAULT_LIMIT, 2_000));
-    const entries: Array<{ path: string; type: "file" | "dir"; size?: number }> =
-      [];
+    const limit = Math.max(
+      1,
+      Math.min(input.limit ?? LIST_DEFAULT_LIMIT, 2_000),
+    );
+    const entries: Array<{
+      path: string;
+      type: "file" | "dir";
+      size?: number;
+    }> = [];
 
     const walk = (directory: string, depth: number) => {
       if (entries.length >= limit || depth > maxDepth) return;
@@ -135,7 +163,11 @@ export class FileSystemService {
   ): FileEditRecord {
     const path = this.resolver.resolve(input.path, "read", policiesOf(context));
     const exists = existsSync(path);
-    this.resolver.resolve(input.path, exists ? "modify" : "create", policiesOf(context));
+    this.resolver.resolve(
+      input.path,
+      exists ? "modify" : "create",
+      policiesOf(context),
+    );
     const before = exists ? this.readForEdit(path, context) : "";
     return this.commit(
       path,
@@ -144,6 +176,122 @@ export class FileSystemService {
       context,
       exists ? "modify" : "create",
     );
+  }
+
+  beginWrite(
+    input: { path: string },
+    context: FileToolContext,
+  ): {
+    sessionId: string;
+    path: string;
+    nextSequence: number;
+    recommendedChunkChars: number;
+  } {
+    this.cleanupExpiredStagedWrites();
+    const path = this.resolver.resolve(input.path, "read", policiesOf(context));
+    const existed = existsSync(path);
+    this.resolver.resolve(
+      input.path,
+      existed ? "modify" : "create",
+      policiesOf(context),
+    );
+    const before = existed ? this.readForEdit(path, context) : "";
+    const stats = existed ? statSync(path) : null;
+    const id = randomUUID();
+    const temporaryPath = join(
+      dirname(path),
+      `.${basename(path)}.${id}.zvs-staged`,
+    );
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(temporaryPath, "", "utf8");
+    this.stagedWrites.set(id, {
+      id,
+      path,
+      temporaryPath,
+      before,
+      existed,
+      originalMtimeMs: stats?.mtimeMs ?? null,
+      originalSize: stats?.size ?? 0,
+      runId: context.runId,
+      conversationId: context.conversationId,
+      nextSequence: 0,
+      bytesWritten: 0,
+      createdAt: Date.now(),
+    });
+    return {
+      sessionId: id,
+      path,
+      nextSequence: 0,
+      recommendedChunkChars: 6_000,
+    };
+  }
+
+  appendWrite(
+    input: { sessionId: string; sequence: number; content: string },
+    context: FileToolContext,
+  ): {
+    sessionId: string;
+    path: string;
+    acceptedSequence: number;
+    nextSequence: number;
+    bytesWritten: number;
+  } {
+    const session = this.stagedWrite(input.sessionId, context);
+    if (input.sequence !== session.nextSequence)
+      throw new Error(
+        `Ожидалась часть №${session.nextSequence}, получена №${input.sequence}`,
+      );
+    const chunkBytes = Buffer.byteLength(input.content, "utf8");
+    if (session.bytesWritten + chunkBytes > STAGED_WRITE_MAX_BYTES)
+      throw new Error(
+        `Размер поэтапной записи превышает ${STAGED_WRITE_MAX_BYTES} байт`,
+      );
+    appendFileSync(session.temporaryPath, input.content, "utf8");
+    session.bytesWritten += chunkBytes;
+    session.nextSequence += 1;
+    return {
+      sessionId: session.id,
+      path: session.path,
+      acceptedSequence: input.sequence,
+      nextSequence: session.nextSequence,
+      bytesWritten: session.bytesWritten,
+    };
+  }
+
+  commitWrite(
+    input: { sessionId: string },
+    context: FileToolContext,
+  ): FileEditRecord {
+    const session = this.stagedWrite(input.sessionId, context);
+    if (session.nextSequence === 0)
+      throw new Error("Нельзя завершить запись без единой части");
+    this.assertStagedTargetUnchanged(session);
+    this.resolver.resolve(
+      session.path,
+      session.existed ? "modify" : "create",
+      policiesOf(context),
+    );
+    const after = readFileSync(session.temporaryPath, "utf8");
+    try {
+      return this.commit(
+        session.path,
+        session.before,
+        after,
+        context,
+        session.existed ? "modify" : "create",
+      );
+    } finally {
+      this.removeStagedWrite(session);
+    }
+  }
+
+  abortWrite(
+    input: { sessionId: string },
+    context: FileToolContext,
+  ): { sessionId: string; path: string; aborted: true } {
+    const session = this.stagedWrite(input.sessionId, context);
+    this.removeStagedWrite(session);
+    return { sessionId: session.id, path: session.path, aborted: true };
   }
 
   edit(
@@ -155,7 +303,11 @@ export class FileSystemService {
     },
     context: FileToolContext,
   ): FileEditRecord {
-    const path = this.resolver.resolve(input.path, "modify", policiesOf(context));
+    const path = this.resolver.resolve(
+      input.path,
+      "modify",
+      policiesOf(context),
+    );
     const before = this.readForEdit(path, context);
     const after = replaceFragment(
       before,
@@ -174,7 +326,11 @@ export class FileSystemService {
     },
     context: FileToolContext,
   ): FileEditRecord {
-    const path = this.resolver.resolve(input.path, "modify", policiesOf(context));
+    const path = this.resolver.resolve(
+      input.path,
+      "modify",
+      policiesOf(context),
+    );
     const before = this.readForEdit(path, context);
     let after = before;
     input.edits.forEach((item, index) => {
@@ -201,7 +357,11 @@ export class FileSystemService {
     input: { path: string; patch: string },
     context: FileToolContext,
   ): FileEditRecord {
-    const path = this.resolver.resolve(input.path, "modify", policiesOf(context));
+    const path = this.resolver.resolve(
+      input.path,
+      "modify",
+      policiesOf(context),
+    );
     const before = this.readForEdit(path, context);
     const after = applyUnifiedDiff(before, input.patch);
     return this.commit(path, before, after, context, "modify");
@@ -211,7 +371,11 @@ export class FileSystemService {
     input: { from: string; to: string },
     context: FileToolContext,
   ): FileEditRecord {
-    const from = this.resolver.resolve(input.from, "delete", policiesOf(context));
+    const from = this.resolver.resolve(
+      input.from,
+      "delete",
+      policiesOf(context),
+    );
     const to = this.resolver.resolve(input.to, "create", policiesOf(context));
     if (existsSync(to)) throw new Error(`Целевой путь «${to}» уже существует`);
     const stats = statSync(from);
@@ -233,7 +397,11 @@ export class FileSystemService {
   }
 
   remove(input: { path: string }, context: FileToolContext): FileEditRecord {
-    const path = this.resolver.resolve(input.path, "delete", policiesOf(context));
+    const path = this.resolver.resolve(
+      input.path,
+      "delete",
+      policiesOf(context),
+    );
     const stats = statSync(path);
     if (stats.isDirectory())
       throw new Error("Удаление директорий через агента не поддерживается");
@@ -285,6 +453,61 @@ export class FileSystemService {
 
   forgetRun(runId: string) {
     this.reads.delete(runId);
+    for (const session of this.stagedWrites.values())
+      if (session.runId === runId) this.removeStagedWrite(session);
+  }
+
+  private stagedWrite(
+    sessionId: string,
+    context: FileToolContext,
+  ): StagedWriteSession {
+    this.cleanupExpiredStagedWrites();
+    const session = this.stagedWrites.get(sessionId);
+    if (!session)
+      throw new Error("Сессия поэтапной записи не найдена или истекла");
+    if (
+      session.runId !== context.runId ||
+      session.conversationId !== context.conversationId
+    )
+      throw new Error("Сессия поэтапной записи принадлежит другой задаче");
+    return session;
+  }
+
+  private assertStagedTargetUnchanged(session: StagedWriteSession): void {
+    if (!session.existed) {
+      if (existsSync(session.path))
+        throw new Error(
+          `«${session.path}» появился после начала записи. Завершение отменено.`,
+        );
+      return;
+    }
+    if (!existsSync(session.path))
+      throw new Error(
+        `«${session.path}» удалён после начала записи. Завершение отменено.`,
+      );
+    const stats = statSync(session.path);
+    if (
+      stats.mtimeMs !== session.originalMtimeMs ||
+      stats.size !== session.originalSize
+    )
+      throw new Error(
+        `«${session.path}» изменился после начала записи. Завершение отменено.`,
+      );
+  }
+
+  private cleanupExpiredStagedWrites(): void {
+    const expiresBefore = Date.now() - STAGED_WRITE_TTL_MS;
+    for (const session of this.stagedWrites.values())
+      if (session.createdAt < expiresBefore) this.removeStagedWrite(session);
+  }
+
+  private removeStagedWrite(session: StagedWriteSession): void {
+    this.stagedWrites.delete(session.id);
+    try {
+      if (existsSync(session.temporaryPath)) unlinkSync(session.temporaryPath);
+    } catch {
+      // Cleanup is best-effort; the target file is never affected.
+    }
   }
 
   private readForEdit(path: string, context: FileToolContext): string {
@@ -296,10 +519,7 @@ export class FileSystemService {
       throw new Error(
         `Файл «${path}» не был прочитан в этой задаче. Сначала вызовите fs_read — правка вслепую запрещена.`,
       );
-    if (
-      remembered.mtimeMs !== stats.mtimeMs ||
-      remembered.size !== stats.size
-    )
+    if (remembered.mtimeMs !== stats.mtimeMs || remembered.size !== stats.size)
       throw new Error(
         `Файл «${path}» изменился после чтения. Перечитайте его через fs_read, иначе правка затрёт чужие изменения.`,
       );
@@ -361,7 +581,10 @@ export class FileSystemService {
     const payload = encode(after, shape);
 
     mkdirSync(dirname(path), { recursive: true });
-    const temporary = join(dirname(path), `.${basename(path)}.${randomUUID()}.tmp`);
+    const temporary = join(
+      dirname(path),
+      `.${basename(path)}.${randomUUID()}.tmp`,
+    );
     writeFileSync(temporary, payload);
     renameSync(temporary, path);
 
@@ -423,7 +646,9 @@ function countOccurrences(source: string, fragment: string): number {
 function assertText(buffer: Buffer, path: string) {
   const probe = buffer.subarray(0, BINARY_PROBE_BYTES);
   if (probe.includes(0))
-    throw new Error(`«${path}» — двоичный файл, текстовые инструменты к нему неприменимы`);
+    throw new Error(
+      `«${path}» — двоичный файл, текстовые инструменты к нему неприменимы`,
+    );
 }
 
 function decode(buffer: Buffer): { text: string } {

@@ -14,7 +14,12 @@ export type FailureKind =
 export type FailoverDecision =
   | { kind: "retry"; delayMs: number }
   | { kind: "compact" }
-  | { kind: "switch"; modelId: string; reason: ModelSwitchReason; detail: string }
+  | {
+      kind: "switch";
+      modelId: string;
+      reason: ModelSwitchReason;
+      detail: string;
+    }
   | { kind: "fail" };
 
 export interface FailoverState {
@@ -52,7 +57,8 @@ export class ModelFailover {
 
     if (status === 401 || status === 403) return "auth";
     if (status === 429) return "rate_limit";
-    if (text.includes("rate limit") || text.includes("quota")) return "rate_limit";
+    if (text.includes("rate limit") || text.includes("quota"))
+      return "rate_limit";
     if (
       text.includes("context length") ||
       text.includes("context_length") ||
@@ -149,7 +155,9 @@ export class ModelFailover {
       .filter((model) => model.id !== modelId)
       .filter((model) => (this.degradedUntil.get(model.id) ?? 0) <= now)
       .filter((model) => model.maxCompletionTokens > current.maxOutput)
-      .sort((left, right) => right.maxCompletionTokens - left.maxCompletionTokens)
+      .sort(
+        (left, right) => right.maxCompletionTokens - left.maxCompletionTokens,
+      )
       .map((model) => model.id)[0];
   }
 

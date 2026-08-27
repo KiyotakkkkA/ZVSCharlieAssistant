@@ -111,7 +111,12 @@ export type RunEvent =
       output?: unknown;
       error?: string;
     }
-  | { type: "run.usage"; runId: string; conversationId: string; usage: RunUsage }
+  | {
+      type: "run.usage";
+      runId: string;
+      conversationId: string;
+      usage: RunUsage;
+    }
   | {
       type: "run.model.switched";
       runId: string;

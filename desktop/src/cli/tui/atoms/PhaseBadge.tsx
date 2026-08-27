@@ -12,6 +12,15 @@ const labels: Record<TuiPhase, string> = {
 };
 
 export function PhaseBadge({ phase }: { phase: TuiPhase }) {
-  const color = phase === "failed" ? tuiColors.danger : phase === "waiting-user" ? tuiColors.warning : tuiColors.cyan;
-  return <Text bold color={color}>{labels[phase]}</Text>;
+  const color =
+    phase === "failed"
+      ? tuiColors.danger
+      : phase === "waiting-user"
+        ? tuiColors.warning
+        : tuiColors.cyan;
+  return (
+    <Text bold color={color}>
+      {labels[phase]}
+    </Text>
+  );
 }

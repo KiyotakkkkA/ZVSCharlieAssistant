@@ -1,7 +1,10 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import type { Project, ProjectRepositoryState } from "../../../shared/models/project";
+import type {
+  Project,
+  ProjectRepositoryState,
+} from "../../../shared/models/project";
 import type { ProjectRepository } from "../../infrastructure/database/project.repository";
 
 const INSTRUCTION_FILES = ["AGENTS.md", "ZVS.md", "CLAUDE.md"];
@@ -54,10 +57,7 @@ export class ProjectContextService {
       sections.push(`Указания по проекту:\n${project.instructions.trim()}`);
 
     const file = this.instructionFile(project);
-    if (file)
-      sections.push(
-        `Инструкции из ${file.path}:\n${file.content}`,
-      );
+    if (file) sections.push(`Инструкции из ${file.path}:\n${file.content}`);
 
     return `\n\n${sections.join("\n\n")}`;
   }

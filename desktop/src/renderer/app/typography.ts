@@ -25,8 +25,7 @@ export function loadTypographyFromStorage(): TypographySettings {
   try {
     const value = JSON.parse(raw) as Partial<TypographySettings>;
     return {
-      fontFamily:
-        typeof value.fontFamily === "string" ? value.fontFamily : "",
+      fontFamily: typeof value.fontFamily === "string" ? value.fontFamily : "",
       size:
         value.size && value.size in ROOT_FONT_SIZES
           ? value.size

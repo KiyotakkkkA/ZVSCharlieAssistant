@@ -6,7 +6,10 @@ import { fileSuggestions, type CompletionItem } from "../autocomplete";
 import { commandSuggestions } from "../commands";
 import { Composer } from "../molecules/Composer";
 import { QuestionPanel } from "../molecules/QuestionPanel";
-import { SelectionPanel, type SelectionItem } from "../molecules/SelectionPanel";
+import {
+  SelectionPanel,
+  type SelectionItem,
+} from "../molecules/SelectionPanel";
 import { SuggestionPopup } from "../molecules/SuggestionPopup";
 import { WelcomePanel } from "../molecules/WelcomePanel";
 import {
@@ -99,10 +102,9 @@ export function ZvsTui(props: ZvsTuiProps) {
   const submit = (value: string) => {
     const trimmed = value.trim();
     if (!trimmed) return;
-    setHistory((items) => [
-      trimmed,
-      ...items.filter((item) => item !== trimmed),
-    ].slice(0, 200));
+    setHistory((items) =>
+      [trimmed, ...items.filter((item) => item !== trimmed)].slice(0, 200),
+    );
     setHistoryIndex(-1);
     if (state.question) props.onAnswer(state.question, [trimmed]);
     else props.onSubmit(trimmed);
@@ -141,7 +143,9 @@ export function ZvsTui(props: ZvsTuiProps) {
     }
     if (state.question && options.length) {
       if (key.upArrow)
-        setSelectedOption((value) => (value - 1 + options.length) % options.length);
+        setSelectedOption(
+          (value) => (value - 1 + options.length) % options.length,
+        );
       else if (key.downArrow)
         setSelectedOption((value) => (value + 1) % options.length);
       else if (input === " " && state.question.multiSelect) {
@@ -194,7 +198,7 @@ export function ZvsTui(props: ZvsTuiProps) {
     if (key.downArrow && historyIndex >= 0) {
       const next = historyIndex - 1;
       setHistoryIndex(next);
-      setDraft(next >= 0 ? history[next] ?? "" : "");
+      setDraft(next >= 0 ? (history[next] ?? "") : "");
       return;
     }
     if (key.leftArrow) {
@@ -237,7 +241,8 @@ export function ZvsTui(props: ZvsTuiProps) {
       if (key.shift) {
         dispatch({
           type: "draft.changed",
-          value: state.draft.slice(0, cursor) + "\n" + state.draft.slice(cursor),
+          value:
+            state.draft.slice(0, cursor) + "\n" + state.draft.slice(cursor),
         });
         setCursor((value) => value + 1);
         return;
@@ -250,7 +255,9 @@ export function ZvsTui(props: ZvsTuiProps) {
       const exactCommand = suggestions.find(
         (suggestion) => suggestion.value === state.draft.trim(),
       );
-      submit(exactCommand ? exactCommand.value : selected?.value ?? state.draft);
+      submit(
+        exactCommand ? exactCommand.value : (selected?.value ?? state.draft),
+      );
       return;
     }
     if (!key.ctrl && !key.meta && input) {
@@ -271,10 +278,7 @@ export function ZvsTui(props: ZvsTuiProps) {
   }, [props.inputPrompt, state.phase, state.question]);
 
   return (
-    <Box
-      flexDirection="column"
-      height={Math.max(1, rows)}
-    >
+    <Box flexDirection="column" height={Math.max(1, rows)}>
       <Box
         flexDirection="column"
         flexGrow={1}

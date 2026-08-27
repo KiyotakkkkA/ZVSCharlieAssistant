@@ -10,9 +10,7 @@ export function GlobalSettingsPanel() {
     <div className="flex h-full min-h-0">
       <GlobalSettingsSidebar />
       <ScrollArea key={activeFormId} className="min-w-0 flex-1">
-        <div className="p-6">
-          {ActiveForm ? <ActiveForm /> : null}
-        </div>
+        <div className="p-6">{ActiveForm ? <ActiveForm /> : null}</div>
       </ScrollArea>
     </div>
   );

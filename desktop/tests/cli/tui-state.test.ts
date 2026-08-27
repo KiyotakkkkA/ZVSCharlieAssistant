@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { UserQuestion } from "../../src/shared/models/user-question";
-import {
-  initialTuiState,
-  reduceTuiState,
-} from "../../src/cli/tui/state";
+import { initialTuiState, reduceTuiState } from "../../src/cli/tui/state";
 
 const question = {
   id: "question-1",
@@ -19,8 +16,14 @@ describe("TUI state machine", () => {
       id: "run-1",
       message: "Исправь тест",
     });
-    state = reduceTuiState(state, { type: "reasoning.delta", delta: "Сначала " });
-    state = reduceTuiState(state, { type: "reasoning.delta", delta: "проверю" });
+    state = reduceTuiState(state, {
+      type: "reasoning.delta",
+      delta: "Сначала ",
+    });
+    state = reduceTuiState(state, {
+      type: "reasoning.delta",
+      delta: "проверю",
+    });
     state = reduceTuiState(state, {
       type: "tool.changed",
       tool: {
@@ -39,7 +42,10 @@ describe("TUI state machine", () => {
         summary: "fs_edit · файл изменён",
       },
     });
-    state = reduceTuiState(state, { type: "reasoning.delta", delta: "Теперь перечитаю" });
+    state = reduceTuiState(state, {
+      type: "reasoning.delta",
+      delta: "Теперь перечитаю",
+    });
     state = reduceTuiState(state, {
       type: "tool.changed",
       tool: {
@@ -49,7 +55,10 @@ describe("TUI state machine", () => {
         summary: "fs_read · готово",
       },
     });
-    state = reduceTuiState(state, { type: "reasoning.delta", delta: "Всё корректно" });
+    state = reduceTuiState(state, {
+      type: "reasoning.delta",
+      delta: "Всё корректно",
+    });
     state = reduceTuiState(state, { type: "answer.delta", delta: "Готово" });
     state = reduceTuiState(state, { type: "run.completed", id: "run-1" });
 
@@ -73,8 +82,14 @@ describe("TUI state machine", () => {
       id: "run-1",
       message: "Начинай",
     });
-    state = reduceTuiState(state, { type: "draft.changed", value: "следом тесты" });
-    state = reduceTuiState(state, { type: "message.queued", value: state.draft });
+    state = reduceTuiState(state, {
+      type: "draft.changed",
+      value: "следом тесты",
+    });
+    state = reduceTuiState(state, {
+      type: "message.queued",
+      value: state.draft,
+    });
     state = reduceTuiState(state, { type: "question.requested", question });
 
     expect(state.queued).toEqual(["следом тесты"]);

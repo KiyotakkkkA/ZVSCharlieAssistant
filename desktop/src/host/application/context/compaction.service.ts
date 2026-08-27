@@ -121,9 +121,7 @@ export class CompactionService {
       modelId: request.summarizerModelId,
       messageCount: range.length,
       tokensBefore,
-      tokensAfter: estimatePartsTokens([
-        { type: "text", text: summary },
-      ]),
+      tokensAfter: estimatePartsTokens([{ type: "text", text: summary }]),
       reason: request.reason,
     });
     this.data.markCompacted(
@@ -145,5 +143,8 @@ function selectRange(
     if (message.role === "system") continue;
     candidates.push(message);
   }
-  return candidates.slice(0, Math.max(0, candidates.length - KEEP_TAIL_MESSAGES));
+  return candidates.slice(
+    0,
+    Math.max(0, candidates.length - KEEP_TAIL_MESSAGES),
+  );
 }

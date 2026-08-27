@@ -26,15 +26,20 @@ describe("encrypted data transfer container", () => {
   });
 
   it("rejects a wrong password and modified ciphertext", () => {
-    const encrypted = encryptJsonContainer({ value: "secret" }, "password-1", "1.0");
+    const encrypted = encryptJsonContainer(
+      { value: "secret" },
+      "password-1",
+      "1.0",
+    );
     expect(() => decryptJsonContainer(encrypted, "password-2")).toThrow(
       "Не удалось расшифровать файл",
     );
 
     const envelope = JSON.parse(encrypted) as { ciphertext: string };
     envelope.ciphertext = `${envelope.ciphertext[0] === "A" ? "B" : "A"}${envelope.ciphertext.slice(1)}`;
-    expect(() => decryptJsonContainer(JSON.stringify(envelope), "password-1"))
-      .toThrow("Не удалось расшифровать файл");
+    expect(() =>
+      decryptJsonContainer(JSON.stringify(envelope), "password-1"),
+    ).toThrow("Не удалось расшифровать файл");
   });
 
   it("supports an explicitly unencrypted container", () => {

@@ -154,7 +154,14 @@ export class ScenarioExecutionRepository {
         `INSERT INTO scenario_node_runs(id,execution_id,node_id,node_kind,attempt,status,input_json,started_at)
          VALUES(?,?,?,?,?,'running',?,CURRENT_TIMESTAMP)`,
       )
-      .run(id, executionId, nodeId, kind, attempt, JSON.stringify(input ?? null));
+      .run(
+        id,
+        executionId,
+        nodeId,
+        kind,
+        attempt,
+        JSON.stringify(input ?? null),
+      );
     return this.nodeRun(id)!;
   }
 

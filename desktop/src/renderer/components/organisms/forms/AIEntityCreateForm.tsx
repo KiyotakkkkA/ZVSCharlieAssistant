@@ -64,7 +64,8 @@ export const AIEntityCreateForm = observer(function AIEntityCreateForm({
       });
       toasts.success({
         title: "Генерация поставлена в очередь",
-        description: "Ход выполнения — на странице «Задачи», вкладка «Создание».",
+        description:
+          "Ход выполнения — на странице «Задачи», вкладка «Создание».",
       });
       onClose();
     } catch (error) {

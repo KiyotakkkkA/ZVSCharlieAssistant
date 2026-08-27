@@ -1,4 +1,8 @@
-import type { ScenarioEdge, ScenarioGraph, ScenarioNode } from "../../../../shared/scenario/graph";
+import type {
+  ScenarioEdge,
+  ScenarioGraph,
+  ScenarioNode,
+} from "../../../../shared/scenario/graph";
 
 const MAX_DEPTH = 12;
 
@@ -83,7 +87,8 @@ function incoming(
   seen.add(nodeId);
 
   const sources = graph.edges.filter(
-    (edge: ScenarioEdge) => edge.target === nodeId && edge.targetPort !== "knowledge",
+    (edge: ScenarioEdge) =>
+      edge.target === nodeId && edge.targetPort !== "knowledge",
   );
 
   let merged: Record<string, unknown> | undefined;

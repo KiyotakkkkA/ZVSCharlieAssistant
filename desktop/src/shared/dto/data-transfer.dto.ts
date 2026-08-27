@@ -19,9 +19,7 @@ export const exportDataDtoSchema = z
   .object({
     password: passwordSchema,
     encryption: z.enum(["password", "none"]),
-    entities: z
-      .array(dataTransferEntitySchema)
-      .min(1),
+    entities: z.array(dataTransferEntitySchema).min(1),
   })
   .superRefine((input, context) => {
     if (input.encryption === "password" && input.password.length < 8)
@@ -98,7 +96,9 @@ export function resolveDataTransferEntities(
       pending.push(dependency);
     }
   }
-  return dataTransferEntitySchema.options.filter((entity) => resolved.has(entity));
+  return dataTransferEntitySchema.options.filter((entity) =>
+    resolved.has(entity),
+  );
 }
 
 export function dataTransferRequiredBy(

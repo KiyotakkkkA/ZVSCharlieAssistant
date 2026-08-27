@@ -86,10 +86,7 @@ function createApp(
   isPackaged = true,
 ): Pick<
   App,
-  | "getAppPath"
-  | "getLoginItemSettings"
-  | "isPackaged"
-  | "setLoginItemSettings"
+  "getAppPath" | "getLoginItemSettings" | "isPackaged" | "setLoginItemSettings"
 > {
   return {
     isPackaged,

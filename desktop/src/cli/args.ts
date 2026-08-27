@@ -120,7 +120,11 @@ export function parseArgs(argv: string[]): CliOptions {
     }
   }
 
-  if (!options.prompt && options.command === "chat" && options.positional.length)
+  if (
+    !options.prompt &&
+    options.command === "chat" &&
+    options.positional.length
+  )
     options.prompt = options.positional.join(" ");
   if (!options.runId && options.command === "undo" && options.positional[0])
     options.runId = options.positional[0];

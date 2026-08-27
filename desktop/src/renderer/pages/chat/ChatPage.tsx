@@ -59,9 +59,8 @@ export const ChatPage = observer(function ChatPage() {
   const [editsOpen, setEditsOpen] = useState(false);
   const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
   const [projectFormOpen, setProjectFormOpen] = useState(false);
-  const [projectToDelete, setProjectToDelete] = useState<ChatProjectItem | null>(
-    null,
-  );
+  const [projectToDelete, setProjectToDelete] =
+    useState<ChatProjectItem | null>(null);
   const nextModelOptions = textProviderStore.enabledModels.map((item) => ({
     value: String(item.id),
   }));
@@ -179,7 +178,16 @@ export const ChatPage = observer(function ChatPage() {
           reasoning: "",
           error: null,
           toolCalls: [],
-          parts: [{ type: "summary", text: segment.summary, segmentId: segment.id, messageCount: segment.messageCount, tokensBefore: segment.tokensBefore, tokensAfter: segment.tokensAfter }],
+          parts: [
+            {
+              type: "summary",
+              text: segment.summary,
+              segmentId: segment.id,
+              messageCount: segment.messageCount,
+              tokensBefore: segment.tokensBefore,
+              tokensAfter: segment.tokensAfter,
+            },
+          ],
           scenarioRunId: null,
           status: "completed",
           usageLabel: `Сжато ${segment.messageCount} сообщений · ${segment.tokensBefore} → ${segment.tokensAfter} токенов`,
@@ -292,7 +300,10 @@ export const ChatPage = observer(function ChatPage() {
       });
   };
   return (
-    <section data-tour="chat-page" className="flex h-full min-h-0 overflow-hidden rounded-lg">
+    <section
+      data-tour="chat-page"
+      className="flex h-full min-h-0 overflow-hidden rounded-lg"
+    >
       <ChatSidebar
         dialogs={dialogs}
         activeDialogId={String(chatStore.activeConversationId ?? "")}
@@ -399,9 +410,7 @@ export const ChatPage = observer(function ChatPage() {
                 showCompacted={chatStore.showCompacted}
                 editsCount={chatStore.fileEdits.length}
                 switches={chatStore.modelSwitches}
-                modelLabel={(modelId) =>
-                  textProviderStore.modelLabel(modelId)
-                }
+                modelLabel={(modelId) => textProviderStore.modelLabel(modelId)}
                 onCompact={() => {
                   void chatStore
                     .compact(activeModelId)
@@ -469,9 +478,7 @@ export const ChatPage = observer(function ChatPage() {
               });
           }}
           onAttachmentRemove={(file) =>
-            setAttachments((current) =>
-              current.filter((item) => item !== file),
-            )
+            setAttachments((current) => current.filter((item) => item !== file))
           }
           onVectorStoreToggle={(id) =>
             setVectorStoreIds((current) =>
@@ -508,7 +515,8 @@ export const ChatPage = observer(function ChatPage() {
             <strong className="font-semibold text-main-50">
               {project.name}
             </strong>
-            » будет удалён. Диалоги останутся, но потеряют его указания и доступы.
+            » будет удалён. Диалоги останутся, но потеряют его указания и
+            доступы.
           </>
         )}
         onCancel={() => setProjectToDelete(null)}

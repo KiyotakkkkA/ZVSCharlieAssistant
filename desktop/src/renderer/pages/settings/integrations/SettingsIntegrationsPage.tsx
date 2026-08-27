@@ -197,7 +197,10 @@ export const SettingsIntegrationsPage = observer(
         .length + (selectedId === "draft" && draft.kind === kind ? 1 : 0);
 
     return (
-      <section data-tour="integrations-page" className="flex h-full min-h-0 flex-col p-4">
+      <section
+        data-tour="integrations-page"
+        className="flex h-full min-h-0 flex-col p-4"
+      >
         <PageHeader
           title="Интеграции"
           description="Использование возможностей внешних систем"
@@ -273,7 +276,10 @@ export const SettingsIntegrationsPage = observer(
               </div>
             </ScrollArea>
           </aside>
-          <div data-tour="integration-form" className="space-y-5 p-5 bg-main-800/40 rounded-xl w-full">
+          <div
+            data-tour="integration-form"
+            className="space-y-5 p-5 bg-main-800/40 rounded-xl w-full"
+          >
             <ProvidedEntityManageHeader
               model={draft}
               onTest={test}

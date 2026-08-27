@@ -16,10 +16,7 @@ import {
 } from "../atoms";
 import { ControlButton } from "../atoms/buttons";
 import { CompactToolStatus } from "./CompactToolStatus";
-import {
-  FileSystemToolStatus,
-  isFileSystemTool,
-} from "./FileSystemToolStatus";
+import { FileSystemToolStatus, isFileSystemTool } from "./FileSystemToolStatus";
 
 export interface ChatAssistantMsgBlockProps {
   text: string;
@@ -68,7 +65,7 @@ export const ChatAssistantMsgBlock = memo(function ChatAssistantMsgBlock({
           <Alert
             variant="danger"
             title="Не удалось получить ответ"
-            className="mb-4"
+            className="my-4"
           >
             {error}
           </Alert>
@@ -123,7 +120,11 @@ function AssistantContentTimeline({
             ))}
           </div>
         ) : null}
-        {!text && streaming ? <AssistantSkeleton /> : <AnswerBlock text={text} />}
+        {!text && streaming ? (
+          <AssistantSkeleton />
+        ) : (
+          <AnswerBlock text={text} />
+        )}
       </>
     );
   }
@@ -143,7 +144,9 @@ function AssistantContentTimeline({
         if (part.type === "text")
           return <AnswerBlock key={`text-${index}`} text={part.text} />;
         if (part.type === "summary")
-          return <AnswerBlock key={`summary-${part.segmentId}`} text={part.text} />;
+          return (
+            <AnswerBlock key={`summary-${part.segmentId}`} text={part.text} />
+          );
         if (part.type === "tool-call") {
           const liveCall = toolCalls.find(
             (call) => call.id === part.toolCallId,
@@ -152,7 +155,11 @@ function AssistantContentTimeline({
           const call: ChatToolCall = liveCall ?? {
             id: part.toolCallId,
             toolId: part.toolName,
-            status: result?.isError ? "failed" : result ? "completed" : "requested",
+            status: result?.isError
+              ? "failed"
+              : result
+                ? "completed"
+                : "requested",
             input: part.input,
             output: result?.output ?? null,
             error:
@@ -163,7 +170,9 @@ function AssistantContentTimeline({
                 ? String(result.output.error)
                 : null,
           };
-          return <ToolCallDetails key={`tool-${part.toolCallId}`} call={call} />;
+          return (
+            <ToolCallDetails key={`tool-${part.toolCallId}`} call={call} />
+          );
         }
         return null;
       })}
@@ -188,7 +197,10 @@ function ReasoningBlock({ text }: { text: string }) {
 function AnswerBlock({ text }: { text: string }) {
   if (!text) return null;
   return (
-    <MarkdownContent remarkPlugins={[remarkGfm]} components={markdownComponents}>
+    <MarkdownContent
+      remarkPlugins={[remarkGfm]}
+      components={markdownComponents}
+    >
       {text}
     </MarkdownContent>
   );
@@ -260,13 +272,19 @@ function ToolCallDetails({ call }: { call: ChatToolCall }) {
         />
       </CompactToolStatus>
     );
-  if (call.toolId === "reports_docx")
+  if (
+    call.toolId === "reports_docx" ||
+    call.toolId === "reports_begin" ||
+    call.toolId === "reports_add_blocks" ||
+    call.toolId === "reports_commit" ||
+    call.toolId === "reports_abort"
+  )
     return (
       <CompactToolStatus>
         <CompactToolStatus.Trigger
           icon={WordIcon}
-          running="Идёт создание отчета"
-          completed="Отчет DOCX создан"
+          running={reportToolLabel(call.toolId, false)}
+          completed={reportToolLabel(call.toolId, true)}
           status={call.status}
         />
       </CompactToolStatus>
@@ -328,6 +346,17 @@ function ToolCallDetails({ call }: { call: ChatToolCall }) {
       </Accordion.Content>
     </Accordion>
   );
+}
+
+function reportToolLabel(toolId: string, completed: boolean) {
+  const labels: Record<string, [string, string]> = {
+    reports_docx: ["Идёт создание отчёта", "Отчёт DOCX создан"],
+    reports_begin: ["Подготавливается отчёт", "Сборка отчёта начата"],
+    reports_add_blocks: ["Добавляется часть отчёта", "Часть отчёта добавлена"],
+    reports_commit: ["Собирается DOCX", "Отчёт DOCX создан"],
+    reports_abort: ["Отменяется сборка отчёта", "Сборка отчёта отменена"],
+  };
+  return labels[toolId]?.[completed ? 1 : 0] ?? toolId;
 }
 
 function AskUserDetails({ call }: { call: ChatToolCall }) {
