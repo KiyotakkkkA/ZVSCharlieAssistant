@@ -77,6 +77,7 @@ export type {
   VectorStoreDocument,
   VectorStoreSnapshot,
   VectorSearchResultItem,
+  VectorDirectoryPreview,
 } from "./vector-store.contract";
 export { VECTOR_STORE_IPC_CHANNELS } from "./vector-store.contract";
 

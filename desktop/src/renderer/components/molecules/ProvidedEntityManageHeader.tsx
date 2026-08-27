@@ -1,4 +1,5 @@
 import { Badge, Button } from "@kiyotakkkka/zvs-uikit-lib";
+import type { ReactNode } from "react";
 import { IntegrationKind, TextProviderKind } from "src/shared/dto";
 import {
   SvgIcon,
@@ -56,6 +57,7 @@ export const ProvidedEntityManageHeader = ({
   canSave = true,
   checking = false,
   saving = false,
+  actions,
 }: {
   description?: string;
   model: SettingsProvidedEntityManageModel | null;
@@ -65,6 +67,7 @@ export const ProvidedEntityManageHeader = ({
   canSave?: boolean;
   checking?: boolean;
   saving?: boolean;
+  actions?: ReactNode;
 }) => {
   if (model === null) return null;
 
@@ -116,6 +119,7 @@ export const ProvidedEntityManageHeader = ({
             onClick={() => void onSave()}
           />
         )}
+        {actions}
       </div>
     </div>
   );

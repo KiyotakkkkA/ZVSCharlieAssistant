@@ -8,14 +8,15 @@ import type {
   UpsertVectorStoreInput,
   VectorSearchInput,
 } from "../../../shared/dto";
-import type { VectorSearchResultItem } from "../../../shared/models/vector-store";
+import {
+  MAX_VECTOR_DOCUMENT_BYTES,
+  type VectorSearchResultItem,
+} from "../../../shared/models/vector-store";
 import type { VectorStoreRepository } from "../database/vector-store.repository";
 import { EmbeddingService } from "./embedding.service";
 
 const INGEST_CONCURRENCY = 2;
 const RRF_K = 60;
-
-export const MAX_DOCUMENT_BYTES = 64 * 1_048_576;
 
 export class VectorStoreService {
   private activeIngests = 0;
@@ -104,6 +105,23 @@ export class VectorStoreService {
     return this.snapshot();
   }
 
+  async clearDocuments(id: string) {
+    if (!this.data.store(id)) throw new Error("Векторное хранилище не найдено");
+    if (this.data.hasProcessingDocuments(id))
+      throw new Error("Дождитесь завершения обработки документов");
+    const db = await this.connect();
+    const table = tableName(id);
+    const tables = await this.tableNames();
+    if (tables.has(table)) {
+      await db.dropTable(table);
+      tables.delete(table);
+    }
+    this.ftsIndexPromises.delete(id);
+    await rm(join(this.filesDir, String(id)), { recursive: true, force: true });
+    this.data.clearDocuments(id);
+    return this.snapshot();
+  }
+
   async upload(inputs: UploadVectorDocumentInput[]) {
     const batchHashes = new Set<string>();
     for (const input of inputs) {
@@ -119,27 +137,44 @@ export class VectorStoreService {
       if (existing && existing.status !== "failed")
         throw new Error(`Документ «${input.fileName}» уже добавлен`);
     }
-    for (const input of inputs) this.enqueueIngest(input);
+    for (const input of inputs) {
+      const buffer = Buffer.from(input.data);
+      const hash = createHash("sha256").update(buffer).digest("hex");
+      const dir = join(this.filesDir, String(input.vectorStoreId));
+      const path = join(dir, `${hash}-${safeName(input.fileName)}`);
+      const id = this.data.createDocument(
+        input.vectorStoreId,
+        input.fileName,
+        input.mimeType,
+        path,
+        hash,
+        buffer.length,
+      );
+      this.data.setStoreState(input.vectorStoreId, "indexing");
+      this.enqueueIngest(() => this.ingest(input, id, path, buffer));
+    }
     return this.snapshot();
   }
 
-  private enqueueIngest(input: UploadVectorDocumentInput): void {
-    const task = () => this.ingest(input).catch(() => undefined);
-    if (this.activeIngests >= INGEST_CONCURRENCY) {
-      this.ingestQueue.push(task);
-      return;
-    }
-    this.activeIngests += 1;
-    void task().finally(() => {
-      this.activeIngests -= 1;
-      const next = this.ingestQueue.shift();
-      if (next) {
-        this.activeIngests += 1;
-        void next().finally(() => {
+  private enqueueIngest(task: () => Promise<void>): void {
+    this.ingestQueue.push(task);
+    this.drainIngestQueue();
+  }
+
+  private drainIngestQueue(): void {
+    while (
+      this.activeIngests < INGEST_CONCURRENCY &&
+      this.ingestQueue.length
+    ) {
+      const task = this.ingestQueue.shift()!;
+      this.activeIngests += 1;
+      void task()
+        .catch(() => undefined)
+        .finally(() => {
           this.activeIngests -= 1;
+          this.drainIngestQueue();
         });
-      }
-    });
+    }
   }
 
   async deleteDocument(id: string) {
@@ -230,26 +265,17 @@ export class VectorStoreService {
     return results.sort((a, b) => b.score - a.score).slice(0, limit);
   }
 
-  private async ingest(input: UploadVectorDocumentInput) {
+  private async ingest(
+    input: UploadVectorDocumentInput,
+    id: string,
+    path: string,
+    buffer: Buffer<ArrayBuffer>,
+  ) {
     const store = this.data.store(input.vectorStoreId);
     if (!store?.embeddingModelId)
       throw new Error("Сначала выберите embedding-модель");
-    if (!/\.(pdf|docx|txt)$/i.test(input.fileName))
-      throw new Error(`Формат ${input.fileName} не поддерживается`);
-    const buffer = Buffer.from(input.data);
-    const hash = createHash("sha256").update(buffer).digest("hex");
-    const dir = join(this.filesDir, String(store.id));
-    const path = join(dir, `${hash}-${safeName(input.fileName)}`);
-    const id = this.data.createDocument(
-      store.id,
-      input.fileName,
-      input.mimeType,
-      path,
-      hash,
-      buffer.length,
-    );
     try {
-      await mkdir(dir, { recursive: true });
+      await mkdir(join(this.filesDir, String(store.id)), { recursive: true });
       await writeFile(path, buffer);
       this.data.setStoreState(store.id, "indexing");
       this.data.updateDocument(id, "extracting", 15);
@@ -325,9 +351,9 @@ export class VectorStoreService {
       throw new Error(`Формат ${input.fileName} не поддерживается`);
     if (!input.data.byteLength)
       throw new Error(`Документ «${input.fileName}» пуст`);
-    if (input.data.byteLength > MAX_DOCUMENT_BYTES)
+    if (input.data.byteLength > MAX_VECTOR_DOCUMENT_BYTES)
       throw new Error(
-        `Документ «${input.fileName}» больше ${Math.round(MAX_DOCUMENT_BYTES / 1_048_576)} МБ`,
+        `Документ «${input.fileName}» больше ${Math.round(MAX_VECTOR_DOCUMENT_BYTES / 1_048_576)} МБ`,
       );
   }
 

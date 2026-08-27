@@ -15,10 +15,12 @@ import {
 import {
   Field,
   FileIcon,
+  FileDocumentMultipleIcon,
   Lead,
   ParameterLabel,
   SearchIcon,
   StorageIcon,
+  TrashIcon,
 } from "../../../atoms";
 import { ControlButton } from "../../../atoms/buttons";
 import { DangerModal } from "../../modals";
@@ -30,6 +32,7 @@ import {
 } from "../../../../stores";
 import type { VectorSearchResultItem } from "../../../../../ipc/contracts";
 import { ProvidedEntityManageHeader } from "@renderer/components/molecules";
+import { StorageVecdbMultipleIndexForm } from "./StorageVecdbMultipleIndexForm";
 
 type DetailTab = "documents" | "settings" | "search";
 interface StorageVecdbManageFormProps {
@@ -42,10 +45,19 @@ export const StorageVecdbManageForm = observer(function StorageVecdbManageForm({
   const toasts = useToasts();
   const [tab, setTab] = useState<DetailTab>("documents");
   const [query, setQuery] = useState("");
+  const [documentQuery, setDocumentQuery] = useState("");
   const [searching, setSearching] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [clearModalOpen, setClearModalOpen] = useState(false);
+  const [multipleIndexOpen, setMultipleIndexOpen] = useState(false);
+  const [directoryIndexing, setDirectoryIndexing] = useState(false);
   const [results, setResults] = useState<VectorSearchResultItem[]>([]);
   const [name, setName] = useState(model.name);
   const [description, setDescription] = useState(model.description);
+  const [embeddingModelId, setEmbeddingModelId] = useState(
+    model.embeddingModelId ? String(model.embeddingModelId) : "",
+  );
+  const [searchMode, setSearchMode] = useState(model.searchMode);
   const [chunkSize, setChunkSize] = useState(String(model.chunkSizeTokens));
   const [chunkOverlap, setChunkOverlap] = useState(
     String(model.chunkOverlapTokens),
@@ -53,6 +65,36 @@ export const StorageVecdbManageForm = observer(function StorageVecdbManageForm({
   const [documentToDelete, setDocumentToDelete] =
     useState<VectorDocument | null>(null);
   const documents = vectorStoreStore.documentsFor(model.id);
+  const normalizedDocumentQuery = documentQuery.trim().toLocaleLowerCase();
+  const visibleDocuments = normalizedDocumentQuery
+    ? documents.filter((document) =>
+        document.fileName.toLocaleLowerCase().includes(normalizedDocumentQuery),
+      )
+    : documents;
+  const directoryBatchDocuments = vectorStoreStore.activeDirectoryDocuments(
+    model.id,
+  );
+  const processingDocuments = vectorStoreStore.processingDocuments(model.id);
+  const visibleBackgroundDocuments = directoryBatchDocuments.length
+    ? directoryBatchDocuments
+    : processingDocuments;
+  const completedDirectoryDocuments = visibleBackgroundDocuments.filter(
+    (document) => ["ready", "failed"].includes(document.status),
+  ).length;
+  const backgroundIndexing =
+    directoryIndexing ||
+    model.status === "indexing" ||
+    processingDocuments.length > 0;
+  const directoryProgress = visibleBackgroundDocuments.length
+    ? Math.round(
+        visibleBackgroundDocuments.reduce(
+          (sum, document) => sum + document.progress,
+          0,
+        ) / visibleBackgroundDocuments.length,
+      )
+    : directoryIndexing
+      ? 2
+      : 0;
   const embeddingModels = useMemo(
     () =>
       textProviderStore.models.filter((item) => {
@@ -67,20 +109,76 @@ export const StorageVecdbManageForm = observer(function StorageVecdbManageForm({
       }),
     [textProviderStore.models, textProviderStore.providers],
   );
-  const persist = (patch: Partial<VectorStoreModel>) => {
-    void vectorStoreStore.updateStore(model.id, patch).catch((error) =>
+  const parsedChunkSize = Number(chunkSize);
+  const parsedChunkOverlap = Number(chunkOverlap);
+  const valid =
+    name.trim().length > 0 &&
+    Number.isInteger(parsedChunkSize) &&
+    parsedChunkSize >= 100 &&
+    parsedChunkSize <= 4096 &&
+    Number.isInteger(parsedChunkOverlap) &&
+    parsedChunkOverlap >= 0 &&
+    parsedChunkOverlap <= parsedChunkSize / 2;
+  const dirty =
+    name.trim() !== model.name ||
+    description !== model.description ||
+    embeddingModelId !== (model.embeddingModelId ?? "") ||
+    searchMode !== model.searchMode ||
+    parsedChunkSize !== model.chunkSizeTokens ||
+    parsedChunkOverlap !== model.chunkOverlapTokens;
+  const save = async () => {
+    if (!valid || !dirty) return;
+    setSaving(true);
+    try {
+      const normalizedName = name.trim();
+      await vectorStoreStore.updateStore(model.id, {
+        name: normalizedName,
+        description,
+        embeddingModelId: embeddingModelId || null,
+        searchMode,
+        chunkSizeTokens: parsedChunkSize,
+        chunkOverlapTokens: parsedChunkOverlap,
+      });
+      setName(normalizedName);
+      toasts.success({
+        title: "Настройки сохранены",
+        description: "Векторное хранилище обновлено.",
+      });
+    } catch (error) {
       toasts.danger({
-        title: "Не удалось сохранить настройки",
-        description: error instanceof Error ? error.message : String(error),
-      }),
-    );
+        title: "Не удалось сохранить",
+        description:
+          error instanceof Error ? error.message : "Неизвестная ошибка",
+      });
+    } finally {
+      setSaving(false);
+    }
   };
   return (
     <div data-tour="knowledge-form" className="flex h-full min-h-0 flex-col">
       <header className="shrink-0 px-5 pt-5">
         <ProvidedEntityManageHeader
-          model={{ ...model, kind: "vecstore" }}
-          description={model.description || "Описание не задано"}
+          model={{
+            ...model,
+            name: name.trim() || model.name,
+            kind: "vecstore",
+          }}
+          description={description || "Описание не задано"}
+          onSave={save}
+          canSave={valid && dirty}
+          saving={saving}
+          actions={
+            <Button
+              variant="danger"
+              rounded="rounded-full"
+              className="px-3"
+              disabled={!documents.length || backgroundIndexing}
+              onClick={() => setClearModalOpen(true)}
+            >
+              <TrashIcon className="size-4" />
+              Очистить хранилище
+            </Button>
+          }
         />
         <div data-tour="knowledge-tabs">
           <Tabs
@@ -97,6 +195,36 @@ export const StorageVecdbManageForm = observer(function StorageVecdbManageForm({
       <ScrollArea className="min-h-0 flex-1">
         {tab === "documents" ? (
           <div data-tour="knowledge-documents" className="space-y-4 p-5">
+            <div className="flex justify-end">
+              <Button
+                variant="secondary"
+                rounded="rounded-full"
+                disabled={backgroundIndexing}
+                className="px-2"
+                onClick={() => setMultipleIndexOpen(true)}
+              >
+                <FileDocumentMultipleIcon className="size-4" />
+                Множественная загрузка
+              </Button>
+            </div>
+            <StorageSummary
+              model={model}
+              documents={documents}
+              embeddingModelLabel={
+                model.embeddingModelId
+                  ? textProviderStore.modelLabel(model.embeddingModelId)
+                  : "Не выбрана"
+              }
+              backgroundIndexing={backgroundIndexing}
+              progress={directoryProgress}
+              progressLabel={
+                visibleBackgroundDocuments.length
+                  ? directoryBatchDocuments.length
+                    ? `Фоновая индексация · ${completedDirectoryDocuments} из ${visibleBackgroundDocuments.length}`
+                    : `Фоновая индексация · ${processingDocuments.length} в обработке`
+                  : "Подготовка файлов к индексации"
+              }
+            />
             <InputDropZone
               files={[]}
               multiple
@@ -128,14 +256,42 @@ export const StorageVecdbManageForm = observer(function StorageVecdbManageForm({
               }}
             />
             {documents.length ? (
+              <div className="flex items-center gap-3">
+                <InputSmall
+                  preset="search"
+                  value={documentQuery}
+                  placeholder="Найти документ по названию..."
+                  className="w-full max-w-xl"
+                  onChange={(event) => setDocumentQuery(event.target.value)}
+                />
+                {documentQuery.trim() ? (
+                  <span className="shrink-0 text-xs tabular-nums text-main-500">
+                    Найдено: {visibleDocuments.length}
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
+            {documents.length ? (
               <div className="space-y-2">
-                {documents.map((document) => (
-                  <DocumentRow
-                    key={document.id}
-                    document={document}
-                    onDelete={() => setDocumentToDelete(document)}
-                  />
-                ))}
+                {visibleDocuments.length ? (
+                  visibleDocuments.map((document) => (
+                    <DocumentRow
+                      key={document.id}
+                      document={document}
+                      onDelete={() => setDocumentToDelete(document)}
+                    />
+                  ))
+                ) : (
+                  <div className="rounded-xl border border-dashed border-main-700 px-4 py-8 text-center">
+                    <SearchIcon className="mx-auto size-5 text-main-500" />
+                    <p className="mt-2 text-sm text-main-300">
+                      Документы не найдены
+                    </p>
+                    <p className="mt-1 text-xs text-main-500">
+                      Измените поисковый запрос.
+                    </p>
+                  </div>
+                )}
               </div>
             ) : null}
           </div>
@@ -159,14 +315,6 @@ export const StorageVecdbManageForm = observer(function StorageVecdbManageForm({
                 <InputSmall
                   value={name}
                   onChange={(event) => setName(event.target.value)}
-                  onBlur={() => {
-                    const value = name.trim();
-                    if (!value) {
-                      setName(model.name);
-                      return;
-                    }
-                    if (value !== model.name) persist({ name: value });
-                  }}
                 />
               </Field>
               <Field
@@ -182,10 +330,6 @@ export const StorageVecdbManageForm = observer(function StorageVecdbManageForm({
                     textarea: "resize-none",
                   }}
                   onChange={(event) => setDescription(event.target.value)}
-                  onBlur={() => {
-                    if (description !== model.description)
-                      persist({ description });
-                  }}
                 />
               </Field>
             </div>
@@ -203,14 +347,8 @@ export const StorageVecdbManageForm = observer(function StorageVecdbManageForm({
                 className="md:col-span-2"
               >
                 <Select
-                  value={
-                    model.embeddingModelId ? String(model.embeddingModelId) : ""
-                  }
-                  onChange={(value) =>
-                    persist({
-                      embeddingModelId: value,
-                    })
-                  }
+                  value={embeddingModelId}
+                  onChange={setEmbeddingModelId}
                   className="w-full"
                   disabled={documents.length > 0}
                   options={embeddingModels.map((item) => ({
@@ -247,19 +385,6 @@ export const StorageVecdbManageForm = observer(function StorageVecdbManageForm({
                   disabled={documents.length > 0}
                   value={chunkSize}
                   onChange={(event) => setChunkSize(event.target.value)}
-                  onBlur={() => {
-                    const value = Number(chunkSize);
-                    if (
-                      !Number.isInteger(value) ||
-                      value < 100 ||
-                      value > 4096
-                    ) {
-                      setChunkSize(String(model.chunkSizeTokens));
-                      return;
-                    }
-                    if (value !== model.chunkSizeTokens)
-                      persist({ chunkSizeTokens: value });
-                  }}
                 />
               </Field>
               <Field
@@ -275,19 +400,6 @@ export const StorageVecdbManageForm = observer(function StorageVecdbManageForm({
                   disabled={documents.length > 0}
                   value={chunkOverlap}
                   onChange={(event) => setChunkOverlap(event.target.value)}
-                  onBlur={() => {
-                    const value = Number(chunkOverlap);
-                    if (
-                      !Number.isInteger(value) ||
-                      value < 0 ||
-                      value > Number(chunkSize) / 2
-                    ) {
-                      setChunkOverlap(String(model.chunkOverlapTokens));
-                      return;
-                    }
-                    if (value !== model.chunkOverlapTokens)
-                      persist({ chunkOverlapTokens: value });
-                  }}
                 />
               </Field>
               <Field
@@ -299,11 +411,9 @@ export const StorageVecdbManageForm = observer(function StorageVecdbManageForm({
                 className="md:col-span-2 w-fit"
               >
                 <Select
-                  value={model.searchMode}
+                  value={searchMode}
                   onChange={(value) =>
-                    persist({
-                      searchMode: value as "vector" | "hybrid",
-                    })
+                    setSearchMode(value as "vector" | "hybrid")
                   }
                   options={[
                     { value: "vector", label: "Векторный" },
@@ -320,13 +430,13 @@ export const StorageVecdbManageForm = observer(function StorageVecdbManageForm({
               <Alert
                 variant="info"
                 title={
-                  model.searchMode === "vector"
+                  searchMode === "vector"
                     ? "Векторный поиск"
                     : "Гибридный поиск"
                 }
                 className="md:col-span-2"
               >
-                {model.searchMode === "vector"
+                {searchMode === "vector"
                   ? "Запрос преобразуется выбранной embedding-моделью, после чего в ответ попадают ближайшие по смыслу фрагменты. Точное совпадение слов не обязательно."
                   : "Одновременно выполняется семантический и полнотекстовый поиск, затем результаты объединяются и ранжируются. Это повышает точность для названий, терминов, артикулов и точных формулировок."}
               </Alert>
@@ -408,6 +518,51 @@ export const StorageVecdbManageForm = observer(function StorageVecdbManageForm({
           </div>
         )}
       </ScrollArea>
+      <StorageVecdbMultipleIndexForm
+        open={multipleIndexOpen}
+        onClose={() => setMultipleIndexOpen(false)}
+        onSubmit={(directoryPath) => {
+          setDirectoryIndexing(true);
+          void vectorStoreStore
+            .addDirectory(model.id, directoryPath)
+            .then((count) =>
+              toasts.success({
+                title: "Индексация завершена",
+                description: `Обработано документов: ${count}.`,
+              }),
+            )
+            .catch((error) =>
+              toasts.danger({
+                title: "Не удалось проиндексировать папку",
+                description:
+                  error instanceof Error ? error.message : String(error),
+              }),
+            )
+            .finally(() => setDirectoryIndexing(false));
+        }}
+      />
+      <DangerModal
+        open={clearModalOpen}
+        model={model}
+        title="Очистить хранилище?"
+        description={
+          <>
+            Все документы и созданные для них фрагменты будут удалены. Само
+            хранилище «
+            <strong className="font-semibold text-main-50">{model.name}</strong>
+            » и его настройки сохранятся. Это действие нельзя отменить.
+          </>
+        }
+        confirmLabel="Очистить"
+        onCancel={() => setClearModalOpen(false)}
+        onConfirm={async () => {
+          await vectorStoreStore.clearDocuments(model.id);
+          setDocumentQuery("");
+          setResults([]);
+          setClearModalOpen(false);
+          toasts.success({ title: "Хранилище очищено" });
+        }}
+      />
       <DangerModal
         open={documentToDelete !== null}
         model={documentToDelete}
@@ -492,6 +647,162 @@ function DocumentRow({
       />
     </div>
   );
+}
+
+function StorageSummary({
+  model,
+  documents,
+  embeddingModelLabel,
+  backgroundIndexing,
+  progress,
+  progressLabel,
+}: {
+  model: VectorStoreModel;
+  documents: VectorDocument[];
+  embeddingModelLabel: string;
+  backgroundIndexing: boolean;
+  progress: number;
+  progressLabel: string;
+}) {
+  const totalBytes = documents.reduce(
+    (sum, document) => sum + document.size,
+    0,
+  );
+  const totalChunks = documents.reduce(
+    (sum, document) => sum + document.chunkCount,
+    0,
+  );
+  const readyDocuments = documents.filter(
+    (document) => document.status === "ready",
+  ).length;
+  const failedDocuments = documents.filter(
+    (document) => document.status === "failed",
+  ).length;
+  const processingDocuments =
+    documents.length - readyDocuments - failedDocuments;
+  const folderPaths = collectFolderPaths(documents);
+  const topLevelFolders = [
+    ...new Set([...folderPaths].map((folderPath) => folderPath.split("/")[0]!)),
+  ];
+  const status = storageStatus(backgroundIndexing ? "indexing" : model.status);
+
+  return (
+    <section className="rounded-2xl bg-main-800/45 p-4 ring-1 ring-main-700/35">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-main-100">
+              Состояние хранилища
+            </h3>
+            <span
+              className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${status.className}`}
+            >
+              {status.label}
+            </span>
+          </div>
+          <p className="mt-1 text-xs text-main-500">{status.description}</p>
+        </div>
+      </div>
+
+      <dl className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4">
+        <SummaryMetric
+          label="Размер документов"
+          value={formatBytes(totalBytes)}
+        />
+        <SummaryMetric
+          label="Документы"
+          value={`${readyDocuments} из ${documents.length}`}
+          hint={
+            failedDocuments
+              ? `Ошибок: ${failedDocuments}`
+              : processingDocuments
+                ? `В обработке: ${processingDocuments}`
+                : "Готовы к поиску"
+          }
+        />
+        <SummaryMetric
+          label="Папки"
+          value={String(folderPaths.size)}
+          hint={
+            topLevelFolders.length
+              ? topLevelFolders.slice(0, 3).join(", ")
+              : "Файлы в корне"
+          }
+        />
+        <SummaryMetric label="Фрагменты" value={String(totalChunks)} />
+      </dl>
+
+      {backgroundIndexing ? (
+        <ProgressBar
+          className="mt-4 border-t border-main-700/35 pt-4"
+          value={progress}
+          max={100}
+          showValue
+          label={progressLabel}
+        />
+      ) : null}
+    </section>
+  );
+}
+
+function SummaryMetric({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+}) {
+  return (
+    <div className="min-w-0 rounded-xl bg-main-900/25 p-3">
+      <dt className="text-[11px] text-main-500">{label}</dt>
+      <dd className="mt-1 text-lg font-semibold tabular-nums text-main-100">
+        {value}
+      </dd>
+      {hint ? (
+        <p className="mt-1 truncate text-[11px] text-main-500" title={hint}>
+          {hint}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function storageStatus(status: VectorStoreModel["status"]) {
+  if (status === "indexing")
+    return {
+      label: "Индексация",
+      description: "Фоновые задачи обрабатывают документы.",
+      className: "bg-warning-medium/10 text-warning-light",
+    };
+  if (status === "ready")
+    return {
+      label: "Готово",
+      description: "Хранилище настроено и доступно для поиска.",
+      className: "bg-success-medium/10 text-success-light",
+    };
+  if (status === "degraded")
+    return {
+      label: "Есть ошибки",
+      description: "Часть документов не удалось обработать.",
+      className: "bg-danger-medium/10 text-danger-light",
+    };
+  return {
+    label: "Не настроено",
+    description: "Выберите embedding-модель перед загрузкой документов.",
+    className: "bg-main-700/60 text-main-400",
+  };
+}
+
+function collectFolderPaths(documents: VectorDocument[]) {
+  const folders = new Set<string>();
+  for (const document of documents) {
+    const parts = document.fileName.replaceAll("\\", "/").split("/");
+    for (let index = 1; index < parts.length; index += 1)
+      folders.add(parts.slice(0, index).join("/"));
+  }
+  return folders;
 }
 
 function formatBytes(value: number) {

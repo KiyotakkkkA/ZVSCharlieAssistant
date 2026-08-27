@@ -42,6 +42,7 @@ import {
   VECTOR_STORE_IPC_CHANNELS,
   type VectorStoreSnapshot,
   type VectorSearchResultItem,
+  type VectorDirectoryPreview,
   TASKS_IPC_CHANNELS,
   type AgentTaskRun,
   TERMINAL_POLICY_IPC_CHANNELS,
@@ -87,6 +88,7 @@ import type {
   UpsertTextProviderInput,
   UpsertVectorStoreInput,
   UploadVectorDocumentInput,
+  UploadVectorDirectoryInput,
   VectorSearchInput,
   UpsertIntegrationProfileInput,
   ExportDataInput,
@@ -499,6 +501,11 @@ export const desktopApi: DesktopApi = {
         VECTOR_STORE_IPC_CHANNELS.deleteStore,
         id,
       ) as Promise<VectorStoreSnapshot>,
+    clearDocuments: (id: string): Promise<VectorStoreSnapshot> =>
+      ipcRenderer.invoke(
+        VECTOR_STORE_IPC_CHANNELS.clearDocuments,
+        id,
+      ) as Promise<VectorStoreSnapshot>,
     uploadDocuments: (
       input: UploadVectorDocumentInput[],
     ): Promise<VectorStoreSnapshot> =>
@@ -515,6 +522,20 @@ export const desktopApi: DesktopApi = {
       ipcRenderer.invoke(VECTOR_STORE_IPC_CHANNELS.search, input) as Promise<
         VectorSearchResultItem[]
       >,
+    selectDirectory: (
+      mode: "documents" | "code",
+    ): Promise<VectorDirectoryPreview | null> =>
+      ipcRenderer.invoke(
+        VECTOR_STORE_IPC_CHANNELS.selectDirectory,
+        mode,
+      ) as Promise<VectorDirectoryPreview | null>,
+    uploadDirectory: (
+      input: UploadVectorDirectoryInput,
+    ): Promise<VectorStoreSnapshot> =>
+      ipcRenderer.invoke(
+        VECTOR_STORE_IPC_CHANNELS.uploadDirectory,
+        input,
+      ) as Promise<VectorStoreSnapshot>,
   },
   chat: {
     getSnapshot: (id?: string): Promise<ChatSnapshot> =>

@@ -170,6 +170,21 @@ export class VectorStoreRepository {
   deleteDocument(id: string) {
     this.db.prepare("DELETE FROM vector_store_documents WHERE id=?").run(id);
   }
+  clearDocuments(storeId: string) {
+    const store = this.store(storeId);
+    if (!store) throw new Error("Векторное хранилище не найдено");
+    const clear = this.db.transaction(() => {
+      this.db
+        .prepare("DELETE FROM vector_store_documents WHERE vector_store_id=?")
+        .run(storeId);
+      this.db
+        .prepare(
+          "UPDATE vector_stores SET status=?,vector_dimension=NULL,updated_at=CURRENT_TIMESTAMP WHERE id=?",
+        )
+        .run(store.embeddingModelId ? "ready" : "disabled", storeId);
+    });
+    clear();
+  }
   updateDocument(
     id: string,
     status: VectorDocumentStatus,

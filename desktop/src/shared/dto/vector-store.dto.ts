@@ -17,6 +17,10 @@ export const uploadVectorDocumentDtoSchema = z.object({
   mimeType: z.string(),
   data: z.instanceof(ArrayBuffer),
 });
+export const uploadVectorDirectoryDtoSchema = z.object({
+  vectorStoreId: entityIdSchema,
+  directoryPath: z.string().trim().min(1).max(4096),
+});
 export const vectorSearchDtoSchema = z.object({
   vectorStoreIds: z.array(entityIdSchema),
   query: z.string(),
@@ -28,5 +32,8 @@ export type VectorSearchMode = z.infer<typeof vectorSearchModeSchema>;
 export type UpsertVectorStoreInput = z.infer<typeof upsertVectorStoreDtoSchema>;
 export type UploadVectorDocumentInput = z.infer<
   typeof uploadVectorDocumentDtoSchema
+>;
+export type UploadVectorDirectoryInput = z.infer<
+  typeof uploadVectorDirectoryDtoSchema
 >;
 export type VectorSearchInput = z.infer<typeof vectorSearchDtoSchema>;

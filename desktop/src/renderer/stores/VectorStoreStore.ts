@@ -15,18 +15,20 @@ import {
 export type VectorStoreModel = VectorStoreConfig;
 export type VectorDocument = VectorStoreDocument;
 
-class VectorStoreStore {
+export class VectorStoreStore {
   stores: VectorStoreConfig[] = [];
   documents: VectorStoreDocument[] = [];
   initialized = false;
   loading = false;
   selectedStoreId: string | null = null;
+  activeDirectoryBatches = new Map<string, string[]>();
   private readonly updateVersions = new Map<string, number>();
+  private processingMonitor?: Promise<void>;
 
   constructor() {
-    makeAutoObservable<this, "updateVersions">(
+    makeAutoObservable<this, "updateVersions" | "processingMonitor">(
       this,
-      { updateVersions: false },
+      { updateVersions: false, processingMonitor: false },
       { autoBind: true },
     );
   }
@@ -48,6 +50,7 @@ class VectorStoreStore {
     try {
       const snapshot = await window.desktop.vectorStores.getSnapshot();
       runInAction(() => this.apply(snapshot));
+      this.ensureProcessingMonitor();
     } finally {
       runInAction(() => {
         this.loading = false;
@@ -61,6 +64,18 @@ class VectorStoreStore {
 
   documentsFor(storeId: string) {
     return this.documents.filter((item) => item.vectorStoreId === storeId);
+  }
+
+  activeDirectoryDocuments(storeId: string) {
+    const ids = new Set(this.activeDirectoryBatches.get(storeId) ?? []);
+    return this.documents.filter((item) => ids.has(item.id));
+  }
+
+  processingDocuments(storeId: string) {
+    return this.documents.filter(
+      (item) =>
+        item.vectorStoreId === storeId && isProcessingStatus(item.status),
+    );
   }
 
   async createStore() {
@@ -121,6 +136,11 @@ class VectorStoreStore {
     runInAction(() => this.apply(snapshot));
   }
 
+  async clearDocuments(id: string) {
+    const snapshot = await window.desktop.vectorStores.clearDocuments(id);
+    runInAction(() => this.apply(snapshot));
+  }
+
   async addFiles(storeId: string, files: File[]) {
     const input = await Promise.all(
       files.map(async (file) => ({
@@ -130,23 +150,35 @@ class VectorStoreStore {
         data: await file.arrayBuffer(),
       })),
     );
-    const previousStatuses = new Map(
-      this.documents.map((item) => [item.id, item.status]),
-    );
+    const previousStatuses = this.documentStatuses();
     const snapshot = await window.desktop.vectorStores.uploadDocuments(input);
-    const uploadedIds = snapshot.documents
-      .filter((item) => {
-        const previousStatus = previousStatuses.get(item.id);
-        return (
-          previousStatus === undefined ||
-          (previousStatus === "failed" && item.status !== "failed")
-        );
-      })
-      .map((item) => item.id);
-    runInAction(() => this.apply(snapshot));
-    if (!uploadedIds.length)
-      throw new Error("Документы не были поставлены на обработку");
+    const uploadedIds = this.applyUploadedSnapshot(
+      storeId,
+      previousStatuses,
+      snapshot,
+    );
     await this.pollUntilSettled(uploadedIds);
+    return uploadedIds.length;
+  }
+
+  async addDirectory(storeId: string, directoryPath: string) {
+    const previousStatuses = this.documentStatuses();
+    const snapshot = await window.desktop.vectorStores.uploadDirectory({
+      vectorStoreId: storeId,
+      directoryPath,
+    });
+    const uploadedIds = this.applyUploadedSnapshot(
+      storeId,
+      previousStatuses,
+      snapshot,
+    );
+    runInAction(() => this.activeDirectoryBatches.set(storeId, uploadedIds));
+    try {
+      await this.pollUntilSettled(uploadedIds);
+      return uploadedIds.length;
+    } finally {
+      runInAction(() => this.activeDirectoryBatches.delete(storeId));
+    }
   }
 
   async deleteDocument(id: string) {
@@ -163,8 +195,13 @@ class VectorStoreStore {
   private async pollUntilSettled(documentIds: string[]) {
     for (let attempt = 0; attempt < 300; attempt++) {
       await new Promise((resolve) => setTimeout(resolve, 1000));
-      const documents =
-        await window.desktop.vectorStores.getDocuments(documentIds);
+      const documents = (
+        await Promise.all(
+          chunk(documentIds, 100).map((ids) =>
+            window.desktop.vectorStores.getDocuments(ids),
+          ),
+        )
+      ).flat();
       runInAction(() => {
         const updates = new Map(documents.map((item) => [item.id, item]));
         this.documents = this.documents.map(
@@ -190,6 +227,93 @@ class VectorStoreStore {
     }
     throw new Error("Превышено время ожидания обработки документов");
   }
+
+  private documentStatuses() {
+    return new Map(this.documents.map((item) => [item.id, item.status]));
+  }
+
+  private applyUploadedSnapshot(
+    storeId: string,
+    previousStatuses: Map<string, VectorStoreDocument["status"]>,
+    snapshot: VectorStoreSnapshot,
+  ) {
+    const uploadedIds = snapshot.documents
+      .filter((item) => {
+        if (item.vectorStoreId !== storeId) return false;
+        const previousStatus = previousStatuses.get(item.id);
+        return (
+          previousStatus === undefined ||
+          (previousStatus === "failed" && item.status !== "failed")
+        );
+      })
+      .map((item) => item.id);
+    runInAction(() => this.apply(snapshot));
+    if (!uploadedIds.length)
+      throw new Error("Документы не были поставлены на обработку");
+    return uploadedIds;
+  }
+
+  private ensureProcessingMonitor() {
+    if (this.processingMonitor || !this.documents.some(isProcessingDocument))
+      return;
+    const monitor = this.monitorProcessingDocuments();
+    this.processingMonitor = monitor;
+    void monitor.finally(() => {
+      if (this.processingMonitor === monitor) this.processingMonitor = undefined;
+      if (this.documents.some(isProcessingDocument))
+        this.ensureProcessingMonitor();
+    });
+  }
+
+  private async monitorProcessingDocuments() {
+    while (this.documents.some(isProcessingDocument)) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const ids = this.documents
+        .filter(isProcessingDocument)
+        .map((document) => document.id);
+      if (!ids.length) return;
+      try {
+        const documents = (
+          await Promise.all(
+            chunk(ids, 100).map((part) =>
+              window.desktop.vectorStores.getDocuments(part),
+            ),
+          )
+        ).flat();
+        runInAction(() => {
+          const updates = new Map(documents.map((item) => [item.id, item]));
+          this.documents = this.documents.map(
+            (item) => updates.get(item.id) ?? item,
+          );
+        });
+        if (
+          documents.length !== ids.length ||
+          !documents.some(isProcessingDocument)
+        ) {
+          const snapshot = await window.desktop.vectorStores.getSnapshot();
+          runInAction(() => this.apply(snapshot));
+        }
+      } catch {
+        // The main process owns the task; keep retrying while its last known
+        // state is still active (for example after a transient IPC failure).
+      }
+    }
+  }
+}
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const result: T[][] = [];
+  for (let index = 0; index < items.length; index += size)
+    result.push(items.slice(index, index + size));
+  return result;
+}
+
+function isProcessingDocument(document: VectorStoreDocument) {
+  return isProcessingStatus(document.status);
+}
+
+function isProcessingStatus(status: VectorStoreDocument["status"]) {
+  return status === "queued" || status === "extracting" || status === "embedding";
 }
 
 export const vectorStoreStore = new VectorStoreStore();
