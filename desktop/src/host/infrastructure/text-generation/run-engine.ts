@@ -1,8 +1,10 @@
 import { streamText, stepCountIs, type ModelMessage, type ToolSet } from "ai";
 import type { RunEvent } from "../../../shared/models/chat";
+import type { Project } from "../../../shared/models/project";
 import type {
   ChatMessageContentPart,
   ChatToolCallPart,
+  ContextWindowBreakdownEntry,
   JsonValue,
   RunUsage,
   StartRunInput,
@@ -27,6 +29,7 @@ import {
   resolveContextBudget,
   type ContextBudget,
 } from "../../application/context/context-budget";
+import { estimateTextTokens } from "../../application/context/token-estimator";
 import { newEntityId } from "../database/entity-id";
 import {
   generationLimitKind,
@@ -50,10 +53,7 @@ const MAX_ATTACHMENT_CONTEXT_CHARS = 48_000;
 export class RunEngine {
   private controllers = new Map<string, AbortController>();
   private scenarioRunIds = new Set<string>();
-  private profileBlocks = new Map<
-    string,
-    { updatedAt: string; block: string }
-  >();
+  private profileBlocks = new Map<string, string>();
   constructor(
     private readonly data: ChatRepository,
     private readonly providers: ProviderRegistry,
@@ -70,12 +70,10 @@ export class RunEngine {
 
   private profileBlock(conversationId: string, mode: string): string {
     if (mode !== "chat" && mode !== "planner") return "";
-    const updatedAt = this.userProfile.get().updatedAt;
     const cached = this.profileBlocks.get(conversationId);
-    if (cached !== undefined && cached.updatedAt === updatedAt)
-      return cached.block;
+    if (cached !== undefined) return cached;
     const block = this.userProfile.promptBlock();
-    this.profileBlocks.set(conversationId, { updatedAt, block });
+    this.profileBlocks.set(conversationId, block);
     return block;
   }
   async start(
@@ -177,7 +175,7 @@ export class RunEngine {
       runId: null,
       budget,
       system: "",
-      summarizerModelId: modelId,
+      summarizerModelId: this.resolveSummarizerModelId(project, modelId),
       reason: "manual",
       focus,
     });
@@ -189,12 +187,30 @@ export class RunEngine {
   contextWindow(conversationId: string, modelId: string) {
     const project = this.projects.forConversation(conversationId);
     const budget = this.budgetFor(modelId, project?.compactThreshold);
+    const baseSystem = "Ты полезный ассистент. Отвечай по существу.";
+    const profileBlock = this.profileBlock(conversationId, "chat");
+    const projectBlock = this.projects.promptBlock(project);
+    const memoryBlock = this.memory.contextBlock({
+      agentMayRead: false,
+      query: "",
+    });
+    const system = `${baseSystem}${profileBlock}${projectBlock}${memoryBlock}`;
     const used = measureContext({
-      system: "",
+      system,
       messages: this.data.journalMessages(conversationId),
       segments: this.data.contextSegments(conversationId),
       budget,
     });
+    const breakdown = this.systemBreakdown(
+      [
+        { label: "Системные инструкции", text: baseSystem },
+        { label: "Профиль пользователя", text: profileBlock },
+        { label: "Проект", text: projectBlock },
+        { label: "Память", text: memoryBlock },
+      ],
+      used,
+      system,
+    );
     return {
       conversationId,
       modelId,
@@ -203,7 +219,34 @@ export class RunEngine {
       compactAtTokens: budget.compactAt,
       contextLength: budget.contextLength,
       estimated: budget.estimated,
+      breakdown,
     };
+  }
+
+  private resolveSummarizerModelId(
+    project: Project | undefined,
+    fallback: string,
+  ): string {
+    const preferred = project?.compactModelId;
+    if (!preferred || preferred === fallback) return fallback;
+    const enabled = this.data.listEnabledTextModels();
+    return enabled.some((model) => model.id === preferred)
+      ? preferred
+      : fallback;
+  }
+
+  private systemBreakdown(
+    blocks: Array<{ label: string; text: string }>,
+    usedTokens: number,
+    system: string,
+  ): ContextWindowBreakdownEntry[] {
+    const entries = blocks
+      .filter((block) => block.text.trim().length > 0)
+      .map((block) => ({ label: block.label, tokens: estimateTextTokens(block.text) }));
+    const messagesTokens = Math.max(0, usedTokens - estimateTextTokens(system));
+    if (messagesTokens > 0)
+      entries.push({ label: "Сообщения диалога", tokens: messagesTokens });
+    return entries;
   }
 
   private budgetFor(modelId: string, compactThreshold?: number): ContextBudget {
@@ -418,9 +461,19 @@ export class RunEngine {
         parts,
       );
       const retrievalBlock = vectorContextBlock(retrieval);
-      const system = `${baseSystem}${profileBlock}${projectBlock}${this.tools.skillCatalog(
+      const skillsBlock = this.tools.skillCatalog(
         agentRuntime?.allowedSkillIds ?? [],
-      )}${memoryBlock}${attachmentBlock}${retrievalBlock}`;
+      );
+      const system = `${baseSystem}${profileBlock}${projectBlock}${skillsBlock}${memoryBlock}${attachmentBlock}${retrievalBlock}`;
+      const systemBlocks: Array<{ label: string; text: string }> = [
+        { label: "Системные инструкции", text: baseSystem },
+        { label: "Профиль пользователя", text: profileBlock },
+        { label: "Проект", text: projectBlock },
+        { label: "Каталог навыков", text: skillsBlock },
+        { label: "Память", text: memoryBlock },
+        { label: "Вложения", text: attachmentBlock },
+        { label: "Найденный контекст (RAG)", text: retrievalBlock },
+      ];
 
       let activeModelId = input.modelId;
 
@@ -505,6 +558,11 @@ export class RunEngine {
               compactAtTokens: budget.compactAt,
               contextLength: budget.contextLength,
               estimated: budget.estimated,
+              breakdown: this.systemBreakdown(
+                systemBlocks,
+                context.tokens,
+                system,
+              ),
             },
           });
 
@@ -809,12 +867,13 @@ export class RunEngine {
     protectedFromMessageId: string;
     emit: Emit;
   }) {
+    const project = this.projects.forConversation(input.conversationId);
     const segment = await this.compaction.compact({
       conversationId: input.conversationId,
       runId: input.runId,
       budget: input.budget,
       system: input.system,
-      summarizerModelId: input.modelId,
+      summarizerModelId: this.resolveSummarizerModelId(project, input.modelId),
       reason: "overflow",
       protectedFromMessageId: input.protectedFromMessageId,
     });
@@ -844,12 +903,13 @@ export class RunEngine {
       protectedFromMessageId: input.protectedFromMessageId,
     });
     if (!needed) return;
+    const project = this.projects.forConversation(input.conversationId);
     const segment = await this.compaction.compact({
       conversationId: input.conversationId,
       runId: input.runId,
       budget: input.budget,
       system: input.system,
-      summarizerModelId: input.modelId,
+      summarizerModelId: this.resolveSummarizerModelId(project, input.modelId),
       reason: "threshold",
       protectedFromMessageId: input.protectedFromMessageId,
     });
@@ -979,20 +1039,15 @@ export class RunEngine {
     }
 
     if (usage) this.data.addRunUsage(runId, usage);
-    const interrupted = [...partialToolInputs.values()];
-    const interruptedToolInput =
-      interrupted.length > 0
-        ? interrupted.reduce((furthest, item) =>
-            item.receivedBytes > furthest.receivedBytes ? item : furthest,
-          )
-        : undefined;
+    const interruptedToolInput = partialToolInputs.values().next().value as
+      { toolName: string; receivedBytes: number } | undefined;
     const recoverableStreamEnd = Boolean(
       streamError && isMissingFinishReasonError(streamError),
     );
     if (streamError && (interruptedToolInput || recoverableStreamEnd)) {
       finishReason = "length";
       rawFinishReason = interruptedToolInput
-        ? `incomplete_tool_input:${interrupted.map((item) => item.toolName).join(",")}`
+        ? `incomplete_tool_input:${interruptedToolInput.toolName}`
         : "stream_ended_without_finish_reason";
     }
     this.data.addStep(

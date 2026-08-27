@@ -31,6 +31,14 @@ const MIGRATIONS: Migration[] = [
       ) = 2048;
     `,
   },
+  {
+    version: 6,
+    name: "project-compact-model",
+    sql: `
+      ALTER TABLE projects ADD COLUMN compact_model_id TEXT
+        REFERENCES text_provider_models(id) ON DELETE SET NULL;
+    `,
+  },
 ];
 
 export function runMigrations(database: Database.Database): void {

@@ -411,6 +411,30 @@ export const ChatPage = observer(function ChatPage() {
                 editsCount={chatStore.fileEdits.length}
                 switches={chatStore.modelSwitches}
                 modelLabel={(modelId) => textProviderStore.modelLabel(modelId)}
+                compactModelId={projectStore.active?.compactModelId ?? null}
+                onChangeCompactModel={(modelId) => {
+                  const project = projectStore.active;
+                  if (!project) return;
+                  void projectStore
+                    .save({
+                      id: project.id,
+                      name: project.name,
+                      rootPath: project.rootPath,
+                      instructions: project.instructions,
+                      defaultAgentId: project.defaultAgentId,
+                      defaultModelId: project.defaultModelId,
+                      compactThreshold: project.compactThreshold,
+                      compactModelId: modelId,
+                      archived: project.archived,
+                      grants: project.grants,
+                    })
+                    .catch((error: unknown) =>
+                      toasts.danger({
+                        title: "Не удалось сохранить модель для сжатия",
+                        description: readableError(error),
+                      }),
+                    );
+                }}
                 onCompact={() => {
                   void chatStore
                     .compact(activeModelId)

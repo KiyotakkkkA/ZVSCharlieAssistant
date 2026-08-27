@@ -2,11 +2,7 @@ import { NavLink } from "react-router-dom";
 import { Button, Tooltip } from "@kiyotakkkka/zvs-uikit-lib";
 import { useAppNavigation } from "../../hooks";
 import { NavigationTreeItem } from "../molecules";
-import {
-  ArrowExpandRightIcon,
-  ArrowExpandLeftIcon,
-  ZVSLogoIcon,
-} from "../atoms";
+import { ZVSLogoIcon, HorizontalExpandIcon } from "../atoms";
 import { AnimatedSlidedPanel } from "../organisms/AnimatedSlidedPanel";
 import type { NavigationRoute } from "../../app/routes";
 
@@ -63,11 +59,7 @@ export const NavigationSidebar = () => {
               disabled={!contentVisible}
               onClick={toggle}
             >
-              {collapsed ? (
-                <ArrowExpandRightIcon className="size-5" />
-              ) : (
-                <ArrowExpandLeftIcon className="size-5" />
-              )}
+              <HorizontalExpandIcon className="size-5" />
             </Button>
           </Tooltip>
         </div>

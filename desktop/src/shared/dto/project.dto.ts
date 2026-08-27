@@ -12,6 +12,7 @@ export const upsertProjectDtoSchema = z.object({
   defaultAgentId: entityIdSchema.nullable(),
   defaultModelId: entityIdSchema.nullable(),
   compactThreshold: z.number().min(0.4).max(0.95),
+  compactModelId: entityIdSchema.nullable(),
   archived: z.boolean(),
   grants: z.array(projectGrantDtoSchema).max(50),
 });

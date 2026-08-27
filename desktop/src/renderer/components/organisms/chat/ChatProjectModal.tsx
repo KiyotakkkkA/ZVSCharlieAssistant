@@ -120,6 +120,7 @@ export const ChatProjectModal = observer(function ChatProjectModal({
           recursive: grant.recursive,
           permissions: [...grant.permissions],
         })),
+        compactModelId: null,
       })
       .then((saved) => {
         toasts.success({ title: "Проект сохранён" });

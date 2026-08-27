@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Button, Tooltip } from "@kiyotakkkka/zvs-uikit-lib";
-import { ArrowExpandLeftIcon, ArrowExpandRightIcon } from "../atoms";
 import { AnimatedSlidedPanel } from "./AnimatedSlidedPanel";
+import { HorizontalExpandIcon } from "../atoms";
 
 const MIN_WIDTH = 280;
 const MAX_WIDTH = 720;
@@ -63,11 +63,7 @@ export function ResizableSidePanel({
               disabled={!contentVisible}
               onClick={toggle}
             >
-              {collapsed === (side === "left") ? (
-                <ArrowExpandRightIcon className="size-4" />
-              ) : (
-                <ArrowExpandLeftIcon className="size-4" />
-              )}
+              <HorizontalExpandIcon className="size-5" />
             </Button>
           </Tooltip>
           {collapsed ? null : (

@@ -80,6 +80,11 @@ export const runUsageDtoSchema = z.object({
   costUsd: z.number().nonnegative(),
 });
 
+export const contextWindowBreakdownEntryDtoSchema = z.object({
+  label: z.string(),
+  tokens: z.int().nonnegative(),
+});
+
 export const contextWindowDtoSchema = z.object({
   conversationId: entityIdSchema,
   modelId: z.string(),
@@ -88,6 +93,7 @@ export const contextWindowDtoSchema = z.object({
   compactAtTokens: z.int().nonnegative(),
   contextLength: z.int().nonnegative(),
   estimated: z.boolean(),
+  breakdown: z.array(contextWindowBreakdownEntryDtoSchema).optional(),
 });
 
 export const modelSwitchReasonSchema = z.enum([
@@ -141,4 +147,7 @@ export type ModelSwitchReason = z.infer<typeof modelSwitchReasonSchema>;
 export type ModelSwitch = z.infer<typeof modelSwitchDtoSchema>;
 export type PermissionMode = z.infer<typeof permissionModeSchema>;
 export type ContextWindow = z.infer<typeof contextWindowDtoSchema>;
+export type ContextWindowBreakdownEntry = z.infer<
+  typeof contextWindowBreakdownEntryDtoSchema
+>;
 export type StartRunInput = z.infer<typeof startRunDtoSchema>;

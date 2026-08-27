@@ -1,9 +1,11 @@
-import { Badge, Button, Tooltip } from "@kiyotakkkka/zvs-uikit-lib";
+import { Badge, Button, Dropdown, Tooltip } from "@kiyotakkkka/zvs-uikit-lib";
 import type {
   ContextSegment,
   ContextWindow,
   ModelSwitch,
 } from "../../../ipc/contracts";
+import { InformationIcon } from "../atoms/icons";
+import { ModelOrientedSelect } from "../atoms/ModelOrientedSelect";
 
 const SWITCH_REASONS: Record<ModelSwitch["reason"], string> = {
   provider_error: "провайдер недоступен",
@@ -23,6 +25,8 @@ interface ContextMeterProps {
   editsCount: number;
   switches: ModelSwitch[];
   modelLabel: (modelId: string) => string;
+  compactModelId: string | null;
+  onChangeCompactModel: (modelId: string | null) => void;
   onCompact: () => void;
   onToggleCompacted: () => void;
   onOpenEdits: () => void;
@@ -37,6 +41,8 @@ export function ContextMeter({
   editsCount,
   switches,
   modelLabel,
+  compactModelId,
+  onChangeCompactModel,
   onCompact,
   onToggleCompacted,
   onOpenEdits,
@@ -52,9 +58,65 @@ export function ContextMeter({
     : 0.78;
   const nearLimit = window ? used >= window.compactAtTokens : false;
   const lastSwitch = switches[switches.length - 1];
+  const breakdown = window?.breakdown ?? [];
+  const breakdownTotal = breakdown.reduce((sum, item) => sum + item.tokens, 0);
 
   return (
     <div className="flex flex-wrap items-center gap-2 border-b border-main-700/40 px-4 py-2 text-xs text-main-400">
+      {window ? (
+        <Dropdown menuWidth={320} menuPlacement="top-left">
+          <Dropdown.Anchor
+            className="flex shrink-0 cursor-pointer items-center text-main-400 hover:text-main-200"
+            aria-label="Расход токенов контекста"
+          >
+            <InformationIcon size={16} title="Расход токенов контекста" />
+          </Dropdown.Anchor>
+          <Dropdown.Menu
+            rounded="rounded-3xl"
+            className="w-80 p-3 text-xs text-main-300"
+          >
+            <div className="mb-2 font-medium text-main-100">
+              Расход токенов контекста
+            </div>
+            {breakdown.length ? (
+              <ul className="mb-3 flex flex-col gap-1.5">
+                {breakdown.map((item) => (
+                  <li key={item.label} className="flex flex-col gap-0.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="truncate">{item.label}</span>
+                      <span className="tabular-nums text-main-400">
+                        {formatTokens(item.tokens)}
+                      </span>
+                    </div>
+                    <div className="h-1 overflow-hidden rounded-full bg-main-700/50">
+                      <div
+                        className="h-full rounded-full bg-accent-light"
+                        style={{
+                          width: `${Math.round(
+                            (item.tokens / Math.max(1, breakdownTotal)) * 100,
+                          )}%`,
+                        }}
+                      />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="mb-3 text-main-500">
+                Данные по расходу токенов пока недоступны.
+              </div>
+            )}
+            <div className="mb-1.5 text-main-400">
+              Модель для сжатия контекста
+            </div>
+            <ModelOrientedSelect
+              variant="select"
+              value={compactModelId ?? ""}
+              onChange={(value: string) => onChangeCompactModel(value || null)}
+            />
+          </Dropdown.Menu>
+        </Dropdown>
+      ) : null}
       {window ? (
         <div
           className="flex min-w-45 flex-1 items-center gap-2"

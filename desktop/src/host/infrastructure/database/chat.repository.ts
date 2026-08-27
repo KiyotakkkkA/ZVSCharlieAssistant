@@ -505,15 +505,16 @@ export class ChatRepository {
   }
   listEnabledTextModels(): Array<{
     id: string;
+    kind: string;
     contextLength: number;
     maxCompletionTokens: number;
   }> {
     return (
       this.db
         .prepare(
-          "SELECT m.id,m.details_json FROM text_provider_models m JOIN text_provider_configs p ON p.id=m.provider_id WHERE m.enabled=1 AND p.enabled=1 AND p.provider_type='text'",
+          "SELECT m.id,m.details_json,p.kind FROM text_provider_models m JOIN text_provider_configs p ON p.id=m.provider_id WHERE m.enabled=1 AND p.enabled=1 AND p.provider_type='text'",
         )
-        .all() as Array<{ id: string; details_json: string }>
+        .all() as Array<{ id: string; details_json: string; kind: string }>
     ).map((row) => {
       const details = parseJsonDto(
         textProviderModelDetailsDtoSchema,
@@ -521,6 +522,7 @@ export class ChatRepository {
       );
       return {
         id: row.id,
+        kind: row.kind,
         contextLength: details.contextLength ?? 0,
         maxCompletionTokens: details.maxCompletionTokens ?? 0,
       };

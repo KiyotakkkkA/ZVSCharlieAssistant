@@ -2,9 +2,11 @@ import { generateText } from "ai";
 import type { ChatMessage, ContextSegment } from "../../../shared/models/chat";
 import type { ChatRepository } from "../../infrastructure/database/chat.repository";
 import type { ProviderRegistry } from "../../infrastructure/text-generation/provider.registry";
-import type { ContextBudget } from "./context-budget";
+import { resolveContextBudget, type ContextBudget } from "./context-budget";
 import { buildContext, measureContext } from "./context-builder";
 import { estimatePartsTokens } from "./token-estimator";
+
+const LOCAL_MODEL_KIND = "ollama";
 
 const SUMMARY_PROMPT = `Ты сжимаешь историю рабочего диалога программиста и ассистента, чтобы освободить контекстное окно.
 
@@ -80,11 +82,17 @@ export class CompactionService {
       0,
     );
 
+    const summarizerModelId = this.pickSummarizerModel(
+      request.summarizerModelId,
+      tokensBefore,
+    );
+    const summarizerBudget = this.budgetFor(summarizerModelId);
+
     const transcript = buildContext({
       system: "",
       messages: range,
       segments: this.data.contextSegments(request.conversationId),
-      budget: request.budget,
+      budget: summarizerBudget,
       protectedFromMessageId: undefined,
     });
 
@@ -92,11 +100,9 @@ export class CompactionService {
       ? `${SUMMARY_PROMPT}\n\nОсобое внимание удели: ${request.focus}`
       : SUMMARY_PROMPT;
 
-    const settings = this.providers.generationSettings(
-      request.summarizerModelId,
-    );
+    const settings = this.providers.generationSettings(summarizerModelId);
     const result = await generateText({
-      model: this.providers.resolve(request.summarizerModelId),
+      model: this.providers.resolve(summarizerModelId),
       temperature: 0.2,
       maxOutputTokens: Math.min(settings.maxOutputTokens, 2_048),
       system: instruction,
@@ -118,7 +124,7 @@ export class CompactionService {
       fromMessageId: firstMessage.id,
       toMessageId: lastMessage.id,
       summary,
-      modelId: request.summarizerModelId,
+      modelId: summarizerModelId,
       messageCount: range.length,
       tokensBefore,
       tokensAfter: estimatePartsTokens([{ type: "text", text: summary }]),
@@ -129,6 +135,33 @@ export class CompactionService {
       segment.id,
     );
     return segment;
+  }
+
+  private budgetFor(modelId: string): ContextBudget {
+    const info = this.providers.modelInfo(modelId);
+    const settings = this.providers.generationSettings(modelId);
+    return resolveContextBudget({
+      contextLength: info.contextLength,
+      maxOutputTokens: settings.maxOutputTokens,
+    });
+  }
+
+  private pickSummarizerModel(
+    requestedModelId: string,
+    tokensBefore: number,
+  ): string {
+    const local = this.data
+      .listEnabledTextModels()
+      .filter(
+        (model) =>
+          model.kind === LOCAL_MODEL_KIND && model.id !== requestedModelId,
+      )
+      .sort((left, right) => right.contextLength - left.contextLength);
+    for (const candidate of local) {
+      if (this.budgetFor(candidate.id).usable >= tokensBefore)
+        return candidate.id;
+    }
+    return requestedModelId;
   }
 }
 

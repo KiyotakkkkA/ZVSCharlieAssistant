@@ -41,7 +41,14 @@ const KEEP_INTACT_TOOL_RESULTS = 4;
 const TOOL_RESULT_MAX_CHARS = 4_000;
 const TOOL_RESULT_HARD_MAX_CHARS = 800;
 
-const READ_TOOL_NAMES = new Set(["fs_read", "fs_list"]);
+const DEDUPE_TOOL_NAMES = new Set([
+  "fs_read",
+  "fs_list",
+  "grep_search",
+  "regexp_search",
+  "vecdb_search",
+  "memory_search",
+]);
 
 export function buildContext(input: BuildContextInput): BuiltContext {
   const working = prepare(input);
@@ -221,21 +228,17 @@ function dedupeReads(working: WorkingMessage[]) {
     if (message.protectedMessage) continue;
     message.parts.forEach((part, index) => {
       if (part.type !== "tool-call") return;
-      if (!READ_TOOL_NAMES.has(part.toolName)) return;
-      const key = `${part.toolName}:${safeStringify(readTarget(part))}`;
+      if (!DEDUPE_TOOL_NAMES.has(part.toolName)) return;
+      const key = `${part.toolName}:${safeStringify(part.input)}`;
       const previous = lastSeen.get(key);
       if (previous)
-        collapseResultFor(previous, "Заменено более свежим чтением");
+        collapseResultFor(
+          previous,
+          "Заменено более свежим повтором того же вызова",
+        );
       lastSeen.set(key, { message, index });
     });
   }
-}
-
-function readTarget(part: ChatToolCallPart): unknown {
-  const input = part.input as { path?: unknown; base?: unknown } | null;
-  if (input && typeof input === "object")
-    return input.path ?? input.base ?? input;
-  return input;
 }
 
 function collapseResultFor(

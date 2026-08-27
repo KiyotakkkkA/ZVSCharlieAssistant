@@ -54,7 +54,11 @@ export type {
   FileEditRecord,
   RunEvent,
 } from "./chat.contract";
-export type { ContextWindow, ModelSwitch } from "../../shared/dto";
+export type {
+  ContextWindow,
+  ContextWindowBreakdownEntry,
+  ModelSwitch,
+} from "../../shared/dto";
 export { CHAT_IPC_CHANNELS } from "./chat.contract";
 
 export type {

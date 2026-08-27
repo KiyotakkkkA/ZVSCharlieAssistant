@@ -8,6 +8,7 @@ export interface Project {
   defaultAgentId: string | null;
   defaultModelId: string | null;
   compactThreshold: number;
+  compactModelId: string | null;
   archived: boolean;
   grants: DirectoryGrant[];
   createdAt: string;

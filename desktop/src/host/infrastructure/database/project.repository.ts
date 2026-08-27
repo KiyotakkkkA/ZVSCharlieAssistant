@@ -18,6 +18,7 @@ interface ProjectRow {
   default_agent_id: string | null;
   default_model_id: string | null;
   compact_threshold: number;
+  compact_model_id: string | null;
   archived: number;
   created_at: string;
   updated_at: string;
@@ -74,6 +75,7 @@ export class ProjectRepository {
       defaultAgentId: null,
       defaultModelId: null,
       compactThreshold: 0.78,
+      compactModelId: null,
       archived: false,
       grants: [
         {
@@ -104,8 +106,8 @@ export class ProjectRepository {
     const write = this.db.transaction(() => {
       this.db
         .prepare(
-          `INSERT INTO projects(id,name,root_path,instructions,default_agent_id,default_model_id,compact_threshold,archived)
-           VALUES(?,?,?,?,?,?,?,?)
+          `INSERT INTO projects(id,name,root_path,instructions,default_agent_id,default_model_id,compact_threshold,compact_model_id,archived)
+           VALUES(?,?,?,?,?,?,?,?,?)
            ON CONFLICT(id) DO UPDATE SET
              name=excluded.name,
              root_path=excluded.root_path,
@@ -113,6 +115,7 @@ export class ProjectRepository {
              default_agent_id=excluded.default_agent_id,
              default_model_id=excluded.default_model_id,
              compact_threshold=excluded.compact_threshold,
+             compact_model_id=excluded.compact_model_id,
              archived=excluded.archived,
              updated_at=CURRENT_TIMESTAMP`,
         )
@@ -124,6 +127,7 @@ export class ProjectRepository {
           input.defaultAgentId,
           input.defaultModelId,
           input.compactThreshold,
+          input.compactModelId,
           input.archived ? 1 : 0,
         );
       this.db
@@ -205,6 +209,7 @@ const map = (row: ProjectRow, grants: DirectoryGrant[]): Project => ({
   defaultAgentId: row.default_agent_id,
   defaultModelId: row.default_model_id,
   compactThreshold: row.compact_threshold,
+  compactModelId: row.compact_model_id,
   archived: Boolean(row.archived),
   grants,
   createdAt: row.created_at,
