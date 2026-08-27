@@ -1,5 +1,5 @@
 import { createServer, type Server, type Socket } from "node:net";
-import { randomBytes } from "node:crypto";
+import { randomBytes, timingSafeEqual } from "node:crypto";
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import {
@@ -43,6 +43,7 @@ interface BridgeDependencies {
   questions: UserQuestionService;
   recentSessions: RecentChatSessionsService;
   publishChatEvent?: (event: RunEvent) => void;
+  onStartError?: (error: Error) => void;
 }
 
 interface Session {
@@ -65,6 +66,7 @@ export class LocalBridgeServer {
     this.token = randomBytes(32).toString("hex");
 
     mkdirSync(dirname(tokenFile), { recursive: true });
+    if (existsSync(tokenFile)) rmSync(tokenFile, { force: true });
     writeFileSync(tokenFile, this.token, { encoding: "utf8", mode: 0o600 });
     if (process.platform !== "win32" && existsSync(path))
       rmSync(path, { force: true });
@@ -72,6 +74,7 @@ export class LocalBridgeServer {
     this.server = createServer((socket) => this.accept(socket));
     this.server.on("error", (error) => {
       console.error("Локальный мост CLI не запущен", error);
+      this.deps.onStartError?.(error);
     });
     this.server.listen(path);
   }
@@ -109,13 +112,20 @@ export class LocalBridgeServer {
     session.socket.write(encodeFrame(frame));
   }
 
+  private tokenMatches(candidate: string): boolean {
+    const expected = Buffer.from(this.token, "utf8");
+    const actual = Buffer.from(candidate, "utf8");
+    if (actual.length !== expected.length) return false;
+    return timingSafeEqual(actual, expected);
+  }
+
   private async dispatch(session: Session, request: BridgeRequest) {
     if (typeof request?.id !== "number" || typeof request.method !== "string")
       return;
     try {
       if (request.method === "hello") {
         const params = request.params as { token?: string } | undefined;
-        if (params?.token !== this.token)
+        if (typeof params?.token !== "string" || !this.tokenMatches(params.token))
           throw new Error("Неверный токен доступа к локальному мосту");
         session.authorized = true;
         this.send(session, {

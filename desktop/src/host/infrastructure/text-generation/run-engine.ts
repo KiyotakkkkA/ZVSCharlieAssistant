@@ -50,7 +50,10 @@ const MAX_ATTACHMENT_CONTEXT_CHARS = 48_000;
 export class RunEngine {
   private controllers = new Map<string, AbortController>();
   private scenarioRunIds = new Set<string>();
-  private profileBlocks = new Map<string, string>();
+  private profileBlocks = new Map<
+    string,
+    { updatedAt: string; block: string }
+  >();
   constructor(
     private readonly data: ChatRepository,
     private readonly providers: ProviderRegistry,
@@ -67,10 +70,12 @@ export class RunEngine {
 
   private profileBlock(conversationId: string, mode: string): string {
     if (mode !== "chat" && mode !== "planner") return "";
+    const updatedAt = this.userProfile.get().updatedAt;
     const cached = this.profileBlocks.get(conversationId);
-    if (cached !== undefined) return cached;
+    if (cached !== undefined && cached.updatedAt === updatedAt)
+      return cached.block;
     const block = this.userProfile.promptBlock();
-    this.profileBlocks.set(conversationId, block);
+    this.profileBlocks.set(conversationId, { updatedAt, block });
     return block;
   }
   async start(
@@ -974,15 +979,20 @@ export class RunEngine {
     }
 
     if (usage) this.data.addRunUsage(runId, usage);
-    const interruptedToolInput = partialToolInputs.values().next().value as
-      { toolName: string; receivedBytes: number } | undefined;
+    const interrupted = [...partialToolInputs.values()];
+    const interruptedToolInput =
+      interrupted.length > 0
+        ? interrupted.reduce((furthest, item) =>
+            item.receivedBytes > furthest.receivedBytes ? item : furthest,
+          )
+        : undefined;
     const recoverableStreamEnd = Boolean(
       streamError && isMissingFinishReasonError(streamError),
     );
     if (streamError && (interruptedToolInput || recoverableStreamEnd)) {
       finishReason = "length";
       rawFinishReason = interruptedToolInput
-        ? `incomplete_tool_input:${interruptedToolInput.toolName}`
+        ? `incomplete_tool_input:${interrupted.map((item) => item.toolName).join(",")}`
         : "stream_ended_without_finish_reason";
     }
     this.data.addStep(

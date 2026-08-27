@@ -381,7 +381,7 @@ export class FileSystemService {
     const stats = statSync(from);
     const checkpoint = this.checkpoint(from, context);
     mkdirSync(dirname(to), { recursive: true });
-    renameSync(from, to);
+    renameOrCopy(from, to);
     return this.edits.recordEdit({
       runId: context.runId,
       conversationId: context.conversationId,
@@ -505,9 +505,7 @@ export class FileSystemService {
     this.stagedWrites.delete(session.id);
     try {
       if (existsSync(session.temporaryPath)) unlinkSync(session.temporaryPath);
-    } catch {
-      // Cleanup is best-effort; the target file is never affected.
-    }
+    } catch {}
   }
 
   private readForEdit(path: string, context: FileToolContext): string {
@@ -586,7 +584,14 @@ export class FileSystemService {
       `.${basename(path)}.${randomUUID()}.tmp`,
     );
     writeFileSync(temporary, payload);
-    renameSync(temporary, path);
+    try {
+      renameWithRetry(temporary, path);
+    } catch (error) {
+      try {
+        if (existsSync(temporary)) unlinkSync(temporary);
+      } catch {}
+      throw error;
+    }
 
     const stats = statSync(path);
     this.rememberRead(context.runId, path, stats);
@@ -608,6 +613,41 @@ export class FileSystemService {
 
 function policiesOf(context: FileToolContext) {
   return { agent: context.policy, project: context.projectGrants };
+}
+
+const TRANSIENT_RENAME_CODES = new Set(["EBUSY", "EPERM", "EACCES"]);
+const RENAME_RETRY_ATTEMPTS = 5;
+
+function sleepSync(ms: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+function renameWithRetry(from: string, to: string): void {
+  for (let attempt = 1; attempt <= RENAME_RETRY_ATTEMPTS; attempt += 1) {
+    try {
+      renameSync(from, to);
+      return;
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (
+        attempt === RENAME_RETRY_ATTEMPTS ||
+        !code ||
+        !TRANSIENT_RENAME_CODES.has(code)
+      )
+        throw error;
+      sleepSync(50 * attempt);
+    }
+  }
+}
+
+function renameOrCopy(from: string, to: string): void {
+  try {
+    renameWithRetry(from, to);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "EXDEV") throw error;
+    copyFileSync(from, to);
+    unlinkSync(from);
+  }
 }
 
 function replaceFragment(

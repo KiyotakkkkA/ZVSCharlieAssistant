@@ -23,6 +23,10 @@ import type { TaskPlanRepository } from "../database/task-plan.repository";
 import type { UserQuestionService } from "../../application/services/user-question.service";
 import type { FileSystemService } from "../filesystem/file-system.service";
 import type { FileEditRecord } from "../../../shared/models/chat";
+import {
+  extractCommandNames,
+  maxPermission,
+} from "../../../shared/terminal-capabilities";
 
 type Emit = (event: RunEvent) => void;
 
@@ -655,9 +659,7 @@ export class ToolRegistry {
                       { sessionId: result.sessionId },
                       context,
                     );
-                  } catch {
-                    // The session may already be committed or explicitly aborted.
-                  }
+                  } catch {}
                 },
                 { once: true },
               );
@@ -844,26 +846,19 @@ export class ToolRegistry {
       }),
     };
     const available = Object.fromEntries(
-      Object.entries(tools).filter(
-        ([id]) =>
-          (isToolAllowed(id, allowedToolIds) ||
-            (id === "skills.load" && allowedSkillIds.length > 0)) &&
-          (id === "cmd_exec" ||
-            FILE_TOOL_IDS.has(id) ||
-            id === "read_tool_output" ||
-            id === "tasks_plan" ||
-            id === "memory_search" ||
-            id === "memory_save" ||
-            id === "ask_user" ||
-            id === "grep_search" ||
-            id === "regexp_search" ||
-            id === "vecdb_search" ||
-            id === "skills.load" ||
-            id === "reports_docx" ||
-            STAGED_REPORT_TOOL_IDS.has(id) ||
+      Object.entries(tools).filter(([id]) => {
+        if (
+          !isToolAllowed(id, allowedToolIds) &&
+          !(id === "skills.load" && allowedSkillIds.length > 0)
+        )
+          return false;
+        if (SECRET_GATED_TOOL_IDS.has(id))
+          return (
             this.automationCatalog.toolSecretId(id, "ollamaApiKey") !==
-              undefined),
-      ),
+            undefined
+          );
+        return true;
+      }),
     );
     return Object.keys(available).length ? available : undefined;
   }
@@ -1031,6 +1026,8 @@ const STAGED_REPORT_TOOL_IDS = new Set([
   "reports_abort",
 ]);
 
+const SECRET_GATED_TOOL_IDS = new Set(["web_search", "web_fetch"]);
+
 function isToolAllowed(toolId: string, allowedToolIds: string[]): boolean {
   if (allowedToolIds.includes(toolId)) return true;
   if (STAGED_FILE_TOOL_IDS.has(toolId))
@@ -1082,14 +1079,8 @@ function riskOf(toolId: string, input: unknown): string {
   }
   const payload = input as { action?: string; script?: string } | undefined;
   if (payload?.action !== "start") return "read";
-  const script = payload.script ?? "";
-  if (/\b(Remove-Item|Clear-Content|Remove-ItemProperty)\b/i.test(script))
-    return "delete";
-  if (
-    /\b(Set-Content|Add-Content|New-Item|Move-Item|Copy-Item|Rename-Item|Out-File)\b/i.test(
-      script,
-    )
-  )
-    return "write";
-  return "read";
+  const permission = maxPermission(extractCommandNames(payload.script ?? ""));
+  if (permission === "delete") return "delete";
+  if (permission === "read") return "read";
+  return "write";
 }

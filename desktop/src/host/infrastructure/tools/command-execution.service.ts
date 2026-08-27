@@ -15,7 +15,11 @@ import type {
 } from "../../../shared/dto";
 import type { TerminalPolicyRepository } from "../database/terminal-policy.repository";
 import type { DirectoryPolicyRepository } from "../database/directory-policy.repository";
-import { getTerminalCommandDefinition } from "../../../shared/terminal-capabilities";
+import {
+  getTerminalCommandDefinition,
+  maxPermission,
+  permissionByCommand,
+} from "../../../shared/terminal-capabilities";
 
 type StartInput = {
   action: "start";
@@ -41,6 +45,7 @@ interface Session {
   exitCode?: number;
   error?: string;
   finished?: Promise<void>;
+  completedAt?: number;
 }
 
 interface PendingApproval {
@@ -51,6 +56,14 @@ interface PendingApproval {
 }
 
 const APPROVAL_TTL_MS = 15 * 60_000;
+const SESSION_RETENTION_MS = 30 * 60_000;
+
+const TERMINAL_SESSION_STATUSES = new Set<CommandSessionStatus>([
+  "completed",
+  "failed",
+  "cancelled",
+  "timed_out",
+]);
 
 let resolvedShell: string | undefined;
 
@@ -76,32 +89,14 @@ function terminateTree(child: ChildProcessWithoutNullStreams): void {
       windowsHide: true,
     });
     killer.on("error", () => child.kill());
+    killer.on("close", (code) => {
+      if (code !== 0 && child.exitCode === null && child.signalCode === null)
+        child.kill();
+    });
     return;
   }
   child.kill();
 }
-
-const permissionByCommand = (command: string): DirectoryPermission => {
-  const definition = getTerminalCommandDefinition(command);
-  if (definition) return definition.permission;
-  const value = command.toLowerCase();
-  if (
-    value.startsWith("get-") ||
-    value === "select-string" ||
-    value === "test-path"
-  )
-    return "read";
-  if (value === "new-item") return "create";
-  if (value === "remove-item") return "delete";
-  if (
-    value === "move-item" ||
-    value === "copy-item" ||
-    value === "set-content" ||
-    value === "add-content"
-  )
-    return "modify";
-  return "execute";
-};
 
 export class CommandExecutionService {
   private readonly sessions = new Map<string, Session>();
@@ -126,6 +121,7 @@ export class CommandExecutionService {
     agentDirectories: AgentDirectoryPolicy,
     signal?: AbortSignal,
   ) {
+    this.cleanupExpiredSessions();
     if (input.action !== "start") return this.sessionAction(input);
     const global = this.policies.get();
     if (!global.enabled || !agent.enabled)
@@ -166,20 +162,7 @@ export class CommandExecutionService {
       this.directories.get().grants,
       agentDirectories.grants,
     );
-    const requiredPermission = commands.reduce<DirectoryPermission>(
-      (current, command) => {
-        const next = permissionByCommand(command);
-        const rank: DirectoryPermission[] = [
-          "read",
-          "create",
-          "modify",
-          "delete",
-          "execute",
-        ];
-        return rank.indexOf(next) > rank.indexOf(current) ? next : current;
-      },
-      "read",
-    );
+    const requiredPermission = maxPermission(commands);
     const cwd = this.assertPath(
       input.cwd ?? grants[0]?.path ?? "",
       grants,
@@ -253,6 +236,7 @@ export class CommandExecutionService {
       this.onApprovalsChanged?.();
       if (!decision.approved) {
         session.status = "cancelled";
+        session.completedAt = Date.now();
         this.policies.setSessionStatus(session.id, "cancelled");
         throw new Error(decision.reason);
       }
@@ -457,6 +441,7 @@ export class CommandExecutionService {
       child.once("error", (error) => {
         clearTimeout(timer);
         session.status = "failed";
+        session.completedAt = Date.now();
         this.policies.setSessionStatus(session.id, "failed");
         session.error = error.message;
         resolveFinished();
@@ -466,6 +451,7 @@ export class CommandExecutionService {
         session.exitCode = code ?? undefined;
         if (session.status === "running")
           session.status = code === 0 ? "completed" : "failed";
+        session.completedAt = Date.now();
         this.policies.setSessionStatus(session.id, session.status);
         resolveFinished();
       });
@@ -474,10 +460,12 @@ export class CommandExecutionService {
   }
 
   private async sessionAction(input: SessionInput) {
+    this.cleanupExpiredSessions();
     const session = this.sessions.get(input.sessionId);
     if (!session) throw new Error("Терминальная сессия не найдена");
     if (input.action === "cancel" && session.status === "running") {
       session.status = "cancelled";
+      session.completedAt = Date.now();
       if (session.process) terminateTree(session.process);
     } else if (input.action === "wait" && session.finished) {
       await Promise.race([
@@ -491,6 +479,17 @@ export class CommandExecutionService {
       ]);
     }
     return this.result(session);
+  }
+
+  private cleanupExpiredSessions(): void {
+    const expiresBefore = Date.now() - SESSION_RETENTION_MS;
+    for (const [id, session] of this.sessions)
+      if (
+        TERMINAL_SESSION_STATUSES.has(session.status) &&
+        session.completedAt !== undefined &&
+        session.completedAt < expiresBefore
+      )
+        this.sessions.delete(id);
   }
 
   private result(session: Session) {

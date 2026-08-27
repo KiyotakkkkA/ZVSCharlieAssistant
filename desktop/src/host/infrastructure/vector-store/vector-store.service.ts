@@ -13,6 +13,7 @@ import type { VectorStoreRepository } from "../database/vector-store.repository"
 import { EmbeddingService } from "./embedding.service";
 
 const INGEST_CONCURRENCY = 2;
+const RRF_K = 60;
 
 export const MAX_DOCUMENT_BYTES = 64 * 1_048_576;
 
@@ -151,7 +152,7 @@ export class VectorStoreService {
     if ((await this.tableNames()).has(tableName(storeId)))
       await (
         await db.openTable(tableName(storeId))
-      ).delete(`document_id = '${id}'`);
+      ).delete(`document_id = '${sqlLiteral(id)}'`);
     await rm(String(row.local_path), { force: true });
     this.data.deleteDocument(id);
     this.data.refreshStoreState(storeId);
@@ -209,7 +210,7 @@ export class VectorStoreService {
           store.searchMode === "hybrid"
             ? Math.min(
                 1,
-                Math.max(0, Number(row._relevance_score ?? 0) / (2 / 60)),
+                Math.max(0, Number(row._relevance_score ?? 0) / (2 / RRF_K)),
               )
             : 1 / (1 + Number(row._distance ?? 0));
         if (score < (input.scoreThreshold ?? 0)) continue;
@@ -344,7 +345,7 @@ export class VectorStoreService {
         const tables = await this.tableNames();
         if (tables.has(name)) {
           const table = await db.openTable(name);
-          await table.delete(`document_id = '${documentId}'`);
+          await table.delete(`document_id = '${sqlLiteral(documentId)}'`);
           await table.add(rows);
           if (this.data.store(storeId)?.searchMode === "hybrid") {
             this.ftsIndexPromises.delete(storeId);
@@ -400,7 +401,7 @@ export class VectorStoreService {
 
   private rrf() {
     if (!this.rrfPromise)
-      this.rrfPromise = lancedb.rerankers.RRFReranker.create(60).catch(
+      this.rrfPromise = lancedb.rerankers.RRFReranker.create(RRF_K).catch(
         (error) => {
           this.rrfPromise = undefined;
           throw error;
@@ -424,6 +425,7 @@ export class VectorStoreService {
 const tableName = (id: string) => `vector_store_${id}`;
 const safeName = (name: string) =>
   name.replace(/[^a-zA-Zа-яА-Я0-9._-]+/g, "_").slice(-120);
+const sqlLiteral = (value: string) => value.replaceAll("'", "''");
 
 function chunkText(text: string, sizeTokens: number, overlapTokens: number) {
   const normalized = text

@@ -414,10 +414,20 @@ function toEmailMessageEntity(uid: number, raw: string): EmailMessageEntity {
 }
 
 function extractImapMessage(value: string) {
-  const literal = value.match(
-    /BODY\[\][^{]*\{\d+\}\r?\n([\s\S]*?)\r?\n\)\r?\nZVS\d+ /i,
-  );
-  return literal?.[1] ?? value;
+  const start = value.match(/BODY\[\][^{]*\{(\d+)\}\r?\n/i);
+  if (!start || start.index === undefined) return value;
+  const literalStart = start.index + start[0].length;
+  const declaredBytes = Number(start[1]);
+  const minimumChars = Number.isFinite(declaredBytes)
+    ? Math.floor(declaredBytes / 3)
+    : 0;
+  const rest = value.slice(literalStart);
+  const closing = rest
+    .slice(minimumChars)
+    .match(/\r?\n\)\r?\nZVS\d+ /i);
+  return closing?.index === undefined
+    ? rest
+    : rest.slice(0, minimumChars + closing.index);
 }
 
 function parseEmailDate(value: string) {

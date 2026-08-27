@@ -71,6 +71,10 @@ const mapSecret = (row: SecretRow): SecretRecord => ({
 export class SecretStorageRepository {
   constructor(private readonly database: Database.Database) {}
 
+  isEncryptionAvailable(): boolean {
+    return safeStorage.isEncryptionAvailable();
+  }
+
   getSnapshot(): SecretStorageSnapshot {
     const rows = this.database
       .prepare(

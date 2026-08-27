@@ -208,7 +208,7 @@ export class ModelFailover {
       const settings = this.providers.generationSettings(modelId);
       return {
         contextLength: info.contextLength ?? 0,
-        maxOutput: settings.maxOutputTokens,
+        maxOutput: info.maxCompletionTokens ?? settings.maxOutputTokens,
       };
     } catch {
       return undefined;

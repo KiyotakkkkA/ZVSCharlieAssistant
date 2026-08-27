@@ -1,4 +1,4 @@
-import { app, Menu } from "electron";
+import { app, Menu, dialog } from "electron";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { AppWindowController } from "./infrastructure/electron/app-window.controller";
@@ -192,6 +192,11 @@ app.whenReady().then(() => {
   database = createSqliteDatabase(join(app.getPath("userData"), "storage.db"));
   const secretRepository = new SecretStorageRepository(database);
   secretRepository.encryptLegacySecrets();
+  if (!secretRepository.isEncryptionAvailable())
+    dialog.showErrorBox(
+      "Хранилище секретов не защищено шифрованием ОС",
+      "Windows не предоставил доступ к безопасному хранилищу учётных данных (DPAPI). API-ключи, пароли почтовых ящиков и токены ботов будут сохранены в базе данных приложения в открытом виде. Проверьте профиль пользователя Windows и права доступа к нему.",
+    );
   textExtraction = new TextExtractionClient();
   const terminalPolicyRepository = new TerminalPolicyRepository(database);
   const directoryPolicyRepository = new DirectoryPolicyRepository(database);
@@ -314,9 +319,6 @@ app.whenReady().then(() => {
     () => {
       applicationDataReset.requestReset();
       setTimeout(() => {
-        // Трей и фоновые воркеры останавливаются до перезапуска: иначе иконка
-        // старого процесса остаётся в области уведомлений, а слушатели почты и
-        // Telegram продолжают работать поверх удаляемых данных.
         shutdownRuntime();
         app.relaunch();
         app.quit();
@@ -450,6 +452,10 @@ app.whenReady().then(() => {
       projectRepository,
     ),
     publishChatEvent: (event) => appWindow.send(CHAT_IPC_CHANNELS.event, event),
+    onStartError: (error) =>
+      engineLogger?.error("bridge.listen_failed", error, {
+        hint: "возможно, запущен другой экземпляр приложения",
+      }),
   });
   localBridge.start();
   registerExtensionHandlers(

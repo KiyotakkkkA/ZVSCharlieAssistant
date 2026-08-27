@@ -37,6 +37,16 @@ export const exportDataDtoSchema = z
         path: ["entities"],
         message: "Для экспорта секретов необходимо экспортировать категории",
       });
+    if (
+      input.encryption !== "password" &&
+      resolveDataTransferEntities(input.entities).includes("secrets")
+    )
+      context.addIssue({
+        code: "custom",
+        path: ["encryption"],
+        message:
+          "Экспорт секретов (в том числе как зависимость провайдеров, интеграций, векторных хранилищ, агентов или сценариев) требует шифрования паролем",
+      });
   });
 
 export const prepareImportDtoSchema = z.object({

@@ -310,3 +310,53 @@ export const getTerminalCommandDefinition = (command: string) =>
 export const KNOWN_TERMINAL_COMMANDS = [...commandDefinitions.values()].map(
   (command) => command.name,
 );
+
+export const permissionByCommand = (command: string): DirectoryPermission => {
+  const definition = getTerminalCommandDefinition(command);
+  if (definition) return definition.permission;
+  const value = command.toLowerCase();
+  if (
+    value.startsWith("get-") ||
+    value === "select-string" ||
+    value === "test-path"
+  )
+    return "read";
+  if (value === "new-item") return "create";
+  if (value === "remove-item") return "delete";
+  if (
+    value === "move-item" ||
+    value === "copy-item" ||
+    value === "set-content" ||
+    value === "add-content"
+  )
+    return "modify";
+  return "execute";
+};
+
+const PERMISSION_RANK: readonly DirectoryPermission[] = [
+  "read",
+  "create",
+  "modify",
+  "delete",
+  "execute",
+];
+
+export function maxPermission(
+  commands: readonly string[],
+): DirectoryPermission {
+  return commands.reduce<DirectoryPermission>((current, command) => {
+    const next = permissionByCommand(command);
+    return PERMISSION_RANK.indexOf(next) > PERMISSION_RANK.indexOf(current)
+      ? next
+      : current;
+  }, "read");
+}
+
+export function extractCommandNames(script: string): string[] {
+  return script
+    .split(/[;|\r\n]+/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((segment) => segment.match(/^([A-Za-z][\w-]*)/)?.[1])
+    .filter((item): item is string => Boolean(item));
+}
