@@ -2,6 +2,7 @@ import reportDocxInstructions from "./report-docx-gost/SKILL.md?raw";
 import managedPowerShellInstructions from "./managed-powershell/SKILL.md?raw";
 import createAgentInstructions from "./create-agent/SKILL.md?raw";
 import createSkillInstructions from "./create-skill/SKILL.md?raw";
+import reportHtmlInstructions from "./report-html/SKILL.md?raw";
 import { SYSTEM_SKILL_IDS } from "../../shared/entity-ids";
 
 export interface DefaultSkillDefinition {
@@ -44,9 +45,9 @@ export const DEFAULT_SKILLS: readonly DefaultSkillDefinition[] = [
   {
     id: SYSTEM_SKILL_IDS.createAgent,
     slug: "create-agent",
-    name: "Создание агента",
+    name: "Agent creation",
     description:
-      "Проектирует нового агента-исполнителя по описанию задачи от пользователя и сохраняет его черновик.",
+      "Designs a new executor agent from the user's description of the work and saves it as a draft.",
     version: "1.0.0",
     author: "ZVS Assistant",
     requiredToolIds: ["agent_create"],
@@ -55,12 +56,23 @@ export const DEFAULT_SKILLS: readonly DefaultSkillDefinition[] = [
   {
     id: SYSTEM_SKILL_IDS.createSkill,
     slug: "create-skill",
-    name: "Создание навыка",
+    name: "Skill creation",
     description:
-      "Пишет новый переиспользуемый навык с подробными инструкциями по описанию от пользователя и сохраняет его черновик.",
+      "Writes a new reusable skill with detailed instructions from the user's description and saves it as a draft.",
     version: "1.0.0",
     author: "ZVS Assistant",
     requiredToolIds: ["skill_create"],
     instructions: stripFrontmatter(createSkillInstructions),
+  },
+  {
+    id: SYSTEM_SKILL_IDS.reportHtml,
+    slug: "report-html",
+    name: "HTML report creation",
+    description:
+      "Creates a single, self-contained HTML report or document that opens and reads well in any browser, with the design effort calibrated to what the request actually needs.",
+    version: "1.0.0",
+    author: "ZVS Assistant",
+    requiredToolIds: ["fs_write"],
+    instructions: stripFrontmatter(reportHtmlInstructions),
   },
 ] as const;
