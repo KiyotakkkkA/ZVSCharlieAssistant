@@ -7,6 +7,7 @@ import {
   FrameDecoder,
   encodeFrame,
   type BridgeRequest,
+  type BridgeAttachment,
 } from "../../../shared/bridge/protocol";
 import {
   bridgeSocketPath,
@@ -29,6 +30,7 @@ import type { TextProviderRepository } from "../database/text-provider.repositor
 import type { RunEvent } from "../../../shared/models/chat";
 import type { UserQuestionService } from "../../application/services/user-question.service";
 import type { RecentChatSessionsService } from "../../application/services/recent-chat-sessions.service";
+import { enabledTextProviderModels } from "../../../shared/models/text-provider";
 
 interface BridgeDependencies {
   userDataPath: string;
@@ -184,9 +186,7 @@ export class LocalBridgeServer {
         return { ok: true };
       }
       case "models.list":
-        return this.deps.providers
-          .getSnapshot()
-          .models.filter((model) => model.enabled);
+        return enabledTextProviderModels(this.deps.providers.getSnapshot());
       case "agents.list":
         return this.deps.automation.listAgents();
       case "conversations.list":
@@ -211,7 +211,7 @@ export class LocalBridgeServer {
       case "chat.start": {
         const input: StartRunInput = parseIpcDto(
           startRunDtoSchema,
-          request.params,
+          decodeBridgeStartRunParams(request.params),
         );
         const started = await this.deps.engine.start(input, (event) => {
           this.sendRunEvent(session, request.id, event);
@@ -282,3 +282,28 @@ export class LocalBridgeServer {
 }
 
 const SKIP_RESPONSE = Symbol("skip");
+
+export function decodeBridgeStartRunParams(value: unknown): unknown {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const params = value as Record<string, unknown>;
+  if (params.attachments === undefined) return value;
+  if (!Array.isArray(params.attachments)) return value;
+  return {
+    ...params,
+    attachments: params.attachments.map((raw) => {
+      if (!raw || typeof raw !== "object" || Array.isArray(raw)) return raw;
+      const attachment = raw as Partial<BridgeAttachment>;
+      if (typeof attachment.dataBase64 !== "string") return raw;
+      const buffer = Buffer.from(attachment.dataBase64, "base64");
+      const data = buffer.buffer.slice(
+        buffer.byteOffset,
+        buffer.byteOffset + buffer.byteLength,
+      ) as ArrayBuffer;
+      return {
+        fileName: attachment.fileName,
+        mimeType: attachment.mimeType,
+        data,
+      };
+    }),
+  };
+}

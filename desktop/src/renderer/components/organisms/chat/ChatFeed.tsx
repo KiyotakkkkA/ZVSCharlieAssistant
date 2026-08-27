@@ -24,6 +24,7 @@ import { ChatUserMsgBlock } from "../../molecules/ChatUserMsgBlock";
 import type { ScenarioNodeRun, ScenarioRun } from "../../../../ipc/contracts";
 import type { ChatToolCall } from "../../../../ipc/contracts";
 import type { ChatMessageContentPart } from "../../../../shared/dto";
+import type { ChatAttachmentPart } from "../../../../shared/dto";
 import {
   ChatSourcePanel,
   collectChatSources,
@@ -230,6 +231,7 @@ export function ChatFeed({
                   <ChatUserMsgBlock
                     key={message.id}
                     text={message.text}
+                    attachments={attachmentParts(message.parts)}
                     usageLabel={message.usageLabel}
                     disabled={actionsDisabled}
                     onCopy={() => void copyMessage(message.text)}
@@ -349,6 +351,14 @@ const MessageSourcesButton = memo(function MessageSourcesButton({
     </button>
   );
 });
+
+function attachmentParts(
+  parts: ChatMessageContentPart[] | undefined,
+): ChatAttachmentPart[] {
+  return (parts ?? []).filter(
+    (part): part is ChatAttachmentPart => part.type === "attachment",
+  );
+}
 
 const MessageArtifactsButton = memo(function MessageArtifactsButton({
   toolCalls,

@@ -1,6 +1,7 @@
 import { Box, Text } from "ink";
 import { EditableText } from "../atoms/EditableText";
 import { tuiColors } from "../theme";
+import type { CliAttachment } from "../attachments";
 
 function truncate(text: string, width = 64): string {
   const singleLine = text.replace(/\s+/g, " ").trim();
@@ -14,6 +15,7 @@ export function Composer(props: {
   value: string;
   cursor: number;
   queued: string[];
+  attachments: readonly CliAttachment[];
   attached?: boolean;
 }) {
   const visibleQueue = props.queued.slice(0, 3);
@@ -34,6 +36,18 @@ export function Composer(props: {
           )}
         </Box>
       )}
+      {props.attachments.length > 0 && (
+        <Box flexDirection="column" marginBottom={0}>
+          {props.attachments.map((file) => (
+            <Text key={file.path} color={tuiColors.accent}>
+              {"  "}📎 {truncate(file.fileName, 54)} · {formatBytes(file.size)}
+            </Text>
+          ))}
+          <Text color={tuiColors.muted}>
+            {"  "}Backspace в пустом поле — убрать последний файл
+          </Text>
+        </Box>
+      )}
       <Box borderStyle="round" borderColor={tuiColors.muted} paddingX={1}>
         <Text color={tuiColors.accent}>❯ </Text>
         {props.value ? (
@@ -44,4 +58,10 @@ export function Composer(props: {
       </Box>
     </Box>
   );
+}
+
+function formatBytes(value: number): string {
+  return value < 1_048_576
+    ? `${Math.max(1, Math.round(value / 1024))} КБ`
+    : `${(value / 1_048_576).toFixed(1)} МБ`;
 }

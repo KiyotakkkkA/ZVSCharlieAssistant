@@ -103,4 +103,20 @@ describe("TUI state machine", () => {
     state = reduceTuiState(state, { type: "queue.shifted" });
     expect(state.queued).toEqual([]);
   });
+
+  it("сохраняет вложения рядом с отправленным сообщением", () => {
+    const state = reduceTuiState(initialTuiState(), {
+      type: "run.started",
+      id: "run-files",
+      message: "Изучи файл",
+      attachments: [
+        { fileName: "report.pdf", mimeType: "application/pdf", size: 2048 },
+      ],
+    });
+
+    expect(state.transcript[0]).toMatchObject({
+      kind: "user",
+      attachments: [{ fileName: "report.pdf", size: 2048 }],
+    });
+  });
 });

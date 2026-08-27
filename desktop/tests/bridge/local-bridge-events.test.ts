@@ -1,8 +1,29 @@
 import { describe, expect, it, vi } from "vitest";
-import { LocalBridgeServer } from "../../src/host/infrastructure/bridge/local-bridge.server";
+import {
+  decodeBridgeStartRunParams,
+  LocalBridgeServer,
+} from "../../src/host/infrastructure/bridge/local-bridge.server";
 import type { RunEvent } from "../../src/shared/models/chat";
 
 describe("события локального CLI-моста", () => {
+  it("декодирует base64-вложения CLI в ArrayBuffer чата", () => {
+    const decoded = decodeBridgeStartRunParams({
+      text: "Прочитай",
+      attachments: [
+        {
+          fileName: "note.txt",
+          mimeType: "text/plain",
+          dataBase64: Buffer.from("данные").toString("base64"),
+        },
+      ],
+    }) as { attachments: Array<{ data: ArrayBuffer }> };
+
+    expect(decoded.attachments[0]?.data).toBeInstanceOf(ArrayBuffer);
+    expect(
+      Buffer.from(decoded.attachments[0]!.data).toString("utf8"),
+    ).toBe("данные");
+  });
+
   it("одновременно отправляет run event в CLI и desktop chat", () => {
     const publishChatEvent = vi.fn();
     const write = vi.fn();

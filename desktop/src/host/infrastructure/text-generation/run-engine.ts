@@ -128,6 +128,7 @@ export class RunEngine {
       text,
       "completed",
       usage,
+      attachmentMetadataParts(input.attachments),
     );
     const assistantMessage = this.data.addMessage(
       conversationId,
@@ -289,6 +290,7 @@ export class RunEngine {
       text,
       "completed",
       usage,
+      attachmentMetadataParts(input.attachments),
     );
     const assistantMessage = this.data.addMessage(
       conversationId,
@@ -1180,4 +1182,15 @@ function isSupportedAttachment(fileName: string, mimeType: string) {
   return (
     isPlainTextAttachment(fileName, mimeType) || /\.(pdf|docx)$/i.test(fileName)
   );
+}
+
+function attachmentMetadataParts(
+  attachments: StartRunInput["attachments"],
+): ChatMessageContentPart[] {
+  return (attachments ?? []).map((attachment) => ({
+    type: "attachment" as const,
+    fileName: attachment.fileName,
+    mimeType: attachment.mimeType,
+    size: attachment.data.byteLength,
+  }));
 }

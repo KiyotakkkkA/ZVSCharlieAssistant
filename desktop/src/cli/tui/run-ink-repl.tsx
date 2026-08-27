@@ -13,6 +13,10 @@ import { compactValue } from "./output";
 import { commandCatalog } from "./commands";
 import { ZvsTui, type TuiMenu } from "./organisms/ZvsTui";
 import { initialTuiState, reduceTuiState, type TuiAction } from "./state";
+import {
+  addCliAttachment,
+  type CliAttachment,
+} from "./attachments";
 
 interface Named {
   id: string;
@@ -21,6 +25,11 @@ interface Named {
 
 interface ProjectOption extends Named {
   rootPath: string | null;
+}
+
+interface QueuedMessage {
+  message: string;
+  attachments: CliAttachment[];
 }
 
 export async function runInkRepl(
@@ -34,7 +43,10 @@ export async function runInkRepl(
   const recentSessions = (await client.request(
     "sessions.recent",
   )) as RecentChatSession[];
-  const modelId = options.model ?? models[0]?.id;
+  const requestedModelId = options.model;
+  const modelId = models.some((model) => model.id === requestedModelId)
+    ? requestedModelId
+    : models[0]?.id;
   let finish: (code: number) => void = () => undefined;
   let settled = false;
   const completion = new Promise<number>((resolve) => {
@@ -85,6 +97,13 @@ function InkRuntime(props: {
   const initialSession = props.recentSessions.find(
     (session) => session.conversationId === props.options.conversation,
   );
+  const requestedInitialModelId =
+    props.options.model ?? initialSession?.usage.modelId ?? props.modelId;
+  const initialModelId = props.models.some(
+    (model) => model.id === requestedInitialModelId,
+  )
+    ? requestedInitialModelId
+    : props.modelId;
   const [settings, setSettings] = useState<{
     mode: ChatMode;
     modelId?: string;
@@ -96,8 +115,7 @@ function InkRuntime(props: {
     mode: props.options.agent
       ? "agent"
       : (initialSession?.usage.mode ?? "chat"),
-    modelId:
-      props.options.model ?? initialSession?.usage.modelId ?? props.modelId,
+    modelId: initialModelId,
     agentId: props.options.agent ?? initialSession?.usage.agentId,
     scenarioId: initialSession?.usage.scenarioId,
     projectId: props.options.project ?? initialSession?.project?.id,
@@ -107,12 +125,15 @@ function InkRuntime(props: {
   const [recentSessions, setRecentSessions] = useState(props.recentSessions);
   const [menu, setMenu] = useState<(TuiMenu & { kind: string }) | undefined>();
   const [inputPrompt, setInputPrompt] = useState<"rename" | undefined>();
+  const [attachments, setAttachments] = useState<CliAttachment[]>([]);
   const conversationId = useRef(props.options.conversation);
   const activeRunId = useRef<string | undefined>(undefined);
   const lastRunId = useRef<string | undefined>(undefined);
   const runStarting = useRef(false);
-  const queuedMessages = useRef<string[]>([]);
-  const startRunRef = useRef<(message: string) => Promise<void>>(
+  const queuedMessages = useRef<QueuedMessage[]>([]);
+  const startRunRef = useRef<
+    (message: string, attachments?: CliAttachment[]) => Promise<void>
+  >(
     async () => undefined,
   );
   const sequence = useRef(0);
@@ -156,6 +177,8 @@ function InkRuntime(props: {
               "",
               "# Горячие клавиши",
               "- `Tab` — дополнить команду или поставить сообщение в очередь",
+              "- `@путь` — прикрепить файл из проекта",
+              "- `Backspace` в пустом поле — убрать последнее вложение",
               "- `Shift+Enter` — новая строка",
               "- `Ctrl+C` — отменить задачу или выйти",
               "- `Esc` — закрыть меню или очистить ввод",
@@ -351,6 +374,7 @@ function InkRuntime(props: {
         }
         case "/clear":
           queuedMessages.current = [];
+          setAttachments([]);
           dispatch({ type: "session.reset" });
           return true;
         case "/exit":
@@ -366,9 +390,12 @@ function InkRuntime(props: {
   );
 
   const startRun = useCallback(
-    async (message: string) => {
+    async (message: string, messageAttachments: CliAttachment[] = []) => {
       if (runStarting.current || activeRunId.current) {
-        queuedMessages.current.push(message);
+        queuedMessages.current.push({
+          message,
+          attachments: messageAttachments,
+        });
         dispatch({ type: "message.queued", value: message });
         return;
       }
@@ -395,7 +422,16 @@ function InkRuntime(props: {
 
       const localId = `run-${sequence.current++}`;
       runStarting.current = true;
-      dispatch({ type: "run.started", id: localId, message });
+      dispatch({
+        type: "run.started",
+        id: localId,
+        message,
+        attachments: messageAttachments.map((attachment) => ({
+          fileName: attachment.fileName,
+          mimeType: attachment.mimeType,
+          size: attachment.size,
+        })),
+      });
       let finished = false;
       const finishAndContinue = () => {
         if (finished) return;
@@ -405,7 +441,10 @@ function InkRuntime(props: {
         const next = queuedMessages.current.shift();
         if (!next) return;
         dispatch({ type: "queue.shifted" });
-        setTimeout(() => void startRunRef.current(next), 0);
+        setTimeout(
+          () => void startRunRef.current(next.message, next.attachments),
+          0,
+        );
       };
       const handle = (event: RunEvent) => {
         switch (event.type) {
@@ -535,6 +574,13 @@ function InkRuntime(props: {
             projectId: settings.projectId,
             text: message,
             permissionMode: settings.permission,
+            attachments: messageAttachments.length
+              ? messageAttachments.map((attachment) => ({
+                  fileName: attachment.fileName,
+                  mimeType: attachment.mimeType,
+                  dataBase64: attachment.dataBase64,
+                }))
+              : undefined,
           },
           (_name, payload) => handle(payload as RunEvent),
         )) as { runId: string; conversationId: string };
@@ -649,7 +695,11 @@ function InkRuntime(props: {
         conversationId.current = session.conversationId;
         setSettings({
           mode: session.usage.mode,
-          modelId: session.usage.modelId,
+          modelId: props.models.some(
+            (model) => model.id === session.usage.modelId,
+          )
+            ? session.usage.modelId
+            : props.models[0]?.id,
           agentId: session.usage.agentId,
           scenarioId: session.usage.scenarioId,
           projectId: session.project?.id,
@@ -685,6 +735,20 @@ function InkRuntime(props: {
   const currentProjectPath = props.projects.find(
     (item) => item.id === settings.projectId,
   )?.rootPath;
+  const fileRoot = currentProjectPath ?? process.cwd();
+  const attach = useCallback(
+    (reference: string) => {
+      void addCliAttachment(attachments, fileRoot, reference).then(
+        setAttachments,
+        (error: unknown) =>
+          appendSystem(
+            error instanceof Error ? error.message : String(error),
+            true,
+          ),
+      );
+    },
+    [appendSystem, attachments, fileRoot],
+  );
   return (
     <ZvsTui
       version={props.version}
@@ -693,18 +757,26 @@ function InkRuntime(props: {
       projectPath={currentProjectPath ?? undefined}
       permission={settings.permission}
       recentSessions={recentSessions}
-      fileRoot={
-        props.projects.find((item) => item.id === settings.projectId)
-          ?.rootPath ?? process.cwd()
-      }
+      fileRoot={fileRoot}
+      attachments={attachments}
       state={state}
       dispatch={externalDispatch}
       menu={menu}
       inputPrompt={
         inputPrompt === "rename" ? "Новое название диалога" : undefined
       }
-      onSubmit={(value) => void startRun(value)}
-      onQueue={(value) => queuedMessages.current.push(value)}
+      onSubmit={(value) => {
+        const selectedAttachments = attachments;
+        setAttachments([]);
+        void startRun(value, selectedAttachments);
+      }}
+      onQueue={(value) => {
+        queuedMessages.current.push({
+          message: value,
+          attachments,
+        });
+        setAttachments([]);
+      }}
       onCancel={cancel}
       onExit={() => props.onExit(0)}
       onAnswer={answer}
@@ -714,6 +786,10 @@ function InkRuntime(props: {
         setInputPrompt(undefined);
         dispatch({ type: "draft.changed", value: "" });
       }}
+      onAttach={attach}
+      onRemoveLastAttachment={() =>
+        setAttachments((current) => current.slice(0, -1))
+      }
     />
   );
 }

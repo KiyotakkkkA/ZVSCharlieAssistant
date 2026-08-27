@@ -60,6 +60,12 @@ export const chatSummaryPartDtoSchema = z.object({
   tokensBefore: z.int().nonnegative(),
   tokensAfter: z.int().nonnegative(),
 });
+export const chatAttachmentPartDtoSchema = z.object({
+  type: z.literal("attachment"),
+  fileName: z.string().trim().min(1).max(255),
+  mimeType: z.string().trim().max(255),
+  size: z.int().nonnegative(),
+});
 
 export const chatMessageContentPartDtoSchema = z.discriminatedUnion("type", [
   chatTextPartDtoSchema,
@@ -67,6 +73,7 @@ export const chatMessageContentPartDtoSchema = z.discriminatedUnion("type", [
   chatToolCallPartDtoSchema,
   chatToolResultPartDtoSchema,
   chatSummaryPartDtoSchema,
+  chatAttachmentPartDtoSchema,
 ]);
 export const chatMessageContentDtoSchema = z.array(
   chatMessageContentPartDtoSchema,
@@ -139,6 +146,7 @@ export type ChatReasoningPart = z.infer<typeof chatReasoningPartDtoSchema>;
 export type ChatToolCallPart = z.infer<typeof chatToolCallPartDtoSchema>;
 export type ChatToolResultPart = z.infer<typeof chatToolResultPartDtoSchema>;
 export type ChatSummaryPart = z.infer<typeof chatSummaryPartDtoSchema>;
+export type ChatAttachmentPart = z.infer<typeof chatAttachmentPartDtoSchema>;
 export type ChatMessageContentPart = z.infer<
   typeof chatMessageContentPartDtoSchema
 >;

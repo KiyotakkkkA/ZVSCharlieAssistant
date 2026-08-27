@@ -92,7 +92,7 @@ export const ChatMemoryModal = observer(function ChatMemoryModal({
                           entry.pinned ? "Открепить запись" : "Закрепить запись"
                         }
                         title={entry.pinned ? "Открепить" : "Закрепить"}
-                        className={`grid size-8 place-items-center rounded-lg text-sm transition-colors hover:bg-main-700/50 ${entry.pinned ? "text-accent-light" : "text-main-500"}`}
+                        className={`grid size-8 place-items-center rounded-lg text-lg transition-colors hover:bg-main-700/50 ${entry.pinned ? "text-accent-light" : "text-main-500"}`}
                         onClick={() =>
                           void memoryStore.setPinned(entry.id, !entry.pinned)
                         }

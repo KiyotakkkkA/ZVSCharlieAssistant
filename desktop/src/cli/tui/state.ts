@@ -10,6 +10,11 @@ export interface TranscriptEntry {
   runId?: string;
   toolCallId?: string;
   toolStatus?: ToolActivity["status"];
+  attachments?: Array<{
+    fileName: string;
+    mimeType: string;
+    size: number;
+  }>;
 }
 
 export interface ToolActivity {
@@ -36,7 +41,12 @@ export type TuiAction =
   | { type: "transcript.append"; entry: TranscriptEntry }
   | { type: "message.queued"; value: string }
   | { type: "queue.shifted" }
-  | { type: "run.started"; message: string; id: string }
+  | {
+      type: "run.started";
+      message: string;
+      id: string;
+      attachments?: TranscriptEntry["attachments"];
+    }
   | { type: "reasoning.delta"; delta: string }
   | { type: "answer.delta"; delta: string }
   | { type: "tool.changed"; tool: ToolActivity }
@@ -85,6 +95,7 @@ export function reduceTuiState(state: TuiState, action: TuiAction): TuiState {
             runId: action.id,
             kind: "user",
             text: action.message,
+            attachments: action.attachments,
           },
         ],
       };

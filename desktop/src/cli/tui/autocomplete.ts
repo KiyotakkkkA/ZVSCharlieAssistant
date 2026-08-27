@@ -14,7 +14,7 @@ export function fileSuggestions(
   input: string,
   limit = 8,
 ): CompletionItem[] {
-  if (!input.startsWith("@") || input.includes(" ")) return [];
+  if (!input.startsWith("@")) return [];
   const query = input.slice(1).replace(/\\/g, "/");
   const slash = query.lastIndexOf("/");
   const parentPart = slash >= 0 ? query.slice(0, slash + 1) : "";

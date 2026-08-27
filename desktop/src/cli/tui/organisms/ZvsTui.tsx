@@ -21,6 +21,7 @@ import {
 } from "../state";
 import { SessionFooter } from "./SessionFooter";
 import { Transcript } from "./Transcript";
+import type { CliAttachment } from "../attachments";
 
 export interface TuiMenu {
   title: string;
@@ -35,6 +36,7 @@ export interface ZvsTuiProps {
   permission: string;
   fileRoot?: string;
   recentSessions: RecentChatSession[];
+  attachments: readonly CliAttachment[];
   state?: TuiState;
   dispatch?: (action: TuiAction) => void;
   menu?: TuiMenu;
@@ -46,6 +48,8 @@ export interface ZvsTuiProps {
   onAnswer: (question: UserQuestion, answer: string[]) => void;
   onMenuSelect: (value: string) => void;
   onEscape: () => void;
+  onAttach: (reference: string) => void;
+  onRemoveLastAttachment: () => void;
 }
 
 export function ZvsTui(props: ZvsTuiProps) {
@@ -231,7 +235,11 @@ export function ZvsTui(props: ZvsTuiProps) {
       return;
     }
     if (key.backspace) {
-      if (cursor === 0) return;
+      if (cursor === 0) {
+        if (!state.draft && props.attachments.length)
+          props.onRemoveLastAttachment();
+        return;
+      }
       dispatch({
         type: "draft.changed",
         value: state.draft.slice(0, cursor - 1) + state.draft.slice(cursor),
@@ -249,7 +257,10 @@ export function ZvsTui(props: ZvsTuiProps) {
     }
     if (key.tab) {
       const suggestion = suggestions[selectedSuggestion];
-      if (suggestion) {
+      if (suggestion?.kind === "file") {
+        props.onAttach(suggestion.value);
+        setDraft("");
+      } else if (suggestion) {
         setDraft(`${suggestion.value}${suggestion.appendSpace ? " " : ""}`);
       } else if (state.phase === "running") {
         props.onQueue(state.draft);
@@ -269,7 +280,12 @@ export function ZvsTui(props: ZvsTuiProps) {
         return;
       }
       const selected = suggestions[selectedSuggestion];
-      if (selected?.kind === "file" || selected?.kind === "directory") {
+      if (selected?.kind === "file") {
+        props.onAttach(selected.value);
+        setDraft("");
+        return;
+      }
+      if (selected?.kind === "directory") {
         setDraft(`${selected.value}${selected.appendSpace ? " " : ""}`);
         return;
       }
@@ -359,6 +375,7 @@ export function ZvsTui(props: ZvsTuiProps) {
         value={state.draft}
         cursor={cursor}
         queued={state.queued}
+        attachments={props.attachments}
         attached={suggestionsVisible}
       />
       <SessionFooter

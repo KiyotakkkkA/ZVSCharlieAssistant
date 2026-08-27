@@ -169,10 +169,12 @@ export class ChatRepository {
     text: string,
     status: ChatMessage["status"],
     usage: ChatUsage,
+    metadataParts: ChatMessageContentPart[] = [],
   ): ChatMessage {
-    const parts: ChatMessageContentPart[] = text
-      ? [{ type: "text", text }]
-      : [];
+    const parts: ChatMessageContentPart[] = [
+      ...metadataParts,
+      ...(text ? ([{ type: "text", text }] as ChatMessageContentPart[]) : []),
+    ];
     return this.addMessageParts(
       conversationId,
       runId,

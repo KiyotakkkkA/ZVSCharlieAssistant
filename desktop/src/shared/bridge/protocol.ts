@@ -26,6 +26,12 @@ export interface BridgeRequest {
   params?: unknown;
 }
 
+export interface BridgeAttachment {
+  fileName: string;
+  mimeType: string;
+  dataBase64: string;
+}
+
 export interface BridgeResponse {
   id: number;
   ok: boolean;

@@ -30,4 +30,12 @@ describe("TUI autocomplete", () => {
     roots.push(root);
     expect(fileSuggestions(root, "@../")).toEqual([]);
   });
+
+  it("дополняет имена файлов с пробелами", () => {
+    const root = mkdtempSync(join(tmpdir(), "zvs-tui-"));
+    roots.push(root);
+    writeFileSync(join(root, "my report.md"), "text");
+
+    expect(fileSuggestions(root, "@my rep")[0]?.value).toBe("@my report.md");
+  });
 });

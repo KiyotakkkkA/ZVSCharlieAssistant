@@ -37,8 +37,24 @@ export interface TextProviderSnapshot {
   providers: TextProviderConfig[];
   models: TextProviderModel[];
 }
+
 export interface TestTextProviderConnectionResult {
   models: TextProviderModelInfo[];
   checkedAt: string;
   limits: TextProviderLimits | null;
+}
+
+export function enabledTextProviderModels(
+  snapshot: Pick<TextProviderSnapshot, "providers" | "models">,
+): TextProviderModel[] {
+  const providerIds = new Set(
+    snapshot.providers
+      .filter(
+        (provider) => provider.enabled && provider.providerType === "text",
+      )
+      .map((provider) => provider.id),
+  );
+  return snapshot.models.filter(
+    (model) => model.enabled && providerIds.has(model.providerId),
+  );
 }

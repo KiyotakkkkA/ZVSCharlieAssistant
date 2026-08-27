@@ -4,6 +4,7 @@ import type {
   TextProviderModel,
   TextProviderSnapshot,
 } from "../../shared/models/text-provider";
+import { enabledTextProviderModels } from "../../shared/models/text-provider";
 import {
   parseIpcDto,
   upsertTextProviderDtoSchema,
@@ -46,16 +47,7 @@ class TextProviderStore {
     runInAction(() => this.apply(snapshot));
   }
   get enabledModels() {
-    return this.models.filter(
-      (model) =>
-        model.enabled &&
-        this.providers.some(
-          (provider) =>
-            provider.id === model.providerId &&
-            provider.enabled &&
-            provider.providerType === "text",
-        ),
-    );
+    return enabledTextProviderModels(this);
   }
   modelLabel(modelId: string) {
     const model = this.models.find((item) => item.id === modelId);
