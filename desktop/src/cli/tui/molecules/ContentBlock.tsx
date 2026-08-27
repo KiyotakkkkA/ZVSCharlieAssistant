@@ -1,6 +1,7 @@
 import { Box, Text } from "ink";
 import type { TranscriptEntry } from "../state";
 import { tuiColors } from "../theme";
+import { Spinner } from "../atoms/Spinner";
 import { RichContent } from "./RichContent";
 
 export function ContentBlock({ entry }: { entry: TranscriptEntry }) {
@@ -19,16 +20,16 @@ export function ContentBlock({ entry }: { entry: TranscriptEntry }) {
       entry.toolStatus === "requested" || entry.toolStatus === "running";
     return (
       <Box marginLeft={2}>
-        <Text
-          color={
-            failed
-              ? tuiColors.danger
-              : running
-                ? tuiColors.warning
-                : tuiColors.cyan
-          }
-        >
-          {failed ? "×" : running ? "◌" : "◆"} {entry.text}
+        {running ? (
+          <Spinner color={tuiColors.warning} />
+        ) : (
+          <Text color={failed ? tuiColors.danger : tuiColors.cyan}>
+            {failed ? "×" : "◆"}
+          </Text>
+        )}
+        <Text color={failed ? tuiColors.danger : running ? tuiColors.warning : tuiColors.cyan}>
+          {" "}
+          {entry.text}
         </Text>
       </Box>
     );

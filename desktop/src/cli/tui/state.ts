@@ -25,6 +25,7 @@ export interface TuiState {
   queued: string[];
   transcript: TranscriptEntry[];
   activeRunId?: string;
+  runStartedAt?: number;
   segmentSequence: number;
   question?: UserQuestion;
   error?: string;
@@ -73,6 +74,7 @@ export function reduceTuiState(state: TuiState, action: TuiAction): TuiState {
         phase: "running",
         draft: "",
         activeRunId: action.id,
+        runStartedAt: Date.now(),
         segmentSequence: 0,
         question: undefined,
         error: undefined,
@@ -121,6 +123,7 @@ function finishRun(state: TuiState, phase: "completed" | "failed"): TuiState {
     ...state,
     phase,
     activeRunId: undefined,
+    runStartedAt: undefined,
     question: undefined,
   };
 }

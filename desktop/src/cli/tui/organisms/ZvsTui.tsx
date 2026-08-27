@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useState } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { Box, useInput, useWindowSize } from "ink";
 import type { UserQuestion } from "../../../shared/models/user-question";
 import type { RecentChatSession } from "../../../shared/models/chat";
@@ -10,6 +10,7 @@ import {
   SelectionPanel,
   type SelectionItem,
 } from "../molecules/SelectionPanel";
+import { StatusLine } from "../molecules/StatusLine";
 import { SuggestionPopup } from "../molecules/SuggestionPopup";
 import { WelcomePanel } from "../molecules/WelcomePanel";
 import {
@@ -62,6 +63,11 @@ export function ZvsTui(props: ZvsTuiProps) {
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
   const [history, setHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+  const [exitArmed, setExitArmed] = useState(false);
+  const exitArmedTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
+  useEffect(() => () => clearTimeout(exitArmedTimeout.current), []);
   const { rows } = useWindowSize();
   const options = state.question?.options ?? [];
   const commands = commandSuggestions(state.draft);
@@ -117,10 +123,25 @@ export function ZvsTui(props: ZvsTuiProps) {
         state.phase === "running" ||
         state.phase === "waiting-user" ||
         state.phase === "cancelling"
-      )
+      ) {
         props.onCancel();
-      else props.onExit();
+        return;
+      }
+      if (exitArmed) {
+        clearTimeout(exitArmedTimeout.current);
+        props.onExit();
+        return;
+      }
+      setExitArmed(true);
+      exitArmedTimeout.current = setTimeout(() => setExitArmed(false), 2000);
       return;
+    }
+    if (exitArmed) setExitArmed(false);
+    if (key.escape && !props.menu && !state.question && !props.inputPrompt) {
+      if (state.phase === "running") {
+        props.onCancel();
+        return;
+      }
     }
     if (props.menu) {
       if (key.escape) props.onEscape();
@@ -277,6 +298,17 @@ export function ZvsTui(props: ZvsTuiProps) {
     return "Сообщение · / команды · @ файлы · ! shell";
   }, [props.inputPrompt, state.phase, state.question]);
 
+  const busy = state.phase === "running" || state.phase === "cancelling";
+  const footerHint = exitArmed
+    ? "Нажмите Ctrl+C ещё раз, чтобы выйти"
+    : !busy &&
+        !state.draft &&
+        !props.menu &&
+        !state.question &&
+        !suggestionsVisible
+      ? "/help — команды и горячие клавиши"
+      : undefined;
+
   return (
     <Box flexDirection="column" height={Math.max(1, rows)}>
       <Box
@@ -306,6 +338,14 @@ export function ZvsTui(props: ZvsTuiProps) {
           />
         )}
       </Box>
+      {busy && (
+        <StatusLine
+          phase={state.phase}
+          seed={state.activeRunId ?? "idle"}
+          startedAt={state.runStartedAt}
+          queued={state.queued.length}
+        />
+      )}
       {suggestionsVisible && (
         <SuggestionPopup
           items={suggestions}
@@ -318,7 +358,7 @@ export function ZvsTui(props: ZvsTuiProps) {
         prompt={prompt}
         value={state.draft}
         cursor={cursor}
-        queued={state.queued.length}
+        queued={state.queued}
         attached={suggestionsVisible}
       />
       <SessionFooter
@@ -327,6 +367,7 @@ export function ZvsTui(props: ZvsTuiProps) {
         project={props.project}
         projectPath={props.projectPath}
         permission={props.permission}
+        hint={footerHint}
         phase={state.phase}
       />
     </Box>

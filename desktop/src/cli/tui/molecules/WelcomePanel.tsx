@@ -5,7 +5,15 @@ import type { RecentChatSession } from "../../../shared/models/chat";
 
 export function WelcomePanel({ sessions }: { sessions: RecentChatSession[] }) {
   return (
-    <Box marginTop={1} marginLeft={2} alignItems="center">
+    <Box
+      marginTop={1}
+      marginLeft={1}
+      borderStyle="round"
+      borderColor={tuiColors.muted}
+      paddingX={2}
+      paddingY={1}
+      alignItems="center"
+    >
       <AsciiLogo />
       <Box marginLeft={3} flexDirection="column">
         <Text bold>ZVS Assistant</Text>
