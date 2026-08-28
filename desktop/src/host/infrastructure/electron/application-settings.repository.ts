@@ -7,6 +7,14 @@ import type {
 const DEFAULT_SETTINGS: ApplicationSettings = {
   runInBackground: true,
   launchAtLogin: false,
+  notifications: {
+    enabled: false,
+    chatGenerationCompleted: true,
+    agentQuestionAsked: true,
+    scenarioStarted: true,
+    scenarioCompleted: true,
+    vectorizationCompleted: true,
+  },
   onboarding: {
     version: 2,
     tourCompleted: false,
@@ -42,6 +50,7 @@ export class ApplicationSettingsRepository {
     ) {
       throw new TypeError("launchAtLogin must be a boolean");
     }
+    validateNotificationPatch(input.notifications);
     validateOnboardingPatch(input.onboarding);
     const current = this.get();
     const settings: ApplicationSettings = {
@@ -52,6 +61,10 @@ export class ApplicationSettingsRepository {
       ...(input.launchAtLogin === undefined
         ? {}
         : { launchAtLogin: input.launchAtLogin }),
+      notifications: {
+        ...current.notifications,
+        ...input.notifications,
+      },
       onboarding: {
         ...current.onboarding,
         ...input.onboarding,
@@ -73,6 +86,10 @@ function parseSettings(value: unknown): ApplicationSettings {
   const record = value as Record<string, unknown>;
   const runInBackground = record.runInBackground;
   const launchAtLogin = record.launchAtLogin;
+  const notifications =
+    record.notifications && typeof record.notifications === "object"
+      ? (record.notifications as Record<string, unknown>)
+      : {};
   const onboarding =
     record.onboarding && typeof record.onboarding === "object"
       ? (record.onboarding as Record<string, unknown>)
@@ -86,6 +103,32 @@ function parseSettings(value: unknown): ApplicationSettings {
       typeof launchAtLogin === "boolean"
         ? launchAtLogin
         : DEFAULT_SETTINGS.launchAtLogin,
+    notifications: {
+      enabled: readBoolean(
+        notifications.enabled,
+        DEFAULT_SETTINGS.notifications.enabled,
+      ),
+      chatGenerationCompleted: readBoolean(
+        notifications.chatGenerationCompleted,
+        DEFAULT_SETTINGS.notifications.chatGenerationCompleted,
+      ),
+      agentQuestionAsked: readBoolean(
+        notifications.agentQuestionAsked,
+        DEFAULT_SETTINGS.notifications.agentQuestionAsked,
+      ),
+      scenarioStarted: readBoolean(
+        notifications.scenarioStarted,
+        DEFAULT_SETTINGS.notifications.scenarioStarted,
+      ),
+      scenarioCompleted: readBoolean(
+        notifications.scenarioCompleted,
+        DEFAULT_SETTINGS.notifications.scenarioCompleted,
+      ),
+      vectorizationCompleted: readBoolean(
+        notifications.vectorizationCompleted,
+        DEFAULT_SETTINGS.notifications.vectorizationCompleted,
+      ),
+    },
     onboarding: {
       version: readNumber(
         onboarding.version,
@@ -107,11 +150,26 @@ function parseSettings(value: unknown): ApplicationSettings {
 function createDefaultSettings(): ApplicationSettings {
   return {
     ...DEFAULT_SETTINGS,
+    notifications: { ...DEFAULT_SETTINGS.notifications },
     onboarding: {
       ...DEFAULT_SETTINGS.onboarding,
       completedGuides: [],
     },
   };
+}
+
+function validateNotificationPatch(
+  patch: UpdateApplicationSettingsInput["notifications"],
+): void {
+  if (patch === undefined) return;
+  if (!patch || typeof patch !== "object") {
+    throw new TypeError("notifications must be an object");
+  }
+  for (const [key, value] of Object.entries(patch)) {
+    if (typeof value !== "boolean") {
+      throw new TypeError(`notifications.${key} must be a boolean`);
+    }
+  }
 }
 
 function readBoolean(value: unknown, fallback: boolean): boolean {

@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { AppWindowController } from "./infrastructure/electron/app-window.controller";
 import { ApplicationSettingsRepository } from "./infrastructure/electron/application-settings.repository";
+import { NotificationService } from "./infrastructure/electron/notification.service";
 import {
   BACKGROUND_LAUNCH_ARGUMENT,
   LoginItemService,
@@ -225,6 +226,11 @@ app.whenReady().then(() => {
   const applicationSettings = new ApplicationSettingsRepository(
     join(app.getPath("userData"), "application-settings.json"),
   );
+  const notifications = new NotificationService(
+    applicationSettings,
+    join(app.getAppPath(), "assets", "app_logo.png"),
+    () => appWindow.show(),
+  );
   const loginItem = new LoginItemService(app);
   const initialApplicationSettings = applicationSettings.get();
   const launchedInBackground = loginItem.wasLaunchedInBackground(process.argv);
@@ -270,6 +276,16 @@ app.whenReady().then(() => {
     join(app.getPath("userData"), "vector-files"),
     join(app.getPath("userData"), "lancedb"),
     textExtraction,
+    (event) =>
+      notifications.show({
+        kind: "vectorizationCompleted",
+        title: event.succeeded
+          ? "Векторизация завершена"
+          : "Ошибка векторизации",
+        body: event.succeeded
+          ? `Документ «${event.fileName}» добавлен в «${event.storeName}».`
+          : `Не удалось обработать «${event.fileName}»: ${event.error ?? "неизвестная ошибка"}`,
+      }),
   );
   registerVectorStoreHandlers(vectorService);
   const providerRegistry = new ProviderRegistry(
@@ -408,6 +424,37 @@ app.whenReady().then(() => {
     createExecutorMap(engineServices),
     engineLogger,
     questionService,
+    (event) => {
+      if (event.type === "run.started") {
+        const name = scenarioGraphs.find(event.run.scenarioId)?.name;
+        notifications.show({
+          kind: "scenarioStarted",
+          title: "Сценарий запущен",
+          body: name
+            ? `«${name}» начал выполнение.`
+            : "Началось выполнение сценария.",
+        });
+        return;
+      }
+      if (
+        event.type !== "run.completed" &&
+        event.type !== "run.failed" &&
+        event.type !== "run.cancelled"
+      )
+        return;
+      const name = scenarioGraphs.find(event.run.scenarioId)?.name;
+      const status =
+        event.type === "run.completed"
+          ? "успешно завершён"
+          : event.type === "run.cancelled"
+            ? "отменён"
+            : "завершился с ошибкой";
+      notifications.show({
+        kind: "scenarioCompleted",
+        title: "Сценарий завершён",
+        body: name ? `«${name}» ${status}.` : `Сценарий ${status}.`,
+      });
+    },
   );
   registerAutomationHandlers(
     automationRepository,
@@ -429,6 +476,21 @@ app.whenReady().then(() => {
     scenarioRuntimeEngine,
     vectorService,
     textExtraction,
+    (event) => {
+      if (event.type === "run.completed") {
+        notifications.show({
+          kind: "chatGenerationCompleted",
+          title: "Ответ в чате готов",
+          body: "Модель завершила генерацию ответа.",
+        });
+      } else if (event.type === "run.failed") {
+        notifications.show({
+          kind: "chatGenerationCompleted",
+          title: "Ошибка генерации ответа",
+          body: event.message,
+        });
+      }
+    },
   );
   registerChatHandlers(
     chatRepository,
@@ -467,7 +529,19 @@ app.whenReady().then(() => {
     ),
   );
   registerCoreInteractorHandlers(new CoreInteractorService());
-  registerAssistantHandlers(memoryService, taskPlans, questionService);
+  registerAssistantHandlers(
+    memoryService,
+    taskPlans,
+    questionService,
+    (question) => {
+      if (question.status !== "pending" || question.channel !== "ui") return;
+      notifications.show({
+        kind: "agentQuestionAsked",
+        title: question.header || "Агент задал вопрос",
+        body: question.question,
+      });
+    },
+  );
 
   appWindow.create({
     showOnReady: !launchedInBackground,

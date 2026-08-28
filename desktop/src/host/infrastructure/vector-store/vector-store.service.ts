@@ -33,6 +33,12 @@ export class VectorStoreService {
     private readonly filesDir: string,
     private readonly lanceDir: string,
     private readonly extraction: TextExtractionClient,
+    private readonly onIngestCompleted?: (event: {
+      fileName: string;
+      storeName: string;
+      succeeded: boolean;
+      error?: string;
+    }) => void,
   ) {}
 
   snapshot() {
@@ -274,6 +280,7 @@ export class VectorStoreService {
     const store = this.data.store(input.vectorStoreId);
     if (!store?.embeddingModelId)
       throw new Error("Сначала выберите embedding-модель");
+    let failure: string | undefined;
     try {
       await mkdir(join(this.filesDir, String(store.id)), { recursive: true });
       await writeFile(path, buffer);
@@ -330,15 +337,22 @@ export class VectorStoreService {
       this.data.updateDocument(id, "ready", 100, chunks.length);
       this.data.refreshStoreState(store.id, vectors[0]!.length);
     } catch (error) {
+      failure = error instanceof Error ? error.message : String(error);
       this.data.updateDocument(
         id,
         "failed",
         100,
         0,
-        error instanceof Error ? error.message : String(error),
+        failure,
       );
       this.data.refreshStoreState(store.id);
     }
+    this.onIngestCompleted?.({
+      fileName: input.fileName,
+      storeName: store.name,
+      succeeded: failure === undefined,
+      ...(failure ? { error: failure } : {}),
+    });
   }
 
   private validateUpload(input: UploadVectorDocumentInput) {

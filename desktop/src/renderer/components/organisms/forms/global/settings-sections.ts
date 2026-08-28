@@ -1,6 +1,7 @@
 import {
   AccountOutlineIcon,
   ApplicationIcon,
+  BellIcon,
   CogIcon,
   PaletteIcon,
   StorageIcon,
@@ -86,6 +87,25 @@ export const APPLICATION_ANCHORS = {
     description: "Настройте поведение приложения после закрытия окна.",
     keywords: ["фон", "tray", "трей", "закрытие", "сценарии"],
     icon: CogIcon,
+  },
+} satisfies Record<string, GlobalSettingsAnchorDescriptor>;
+
+export const NOTIFICATIONS_SECTION = {
+  id: "notifications",
+  label: "Уведомления",
+  description: "Системные уведомления о важных событиях приложения.",
+  keywords: ["уведомления", "система", "события", "notification"],
+  icon: BellIcon,
+};
+
+export const NOTIFICATIONS_ANCHORS = {
+  policy: {
+    id: "notifications-policy",
+    parentId: "notifications",
+    label: "Настройка уведомлений",
+    description: "Выберите события, о которых приложение будет сообщать.",
+    keywords: ["чат", "вопрос", "сценарий", "векторизация"],
+    icon: BellIcon,
   },
 } satisfies Record<string, GlobalSettingsAnchorDescriptor>;
 

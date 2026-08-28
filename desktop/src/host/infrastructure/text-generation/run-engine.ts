@@ -65,6 +65,7 @@ export class RunEngine {
     private readonly scenarios?: ScenarioRuntimeEngine,
     private readonly vectorStores?: VectorStoreService,
     private readonly textExtraction?: TextExtractionClient,
+    private readonly eventObserver?: Emit,
   ) {}
 
   private profileBlock(mode: string): string {
@@ -83,9 +84,14 @@ export class RunEngine {
     input: StartRunInput,
     emit: Emit,
   ): Promise<{ runId: string; conversationId: string }> {
+    const publish: Emit = (event) => {
+      this.eventObserver?.(event);
+      emit(event);
+    };
     const text = input.text.trim();
     if (!text) throw new Error("Сообщение не может быть пустым");
-    if (input.mode === "scenario") return this.startScenario(input, text, emit);
+    if (input.mode === "scenario")
+      return this.startScenario(input, text, publish);
     const agent =
       input.mode === "agent"
         ? this.data.resolveAgent(input.agentId)
@@ -139,7 +145,7 @@ export class RunEngine {
       usage,
     );
     this.data.updateTitle(conversationId, text);
-    emit({
+    publish({
       type: "run.started",
       runId,
       conversationId,
@@ -157,7 +163,7 @@ export class RunEngine {
       agent?.instructions,
       maxSteps,
       controller,
-      emit,
+      publish,
     );
     return { runId, conversationId };
   }

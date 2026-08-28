@@ -29,6 +29,7 @@ describe("ApplicationSettingsRepository", () => {
     expect(repository.get()).toEqual({
       runInBackground: true,
       launchAtLogin: false,
+      notifications: defaultNotifications(),
       onboarding: defaultOnboarding(),
     });
 
@@ -37,16 +38,19 @@ describe("ApplicationSettingsRepository", () => {
     ).toEqual({
       runInBackground: false,
       launchAtLogin: true,
+      notifications: defaultNotifications(),
       onboarding: defaultOnboarding(),
     });
     expect(repository.get()).toEqual({
       runInBackground: false,
       launchAtLogin: true,
+      notifications: defaultNotifications(),
       onboarding: defaultOnboarding(),
     });
     expect(JSON.parse(readFileSync(settingsPath(), "utf8"))).toEqual({
       runInBackground: false,
       launchAtLogin: true,
+      notifications: defaultNotifications(),
       onboarding: defaultOnboarding(),
     });
   });
@@ -59,6 +63,7 @@ describe("ApplicationSettingsRepository", () => {
     expect(repository.get()).toEqual({
       runInBackground: true,
       launchAtLogin: false,
+      notifications: defaultNotifications(),
       onboarding: defaultOnboarding(),
     });
     expect(log).toHaveBeenCalledOnce();
@@ -71,6 +76,7 @@ describe("ApplicationSettingsRepository", () => {
     expect(repository.update({ onboarding: { tourCompleted: true } })).toEqual({
       runInBackground: false,
       launchAtLogin: false,
+      notifications: defaultNotifications(),
       onboarding: { ...defaultOnboarding(), tourCompleted: true },
     });
   });
@@ -95,6 +101,7 @@ describe("ApplicationSettingsRepository", () => {
     expect(repository.get()).toEqual({
       runInBackground: true,
       launchAtLogin: false,
+      notifications: defaultNotifications(),
       onboarding: {
         ...defaultOnboarding(),
         tourCompleted: true,
@@ -102,7 +109,47 @@ describe("ApplicationSettingsRepository", () => {
       },
     });
   });
+
+  it("migrates and updates notification policy without losing event choices", () => {
+    const repository = createRepository();
+    writeFileSync(settingsPath(), JSON.stringify({ runInBackground: false }));
+
+    expect(
+      repository.update({
+        notifications: {
+          enabled: true,
+          scenarioStarted: false,
+        },
+      }).notifications,
+    ).toEqual({
+      ...defaultNotifications(),
+      enabled: true,
+      scenarioStarted: false,
+    });
+
+    expect(
+      repository.update({
+        notifications: { vectorizationCompleted: false },
+      }).notifications,
+    ).toEqual({
+      ...defaultNotifications(),
+      enabled: true,
+      scenarioStarted: false,
+      vectorizationCompleted: false,
+    });
+  });
 });
+
+function defaultNotifications() {
+  return {
+    enabled: false,
+    chatGenerationCompleted: true,
+    agentQuestionAsked: true,
+    scenarioStarted: true,
+    scenarioCompleted: true,
+    vectorizationCompleted: true,
+  };
+}
 
 function defaultOnboarding() {
   return {

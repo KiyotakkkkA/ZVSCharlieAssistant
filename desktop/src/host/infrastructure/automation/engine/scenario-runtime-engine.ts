@@ -33,6 +33,7 @@ export class ScenarioRuntimeEngine {
     private readonly executors: Map<string, NodeExecutor<never, never>>,
     private readonly logger: Logger,
     private readonly questions?: UserQuestionService,
+    private readonly eventObserver?: Emit,
   ) {}
 
   assertRunnable(scenarioId: string): void {
@@ -49,6 +50,7 @@ export class ScenarioRuntimeEngine {
     conversationId?: string,
     revisionId?: string,
   ): ScenarioRun {
+    const publish = this.observe(emit);
     const definition = this.graphs.find(scenarioId, revisionId);
     if (!definition)
       throw new Error("Сценарий или его сохранённая ревизия не найдены");
@@ -64,7 +66,7 @@ export class ScenarioRuntimeEngine {
     );
     const controller = new AbortController();
     this.controllers.set(run.id, controller);
-    emit({ type: "run.started", run });
+    publish({ type: "run.started", run });
     void this.execute(
       run.id,
       scenarioId,
@@ -73,12 +75,13 @@ export class ScenarioRuntimeEngine {
       compiled,
       input,
       controller,
-      emit,
+      publish,
     );
     return run;
   }
 
   resume(executionId: string, emit: Emit): void {
+    const publish = this.observe(emit);
     const run = this.executions.run(executionId);
     if (!run) throw new Error("Запуск не найден");
     const definition = this.graphs.find(run.scenarioId, run.scenarioRevisionId);
@@ -96,13 +99,20 @@ export class ScenarioRuntimeEngine {
       compiled,
       run.input,
       controller,
-      emit,
+      publish,
       checkpoint,
     );
   }
 
   cancel(runId: string): void {
     this.controllers.get(runId)?.abort();
+  }
+
+  private observe(emit: Emit): Emit {
+    return (event) => {
+      this.eventObserver?.(event);
+      emit(event);
+    };
   }
 
   private async execute(

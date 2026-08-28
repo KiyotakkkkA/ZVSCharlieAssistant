@@ -9,6 +9,15 @@ const onboarding = {
   firstLaunchAt: "2026-08-24T00:00:00.000Z",
 };
 
+const notifications = {
+  enabled: false,
+  chatGenerationCompleted: true,
+  agentQuestionAsked: true,
+  scenarioStarted: true,
+  scenarioCompleted: true,
+  vectorizationCompleted: true,
+};
+
 beforeEach(() => {
   const update = vi.fn(async ({ onboarding: patch }) => {
     const clonedPatch = structuredClone(patch);
@@ -16,6 +25,7 @@ beforeEach(() => {
     return {
       runInBackground: true,
       launchAtLogin: false,
+      notifications,
       onboarding: { ...onboarding, ...clonedPatch },
     };
   });
@@ -31,6 +41,7 @@ describe("OnboardingStore", () => {
     store.settings = {
       runInBackground: true,
       launchAtLogin: false,
+      notifications,
       onboarding: {
         ...onboarding,
         completedGuides: observable.array<string>([]),

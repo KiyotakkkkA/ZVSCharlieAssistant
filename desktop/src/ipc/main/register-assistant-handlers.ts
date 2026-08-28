@@ -11,6 +11,7 @@ import {
 import type { MemoryService } from "../../host/application/services/memory.service";
 import type { TaskPlanRepository } from "../../host/infrastructure/database/task-plan.repository";
 import type { UserQuestionService } from "../../host/application/services/user-question.service";
+import type { UserQuestion } from "../../shared/models/user-question";
 
 const broadcast = (channel: string, payload: unknown) => {
   for (const window of BrowserWindow.getAllWindows())
@@ -22,13 +23,15 @@ export function registerAssistantHandlers(
   memory: MemoryService,
   taskPlans: TaskPlanRepository,
   questions: UserQuestionService,
+  onQuestion?: (question: UserQuestion) => void,
 ): void {
   memory.watch((event) =>
     broadcast(ASSISTANT_IPC_CHANNELS.memoryChanged, event),
   );
-  questions.watch((question) =>
-    broadcast(ASSISTANT_IPC_CHANNELS.questionsChanged, question),
-  );
+  questions.watch((question) => {
+    broadcast(ASSISTANT_IPC_CHANNELS.questionsChanged, question);
+    onQuestion?.(question);
+  });
 
   ipcMain.handle(ASSISTANT_IPC_CHANNELS.memoryGetSnapshot, () =>
     memory.snapshot(),

@@ -26,8 +26,11 @@ import {
   APPLICATION_ANCHORS,
   APPLICATION_SECTION,
   GlobalSettingsApplicationForm,
+  GlobalSettingsNotificationsForm,
   GlobalSettingsAppearanceForm,
   GlobalSettingsProfileForm,
+  NOTIFICATIONS_ANCHORS,
+  NOTIFICATIONS_SECTION,
   PROFILE_ANCHORS,
   PROFILE_SECTION,
   DATA_ANCHORS,
@@ -50,6 +53,11 @@ const SETTINGS_FORMS: GlobalSettingsFormDescriptor[] = [
     ...APPLICATION_SECTION,
     anchors: Object.values(APPLICATION_ANCHORS),
     Component: GlobalSettingsApplicationForm,
+  },
+  {
+    ...NOTIFICATIONS_SECTION,
+    anchors: Object.values(NOTIFICATIONS_ANCHORS),
+    Component: GlobalSettingsNotificationsForm,
   },
   {
     ...DATA_SECTION,

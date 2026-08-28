@@ -7,6 +7,14 @@ import { APPLICATION_ANCHORS } from "./settings-sections";
 const DEFAULT_SETTINGS: ApplicationSettings = {
   runInBackground: true,
   launchAtLogin: false,
+  notifications: {
+    enabled: false,
+    chatGenerationCompleted: true,
+    agentQuestionAsked: true,
+    scenarioStarted: true,
+    scenarioCompleted: true,
+    vectorizationCompleted: true,
+  },
   onboarding: {
     version: 2,
     tourCompleted: false,
