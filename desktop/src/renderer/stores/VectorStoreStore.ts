@@ -259,7 +259,8 @@ export class VectorStoreStore {
     const monitor = this.monitorProcessingDocuments();
     this.processingMonitor = monitor;
     void monitor.finally(() => {
-      if (this.processingMonitor === monitor) this.processingMonitor = undefined;
+      if (this.processingMonitor === monitor)
+        this.processingMonitor = undefined;
       if (this.documents.some(isProcessingDocument))
         this.ensureProcessingMonitor();
     });
@@ -293,10 +294,7 @@ export class VectorStoreStore {
           const snapshot = await window.desktop.vectorStores.getSnapshot();
           runInAction(() => this.apply(snapshot));
         }
-      } catch {
-        // The main process owns the task; keep retrying while its last known
-        // state is still active (for example after a transient IPC failure).
-      }
+      } catch {}
     }
   }
 }
@@ -313,7 +311,9 @@ function isProcessingDocument(document: VectorStoreDocument) {
 }
 
 function isProcessingStatus(status: VectorStoreDocument["status"]) {
-  return status === "queued" || status === "extracting" || status === "embedding";
+  return (
+    status === "queued" || status === "extracting" || status === "embedding"
+  );
 }
 
 export const vectorStoreStore = new VectorStoreStore();

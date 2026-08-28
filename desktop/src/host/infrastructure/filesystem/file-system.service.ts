@@ -451,11 +451,6 @@ export class FileSystemService {
     return { restored, failed };
   }
 
-  /**
-   * Called when a run finishes. Staged writes are keyed to the conversation,
-   * not the run, so they survive a cancelled/failed run and can be resumed
-   * from the next message — only the read-tracking is run-scoped.
-   */
   forgetRun(runId: string) {
     this.reads.delete(runId);
   }

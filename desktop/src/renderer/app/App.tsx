@@ -22,7 +22,7 @@ import {
   userProfileStore,
   onboardingStore,
 } from "../stores";
-import { TerminalApprovalModal } from "../components/organisms/modals/TerminalApprovalModal";
+import { TerminalApprovalModal } from "../components/organisms/modals";
 import { OnboardingTourOverlay } from "../components/organisms/onboarding";
 
 const CRITICAL_STORES = [

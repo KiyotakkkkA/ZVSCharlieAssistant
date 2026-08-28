@@ -22,7 +22,7 @@ export interface AutomationTool {
   name: string;
   description: string;
   category: string;
-  builtin: true;
+  builtin: boolean;
   internal?: boolean;
   enabled: boolean;
   disabledReason?: string | null;

@@ -249,7 +249,7 @@ const NodeField = observer(function NodeField({
               value: String(store.id),
               label: store.name,
             }))}
-            onChange={(next) => onSet(spec.key, next ? Number(next) : 0)}
+            onChange={(next) => onSet(spec.key, next)}
           />
           {hint}
         </Field>
@@ -265,7 +265,7 @@ const NodeField = observer(function NodeField({
               value: String(secret.id),
               label: secret.label,
             }))}
-            onChange={(next) => onSet(spec.key, next ? Number(next) : null)}
+            onChange={(next) => onSet(spec.key, next || null)}
           />
           {hint}
         </Field>
@@ -285,7 +285,7 @@ const NodeField = observer(function NodeField({
                 value: String(profile.id),
                 label: profile.name,
               }))}
-            onChange={(next) => onSet(spec.key, next ? Number(next) : null)}
+            onChange={(next) => onSet(spec.key, next || null)}
           />
           {hint}
         </Field>

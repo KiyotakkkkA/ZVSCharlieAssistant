@@ -4,6 +4,8 @@ import { AutomationToolStore } from "./automation/AutomationToolStore";
 import { AutomationScenarioStore } from "./automation/AutomationScenarioStore";
 import { AutomationSkillStore } from "./automation/AutomationSkillStore";
 
+let mcpUnsubscribe: (() => void) | null = null;
+
 class AutomationStore {
   readonly agentStore = new AutomationAgentStore();
   readonly toolStore = new AutomationToolStore();
@@ -48,7 +50,15 @@ class AutomationStore {
   get pendingScenarioApproval() {
     return this.scenarioStore.pendingApproval;
   }
+  private watchMcp() {
+    if (mcpUnsubscribe) return;
+    mcpUnsubscribe = window.desktop.mcp.subscribe(() => {
+      void this.bootstrap(true);
+    });
+  }
+
   async bootstrap(force = false) {
+    this.watchMcp();
     if (this.loading || (this.initialized && !force)) return;
     this.loading = true;
     this.error = null;

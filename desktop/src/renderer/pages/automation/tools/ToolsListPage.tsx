@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { observer } from "mobx-react-lite";
 import {
   Alert,
@@ -10,27 +10,41 @@ import {
   Switcher,
   useToasts,
 } from "@kiyotakkkka/zvs-uikit-lib";
-import { SecretOrientedSelect, CogIcon } from "../../../components/atoms";
+import {
+  SecretOrientedSelect,
+  CogIcon,
+  FolderIcon,
+  RefreshIcon,
+} from "../../../components/atoms";
 import { PageHeader } from "../../../components/organisms";
 import { AutomationToolCard } from "../../../components/molecules";
+import { McpServersView } from "../../../components/organisms/McpServersView";
 import type { AutomationTool } from "../../../../ipc/contracts";
-import { automationStore } from "../../../stores";
+import { automationStore, mcpStore } from "../../../stores";
 import { AutomationToolsListTable } from "@renderer/components/organisms/tables";
 import { CodeView } from "@kiyotakkkka/zvs-uikit-lib/code-view";
+
+type ToolsSource = "builtin" | "mcp";
 
 export const ToolsListPage = observer(function ToolsListPage() {
   const toasts = useToasts();
   const [selectedTool, setSelectedTool] = useState<AutomationTool | null>(null);
   const [query, setQuery] = useState("");
   const [viewMode, setViewMode] = useState<"table" | "cards">("cards");
+  const [source, setSource] = useState<ToolsSource>("builtin");
   const tools = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase();
+    const builtinTools = automationStore.tools.filter((tool) => tool.builtin);
     return normalized
-      ? automationStore.tools.filter((tool) =>
+      ? builtinTools.filter((tool) =>
           `${tool.name} ${tool.id}`.toLocaleLowerCase().includes(normalized),
         )
-      : automationStore.tools;
+      : builtinTools;
   }, [query, automationStore.tools]);
+
+  useEffect(() => {
+    if (source === "mcp") void mcpStore.bootstrap();
+  }, [source]);
 
   return (
     <section
@@ -44,26 +58,65 @@ export const ToolsListPage = observer(function ToolsListPage() {
       >
         <div className="flex flex-wrap items-center justify-end gap-2">
           <Switcher
-            value={viewMode}
-            onChange={(value) => setViewMode(value as "table" | "cards")}
+            value={source}
+            onChange={(value) => setSource(value as ToolsSource)}
             options={[
-              { value: "table", label: "Таблица" },
-              { value: "cards", label: "Карточки" },
+              { value: "builtin", label: "Встроенные" },
+              { value: "mcp", label: "MCP" },
             ]}
           />
-          <InputSmall
-            preset="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            onClear={() => setQuery("")}
-            placeholder="Найти инструмент"
-            className="w-64"
-          />
+          {source === "mcp" ? (
+            <>
+              <Button
+                variant="secondary"
+                className="gap-1.5 px-2"
+                title="Открыть папку с mcp.json"
+                onClick={() => void window.desktop.mcp.openConfigFolder()}
+              >
+                <FolderIcon className="size-4" />
+                Открыть папку
+              </Button>
+              <Button
+                variant="secondary"
+                className="gap-1.5 px-2"
+                loading={mcpStore.revalidating}
+                onClick={() => void mcpStore.revalidate()}
+              >
+                <RefreshIcon className="size-4" />
+                Обновить
+              </Button>
+            </>
+          ) : (
+            <>
+              <Switcher
+                value={viewMode}
+                onChange={(value) => setViewMode(value as "table" | "cards")}
+                options={[
+                  { value: "table", label: "Таблица" },
+                  { value: "cards", label: "Карточки" },
+                ]}
+              />
+              <InputSmall
+                preset="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                onClear={() => setQuery("")}
+                placeholder="Найти инструмент"
+                className="w-64"
+              />
+            </>
+          )}
         </div>
       </PageHeader>
 
       <ScrollArea data-tour="tools-list" className="min-h-0 flex-1 p-1">
-        {tools.length && viewMode === "cards" ? (
+        {source === "mcp" ? (
+          <McpServersView
+            servers={mcpStore.snapshot?.servers ?? []}
+            configPath={mcpStore.snapshot?.configPath ?? ""}
+            configError={mcpStore.snapshot?.configError ?? mcpStore.error}
+          />
+        ) : tools.length && viewMode === "cards" ? (
           <div className="grid auto-rows-fr gap-3 xl:grid-cols-3">
             {tools.map((tool, index) => (
               <div

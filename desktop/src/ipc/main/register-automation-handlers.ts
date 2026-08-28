@@ -5,6 +5,7 @@ import type { ScenarioRuntimeEngine } from "../../host/infrastructure/automation
 import type { ScenarioGraphRepository } from "../../host/infrastructure/database/scenario-graph.repository";
 import type { IntegrationRepository } from "../../host/infrastructure/database/integration.repository";
 import type { UserQuestionService } from "../../host/application/services/user-question.service";
+import type { McpService } from "../../host/infrastructure/mcp/mcp.service";
 import {
   AUTOMATION_IPC_CHANNELS,
   type ScenarioRunOrigin as ContractScenarioRunOrigin,
@@ -41,10 +42,15 @@ export function registerAutomationHandlers(
   engine: ScenarioRuntimeEngine,
   integrations: IntegrationRepository,
   questions: UserQuestionService,
+  mcp: McpService,
 ): void {
   ipcMain.handle(AUTOMATION_IPC_CHANNELS.getSnapshot, () => {
     const base = repository.getSnapshot();
-    return { ...base, scenarios: graphs.list() };
+    return {
+      ...base,
+      tools: [...base.tools, ...mcp.getAutomationTools()],
+      scenarios: graphs.list(),
+    };
   });
   ipcMain.handle(
     AUTOMATION_IPC_CHANNELS.upsertAgent,

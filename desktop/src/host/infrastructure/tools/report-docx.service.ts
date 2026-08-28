@@ -162,12 +162,6 @@ export class ReportDocxService {
     return { sessionId: session.id, fileName: session.fileName, aborted: true };
   }
 
-  /**
-   * Sessions are keyed by conversation (see `reportOwnerId` in
-   * ToolRegistry.create), so they intentionally survive a single run ending
-   * and can be resumed from the next message. Only conversation deletion and
-   * the TTL below reclaim them.
-   */
   abortConversation(conversationId: string): void {
     for (const session of this.sessions.values())
       if (session.ownerId === conversationId) this.sessions.delete(session.id);

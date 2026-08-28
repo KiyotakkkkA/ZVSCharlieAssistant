@@ -617,6 +617,7 @@ export class AutomationRepository {
 
   private assertToolsExist(toolIds: string[]): void {
     for (const toolId of toolIds) {
+      if (toolId.startsWith("mcp__")) continue;
       const tool = this.toolsById.get(toolId);
       if (!tool) throw new Error(`Инструмент ${toolId} не зарегистрирован`);
       if (!this.mapTool(tool).enabled)

@@ -73,7 +73,6 @@ export class RunEngine {
     return this.userProfile.promptBlock();
   }
 
-  /** Chat/planner read memory by default; an agent needs `memoryRead` granted. */
   private mayReadMemory(
     mode: string,
     agentRuntime: { memoryRead: boolean } | undefined,
@@ -256,7 +255,10 @@ export class RunEngine {
   ): ContextWindowBreakdownEntry[] {
     const entries = blocks
       .filter((block) => block.text.trim().length > 0)
-      .map((block) => ({ label: block.label, tokens: estimateTextTokens(block.text) }));
+      .map((block) => ({
+        label: block.label,
+        tokens: estimateTextTokens(block.text),
+      }));
     const messagesTokens = Math.max(0, usedTokens - estimateTextTokens(system));
     if (messagesTokens > 0)
       entries.push({ label: "Сообщения диалога", tokens: messagesTokens });
@@ -1059,7 +1061,8 @@ export class RunEngine {
 
     if (usage) this.data.addRunUsage(runId, usage);
     const interruptedToolInput = partialToolInputs.values().next().value as
-      { toolName: string; receivedBytes: number } | undefined;
+      | { toolName: string; receivedBytes: number }
+      | undefined;
     const recoverableStreamEnd = Boolean(
       streamError && isMissingFinishReasonError(streamError),
     );

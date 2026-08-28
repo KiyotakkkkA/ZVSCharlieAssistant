@@ -24,7 +24,7 @@ import {
   TasksCreationRunsListTable,
   TasksScenarioRunsListTable,
 } from "@renderer/components/organisms/tables";
-import { GenerationQuestionModal } from "../../components/organisms/tasks/GenerationQuestionModal";
+import { GenerationQuestionModal } from "../../components/organisms/modals";
 
 type TaskTab = "scenarios-runs" | "creation-runs";
 
@@ -154,9 +154,7 @@ export const TaskListPage = observer(function TaskListPage() {
               onShowError={setFailed}
               onAnswerQuestion={setAnswering}
               onOpenDetail={(run) =>
-                goTo(
-                  APP_PATHS.taskCreationDetail.replace(":runId", run.id),
-                )
+                goTo(APP_PATHS.taskCreationDetail.replace(":runId", run.id))
               }
               onOpenEntity={(run) =>
                 run.entityId &&
@@ -215,7 +213,10 @@ export const TaskListPage = observer(function TaskListPage() {
         </Modal.Content>
       </Modal>
 
-      <GenerationQuestionModal run={answering} onClose={() => setAnswering(null)} />
+      <GenerationQuestionModal
+        run={answering}
+        onClose={() => setAnswering(null)}
+      />
     </section>
   );
 });

@@ -51,6 +51,7 @@ export interface DesktopApi {
   entityGeneration: import("./entity-generation.contract").EntityGenerationApi;
   core: import("./core-interactor.contract").CoreInteractorApi;
   assistant: import("./assistant.contract").AssistantApi;
+  mcp: import("./mcp.contract").McpApi;
 }
 
 export interface ApplicationSettingsApi {

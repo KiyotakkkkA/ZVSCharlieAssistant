@@ -1,5 +1,4 @@
 export const tuiColors = {
-  // The lime brand accent stays vivid while neutral colors carry most content.
   accent: "#b7ff4a",
   cyan: "#9ab8ce",
   violet: "#b7a6d8",

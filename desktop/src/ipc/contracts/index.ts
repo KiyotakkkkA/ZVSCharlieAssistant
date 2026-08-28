@@ -116,6 +116,16 @@ export { CORE_INTERACTOR_IPC_CHANNELS } from "./core-interactor.contract";
 export type { AssistantApi } from "./assistant.contract";
 export { ASSISTANT_IPC_CHANNELS } from "./assistant.contract";
 
+export type {
+  McpApi,
+  McpSnapshot,
+  McpServerState,
+  McpServerStatus,
+  McpServerToolSummary,
+  McpTransportKind,
+} from "./mcp.contract";
+export { MCP_IPC_CHANNELS } from "./mcp.contract";
+
 export type * from "../../shared/models/memory";
 export type * from "../../shared/models/task-plan";
 export type * from "../../shared/models/user-question";

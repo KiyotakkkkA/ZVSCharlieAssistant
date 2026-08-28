@@ -22,6 +22,7 @@ import type { MemoryService } from "../../application/services/memory.service";
 import type { TaskPlanRepository } from "../database/task-plan.repository";
 import type { UserQuestionService } from "../../application/services/user-question.service";
 import type { FileSystemService } from "../filesystem/file-system.service";
+import type { McpService } from "../mcp/mcp.service";
 import type { FileEditRecord } from "../../../shared/models/chat";
 import {
   extractCommandNames,
@@ -88,6 +89,7 @@ export class ToolRegistry {
     private readonly questions: UserQuestionService,
     private readonly files: FileSystemService,
     private readonly toolOutputs: ToolOutputReader,
+    private readonly mcp: McpService,
   ) {}
 
   create(options: ToolRegistryOptions): ToolSet | undefined {
@@ -845,6 +847,7 @@ export class ToolRegistry {
           ),
       }),
     };
+    Object.assign(tools, this.mcp.getToolSet());
     const available = Object.fromEntries(
       Object.entries(tools).filter(([id]) => {
         if (
@@ -878,7 +881,9 @@ export class ToolRegistry {
     const skills = this.automationCatalog
       .listSkills()
       .filter((item) => requested.has(item.id) && item.status === "active");
-    const missing = ids.filter((id) => !skills.some((skill) => skill.id === id));
+    const missing = ids.filter(
+      (id) => !skills.some((skill) => skill.id === id),
+    );
     if (missing.length)
       throw new Error(`Выбранный навык недоступен: ${missing.join(", ")}`);
     return `\n\nНавыки, явно выбранные пользователем для этой задачи. Их инструкции уже загружены; обязательно следуй им, не загружай другие навыки самостоятельно:\n${skills
@@ -942,11 +947,6 @@ export class ToolRegistry {
     });
   }
 
-  /**
-   * Only read-tracking is run-scoped. Staged fs_write and report-docx
-   * sessions are keyed by conversation and survive a run ending — see
-   * FileSystemService.forgetConversation / ReportDocxService.abortConversation.
-   */
   cleanupRun(runId: string): void {
     this.files.forgetRun(runId);
   }

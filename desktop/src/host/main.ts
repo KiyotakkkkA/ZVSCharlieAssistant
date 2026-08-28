@@ -17,6 +17,12 @@ import {
   registerSecretStorageHandlers,
   removeSecretStorageHandlers,
 } from "../ipc/main/register-secret-storage-handlers";
+import { McpConfigStore } from "./infrastructure/mcp/mcp-config.store";
+import { McpService } from "./infrastructure/mcp/mcp.service";
+import {
+  registerMcpHandlers,
+  removeMcpHandlers,
+} from "../ipc/main/register-mcp-handlers";
 import { createSqliteDatabase } from "./infrastructure/database/sqlite.database";
 import { SecretStorageRepository } from "./infrastructure/database/secret-storage.repository";
 import { DataTransferService } from "./infrastructure/data-transfer/data-transfer.service";
@@ -218,6 +224,12 @@ app.whenReady().then(() => {
     DEFAULT_SKILLS,
   ).provision();
 
+  const mcpService = new McpService(
+    new McpConfigStore(join(app.getPath("userData"), "mcp.json")),
+  );
+  registerMcpHandlers(mcpService);
+  void mcpService.revalidate();
+
   const reportsRoot = join(
     app.getPath("documents"),
     "ZVS Assistant",
@@ -398,6 +410,7 @@ app.whenReady().then(() => {
     questionService,
     fileSystemService,
     chatRepository,
+    mcpService,
   );
   registerTerminalPolicyHandlers(
     terminalPolicyRepository,
@@ -473,6 +486,7 @@ app.whenReady().then(() => {
     scenarioRuntimeEngine,
     integrationRepository,
     questionService,
+    mcpService,
   );
   const runEngine = new RunEngine(
     chatRepository,
@@ -666,6 +680,7 @@ function shutdownRuntime(): void {
   removeTerminalPolicyHandlers();
   removeDirectoryPolicyHandlers();
   removeUserProfileHandlers();
+  removeMcpHandlers();
   removeEntityGenerationHandlers();
   removeIntegrationHandlers();
   removeAssistantHandlers();

@@ -1,7 +1,12 @@
 import { z } from "zod";
 
 export type JsonValue =
-  string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue };
 
 export const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
   z.union([
@@ -28,7 +33,6 @@ export function parseJsonDto<TSchema extends z.ZodType>(
   return parseIpcDto(schema, JSON.parse(value) as unknown);
 }
 
-/** Public identity of every persisted entity. */
 export const entityIdSchema = z
   .uuid()
   .refine((value) => value[14] === "7", "Expected UUIDv7");

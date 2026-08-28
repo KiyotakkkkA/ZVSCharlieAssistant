@@ -108,7 +108,7 @@ export function CompactEntitySelector({
                             {item.title}
                           </span>
                           {item.description ? (
-                            <span className="mt-0.5 block truncate text-xs text-main-500">
+                            <span className="mt-0.5 block wrap-break-word text-xs leading-relaxed text-main-500">
                               {item.description}
                             </span>
                           ) : null}

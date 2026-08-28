@@ -12,6 +12,7 @@ export { taskPlanStore } from "./TaskPlanStore";
 export { questionStore } from "./QuestionStore";
 export { userProfileStore } from "./UserProfileStore";
 export { entityGenerationStore } from "./EntityGenerationStore";
+export { mcpStore } from "./McpStore";
 export { onboardingStore } from "./OnboardingStore";
 export { uiStore } from "./UiStore";
 export { projectStore } from "./ProjectStore";

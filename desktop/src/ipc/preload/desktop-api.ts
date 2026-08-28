@@ -58,6 +58,8 @@ import {
   type TerminalApprovalRequest,
   INTEGRATION_IPC_CHANNELS,
   DATA_TRANSFER_IPC_CHANNELS,
+  MCP_IPC_CHANNELS,
+  type McpSnapshot,
 } from "../contracts";
 import type {
   ImportPreview,
@@ -679,5 +681,22 @@ export const desktopApi: DesktopApi = {
       ipcRenderer.invoke(
         EXTENSION_IPC_CHANNELS.uninstallCli,
       ) as Promise<CliIntegrationStatus>,
+  },
+  mcp: {
+    getSnapshot: (): Promise<McpSnapshot> =>
+      ipcRenderer.invoke(MCP_IPC_CHANNELS.getSnapshot) as Promise<McpSnapshot>,
+    revalidate: (): Promise<McpSnapshot> =>
+      ipcRenderer.invoke(MCP_IPC_CHANNELS.revalidate) as Promise<McpSnapshot>,
+    openConfigFolder: (): Promise<void> =>
+      ipcRenderer.invoke(MCP_IPC_CHANNELS.openConfigFolder) as Promise<void>,
+    subscribe: (listener: (snapshot: McpSnapshot) => void) => {
+      const handler = (
+        _event: Electron.IpcRendererEvent,
+        payload: McpSnapshot,
+      ) => listener(payload);
+      ipcRenderer.on(MCP_IPC_CHANNELS.snapshotChanged, handler);
+      return () =>
+        ipcRenderer.removeListener(MCP_IPC_CHANNELS.snapshotChanged, handler);
+    },
   },
 };

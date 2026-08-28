@@ -69,7 +69,13 @@ export const AutomationAgentManageForm = observer(
     const [textModelId, setTextModelId] = useState("");
     const [toolModel, setToolModel] = useState<Record<string, boolean>>({});
     const [activeTab, setActiveTab] = useState<
-      "basic" | "storage" | "memory" | "skills" | "directories" | "terminal"
+      | "basic"
+      | "mcp"
+      | "storage"
+      | "memory"
+      | "skills"
+      | "directories"
+      | "terminal"
     >("basic");
     const [memoryRead, setMemoryRead] = useState(false);
     const [memoryWrite, setMemoryWrite] = useState(false);
@@ -101,6 +107,14 @@ export const AutomationAgentManageForm = observer(
           confirmationModeRank[value] >= confirmationModeRank[globalMode],
       );
     }, [terminalPolicyStore.policy?.confirmationMode]);
+    const builtinTools = useMemo(
+      () => automationStore.tools.filter((tool) => tool.builtin),
+      [automationStore.tools],
+    );
+    const mcpTools = useMemo(
+      () => automationStore.tools.filter((tool) => !tool.builtin),
+      [automationStore.tools],
+    );
     const vectorDocumentCounts = useMemo(() => {
       const counts = new Map<string, number>();
       for (const document of vectorStoreStore.documents)
@@ -303,6 +317,7 @@ export const AutomationAgentManageForm = observer(
               setActiveTab(
                 value as
                   | "basic"
+                  | "mcp"
                   | "storage"
                   | "memory"
                   | "skills"
@@ -312,7 +327,7 @@ export const AutomationAgentManageForm = observer(
             }
             options={[
               { value: "basic", label: "Базовые настройки" },
-
+              { value: "mcp", label: "MCP" },
               { value: "skills", label: "Навыки" },
               {
                 value: "directories",
@@ -431,14 +446,14 @@ export const AutomationAgentManageForm = observer(
 
             <FormSection
               dataTour="agent-form-tools"
-              title="Инструменты"
+              title="Встроенные инструменты"
               description="Только выбранные возможности будут доступны агенту во время выполнения."
             >
               <CompactEntitySelector
                 model={toolModel}
                 onModelChange={setToolModel}
                 searchPlaceholder="Найти инструмент"
-                items={automationStore.tools.map((tool) => ({
+                items={builtinTools.map((tool) => ({
                   id: tool.id,
                   title: tool.name,
                   description: tool.description,
@@ -449,6 +464,33 @@ export const AutomationAgentManageForm = observer(
               />
             </FormSection>
           </>
+        ) : activeTab === "mcp" ? (
+          <FormSection
+            title="Инструменты MCP"
+            description="Возможности, которые отдают подключённые MCP-серверы. Недоступны, пока сервер не подключён."
+          >
+            {mcpTools.length ? (
+              <CompactEntitySelector
+                model={toolModel}
+                onModelChange={setToolModel}
+                searchPlaceholder="Найти инструмент MCP"
+                items={mcpTools.map((tool) => ({
+                  id: tool.id,
+                  title: tool.name,
+                  description: tool.description,
+                  group: tool.category,
+                  meta: tool.enabled ? undefined : "Недоступен",
+                  disabled: !tool.enabled,
+                }))}
+              />
+            ) : (
+              <div className="rounded-lg border border-dashed border-main-700 p-6 text-center text-sm text-main-500">
+                Ни один MCP-сервер не настроен или не отдал ни одного
+                инструмента. Настройте серверы в разделе «Автоматизация →
+                Инструменты → MCP».
+              </div>
+            )}
+          </FormSection>
         ) : activeTab === "memory" ? (
           <FormSection
             title="Работа с памятью"
