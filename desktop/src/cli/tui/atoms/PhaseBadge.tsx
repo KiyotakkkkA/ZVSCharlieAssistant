@@ -17,7 +17,9 @@ export function PhaseBadge({ phase }: { phase: TuiPhase }) {
       ? tuiColors.danger
       : phase === "waiting-user"
         ? tuiColors.warning
-        : tuiColors.cyan;
+        : phase === "running" || phase === "cancelling"
+          ? tuiColors.accent
+          : tuiColors.muted;
   return (
     <Text bold color={color}>
       {labels[phase]}

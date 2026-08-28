@@ -42,9 +42,9 @@ export function StatusLine(props: {
   );
   const cancelling = props.phase === "cancelling";
   return (
-    <Box marginTop={1}>
+    <Box marginTop={1} paddingX={1}>
       <Spinner color={cancelling ? tuiColors.warning : tuiColors.accent} />
-      <Text color={cancelling ? tuiColors.warning : tuiColors.text}>
+      <Text bold color={cancelling ? tuiColors.warning : tuiColors.accent}>
         {" "}
         {cancelling ? "Останавливаю" : verb}…{" "}
       </Text>

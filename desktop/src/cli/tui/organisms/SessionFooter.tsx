@@ -13,16 +13,18 @@ export function SessionFooter(props: {
   hint?: string;
 }) {
   return (
-    <Box flexShrink={0} flexDirection="column">
+    <Box flexShrink={0} flexDirection="column" paddingX={1}>
       {props.hint ? (
         <Text color={tuiColors.muted}>{props.hint}</Text>
       ) : null}
       <Box justifyContent="space-between">
-        <Text bold color={tuiColors.accent}>
-          ZVS Assistant <Text dimColor>v{props.version}</Text>
+        <Text color={tuiColors.accent}>
+          ▸ <Text bold>{props.permission} mode</Text>{" "}
+          <Text color={tuiColors.muted}>· esc — прервать</Text>
         </Text>
         <Box flexShrink={1} justifyContent="flex-end">
-          <Text wrap="truncate-middle">
+          <Text color={tuiColors.muted} wrap="truncate-middle">
+            v{props.version} <Text color={tuiColors.muted}>·</Text>{" "}
             {props.model} <Text color={tuiColors.muted}>·</Text>{" "}
             {props.project}
             {props.projectPath ? (
@@ -32,8 +34,7 @@ export function SessionFooter(props: {
                 <Text color={tuiColors.muted}>папка: {props.projectPath}</Text>
               </>
             ) : null}{" "}
-            <Text color={tuiColors.muted}>·</Text> {props.permission}{" "}
-            <Text color={tuiColors.muted}>·</Text>{" "}
+            <Text color={tuiColors.muted}> · </Text>
             <PhaseBadge phase={props.phase} />
           </Text>
         </Box>

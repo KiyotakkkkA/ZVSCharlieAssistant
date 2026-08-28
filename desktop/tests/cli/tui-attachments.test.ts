@@ -21,7 +21,7 @@ describe("вложения CLI", () => {
     const attachments = await addCliAttachment(
       [],
       root,
-      "@Документы/отчёт с пробелом.md",
+      "@file Документы/отчёт с пробелом.md",
     );
 
     expect(attachments).toHaveLength(1);
@@ -40,9 +40,11 @@ describe("вложения CLI", () => {
     roots.push(root);
     writeFileSync(join(root, "archive.zip"), "data");
 
-    await expect(addCliAttachment([], root, "@archive.zip")).rejects.toThrow(
+    await expect(addCliAttachment([], root, "@file archive.zip")).rejects.toThrow(
       "не поддерживается",
     );
-    await expect(addCliAttachment([], root, "@../missing.txt")).rejects.toThrow();
+    await expect(
+      addCliAttachment([], root, "@file ../missing.txt"),
+    ).rejects.toThrow();
   });
 });

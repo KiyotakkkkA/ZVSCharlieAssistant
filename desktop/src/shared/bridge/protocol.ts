@@ -8,6 +8,7 @@ export type BridgeMethod =
   | "projects.assign"
   | "models.list"
   | "agents.list"
+  | "skills.list"
   | "conversations.list"
   | "conversations.rename"
   | "sessions.recent"

@@ -5,7 +5,7 @@ import { tuiColors } from "../theme";
 export function SuggestionPopup(props: {
   items: CompletionItem[];
   selected: number;
-  prefix?: "@" | "!";
+  prefix?: "@" | "@file" | "@skill" | "!";
   maxItems?: number;
 }) {
   const maxItems = Math.max(1, props.maxItems ?? 8);
@@ -17,25 +17,29 @@ export function SuggestionPopup(props: {
   if (props.prefix && !props.items.length)
     return (
       <Box
-        borderStyle="round"
-        borderColor={tuiColors.accent}
+        borderStyle="single"
+        borderColor={tuiColors.subtle}
         backgroundColor={tuiColors.panel}
         flexDirection="column"
         paddingX={1}
         width="100%"
       >
-        <Text color={tuiColors.warning} backgroundColor={tuiColors.panel}>
+        <Text color={tuiColors.text} backgroundColor={tuiColors.panel}>
           {props.prefix === "@"
-            ? "@ — добавить файл или путь в контекст"
-            : "! — выполнить shell-команду (будет добавлено следующим этапом)"}
+            ? "@file — вложение · @skill — навык для следующего запроса"
+            : props.prefix === "@file"
+              ? "@file — выбрать файл внутри текущего проекта"
+              : props.prefix === "@skill"
+                ? "@skill — явно загрузить навык для следующего запроса"
+                : "! — выполнить shell-команду в папке проекта"}
         </Text>
       </Box>
     );
   if (!props.items.length) return null;
   return (
     <Box
-      borderStyle="round"
-      borderColor={tuiColors.accent}
+      borderStyle="single"
+      borderColor={tuiColors.subtle}
       backgroundColor={tuiColors.panel}
       flexDirection="column"
       paddingX={1}
@@ -48,13 +52,25 @@ export function SuggestionPopup(props: {
             key={item.value}
             color={
               absoluteIndex === props.selected
-                ? tuiColors.accent
+                ? tuiColors.text
                 : tuiColors.muted
             }
-            backgroundColor={tuiColors.panel}
+            backgroundColor={
+              absoluteIndex === props.selected
+                ? tuiColors.panelSelected
+                : tuiColors.panel
+            }
           >
             {absoluteIndex === props.selected ? "›" : " "}{" "}
-            {item.kind === "directory" ? "▸" : item.kind === "file" ? "▪" : ""}{" "}
+            {item.kind === "directory"
+              ? "▸"
+              : item.kind === "file"
+                ? "▪"
+                : item.kind === "skill"
+                  ? "◆"
+                  : item.kind === "mode"
+                    ? "@"
+                    : ""}{" "}
             {item.label} · {item.description}
           </Text>
         );

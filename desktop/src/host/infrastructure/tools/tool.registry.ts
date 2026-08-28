@@ -872,6 +872,23 @@ export class ToolRegistry {
     return `\n\nДоступные навыки (полные инструкции загружай инструментом skills.load только когда навык релевантен):\n${skills.map((item) => `- #${item.id} ${item.name}: ${item.description}`).join("\n")}`;
   }
 
+  selectedSkillBlock(ids: string[]): string {
+    if (!ids.length) return "";
+    const requested = new Set(ids);
+    const skills = this.automationCatalog
+      .listSkills()
+      .filter((item) => requested.has(item.id) && item.status === "active");
+    const missing = ids.filter((id) => !skills.some((skill) => skill.id === id));
+    if (missing.length)
+      throw new Error(`Выбранный навык недоступен: ${missing.join(", ")}`);
+    return `\n\nНавыки, явно выбранные пользователем для этой задачи. Их инструкции уже загружены; обязательно следуй им, не загружай другие навыки самостоятельно:\n${skills
+      .map(
+        (skill) =>
+          `\n--- НАВЫК: ${skill.name} (#${skill.id}) ---\n${this.skillContent.read(skill.slug)}\n--- КОНЕЦ НАВЫКА ---`,
+      )
+      .join("\n")}`;
+  }
+
   createForChat(
     runId: string,
     emit: Emit,

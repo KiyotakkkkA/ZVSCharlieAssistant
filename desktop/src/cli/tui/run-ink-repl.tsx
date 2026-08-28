@@ -17,6 +17,8 @@ import {
   addCliAttachment,
   type CliAttachment,
 } from "./attachments";
+import type { CliSkillOption } from "./autocomplete";
+import { formatShellResult, runShellCommand } from "./shell";
 
 interface Named {
   id: string;
@@ -30,6 +32,7 @@ interface ProjectOption extends Named {
 interface QueuedMessage {
   message: string;
   attachments: CliAttachment[];
+  skillIds: string[];
 }
 
 export async function runInkRepl(
@@ -39,6 +42,7 @@ export async function runInkRepl(
 ): Promise<number> {
   const models = (await client.request("models.list")) as Named[];
   const agents = (await client.request("agents.list")) as Named[];
+  const skills = (await client.request("skills.list")) as CliSkillOption[];
   const projects = (await client.request("projects.list")) as ProjectOption[];
   const recentSessions = (await client.request(
     "sessions.recent",
@@ -65,6 +69,7 @@ export async function runInkRepl(
       modelId={modelId}
       models={models}
       agents={agents}
+      skills={skills}
       projects={projects}
       recentSessions={recentSessions}
       onExit={(code) => {
@@ -85,6 +90,7 @@ function InkRuntime(props: {
   modelId?: string;
   models: Named[];
   agents: Named[];
+  skills: CliSkillOption[];
   projects: ProjectOption[];
   recentSessions: RecentChatSession[];
   onExit: (code: number) => void;
@@ -126,13 +132,21 @@ function InkRuntime(props: {
   const [menu, setMenu] = useState<(TuiMenu & { kind: string }) | undefined>();
   const [inputPrompt, setInputPrompt] = useState<"rename" | undefined>();
   const [attachments, setAttachments] = useState<CliAttachment[]>([]);
+  const [selectedSkills, setSelectedSkills] = useState<CliSkillOption[]>([]);
+  const shellRoot =
+    props.projects.find((item) => item.id === settings.projectId)?.rootPath ??
+    process.cwd();
   const conversationId = useRef(props.options.conversation);
   const activeRunId = useRef<string | undefined>(undefined);
   const lastRunId = useRef<string | undefined>(undefined);
   const runStarting = useRef(false);
   const queuedMessages = useRef<QueuedMessage[]>([]);
   const startRunRef = useRef<
-    (message: string, attachments?: CliAttachment[]) => Promise<void>
+    (
+      message: string,
+      attachments?: CliAttachment[],
+      skillIds?: string[],
+    ) => Promise<void>
   >(
     async () => undefined,
   );
@@ -177,8 +191,10 @@ function InkRuntime(props: {
               "",
               "# Горячие клавиши",
               "- `Tab` — дополнить команду или поставить сообщение в очередь",
-              "- `@путь` — прикрепить файл из проекта",
-              "- `Backspace` в пустом поле — убрать последнее вложение",
+              "- `@file путь` — прикрепить файл из проекта",
+              "- `@skill имя` — загрузить навык для следующего запроса",
+              "- `! команда` — выполнить shell-команду в папке проекта",
+              "- `Backspace` в пустом поле — убрать последний контекст",
               "- `Shift+Enter` — новая строка",
               "- `Ctrl+C` — отменить задачу или выйти",
               "- `Esc` — закрыть меню или очистить ввод",
@@ -276,6 +292,8 @@ function InkRuntime(props: {
           conversationId.current = undefined;
           lastRunId.current = undefined;
           queuedMessages.current = [];
+          setAttachments([]);
+          setSelectedSkills([]);
           dispatch({ type: "session.reset" });
           appendSystem("Начат новый диалог");
           return true;
@@ -375,6 +393,7 @@ function InkRuntime(props: {
         case "/clear":
           queuedMessages.current = [];
           setAttachments([]);
+          setSelectedSkills([]);
           dispatch({ type: "session.reset" });
           return true;
         case "/exit":
@@ -390,13 +409,82 @@ function InkRuntime(props: {
   );
 
   const startRun = useCallback(
-    async (message: string, messageAttachments: CliAttachment[] = []) => {
+    async (
+      message: string,
+      messageAttachments: CliAttachment[] = [],
+      selectedSkillIds: string[] = [],
+    ) => {
       if (runStarting.current || activeRunId.current) {
         queuedMessages.current.push({
           message,
           attachments: messageAttachments,
+          skillIds: selectedSkillIds,
         });
         dispatch({ type: "message.queued", value: message });
+        return;
+      }
+      if (message.startsWith("!")) {
+        const shellId = `shell-${sequence.current++}`;
+        const command = message.slice(1).trim();
+        runStarting.current = true;
+        dispatch({
+          type: "transcript.append",
+          entry: { id: `${shellId}:user`, kind: "user", text: message },
+        });
+        dispatch({
+          type: "tool.changed",
+          tool: {
+            callId: shellId,
+            toolId: "shell",
+            status: "running",
+            summary: `Shell · ${command || "команда не указана"}`,
+          },
+        });
+        try {
+          const result = await runShellCommand(command, shellRoot);
+          dispatch({
+            type: "tool.changed",
+            tool: {
+              callId: shellId,
+              toolId: "shell",
+              status: result.exitCode === 0 && !result.timedOut
+                ? "completed"
+                : "failed",
+              summary: `Shell · ${command} · ${result.timedOut ? "тайм-аут" : `exit ${result.exitCode}`}`,
+            },
+          });
+          appendSystem(
+            formatShellResult(result),
+            result.exitCode !== 0 || result.timedOut,
+          );
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          dispatch({
+            type: "tool.changed",
+            tool: {
+              callId: shellId,
+              toolId: "shell",
+              status: "failed",
+              summary: `Shell · ${message}`,
+            },
+          });
+          appendSystem(message, true);
+        } finally {
+          runStarting.current = false;
+          const next = queuedMessages.current.shift();
+          if (next) {
+            dispatch({ type: "queue.shifted" });
+            setTimeout(
+              () =>
+                void startRunRef.current(
+                  next.message,
+                  next.attachments,
+                  next.skillIds,
+                ),
+              0,
+            );
+          }
+        }
         return;
       }
       if (inputPrompt === "rename") {
@@ -442,7 +530,12 @@ function InkRuntime(props: {
         if (!next) return;
         dispatch({ type: "queue.shifted" });
         setTimeout(
-          () => void startRunRef.current(next.message, next.attachments),
+          () =>
+            void startRunRef.current(
+              next.message,
+              next.attachments,
+              next.skillIds,
+            ),
           0,
         );
       };
@@ -581,6 +674,7 @@ function InkRuntime(props: {
                   dataBase64: attachment.dataBase64,
                 }))
               : undefined,
+            skillIds: selectedSkillIds.length ? selectedSkillIds : undefined,
           },
           (_name, payload) => handle(payload as RunEvent),
         )) as { runId: string; conversationId: string };
@@ -596,7 +690,7 @@ function InkRuntime(props: {
         finishAndContinue();
       }
     },
-    [appendSystem, inputPrompt, props.client, runCommand, settings],
+    [appendSystem, inputPrompt, props.client, runCommand, settings, shellRoot],
   );
   startRunRef.current = startRun;
 
@@ -759,6 +853,8 @@ function InkRuntime(props: {
       recentSessions={recentSessions}
       fileRoot={fileRoot}
       attachments={attachments}
+      skills={props.skills}
+      selectedSkills={selectedSkills}
       state={state}
       dispatch={externalDispatch}
       menu={menu}
@@ -767,15 +863,19 @@ function InkRuntime(props: {
       }
       onSubmit={(value) => {
         const selectedAttachments = attachments;
+        const selectedSkillIds = selectedSkills.map((skill) => skill.id);
         setAttachments([]);
-        void startRun(value, selectedAttachments);
+        setSelectedSkills([]);
+        void startRun(value, selectedAttachments, selectedSkillIds);
       }}
       onQueue={(value) => {
         queuedMessages.current.push({
           message: value,
           attachments,
+          skillIds: selectedSkills.map((skill) => skill.id),
         });
         setAttachments([]);
+        setSelectedSkills([]);
       }}
       onCancel={cancel}
       onExit={() => props.onExit(0)}
@@ -789,6 +889,19 @@ function InkRuntime(props: {
       onAttach={attach}
       onRemoveLastAttachment={() =>
         setAttachments((current) => current.slice(0, -1))
+      }
+      onSelectSkill={(skillId) =>
+        setSelectedSkills((current) => {
+          const skill = props.skills.find((item) => item.id === skillId);
+          return !skill ||
+            current.length >= 10 ||
+            current.some((item) => item.id === skill.id)
+            ? current
+            : [...current, skill];
+        })
+      }
+      onRemoveLastSkill={() =>
+        setSelectedSkills((current) => current.slice(0, -1))
       }
     />
   );

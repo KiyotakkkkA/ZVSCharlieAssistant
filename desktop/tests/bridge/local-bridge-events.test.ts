@@ -87,4 +87,21 @@ describe("события локального CLI-моста", () => {
     expect(pendingForConversation).toHaveBeenCalledWith(conversationId);
     expect(answer).toHaveBeenCalledWith(questionId, ["Продолжить"], "ui");
   });
+
+  it("отдаёт CLI только активные навыки", async () => {
+    const listSkills = vi.fn(() => [
+      { id: "active", status: "active" },
+      { id: "draft", status: "draft" },
+    ]);
+    const server = new LocalBridgeServer({
+      automation: { listSkills },
+    } as unknown as ConstructorParameters<typeof LocalBridgeServer>[0]);
+    const internal = server as unknown as {
+      handle(session: unknown, request: unknown): Promise<unknown>;
+    };
+
+    await expect(
+      internal.handle({}, { id: 4, method: "skills.list" }),
+    ).resolves.toEqual([{ id: "active", status: "active" }]);
+  });
 });

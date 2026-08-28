@@ -139,6 +139,7 @@ export const startRunDtoSchema = z.object({
     .max(10)
     .optional(),
   vectorStoreIds: z.array(entityIdSchema).max(10).optional(),
+  skillIds: z.array(entityIdSchema).max(10).optional(),
 });
 
 export type ChatTextPart = z.infer<typeof chatTextPartDtoSchema>;

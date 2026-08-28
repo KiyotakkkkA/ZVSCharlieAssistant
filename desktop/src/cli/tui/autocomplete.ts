@@ -5,8 +5,15 @@ export interface CompletionItem {
   value: string;
   label: string;
   description: string;
-  kind: "command" | "file" | "directory";
+  kind: "command" | "file" | "directory" | "skill" | "mode";
   appendSpace: boolean;
+}
+
+export interface CliSkillOption {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
 }
 
 export function fileSuggestions(
@@ -14,8 +21,9 @@ export function fileSuggestions(
   input: string,
   limit = 8,
 ): CompletionItem[] {
-  if (!input.startsWith("@")) return [];
-  const query = input.slice(1).replace(/\\/g, "/");
+  const match = input.match(/^@file(?:\s+)?(.*)$/i);
+  if (!match) return [];
+  const query = (match[1] ?? "").replace(/\\/g, "/");
   const slash = query.lastIndexOf("/");
   const parentPart = slash >= 0 ? query.slice(0, slash + 1) : "";
   const namePart = slash >= 0 ? query.slice(slash + 1) : query;
@@ -37,7 +45,7 @@ export function fileSuggestions(
       .map((entry) => {
         const path = `${parentPart}${entry.name}${entry.isDirectory() ? "/" : ""}`;
         return {
-          value: `@${path}`,
+          value: `@file ${path}`,
           label: path,
           description: entry.isDirectory() ? "директория" : "файл",
           kind: entry.isDirectory() ? "directory" : "file",
@@ -47,4 +55,28 @@ export function fileSuggestions(
   } catch {
     return [];
   }
+}
+
+export function skillSuggestions(
+  skills: readonly CliSkillOption[],
+  input: string,
+  limit = 8,
+): CompletionItem[] {
+  const match = input.match(/^@skill(?:\s+)?(.*)$/i);
+  if (!match) return [];
+  const query = (match[1] ?? "").trim().toLocaleLowerCase();
+  return skills
+    .filter((skill) =>
+      [skill.name, skill.slug, skill.description].some((value) =>
+        value.toLocaleLowerCase().includes(query),
+      ),
+    )
+    .slice(0, limit)
+    .map((skill) => ({
+      value: skill.id,
+      label: skill.name,
+      description: `${skill.slug} · ${skill.description}`,
+      kind: "skill",
+      appendSpace: false,
+    }));
 }

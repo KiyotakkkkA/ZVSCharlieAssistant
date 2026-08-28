@@ -189,6 +189,10 @@ export class LocalBridgeServer {
         return enabledTextProviderModels(this.deps.providers.getSnapshot());
       case "agents.list":
         return this.deps.automation.listAgents();
+      case "skills.list":
+        return this.deps.automation
+          .listSkills()
+          .filter((skill) => skill.status === "active");
       case "conversations.list":
         return this.deps.chat.snapshot().conversations;
       case "sessions.recent":

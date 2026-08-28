@@ -17,12 +17,14 @@ export function SelectionPanel(props: {
   return (
     <Box
       marginTop={1}
-      borderStyle="round"
-      borderColor={tuiColors.accent}
+      borderStyle="single"
+      borderLeft={false}
+      borderRight={false}
+      borderColor={tuiColors.subtle}
       flexDirection="column"
       paddingX={1}
     >
-      <Text bold color={tuiColors.accent}>
+      <Text bold color={tuiColors.text}>
         {props.title}
       </Text>
       {props.items.map((item, index) => {
@@ -38,10 +40,15 @@ export function SelectionPanel(props: {
           <Text
             key={item.value}
             color={
-              index === props.selected ? tuiColors.accent : tuiColors.muted
+              index === props.selected ? tuiColors.text : tuiColors.muted
+            }
+            backgroundColor={
+              index === props.selected
+                ? tuiColors.panelSelected
+                : undefined
             }
           >
-            {marker} {item.label}
+            {index === props.selected ? "›" : " "} {marker} {item.label}
             {item.hint ? ` · ${item.hint}` : ""}
           </Text>
         );

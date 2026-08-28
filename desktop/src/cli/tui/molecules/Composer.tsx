@@ -2,6 +2,7 @@ import { Box, Text } from "ink";
 import { EditableText } from "../atoms/EditableText";
 import { tuiColors } from "../theme";
 import type { CliAttachment } from "../attachments";
+import type { CliSkillOption } from "../autocomplete";
 
 function truncate(text: string, width = 64): string {
   const singleLine = text.replace(/\s+/g, " ").trim();
@@ -16,6 +17,7 @@ export function Composer(props: {
   cursor: number;
   queued: string[];
   attachments: readonly CliAttachment[];
+  skills: readonly CliSkillOption[];
 }) {
   const visibleQueue = props.queued.slice(0, 3);
   const hiddenQueueCount = props.queued.length - visibleQueue.length;
@@ -25,12 +27,12 @@ export function Composer(props: {
         <Box flexDirection="column" marginBottom={0}>
           {visibleQueue.map((message, index) => (
             <Text key={index} color={tuiColors.muted}>
-              {"  "}⏸ {truncate(message)}
+              {"  "}└ queued · {truncate(message)}
             </Text>
           ))}
           {hiddenQueueCount > 0 && (
             <Text color={tuiColors.muted}>
-              {"  "}… и ещё {hiddenQueueCount}
+              {"  "}└ ещё {hiddenQueueCount}
             </Text>
           )}
         </Box>
@@ -38,17 +40,37 @@ export function Composer(props: {
       {props.attachments.length > 0 && (
         <Box flexDirection="column" marginBottom={0}>
           {props.attachments.map((file) => (
-            <Text key={file.path} color={tuiColors.accent}>
-              {"  "}📎 {truncate(file.fileName, 54)} · {formatBytes(file.size)}
+            <Text key={file.path} color={tuiColors.text}>
+              {"  "}▣ {truncate(file.fileName, 54)}{" "}
+              <Text color={tuiColors.muted}>· {formatBytes(file.size)}</Text>
             </Text>
           ))}
           <Text color={tuiColors.muted}>
-            {"  "}Backspace в пустом поле — убрать последний файл
+            {"  "}Backspace в пустом поле — убрать последний контекст
           </Text>
         </Box>
       )}
-      <Box borderStyle="round" borderColor={tuiColors.muted} paddingX={1}>
-        <Text color={tuiColors.accent}>❯ </Text>
+      {props.skills.length > 0 && (
+        <Box flexDirection="column">
+          {props.skills.map((skill) => (
+            <Text key={skill.id} color={tuiColors.accent}>
+              {"  "}◆ skill · {skill.name}{" "}
+              <Text color={tuiColors.muted}>({skill.slug})</Text>
+            </Text>
+          ))}
+          <Text color={tuiColors.muted}>
+            {"  "}Backspace в пустом поле — убрать последний контекст
+          </Text>
+        </Box>
+      )}
+      <Box
+        borderStyle="single"
+        borderLeft={false}
+        borderRight={false}
+        borderColor={tuiColors.subtle}
+        paddingX={1}
+      >
+        <Text bold color={tuiColors.text}>› </Text>
         {props.value ? (
           <EditableText value={props.value} cursor={props.cursor} />
         ) : (

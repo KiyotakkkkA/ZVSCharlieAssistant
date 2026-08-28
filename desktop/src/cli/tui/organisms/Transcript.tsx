@@ -69,13 +69,13 @@ export function Transcript({
       </Box>
       {visibleOffset > 0 ? (
         <Box position="absolute" top={0} right={1}>
-          <Text color={tuiColors.muted}>
+          <Text color={tuiColors.subtle}>
             ↑ {visibleOffset} строк от конца · PageDown вернуться
           </Text>
         </Box>
       ) : maxOffset > 0 ? (
         <Box position="absolute" top={0} right={1}>
-          <Text color={tuiColors.muted}>PageUp · история</Text>
+          <Text color={tuiColors.subtle}>PageUp · история</Text>
         </Box>
       ) : null}
     </Box>

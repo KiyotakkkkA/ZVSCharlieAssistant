@@ -473,12 +473,16 @@ export class RunEngine {
       const skillsBlock = this.tools.skillCatalog(
         agentRuntime?.allowedSkillIds ?? [],
       );
-      const system = `${baseSystem}${profileBlock}${projectBlock}${skillsBlock}${memoryBlock}${attachmentBlock}${retrievalBlock}`;
+      const selectedSkillsBlock = this.tools.selectedSkillBlock(
+        input.skillIds ?? [],
+      );
+      const system = `${baseSystem}${profileBlock}${projectBlock}${skillsBlock}${selectedSkillsBlock}${memoryBlock}${attachmentBlock}${retrievalBlock}`;
       const systemBlocks: Array<{ label: string; text: string }> = [
         { label: "Системные инструкции", text: baseSystem },
         { label: "Профиль пользователя", text: profileBlock },
         { label: "Проект", text: projectBlock },
         { label: "Каталог навыков", text: skillsBlock },
+        { label: "Выбранные навыки", text: selectedSkillsBlock },
         { label: "Память", text: memoryBlock },
         { label: "Вложения", text: attachmentBlock },
         { label: "Найденный контекст (RAG)", text: retrievalBlock },

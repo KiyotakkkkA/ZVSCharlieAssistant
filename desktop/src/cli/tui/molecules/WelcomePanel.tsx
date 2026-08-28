@@ -3,34 +3,40 @@ import { AsciiLogo } from "../atoms/AsciiLogo";
 import { tuiColors } from "../theme";
 import type { RecentChatSession } from "../../../shared/models/chat";
 
-export function WelcomePanel({ sessions }: { sessions: RecentChatSession[] }) {
+export function WelcomePanel({
+  sessions,
+  version,
+  model,
+  project,
+}: {
+  sessions: RecentChatSession[];
+  version: string;
+  model: string;
+  project: string;
+}) {
   return (
-    <Box
-      marginTop={1}
-      marginLeft={1}
-      borderStyle="round"
-      borderColor={tuiColors.muted}
-      paddingX={2}
-      paddingY={1}
-      alignItems="center"
-    >
+    <Box marginTop={1} marginLeft={2} alignItems="center">
       <AsciiLogo />
-      <Box marginLeft={3} flexDirection="column">
-        <Text bold>ZVS Assistant</Text>
-        <Text color={tuiColors.muted}>Ваш консольный помощник</Text>
-        <Text color={tuiColors.muted}>Введите задачу или /help</Text>
-        {sessions.length ? (
-          <Box marginTop={1} flexDirection="column">
-            <Text color={tuiColors.muted}>Последние сессии · /resume</Text>
-            {sessions.slice(0, 5).map((session, index) => (
-              <Text key={session.conversationId} color={tuiColors.muted}>
-                {index + 1}. {session.title} ·{" "}
-                {session.project?.name ?? "без проекта"}
-              </Text>
-            ))}
-          </Box>
-        ) : null}
+      <Box marginLeft={2} flexDirection="column">
+        <Text>
+          <Text bold color={tuiColors.text}>ZVS Assistant</Text>{" "}
+          <Text color={tuiColors.muted}>v{version}</Text>
+        </Text>
+        <Text color={tuiColors.text}>{model}</Text>
+        <Text color={tuiColors.muted}>{project}</Text>
       </Box>
+      {sessions.length ? (
+        <Box marginLeft={4} flexDirection="column">
+          <Text bold color={tuiColors.text}>Недавние сессии</Text>
+          {sessions.slice(0, 3).map((session) => (
+            <Text key={session.conversationId} color={tuiColors.muted}>
+              <Text color={tuiColors.subtle}>› </Text>
+              {session.title} · {session.project?.name ?? "без проекта"}
+            </Text>
+          ))}
+          <Text color={tuiColors.subtle}>/resume — открыть все</Text>
+        </Box>
+      ) : null}
     </Box>
   );
 }

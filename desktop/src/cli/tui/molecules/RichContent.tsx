@@ -17,13 +17,13 @@ export function RichContent({
           inCode = !inCode;
           return (
             <Text key={index} color={tuiColors.muted}>
-              {inCode ? "╭─ code" : "╰────"}
+              {inCode ? "┌─ code" : "└────"}
             </Text>
           );
         }
         if (inCode)
           return (
-            <Text key={index} color={tuiColors.cyan}>
+            <Text key={index} color={tuiColors.text}>
               │ {line}
             </Text>
           );
@@ -46,7 +46,7 @@ export function RichContent({
         const heading = line.match(/^\s*#{1,3}\s+(.+)$/);
         if (heading)
           return (
-            <Text key={index} bold color={tuiColors.accent}>
+            <Text key={index} bold color={tuiColors.text}>
               {heading[1]}
             </Text>
           );

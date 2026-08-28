@@ -2,7 +2,12 @@ import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { Box, useInput, useWindowSize } from "ink";
 import type { UserQuestion } from "../../../shared/models/user-question";
 import type { RecentChatSession } from "../../../shared/models/chat";
-import { fileSuggestions, type CompletionItem } from "../autocomplete";
+import {
+  fileSuggestions,
+  skillSuggestions,
+  type CliSkillOption,
+  type CompletionItem,
+} from "../autocomplete";
 import { commandSuggestions } from "../commands";
 import { Composer } from "../molecules/Composer";
 import { QuestionPanel } from "../molecules/QuestionPanel";
@@ -37,6 +42,8 @@ export interface ZvsTuiProps {
   fileRoot?: string;
   recentSessions: RecentChatSession[];
   attachments: readonly CliAttachment[];
+  skills: readonly CliSkillOption[];
+  selectedSkills: readonly CliSkillOption[];
   state?: TuiState;
   dispatch?: (action: TuiAction) => void;
   menu?: TuiMenu;
@@ -50,6 +57,8 @@ export interface ZvsTuiProps {
   onEscape: () => void;
   onAttach: (reference: string) => void;
   onRemoveLastAttachment: () => void;
+  onSelectSkill: (skillId: string) => void;
+  onRemoveLastSkill: () => void;
 }
 
 export function ZvsTui(props: ZvsTuiProps) {
@@ -83,15 +92,21 @@ export function ZvsTui(props: ZvsTuiProps) {
         kind: "command",
         appendSpace: Boolean(command.usage),
       }))
-    : state.draft.startsWith("@")
-      ? fileSuggestions(props.fileRoot ?? process.cwd(), state.draft)
-      : [];
+    : namespaceSuggestions(
+        state.draft,
+        props.fileRoot ?? process.cwd(),
+        props.skills,
+      );
   const specialPrefix =
-    state.draft.startsWith("@") && !state.draft.includes(" ")
+    state.draft === "@"
       ? "@"
-      : state.draft.startsWith("!") && !state.draft.includes(" ")
-        ? "!"
-        : undefined;
+      : state.draft === "@file "
+        ? "@file"
+          : state.draft === "@skill "
+            ? "@skill"
+            : state.draft.startsWith("!") && !state.draft.includes(" ")
+              ? "!"
+              : undefined;
   const suggestionsVisible =
     !props.menu &&
     !state.question &&
@@ -236,7 +251,9 @@ export function ZvsTui(props: ZvsTuiProps) {
     }
     if (key.backspace) {
       if (cursor === 0) {
-        if (!state.draft && props.attachments.length)
+        if (!state.draft && props.selectedSkills.length)
+          props.onRemoveLastSkill();
+        else if (!state.draft && props.attachments.length)
           props.onRemoveLastAttachment();
         return;
       }
@@ -260,6 +277,9 @@ export function ZvsTui(props: ZvsTuiProps) {
       if (suggestion?.kind === "file") {
         props.onAttach(suggestion.value);
         setDraft("");
+      } else if (suggestion?.kind === "skill") {
+        props.onSelectSkill(suggestion.value);
+        setDraft("");
       } else if (suggestion) {
         setDraft(`${suggestion.value}${suggestion.appendSpace ? " " : ""}`);
       } else if (state.phase === "running") {
@@ -282,6 +302,11 @@ export function ZvsTui(props: ZvsTuiProps) {
       const selected = suggestions[selectedSuggestion];
       if (selected?.kind === "file") {
         props.onAttach(selected.value);
+        setDraft("");
+        return;
+      }
+      if (selected?.kind === "skill") {
+        props.onSelectSkill(selected.value);
         setDraft("");
         return;
       }
@@ -311,7 +336,7 @@ export function ZvsTui(props: ZvsTuiProps) {
     if (state.question) return "Ответ";
     if (state.phase === "running")
       return "Следующее сообщение · Enter/Tab — в очередь";
-    return "Сообщение · / команды · @ файлы · ! shell";
+    return "Сообщение · / команды · @file · @skill · ! shell";
   }, [props.inputPrompt, state.phase, state.question]);
 
   const busy = state.phase === "running" || state.phase === "cancelling";
@@ -338,7 +363,14 @@ export function ZvsTui(props: ZvsTuiProps) {
         <Transcript
           entries={state.transcript}
           scrollEnabled={!props.menu && !state.question}
-          emptyContent={<WelcomePanel sessions={props.recentSessions} />}
+          emptyContent={
+            <WelcomePanel
+              sessions={props.recentSessions}
+              version={props.version}
+              model={props.model}
+              project={props.project}
+            />
+          }
         />
         {suggestionsVisible ? (
           <Box position="absolute" bottom={0} width="100%">
@@ -379,6 +411,7 @@ export function ZvsTui(props: ZvsTuiProps) {
         cursor={cursor}
         queued={state.queued}
         attachments={props.attachments}
+        skills={props.selectedSkills}
       />
       <SessionFooter
         version={props.version}
@@ -391,4 +424,36 @@ export function ZvsTui(props: ZvsTuiProps) {
       />
     </Box>
   );
+}
+
+function namespaceSuggestions(
+  draft: string,
+  fileRoot: string,
+  skills: readonly CliSkillOption[],
+): CompletionItem[] {
+  if (!draft.startsWith("@")) return [];
+  if (/^@(f(i(l(e)?)?)?|s(k(i(l(l)?)?)?)?)?$/i.test(draft)) {
+    const query = draft.slice(1).toLocaleLowerCase();
+    return [
+      {
+        value: "@file",
+        label: "file",
+        description: "прикрепить файл из проекта",
+        kind: "mode" as const,
+        appendSpace: true,
+      },
+      {
+        value: "@skill",
+        label: "skill",
+        description: "загрузить навык для следующего запроса",
+        kind: "mode" as const,
+        appendSpace: true,
+      },
+    ].filter((item) => item.value.slice(1).startsWith(query));
+  }
+  if (/^@file(?:\s|$)/i.test(draft))
+    return fileSuggestions(fileRoot, draft);
+  if (/^@skill(?:\s|$)/i.test(draft))
+    return skillSuggestions(skills, draft);
+  return [];
 }

@@ -21,7 +21,7 @@ export async function addCliAttachment(
   reference: string,
 ): Promise<CliAttachment[]> {
   const root = await realpath(resolve(rootPath));
-  const requested = reference.startsWith("@") ? reference.slice(1) : reference;
+  const requested = reference.replace(/^@file\s+/i, "");
   const path = await realpath(resolve(root, requested));
   const fromRoot = relative(root, path);
   if (fromRoot === ".." || fromRoot.startsWith(`..${sep}`))

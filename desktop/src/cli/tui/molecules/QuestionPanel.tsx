@@ -12,7 +12,7 @@ export function QuestionPanel(props: {
     return (
       <Box flexDirection="column">
         <Box marginTop={1} paddingX={1} flexDirection="column">
-          <Text bold color={tuiColors.warning}>
+          <Text bold color={tuiColors.accent}>
             {props.question.header || "Требуется решение"}
           </Text>
           <Text>{props.question.question}</Text>
@@ -33,12 +33,14 @@ export function QuestionPanel(props: {
   return (
     <Box
       marginTop={1}
-      borderStyle="round"
-      borderColor={tuiColors.warning}
+      borderStyle="single"
+      borderLeft={false}
+      borderRight={false}
+      borderColor={tuiColors.subtle}
       paddingX={1}
       flexDirection="column"
     >
-      <Text bold color={tuiColors.warning}>
+      <Text bold color={tuiColors.accent}>
         {props.question.header || "Требуется решение"}
       </Text>
       <Text>{props.question.question}</Text>

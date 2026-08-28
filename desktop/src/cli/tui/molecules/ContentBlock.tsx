@@ -8,9 +8,17 @@ export function ContentBlock({ entry }: { entry: TranscriptEntry }) {
   if (entry.kind === "user")
     return (
       <Box marginTop={1} flexDirection="column">
-        <Box>
-          <Text bold color={tuiColors.accent}>
-            ❯{" "}
+        <Box
+          width="100%"
+          paddingX={1}
+          backgroundColor={tuiColors.panelSelected}
+        >
+          <Text
+            bold
+            color={tuiColors.text}
+            backgroundColor={tuiColors.panelSelected}
+          >
+            ›{" "}
           </Text>
           <RichContent content={entry.text} />
         </Box>
@@ -19,11 +27,9 @@ export function ContentBlock({ entry }: { entry: TranscriptEntry }) {
             key={`${attachment.fileName}:${attachment.size}:${index}`}
             marginLeft={2}
             marginTop={index === 0 ? 1 : 0}
-            borderStyle="round"
-            borderColor={tuiColors.muted}
             paddingX={1}
           >
-            <Text color={tuiColors.accent}>📎 </Text>
+            <Text color={tuiColors.accent}>▣ </Text>
             <Text bold>{attachment.fileName}</Text>
             <Text color={tuiColors.muted}>
               {" "}· {attachmentType(attachment.fileName, attachment.mimeType)} ·{" "}
@@ -38,15 +44,23 @@ export function ContentBlock({ entry }: { entry: TranscriptEntry }) {
     const running =
       entry.toolStatus === "requested" || entry.toolStatus === "running";
     return (
-      <Box marginLeft={2}>
+      <Box marginLeft={1}>
         {running ? (
           <Spinner color={tuiColors.warning} />
         ) : (
           <Text color={failed ? tuiColors.danger : tuiColors.cyan}>
-            {failed ? "×" : "◆"}
+            {failed ? "×" : "●"}
           </Text>
         )}
-        <Text color={failed ? tuiColors.danger : running ? tuiColors.warning : tuiColors.cyan}>
+        <Text
+          color={
+            failed
+              ? tuiColors.danger
+              : running
+                ? tuiColors.warning
+                : tuiColors.cyan
+          }
+        >
           {" "}
           {entry.text}
         </Text>
@@ -55,31 +69,26 @@ export function ContentBlock({ entry }: { entry: TranscriptEntry }) {
   }
   if (entry.kind === "reasoning")
     return (
-      <Box marginTop={1} marginLeft={2} flexDirection="column">
-        <Text color={tuiColors.muted}>◇ Размышления</Text>
-        <RichContent content={entry.text} muted />
+      <Box marginTop={1} marginLeft={1} flexDirection="column">
+        <Text color={tuiColors.muted}>└ Размышления</Text>
+        <Box marginLeft={2}>
+          <RichContent content={entry.text} muted />
+        </Box>
       </Box>
     );
   const config = {
-    assistant: { title: "● Ответ", color: tuiColors.cyan, muted: false },
-    system: { title: "Система", color: tuiColors.muted, muted: false },
+    assistant: { title: "✻", color: tuiColors.accent, muted: false },
+    system: { title: "●", color: tuiColors.muted, muted: false },
     error: { title: "× Ошибка", color: tuiColors.danger, muted: false },
   }[entry.kind];
   return (
-    <Box
-      marginTop={1}
-      borderTop={false}
-      borderRight={false}
-      borderBottom={false}
-      borderStyle="round"
-      borderColor={config.color}
-      flexDirection="column"
-      paddingX={1}
-    >
+    <Box marginTop={1} flexDirection="column" marginLeft={1}>
       <Text bold color={config.color}>
         {config.title}
       </Text>
-      <RichContent content={entry.text} muted={config.muted} />
+      <Box marginLeft={2}>
+        <RichContent content={entry.text} muted={config.muted} />
+      </Box>
     </Box>
   );
 }
