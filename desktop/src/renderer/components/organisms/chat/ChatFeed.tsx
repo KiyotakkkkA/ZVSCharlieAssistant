@@ -126,10 +126,13 @@ export function ChatFeed({
   );
   const copyMessage = async (text: string) => {
     try {
-      await navigator.clipboard.writeText(text);
+      await window.desktop.writeClipboardText(text);
       toasts.success({ title: "Сообщение скопировано" });
-    } catch {
-      toasts.danger({ title: "Не удалось скопировать сообщение" });
+    } catch (error) {
+      toasts.danger({
+        title: "Не удалось скопировать сообщение",
+        description: error instanceof Error ? error.message : undefined,
+      });
     }
   };
   const lastMessageId = messages.at(-1)?.id;

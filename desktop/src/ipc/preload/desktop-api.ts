@@ -51,6 +51,8 @@ import {
   type UserProfile,
   ENTITY_GENERATION_IPC_CHANNELS,
   type EntityGenerationRun,
+  type GenerationRunEvent,
+  type GenerationTranscriptMessage,
   type TerminalPolicy,
   type DirectoryPolicy,
   type TerminalApprovalRequest,
@@ -101,6 +103,8 @@ export const desktopApi: DesktopApi = {
     ipcRenderer.invoke(IPC_CHANNELS.getAppInfo) as Promise<AppInfo>,
   openAppLocation: (location: AppLocation): Promise<void> =>
     ipcRenderer.invoke(IPC_CHANNELS.openAppLocation, location) as Promise<void>,
+  writeClipboardText: (text: string): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.writeClipboardText, text) as Promise<void>,
   subscribeToCommands: (listener: (command: AppCommand) => void) => {
     const handler = (_event: Electron.IpcRendererEvent, command: AppCommand) =>
       listener(command);
@@ -325,6 +329,23 @@ export const desktopApi: DesktopApi = {
         ENTITY_GENERATION_IPC_CHANNELS.start,
         input,
       ) as Promise<EntityGenerationRun>,
+    getTranscript: (runId: string): Promise<GenerationTranscriptMessage[]> =>
+      ipcRenderer.invoke(
+        ENTITY_GENERATION_IPC_CHANNELS.getTranscript,
+        runId,
+      ) as Promise<GenerationTranscriptMessage[]>,
+    subscribeRunEvents: (listener: (event: GenerationRunEvent) => void) => {
+      const handler = (
+        _event: Electron.IpcRendererEvent,
+        payload: GenerationRunEvent,
+      ) => listener(payload);
+      ipcRenderer.on(ENTITY_GENERATION_IPC_CHANNELS.runEvent, handler);
+      return () =>
+        ipcRenderer.removeListener(
+          ENTITY_GENERATION_IPC_CHANNELS.runEvent,
+          handler,
+        );
+    },
   },
   secrets: {
     getSnapshot: (): Promise<SecretStorageSnapshot> =>

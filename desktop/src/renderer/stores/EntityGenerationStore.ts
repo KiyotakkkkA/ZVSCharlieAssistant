@@ -4,11 +4,13 @@ import { automationStore } from "./AutomationStore";
 import {
   parseIpcDto,
   startEntityGenerationDtoSchema,
+  answerQuestionDtoSchema,
   type StartEntityGenerationInput,
 } from "../../shared/dto";
 
 const settled = new Set<string>();
 let timer: number | null = null;
+let unsubscribeEvents: (() => void) | null = null;
 
 class EntityGenerationStore {
   runs: EntityGenerationRun[] = [];
@@ -23,11 +25,36 @@ class EntityGenerationStore {
 
   get pendingCount() {
     return this.runs.filter(
-      (run) => run.status === "queued" || run.status === "running",
+      (run) =>
+        run.status === "queued" ||
+        run.status === "running" ||
+        run.status === "clarification_requested",
     ).length;
   }
 
+  startEventStream() {
+    if (unsubscribeEvents) return;
+    unsubscribeEvents = window.desktop.entityGeneration.subscribeRunEvents(
+      (event) => {
+        if (event.type !== "run.updated") return;
+        const wasSettled = settled.has(event.run.id);
+        if (event.run.status !== "queued" && event.run.status !== "running")
+          settled.add(event.run.id);
+        runInAction(() => {
+          const index = this.runs.findIndex(
+            (item) => item.id === event.run.id,
+          );
+          if (index >= 0) this.runs[index] = event.run;
+          else this.runs.unshift(event.run);
+        });
+        if (event.run.status === "completed" && !wasSettled)
+          void automationStore.bootstrap(true);
+      },
+    );
+  }
+
   async bootstrap(force = false) {
+    this.startEventStream();
     if (this.loading || (this.initialized && !force)) return;
     this.loading = true;
     this.error = null;
@@ -72,6 +99,13 @@ class EntityGenerationStore {
     } finally {
       runInAction(() => (this.starting = false));
     }
+  }
+
+  async answerQuestion(questionId: string, answer: string[]) {
+    await window.desktop.assistant.questions.answer(
+      parseIpcDto(answerQuestionDtoSchema, { questionId, answer }),
+    );
+    await this.bootstrap(true);
   }
 
   watch() {

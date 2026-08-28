@@ -42,9 +42,11 @@ type PendingChatQuestion = {
 };
 
 const CHAT_DEFAULT_TIMEOUT_SECONDS = 300;
+const GENERATION_DEFAULT_TIMEOUT_SECONDS = 900;
 
 export class UserQuestionService {
   private readonly chatWaiters = new Map<string, PendingChatQuestion>();
+  private readonly generationWaiters = new Map<string, PendingChatQuestion>();
   private listener?: (question: UserQuestion) => void;
 
   constructor(
@@ -122,6 +124,63 @@ export class UserQuestionService {
     });
   }
 
+  async askInGeneration(
+    input: AskInput,
+    context: { entityGenerationRunId: string },
+    signal?: AbortSignal,
+  ): Promise<string[]> {
+    const timeoutMs =
+      Math.min(
+        Math.max(
+          input.timeoutSeconds ?? GENERATION_DEFAULT_TIMEOUT_SECONDS,
+          10,
+        ),
+        3_600,
+      ) * 1_000;
+    const question = this.data.create({
+      scope: "generation",
+      entityGenerationRunId: context.entityGenerationRunId,
+      mode: input.mode,
+      header: input.header,
+      question: input.question,
+      options: input.options,
+      multiSelect: input.multiSelect,
+      defaultAnswer: input.defaultAnswer ?? null,
+      channel: "ui",
+      expiresAt: new Date(Date.now() + timeoutMs).toISOString(),
+    });
+    this.listener?.(question);
+    return new Promise<string[]>((resolve, reject) => {
+      const detachAbort = () => signal?.removeEventListener("abort", onAbort);
+      const onAbort = () => {
+        const waiter = this.generationWaiters.get(question.id);
+        if (!waiter) return;
+        clearTimeout(waiter.timer);
+        this.generationWaiters.delete(question.id);
+        this.data.close(question.id, "cancelled");
+        const cancelled = this.data.find(question.id);
+        if (cancelled) this.listener?.(cancelled);
+        reject(new Error("Выполнение отменено"));
+      };
+      const timer = setTimeout(() => {
+        this.generationWaiters.delete(question.id);
+        detachAbort();
+        this.data.close(question.id, "timed_out");
+        const fallback = this.data.find(question.id);
+        if (fallback) this.listener?.(fallback);
+        resolve([input.defaultAnswer ?? "Ответ не получен"]);
+      }, timeoutMs);
+      timer.unref();
+      this.generationWaiters.set(question.id, {
+        resolve,
+        timer,
+        detachAbort,
+      });
+      signal?.addEventListener("abort", onAbort, { once: true });
+      if (signal?.aborted) onAbort();
+    });
+  }
+
   askInScenario(input: AskInput, context: ScenarioAskContext): string[] {
     const existing = this.data.forNode(context.executionId, context.nodeId);
     if (existing?.status === "answered") return existing.answer ?? [];
@@ -165,10 +224,11 @@ export class UserQuestionService {
   ): UserQuestion {
     const question = this.data.answer(id, answer, via, answeredBy);
     this.listener?.(question);
-    const waiter = this.chatWaiters.get(id);
+    const waiter = this.chatWaiters.get(id) ?? this.generationWaiters.get(id);
     if (waiter) {
       clearTimeout(waiter.timer);
       this.chatWaiters.delete(id);
+      this.generationWaiters.delete(id);
       waiter.detachAbort();
       waiter.resolve(answer);
       return question;

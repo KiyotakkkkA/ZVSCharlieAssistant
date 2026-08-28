@@ -104,6 +104,9 @@ export type {
   EntityGenerationRun,
   EntityGenerationStatus,
   GeneratedEntityKind,
+  GenerationRunEvent,
+  GenerationTranscriptMessage,
+  PendingGenerationQuestion,
 } from "./entity-generation.contract";
 export { ENTITY_GENERATION_IPC_CHANNELS } from "./entity-generation.contract";
 

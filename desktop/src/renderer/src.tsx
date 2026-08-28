@@ -34,6 +34,11 @@ const TaskListPage = lazy(() =>
     default: TaskListPage,
   })),
 );
+const GenerationRunDetailPage = lazy(() =>
+  import("./pages/tasks").then(({ GenerationRunDetailPage }) => ({
+    default: GenerationRunDetailPage,
+  })),
+);
 const ScenarioExecHistoryPage = lazy(() =>
   import("./pages/automation/scenarios").then(
     ({ ScenarioExecHistoryPage }) => ({
@@ -172,6 +177,10 @@ createRoot(root).render(
             <Route path={APP_PATHS.guides} element={<GuidesPage />} />
             <Route path={APP_PATHS.chat} element={<ChatPage />} />
             <Route path={APP_PATHS.tasks} element={<TaskListPage />} />
+            <Route
+              path={APP_PATHS.taskCreationDetail}
+              element={<GenerationRunDetailPage />}
+            />
             <Route
               path={APP_PATHS.automation.index}
               element={

@@ -1,6 +1,6 @@
 import { statSync } from "node:fs";
 import { dirname } from "node:path";
-import { app, dialog, ipcMain, shell } from "electron";
+import { app, clipboard, dialog, ipcMain, shell } from "electron";
 import {
   IPC_CHANNELS,
   type AppLocation,
@@ -49,6 +49,13 @@ export function registerAppHandlers(
       if (error) throw new Error(error);
     },
   );
+  ipcMain.handle(IPC_CHANNELS.writeClipboardText, (_event, text: unknown) => {
+    if (typeof text !== "string")
+      throw new Error("Текст для буфера обмена должен быть строкой");
+    if (Buffer.byteLength(text, "utf8") > 5 * 1_048_576)
+      throw new Error("Текст для буфера обмена превышает 5 МБ");
+    clipboard.writeText(text);
+  });
   ipcMain.handle(IPC_CHANNELS.saveGeneratedArtifact, (_event, input) =>
     artifacts.save(input),
   );
@@ -70,6 +77,7 @@ export function registerAppHandlers(
 export function removeAppHandlers(): void {
   ipcMain.removeHandler(IPC_CHANNELS.getAppInfo);
   ipcMain.removeHandler(IPC_CHANNELS.openAppLocation);
+  ipcMain.removeHandler(IPC_CHANNELS.writeClipboardText);
   ipcMain.removeHandler(IPC_CHANNELS.saveGeneratedArtifact);
   ipcMain.removeHandler(IPC_CHANNELS.selectDirectory);
   ipcMain.removeHandler(IPC_CHANNELS.getApplicationSettings);

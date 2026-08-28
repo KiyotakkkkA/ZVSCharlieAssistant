@@ -7,6 +7,7 @@ const createQuestion = (): UserQuestion => ({
   scope: "chat",
   conversationId: "conversation-1",
   runId: "run-1",
+  entityGenerationRunId: null,
   executionId: null,
   nodeId: null,
   nodeRunId: null,

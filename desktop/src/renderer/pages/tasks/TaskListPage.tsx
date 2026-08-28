@@ -24,6 +24,7 @@ import {
   TasksCreationRunsListTable,
   TasksScenarioRunsListTable,
 } from "@renderer/components/organisms/tables";
+import { GenerationQuestionModal } from "../../components/organisms/tasks/GenerationQuestionModal";
 
 type TaskTab = "scenarios-runs" | "creation-runs";
 
@@ -32,6 +33,7 @@ export const TaskListPage = observer(function TaskListPage() {
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<TaskTab>("scenarios-runs");
   const [failed, setFailed] = useState<EntityGenerationRun | null>(null);
+  const [answering, setAnswering] = useState<EntityGenerationRun | null>(null);
 
   useEffect(() => {
     const refresh = () => {
@@ -150,6 +152,12 @@ export const TaskListPage = observer(function TaskListPage() {
               runs={creationRuns}
               modelLabel={textProviderStore.modelLabel}
               onShowError={setFailed}
+              onAnswerQuestion={setAnswering}
+              onOpenDetail={(run) =>
+                goTo(
+                  APP_PATHS.taskCreationDetail.replace(":runId", run.id),
+                )
+              }
               onOpenEntity={(run) =>
                 run.entityId &&
                 goTo(
@@ -158,10 +166,15 @@ export const TaskListPage = observer(function TaskListPage() {
                         ":agentId",
                         run.entityId,
                       )
-                    : APP_PATHS.automation.skills.edit.replace(
-                        ":skillId",
-                        run.entityId,
-                      ),
+                    : run.kind === "skill"
+                      ? APP_PATHS.automation.skills.edit.replace(
+                          ":skillId",
+                          run.entityId,
+                        )
+                      : APP_PATHS.automation.scenarios.edit.replace(
+                          ":scenarioId",
+                          run.entityId,
+                        ),
                 )
               }
             />
@@ -201,6 +214,8 @@ export const TaskListPage = observer(function TaskListPage() {
           </div>
         </Modal.Content>
       </Modal>
+
+      <GenerationQuestionModal run={answering} onClose={() => setAnswering(null)} />
     </section>
   );
 });

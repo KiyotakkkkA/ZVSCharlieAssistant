@@ -1,4 +1,4 @@
-import type { ChatToolCall } from "../../../ipc/contracts";
+import type { ChatToolCall } from "../../../../ipc/contracts";
 import {
   FileDocumentMultipleIcon,
   FileEditIcon,
@@ -9,7 +9,7 @@ import {
   FileSyncIcon,
   FolderSearchIcon,
   type SvgIcon,
-} from "../atoms";
+} from "../../atoms";
 import { CompactToolStatus } from "./CompactToolStatus";
 
 const FILE_SYSTEM_TOOL_IDS = [
@@ -115,7 +115,7 @@ export function isFileSystemTool(toolId: string): toolId is FileSystemToolId {
   return (FILE_SYSTEM_TOOL_IDS as readonly string[]).includes(toolId);
 }
 
-export function FileSystemToolStatus({ call }: { call: ChatToolCall }) {
+export function CompactToolFileSystemBlock({ call }: { call: ChatToolCall }) {
   if (!isFileSystemTool(call.toolId)) return null;
 
   const input = asRecord(call.input);

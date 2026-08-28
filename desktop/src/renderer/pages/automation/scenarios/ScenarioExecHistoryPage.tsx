@@ -241,17 +241,21 @@ export function ScenarioExecHistoryPage() {
     <div className="flex h-full min-h-0 flex-col p-4">
       <PageHeader
         title={run.scenarioName}
+        leading={
+          <Button
+            variant="ghost"
+            label="Назад"
+            rounded="rounded-lg"
+            className="size-7 shrink-0 p-0 text-main-400 hover:bg-main-600/50"
+            onClick={() => goBack(APP_PATHS.tasks)}
+          >
+            <ChevronLeftIcon className="size-4" />
+          </Button>
+        }
         description={`${ORIGIN_LABELS[run.origin]} · запуск #${run.id}`}
         breadcrumbs={[{ label: "Задачи" }, { label: `Запуск #${run.id}` }]}
       >
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            onClick={() => goBack(APP_PATHS.tasks)}
-            title="Назад к задачам"
-          >
-            <ChevronLeftIcon className="size-4" />
-          </Button>
           <Button
             variant="ghost"
             onClick={() =>

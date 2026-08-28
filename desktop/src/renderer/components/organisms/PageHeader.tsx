@@ -3,6 +3,7 @@ import { AppBreadcrumbs, type AppBreadcrumbItem } from "../molecules";
 
 interface PageHeaderProps {
   title: ReactNode;
+  leading?: ReactNode;
   description?: ReactNode;
   breadcrumbs?: AppBreadcrumbItem[];
   children?: ReactNode;
@@ -12,6 +13,7 @@ interface PageHeaderProps {
 
 export function PageHeader({
   title,
+  leading,
   description,
   breadcrumbs,
   children,
@@ -87,28 +89,36 @@ export function PageHeader({
             isStuck ? "items-center gap-3" : "gap-4",
           ].join(" ")}
         >
-          <div className={isStuck ? "min-w-0" : "min-w-0 self-end py-1"}>
-            <h1
-              className={[
-                "truncate font-semibold tracking-tight text-main-50 transition-[font-size,line-height] duration-200",
-                isStuck ? "text-lg leading-6" : "text-2xl leading-8",
-              ].join(" ")}
-            >
-              {title}
-            </h1>
-            {description ? (
-              <p
+          <div
+            className={[
+              "flex min-w-0 items-start gap-2",
+              isStuck ? "" : "self-end py-1",
+            ].join(" ")}
+          >
+            {leading ? <div className="shrink-0">{leading}</div> : null}
+            <div className="min-w-0">
+              <h1
                 className={[
-                  "max-w-2xl overflow-hidden text-sm leading-6 text-main-400",
-                  "transition-[max-height,margin,opacity] duration-200",
-                  isStuck
-                    ? "mt-0 max-h-0 opacity-0"
-                    : "mt-2 max-h-20 opacity-100",
+                  "truncate font-semibold tracking-tight text-main-50 transition-[font-size,line-height] duration-200",
+                  isStuck ? "text-lg leading-6" : "text-2xl leading-8",
                 ].join(" ")}
               >
-                {description}
-              </p>
-            ) : null}
+                {title}
+              </h1>
+              {description ? (
+                <p
+                  className={[
+                    "max-w-2xl overflow-hidden text-sm leading-6 text-main-400",
+                    "transition-[max-height,margin,opacity] duration-200",
+                    isStuck
+                      ? "mt-0 max-h-0 opacity-0"
+                      : "mt-2 max-h-20 opacity-100",
+                  ].join(" ")}
+                >
+                  {description}
+                </p>
+              ) : null}
+            </div>
           </div>
 
           <div

@@ -75,6 +75,47 @@ describe("сборка контекста из журнала", () => {
     ]);
   });
 
+  it("теряет результат инструмента, если он лежит отдельным сообщением role=tool", () => {
+    // Ловушка: tool-call и tool-result должны попадать в parts ОДНОГО
+    // assistant-сообщения (как в тесте выше). Если результат вместо этого
+    // приходит отдельным сообщением role="tool", sanitizeParts() не находит
+    // его при обработке assistant-сообщения с вызовом и достраивает вызову
+    // синтетический tool-result с ошибкой "Вызов не завершён" — а настоящий
+    // результат из отдельного tool-сообщения отбрасывается молча. Именно
+    // так ломался entity-generation.service.ts, когда он звал
+    // appendAssistant() и appendTool() как два разных сообщения: модель
+    // видела на следующем шаге, что её вызов как будто провалился, и звала
+    // инструмент повторно.
+    const built = buildContext({
+      system: "",
+      segments: [],
+      budget,
+      messages: [
+        message("m1", "user", [{ type: "text", text: "старт" }]),
+        message("m2", "assistant", [
+          {
+            type: "tool-call",
+            toolCallId: "call-1",
+            toolName: "get_node_schema",
+            input: { kinds: ["output"] },
+          },
+        ]),
+        message("m3", "tool", [
+          {
+            type: "tool-result",
+            toolCallId: "call-1",
+            toolName: "get_node_schema",
+            output: { marker: "SCHEMA_PAYLOAD_MARKER" },
+          },
+        ]),
+      ],
+    });
+
+    const flat = JSON.stringify(built.messages);
+    expect(flat).not.toContain("SCHEMA_PAYLOAD_MARKER");
+    expect(flat).toContain("Вызов не завершён");
+  });
+
   it("не оставляет вызов инструмента без результата", () => {
     const built = buildContext({
       system: "",

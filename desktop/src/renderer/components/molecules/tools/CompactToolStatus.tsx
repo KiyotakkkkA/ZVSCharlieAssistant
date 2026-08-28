@@ -8,7 +8,7 @@ import {
   type ComponentPropsWithoutRef,
   type ReactNode,
 } from "react";
-import { ChevronDownIcon, type SvgIcon } from "../atoms";
+import { ChevronDownIcon, type SvgIcon } from "../../atoms";
 
 type ToolStatus = "requested" | "running" | "completed" | "failed";
 

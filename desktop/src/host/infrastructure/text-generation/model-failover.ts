@@ -1,6 +1,15 @@
 import type { ModelSwitch, ModelSwitchReason } from "../../../shared/dto";
-import type { ChatRepository } from "../database/chat.repository";
 import type { ProviderRegistry } from "./provider.registry";
+
+export interface ModelDirectory {
+  listEnabledTextModels(): Array<{
+    id: string;
+    kind: string;
+    contextLength: number;
+    maxCompletionTokens: number;
+  }>;
+  recordModelSwitch(runId: string, change: ModelSwitch): void;
+}
 
 export type FailureKind =
   | "transient"
@@ -36,7 +45,7 @@ export class ModelFailover {
   private readonly degradedUntil = new Map<string, number>();
 
   constructor(
-    private readonly data: ChatRepository,
+    private readonly data: ModelDirectory,
     private readonly providers: ProviderRegistry,
   ) {}
 

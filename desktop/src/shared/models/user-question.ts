@@ -1,5 +1,5 @@
 export type QuestionMode = "confirm" | "choice" | "text";
-export type QuestionScope = "chat" | "scenario";
+export type QuestionScope = "chat" | "scenario" | "generation";
 export type QuestionChannel = "ui" | "telegram" | "email";
 export type QuestionStatus = "pending" | "answered" | "timed_out" | "cancelled";
 
@@ -13,6 +13,7 @@ export interface UserQuestion {
   scope: QuestionScope;
   conversationId: string | null;
   runId: string | null;
+  entityGenerationRunId: string | null;
   executionId: string | null;
   nodeId: string | null;
   nodeRunId: string | null;

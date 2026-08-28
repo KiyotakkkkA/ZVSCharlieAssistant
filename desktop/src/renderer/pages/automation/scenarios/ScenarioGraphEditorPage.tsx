@@ -16,6 +16,7 @@ import {
   BlockIcon,
   ChevronLeftIcon,
   CogIcon,
+  CreationIcon,
   EditIcon,
   PlusIcon,
   RobotIcon,
@@ -38,6 +39,7 @@ import {
   inferNodeOutputShape,
 } from "../../../components/molecules/expression/infer";
 import { DangerModal } from "@renderer/components/organisms/modals";
+import { AIEntityCreateForm } from "../../../components/organisms/forms";
 import { APP_PATHS } from "../../../app/routes";
 import { readCssColor, useAppNavigation, useThemeMode } from "../../../hooks";
 import {
@@ -202,6 +204,7 @@ export const ScenarioGraphEditorPage = observer(
     const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
     const [pendingExit, setPendingExit] = useState(false);
     const [issues, setIssues] = useState<ScenarioValidationIssue[]>([]);
+    const [generatingWithModel, setGeneratingWithModel] = useState(false);
 
     const history = useRef<
       Array<{ nodes: ScenarioNode[]; edges: ScenarioEdge[] }>
@@ -252,6 +255,20 @@ export const ScenarioGraphEditorPage = observer(
 
     useEffect(() => {
       if (!scenario) return;
+      const localSnapshot = JSON.stringify({
+        nodes,
+        edges,
+        name: scenarioName,
+        status,
+      });
+      if (savedSnapshot !== null && savedSnapshot !== localSnapshot) {
+        toasts.info({
+          title: "Сценарий изменён моделью",
+          description:
+            "Есть несохранённые локальные правки — обновите вручную, чтобы не потерять их.",
+        });
+        return;
+      }
       setNodes(scenario.graph.nodes);
       setEdges(scenario.graph.edges);
       setSelectedNodeId(scenario.graph.nodes[0]?.id ?? "");
@@ -746,6 +763,21 @@ export const ScenarioGraphEditorPage = observer(
                 <SendIcon className="size-4" /> Запустить
               </Button>
             ) : null}
+            <Button
+              variant="tertiary"
+              rounded="rounded-lg"
+              title="Изменить сценарий с помощью модели"
+              disabled={!scenarioId}
+              onClick={() => {
+                if (!scenarioId) {
+                  toasts.danger({ title: "Сначала сохраните сценарий" });
+                  return;
+                }
+                setGeneratingWithModel(true);
+              }}
+            >
+              <CreationIcon />
+            </Button>
           </div>
         </header>
 
@@ -994,6 +1026,13 @@ export const ScenarioGraphEditorPage = observer(
           confirmLabel="Продолжить"
           onCancel={() => void automationStore.approveScenarioRun(false)}
           onConfirm={() => automationStore.approveScenarioRun(true)}
+        />
+
+        <AIEntityCreateForm
+          open={generatingWithModel}
+          kind="scenario"
+          entityId={scenarioId}
+          onClose={() => setGeneratingWithModel(false)}
         />
       </section>
     );

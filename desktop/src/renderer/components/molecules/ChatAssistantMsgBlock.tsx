@@ -1,22 +1,30 @@
 import { Accordion, Alert, Skeleton } from "@kiyotakkkka/zvs-uikit-lib";
 import { CodeView } from "@kiyotakkkka/zvs-uikit-lib/code-view";
-import { isValidElement, memo, type ReactNode } from "react";
+import {
+  isValidElement,
+  memo,
+  type ComponentType,
+  type ReactNode,
+} from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { ChatToolCall } from "../../../ipc/contracts";
 import type { ChatMessageContentPart } from "../../../shared/dto";
-import {
-  BrainIcon,
-  ChatIcon,
-  PlanIcon,
-  QuestionIcon,
-  StorageIcon,
-  WebIcon,
-  WordIcon,
-} from "../atoms";
+import { ChatIcon } from "../atoms";
 import { ControlButton } from "../atoms/buttons";
-import { CompactToolStatus } from "./CompactToolStatus";
-import { FileSystemToolStatus, isFileSystemTool } from "./FileSystemToolStatus";
+import {
+  isFileSystemTool,
+  CompactToolAskUserBlock,
+  CompactToolFileSystemBlock,
+  CompactToolGetNodeSchemaBlock,
+  CompactToolListResourcesBlock,
+  CompactToolMemoryBlock,
+  CompactToolReportsBlock,
+  CompactToolScenarioApplyBlock,
+  CompactToolTasksPlanBlock,
+  CompactToolVecdbSearchBlock,
+  CompactToolWebBlock,
+} from "./tools";
 
 export interface ChatAssistantMsgBlockProps {
   text: string;
@@ -29,6 +37,7 @@ export interface ChatAssistantMsgBlockProps {
   beforeContent?: ReactNode;
   actions?: ReactNode;
   disabled?: boolean;
+  showControls?: boolean;
   onCopy?: () => void;
   onDelete?: () => void;
 }
@@ -44,6 +53,7 @@ export const ChatAssistantMsgBlock = memo(function ChatAssistantMsgBlock({
   beforeContent,
   actions,
   disabled = false,
+  showControls = true,
   onCopy,
   onDelete,
 }: ChatAssistantMsgBlockProps) {
@@ -71,26 +81,28 @@ export const ChatAssistantMsgBlock = memo(function ChatAssistantMsgBlock({
           </Alert>
         ) : null}
         {actions}
-        <div className="mt-1 flex justify-between items-center opacity-0 transition-opacity group-hover/message:opacity-100">
-          <div className="flex gap-1">
-            <ControlButton icon="copy" title="Копировать" onClick={onCopy} />
-            <ControlButton
-              variant="delete"
-              icon="trash"
-              title="Удалить"
-              disabled={disabled}
-              onClick={onDelete}
-            />
+        {showControls ? (
+          <div className="mt-1 flex justify-between items-center opacity-0 transition-opacity group-hover/message:opacity-100">
+            <div className="flex gap-1">
+              <ControlButton icon="copy" title="Копировать" onClick={onCopy} />
+              <ControlButton
+                variant="delete"
+                icon="trash"
+                title="Удалить"
+                disabled={disabled}
+                onClick={onDelete}
+              />
+            </div>
+            {usageLabel ? (
+              <span
+                className="mr-1 truncate text-[11px] text-main-500"
+                title={usageLabel}
+              >
+                {usageLabel}
+              </span>
+            ) : null}
           </div>
-          {usageLabel ? (
-            <span
-              className="mr-1 truncate text-[11px] text-main-500"
-              title={usageLabel}
-            >
-              {usageLabel}
-            </span>
-          ) : null}
-        </div>
+        ) : null}
       </div>
     </div>
   );
@@ -228,93 +240,30 @@ function AssistantSkeleton() {
   );
 }
 
+const TOOL_BLOCKS: Record<string, ComponentType<{ call: ChatToolCall }>> = {
+  memory_save: CompactToolMemoryBlock,
+  memory_search: CompactToolMemoryBlock,
+  web_search: CompactToolWebBlock,
+  web_fetch: CompactToolWebBlock,
+  vecdb_search: CompactToolVecdbSearchBlock,
+  reports_docx: CompactToolReportsBlock,
+  reports_begin: CompactToolReportsBlock,
+  reports_add_blocks: CompactToolReportsBlock,
+  reports_commit: CompactToolReportsBlock,
+  reports_abort: CompactToolReportsBlock,
+  tasks_plan: CompactToolTasksPlanBlock,
+  ask_user: CompactToolAskUserBlock,
+  get_node_schema: CompactToolGetNodeSchemaBlock,
+  list_resources: CompactToolListResourcesBlock,
+  scenario_apply: CompactToolScenarioApplyBlock,
+};
+
 function ToolCallDetails({ call }: { call: ChatToolCall }) {
   if (isFileSystemTool(call.toolId)) {
-    return <FileSystemToolStatus call={call} />;
+    return <CompactToolFileSystemBlock call={call} />;
   }
-  if (call.toolId === "memory_save" || call.toolId === "memory_search") {
-    const saving = call.toolId === "memory_save";
-    return (
-      <CompactToolStatus>
-        <CompactToolStatus.Trigger
-          icon={BrainIcon}
-          running={saving ? "Идёт сохранение в память" : "Идёт поиск в памяти"}
-          completed={
-            saving ? "Информация сохранена в память" : "Поиск в памяти завершён"
-          }
-          status={call.status}
-        />
-        <CompactToolStatus.Expandable className="p-0!">
-          <MemoryToolDetails call={call} />
-        </CompactToolStatus.Expandable>
-      </CompactToolStatus>
-    );
-  }
-  if (call.toolId === "web_search" || call.toolId === "web_fetch")
-    return (
-      <CompactToolStatus>
-        <CompactToolStatus.Trigger
-          icon={WebIcon}
-          running="Идёт поиск в интернете"
-          completed="Выполнен поиск в интернете"
-          status={call.status}
-        />
-      </CompactToolStatus>
-    );
-  if (call.toolId === "vecdb_search")
-    return (
-      <CompactToolStatus>
-        <CompactToolStatus.Trigger
-          icon={StorageIcon}
-          running="Идёт поиск в хранилище"
-          completed="Поиск в хранилище завершён"
-          status={call.status}
-        />
-      </CompactToolStatus>
-    );
-  if (
-    call.toolId === "reports_docx" ||
-    call.toolId === "reports_begin" ||
-    call.toolId === "reports_add_blocks" ||
-    call.toolId === "reports_commit" ||
-    call.toolId === "reports_abort"
-  )
-    return (
-      <CompactToolStatus>
-        <CompactToolStatus.Trigger
-          icon={WordIcon}
-          running={reportToolLabel(call.toolId, false)}
-          completed={reportToolLabel(call.toolId, true)}
-          status={call.status}
-        />
-      </CompactToolStatus>
-    );
-  if (call.toolId === "tasks_plan") {
-    return (
-      <CompactToolStatus>
-        <CompactToolStatus.Trigger
-          icon={PlanIcon}
-          running="Идёт создание плана"
-          completed="План обновлён"
-          status={call.status}
-        />
-      </CompactToolStatus>
-    );
-  }
-  if (call.toolId === "ask_user")
-    return (
-      <CompactToolStatus>
-        <CompactToolStatus.Trigger
-          icon={QuestionIcon}
-          running="Идёт запрос информации у пользователя"
-          completed="Информация от пользователя получена"
-          status={call.status}
-        />
-        <CompactToolStatus.Expandable>
-          <AskUserDetails call={call} />
-        </CompactToolStatus.Expandable>
-      </CompactToolStatus>
-    );
+  const Block = TOOL_BLOCKS[call.toolId];
+  if (Block) return <Block call={call} />;
   const statusLabel = {
     requested: "Подготовка",
     running: "Выполняется",
@@ -346,172 +295,6 @@ function ToolCallDetails({ call }: { call: ChatToolCall }) {
       </Accordion.Content>
     </Accordion>
   );
-}
-
-function reportToolLabel(toolId: string, completed: boolean) {
-  const labels: Record<string, [string, string]> = {
-    reports_docx: ["Идёт создание отчёта", "Отчёт DOCX создан"],
-    reports_begin: ["Подготавливается отчёт", "Сборка отчёта начата"],
-    reports_add_blocks: ["Добавляется часть отчёта", "Часть отчёта добавлена"],
-    reports_commit: ["Собирается DOCX", "Отчёт DOCX создан"],
-    reports_abort: ["Отменяется сборка отчёта", "Сборка отчёта отменена"],
-  };
-  return labels[toolId]?.[completed ? 1 : 0] ?? toolId;
-}
-
-function AskUserDetails({ call }: { call: ChatToolCall }) {
-  const input = isRecord(call.input) ? call.input : null;
-  const output = isRecord(call.output) ? call.output : null;
-  const question = typeof input?.question === "string" ? input.question : null;
-  const rawAnswer = output?.answer;
-  const answer = Array.isArray(rawAnswer)
-    ? rawAnswer
-        .filter((item): item is string => typeof item === "string")
-        .join(", ")
-    : typeof rawAnswer === "string"
-      ? rawAnswer
-      : null;
-
-  return (
-    <div className="space-y-1">
-      {question ? <p>{question}</p> : null}
-      {answer ? (
-        <p className="font-medium text-main-100">{answer}</p>
-      ) : call.error ? (
-        <p className="text-danger-light">{call.error}</p>
-      ) : (
-        <p className="text-main-500">Ожидается ответ пользователя</p>
-      )}
-    </div>
-  );
-}
-
-const MEMORY_KIND_LABELS: Record<string, string> = {
-  fact: "Факт",
-  preference: "Предпочтение",
-  instruction: "Указание",
-  episode: "Событие",
-};
-
-function MemoryToolDetails({ call }: { call: ChatToolCall }) {
-  const input = isRecord(call.input) ? call.input : {};
-
-  if (call.toolId === "memory_save") {
-    const kind = typeof input.kind === "string" ? input.kind : "fact";
-    const title =
-      typeof input.title === "string" ? input.title : "Новая запись";
-    const content = typeof input.content === "string" ? input.content : "";
-    const tags = Array.isArray(input.tags)
-      ? input.tags.filter((tag): tag is string => typeof tag === "string")
-      : [];
-
-    return (
-      <div className="overflow-hidden rounded-xl">
-        <div className="relative px-4 py-4">
-          <div
-            aria-hidden="true"
-            className="absolute bottom-3 left-0 top-3 w-px"
-          />
-          <div className="mb-2 flex flex-wrap items-center gap-2">
-            <span className="rounded-md bg-accent-medium/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent-light ring-1 ring-accent-medium/15">
-              {MEMORY_KIND_LABELS[kind] ?? kind}
-            </span>
-            <span className="text-[11px] text-main-600">
-              Добавлено в память
-            </span>
-          </div>
-          <p className="text-sm font-medium text-main-100">
-            {humanizeMemoryTitle(title)}
-          </p>
-          {content ? (
-            <p className="mt-1.5 text-[13px] leading-5 text-main-300">
-              {content}
-            </p>
-          ) : null}
-          {tags.length ? (
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="rounded-md bg-main-800 px-2 py-0.5 text-[10px] text-main-500 ring-1 ring-main-700/50"
-                >
-                  #{tag}
-                </span>
-              ))}
-            </div>
-          ) : null}
-        </div>
-        {call.error ? (
-          <div className="border-t border-danger-medium/20 bg-danger-medium/5 px-4 py-2.5 text-xs text-danger-light">
-            {call.error}
-          </div>
-        ) : null}
-      </div>
-    );
-  }
-
-  const query = typeof input.query === "string" ? input.query : "";
-  const output = isRecord(call.output) ? call.output : {};
-  const entries = Array.isArray(output.entries)
-    ? output.entries.filter(isRecord)
-    : [];
-
-  return (
-    <div className="overflow-hidden rounded-xl">
-      <div className="flex items-center gap-2 border-b border-main-700/45 px-4 py-3">
-        <span className="text-[11px] text-main-500">Запрос</span>
-        <span className="min-w-0 truncate text-xs text-main-200">
-          {query || "Поиск по памяти"}
-        </span>
-        <span className="ml-auto shrink-0 text-[10px] tabular-nums text-main-600">
-          {entries.length} найдено
-        </span>
-      </div>
-      {entries.length ? (
-        <ul className="divide-y divide-main-700/35">
-          {entries.map((entry, index) => {
-            const kind = typeof entry.kind === "string" ? entry.kind : "fact";
-            return (
-              <li key={String(entry.id ?? index)} className="px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] uppercase tracking-wide text-accent-light">
-                    {MEMORY_KIND_LABELS[kind] ?? kind}
-                  </span>
-                  <span className="truncate text-xs font-medium text-main-200">
-                    {humanizeMemoryTitle(String(entry.title ?? "Запись"))}
-                  </span>
-                </div>
-                {typeof entry.content === "string" ? (
-                  <p className="mt-1 text-xs leading-5 text-main-400">
-                    {entry.content}
-                  </p>
-                ) : null}
-              </li>
-            );
-          })}
-        </ul>
-      ) : (
-        <p className="px-4 py-4 text-xs text-main-500">
-          Подходящих записей не найдено
-        </p>
-      )}
-      {call.error ? (
-        <div className="border-t border-danger-medium/20 bg-danger-medium/5 px-4 py-2.5 text-xs text-danger-light">
-          {call.error}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function humanizeMemoryTitle(value: string) {
-  return value
-    .replaceAll("_", " ")
-    .replace(/^./, (letter) => letter.toUpperCase());
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function ToolCallValue({ title, value }: { title: string; value: unknown }) {

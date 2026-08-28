@@ -3,6 +3,7 @@ import managedPowerShellInstructions from "./managed-powershell/SKILL.md?raw";
 import createAgentInstructions from "./create-agent/SKILL.md?raw";
 import createSkillInstructions from "./create-skill/SKILL.md?raw";
 import reportHtmlInstructions from "./report-html/SKILL.md?raw";
+import scenarioCreationInstructions from "./scenario-creation/SKILL.md?raw";
 import { SYSTEM_SKILL_IDS } from "../../shared/entity-ids";
 
 export interface DefaultSkillDefinition {
@@ -74,5 +75,16 @@ export const DEFAULT_SKILLS: readonly DefaultSkillDefinition[] = [
     author: "ZVS Assistant",
     requiredToolIds: ["fs_write"],
     instructions: stripFrontmatter(reportHtmlInstructions),
+  },
+  {
+    id: SYSTEM_SKILL_IDS.scenarioCreation,
+    slug: "scenario-creation",
+    name: "Scenario Creation",
+    description:
+      "Edits or extends an automation scenario graph from the user's description and applies it with scenario_apply.",
+    version: "1.0.0",
+    author: "ZVS Assistant",
+    requiredToolIds: [],
+    instructions: stripFrontmatter(scenarioCreationInstructions),
   },
 ] as const;

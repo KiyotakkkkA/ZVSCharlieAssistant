@@ -1,6 +1,7 @@
 export const IPC_CHANNELS = {
   getAppInfo: "app:get-info",
   openAppLocation: "app:open-location",
+  writeClipboardText: "app:write-clipboard-text",
   command: "app:command",
   saveGeneratedArtifact: "app:save-generated-artifact",
   selectDirectory: "app:select-directory",
@@ -29,6 +30,7 @@ export type AppLocation = "install" | "userData";
 export interface DesktopApi {
   getAppInfo(): Promise<AppInfo>;
   openAppLocation(location: AppLocation): Promise<void>;
+  writeClipboardText(text: string): Promise<void>;
   subscribeToCommands(listener: (command: AppCommand) => void): () => void;
   saveGeneratedArtifact(input: GeneratedArtifactInput): Promise<boolean>;
   selectDirectory(): Promise<string | null>;

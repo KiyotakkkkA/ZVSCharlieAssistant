@@ -14,6 +14,7 @@ interface QuestionRow {
   scope: QuestionScope;
   conversation_id: string | null;
   run_id: string | null;
+  entity_generation_run_id: string | null;
   execution_id: string | null;
   node_id: string | null;
   node_run_id: string | null;
@@ -42,6 +43,7 @@ const mapQuestion = (row: QuestionRow): UserQuestion => ({
   scope: row.scope,
   conversationId: row.conversation_id,
   runId: row.run_id,
+  entityGenerationRunId: row.entity_generation_run_id,
   executionId: row.execution_id,
   nodeId: row.node_id,
   nodeRunId: row.node_run_id,
@@ -70,6 +72,7 @@ export interface CreateQuestionInput {
   scope: QuestionScope;
   conversationId?: string | null;
   runId?: string | null;
+  entityGenerationRunId?: string | null;
   executionId?: string | null;
   nodeId?: string | null;
   nodeRunId?: string | null;
@@ -95,16 +98,17 @@ export class UserQuestionRepository {
     this.db
       .prepare(
         `INSERT INTO user_questions(
-           id,scope,conversation_id,run_id,execution_id,node_id,node_run_id,mode,
+           id,scope,conversation_id,run_id,entity_generation_run_id,execution_id,node_id,node_run_id,mode,
            header,question,options_json,multi_select,default_answer,channel,
            integration_profile_id,recipient,correlation_id,expected_author,expires_at
-         ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+         ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       )
       .run(
         id,
         input.scope,
         input.conversationId ?? null,
         input.runId ?? null,
+        input.entityGenerationRunId ?? null,
         input.executionId ?? null,
         input.nodeId ?? null,
         input.nodeRunId ?? null,
@@ -138,6 +142,16 @@ export class UserQuestionRepository {
          WHERE execution_id=? AND node_id=? ORDER BY id DESC LIMIT 1`,
       )
       .get(executionId, nodeId) as QuestionRow | undefined;
+    return row ? mapQuestion(row) : undefined;
+  }
+
+  forEntityGenerationRun(runId: string): UserQuestion | undefined {
+    const row = this.db
+      .prepare(
+        `SELECT * FROM user_questions
+         WHERE entity_generation_run_id=? ORDER BY id DESC LIMIT 1`,
+      )
+      .get(runId) as QuestionRow | undefined;
     return row ? mapQuestion(row) : undefined;
   }
 

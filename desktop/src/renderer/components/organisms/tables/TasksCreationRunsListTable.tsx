@@ -1,6 +1,6 @@
 import { Button, Table, type TableColumn } from "@kiyotakkkka/zvs-uikit-lib";
 import type { EntityGenerationRun } from "../../../../ipc/contracts";
-import { EyeIcon, QuestionIcon } from "../../atoms";
+import { EyeIcon, OpenInNewIcon, QuestionIcon } from "../../atoms";
 
 interface Row extends EntityGenerationRun {
   [key: string]: unknown;
@@ -9,6 +9,7 @@ interface Row extends EntityGenerationRun {
 const kinds: Record<EntityGenerationRun["kind"], string> = {
   agent: "Агент",
   skill: "Навык",
+  scenario: "Сценарий",
 };
 
 const statuses: Record<
@@ -20,8 +21,8 @@ const statuses: Record<
     label: "Генерируется",
     className: "text-accent-light bg-accent-medium/10",
   },
-  waiting_for_approval: {
-    label: "Ожидает подтверждения",
+  clarification_requested: {
+    label: "Запрошено уточнение",
     className: "text-warning-light bg-warning-medium/10",
   },
   completed: {
@@ -39,12 +40,16 @@ export function TasksCreationRunsListTable({
   runs,
   modelLabel,
   onOpenEntity,
+  onOpenDetail,
   onShowError,
+  onAnswerQuestion,
 }: {
   runs: EntityGenerationRun[];
   modelLabel: (id: string) => string;
   onOpenEntity: (run: EntityGenerationRun) => void;
+  onOpenDetail: (run: EntityGenerationRun) => void;
   onShowError: (run: EntityGenerationRun) => void;
+  onAnswerQuestion: (run: EntityGenerationRun) => void;
 }) {
   const columns: Array<TableColumn<Row>> = [
     {
@@ -108,14 +113,32 @@ export function TasksCreationRunsListTable({
       cellClassName: "text-right",
       render: (x) => (
         <div className="flex justify-end gap-2">
+          {x.status === "clarification_requested" && x.pendingQuestion ? (
+            <Button
+              variant="primary"
+              className="h-8 gap-1.5 px-2 text-sm"
+              onClick={() => onAnswerQuestion(x)}
+            >
+              <QuestionIcon className="size-3.5" />
+              Ответить
+            </Button>
+          ) : null}
+          <Button
+            variant="ghost"
+            className="h-8 gap-1.5 px-2 text-sm hover:bg-main-700/50"
+            onClick={() => onOpenDetail(x)}
+          >
+            <EyeIcon className="size-3.5" />
+            Подробнее
+          </Button>
           {x.entityId ? (
             <Button
               variant="ghost"
               className="h-8 gap-1.5 px-2 text-sm hover:bg-main-700/50"
               onClick={() => onOpenEntity(x)}
             >
-              <EyeIcon className="size-3.5" />
-              Подробнее
+              <OpenInNewIcon className="size-3.5" />
+              Перейти
             </Button>
           ) : null}
           {x.status === "failed" ? (
@@ -125,7 +148,7 @@ export function TasksCreationRunsListTable({
               onClick={() => onShowError(x)}
             >
               <QuestionIcon className="size-3.5" />
-              Подробнее
+              Ошибка
             </Button>
           ) : null}
         </div>

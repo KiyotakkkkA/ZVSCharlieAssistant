@@ -27,17 +27,26 @@ const COPY = {
       "Например: навык, который приводит выгруженные CSV-файлы в порядок — чинит заголовки и типы колонок.",
     hint: "Модель напишет подробную пошаговую инструкцию навыка.",
   },
+  scenario: {
+    title: "Изменить сценарий с помощью модели",
+    label: "Опишите изменения",
+    placeholder:
+      "Например: добавь узел HTTP-запроса перед агентом и передай его результат в поле контекста.",
+    hint: "Модель изменит граф сценария и сохранит его как черновик.",
+  },
 } as const;
 
 interface Props {
   open: boolean;
   kind: GeneratedEntityKind;
+  entityId?: string;
   onClose: () => void;
 }
 
 export const AIEntityCreateForm = observer(function AIEntityCreateForm({
   open,
   kind,
+  entityId,
   onClose,
 }: Props) {
   const toasts = useToasts();
@@ -61,6 +70,7 @@ export const AIEntityCreateForm = observer(function AIEntityCreateForm({
         kind,
         modelId,
         prompt,
+        entityId,
       });
       toasts.success({
         title: "Генерация поставлена в очередь",

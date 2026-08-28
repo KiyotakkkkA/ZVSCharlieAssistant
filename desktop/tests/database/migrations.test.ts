@@ -22,7 +22,7 @@ describe("UUID baseline schema", () => {
 
     expect(
       database.prepare("SELECT COUNT(*) count FROM schema_migrations").get(),
-    ).toEqual({ count: 5 });
+    ).toEqual({ count: 7 });
     expect(
       database
         .prepare(
@@ -194,5 +194,53 @@ describe("UUID baseline schema", () => {
       .all() as number[];
     expect(limits.length).toBeGreaterThan(0);
     expect(limits.every((value) => value === 8192)).toBe(true);
+  });
+
+  it("расширяет entity_generation_runs и user_questions для сценариев и уточнений", () => {
+    database = new Database(":memory:");
+    database.pragma("foreign_keys = ON");
+    runMigrations(database);
+
+    database
+      .prepare(
+        `INSERT INTO text_provider_configs(
+           id,kind,name,base_url,enabled,checked_at,generation_settings_json
+         ) VALUES(?,?,?,?,?,?,?)`,
+      )
+      .run(
+        "provider-1",
+        "ollama",
+        "Local",
+        "http://localhost:11434",
+        1,
+        new Date().toISOString(),
+        "{}",
+      );
+    database
+      .prepare(
+        `INSERT INTO text_provider_models(id,provider_id,remote_id,name,enabled,details_json)
+         VALUES(?,?,?,?,?,?)`,
+      )
+      .run("model-1", "provider-1", "model-1", "Model 1", 1, "{}");
+
+    expect(() =>
+      database
+        .prepare(
+          `INSERT INTO entity_generation_runs(id,kind,model_id,prompt,status)
+           VALUES(?,?,?,?,?)`,
+        )
+        .run("run-1", "scenario", "model-1", "изменить граф", "clarification_requested"),
+    ).not.toThrow();
+
+    expect(() =>
+      database
+        .prepare(
+          `INSERT INTO user_questions(id,scope,entity_generation_run_id,question)
+           VALUES(?,?,?,?)`,
+        )
+        .run("question-1", "generation", "run-1", "Какой узел добавить?"),
+    ).not.toThrow();
+
+    expect(database.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
   });
 });

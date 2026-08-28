@@ -21,6 +21,7 @@ export const APP_PATHS = {
   guides: "/guides",
   chat: "/chat",
   tasks: "/tasks",
+  taskCreationDetail: "/tasks/creation/:runId",
   automation: {
     index: "/automation",
     agents: {

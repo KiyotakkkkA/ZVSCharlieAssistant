@@ -1,12 +1,19 @@
 import { z } from "zod";
 import { entityIdSchema } from "./ipc-dto";
+import { scenarioGraphSchema } from "../scenario/graph";
 
-export const generatedEntityKindSchema = z.enum(["agent", "skill"]);
+export const generatedEntityKindSchema = z.enum(["agent", "skill", "scenario"]);
 
 export const startEntityGenerationDtoSchema = z.object({
   kind: generatedEntityKindSchema,
   modelId: entityIdSchema,
   prompt: z.string().trim().min(10).max(4000),
+  entityId: entityIdSchema.optional(),
+});
+
+export const generatedScenarioApplyDtoSchema = z.object({
+  graph: scenarioGraphSchema,
+  summary: z.string().trim().min(1).max(2000),
 });
 
 export const generatedAgentDraftDtoSchema = z.object({
@@ -14,6 +21,7 @@ export const generatedAgentDraftDtoSchema = z.object({
   description: z.string().trim().min(2).max(400),
   instructions: z.string().trim().min(40).max(20_000),
   allowedToolIds: z.array(z.string().trim().min(1)).max(40).default([]),
+  allowedSkillIds: z.array(z.string().trim().min(1)).max(20).default([]),
   memoryRead: z.boolean().default(false),
   memoryWrite: z.boolean().default(false),
   maxToolCalls: z.int().min(1).max(20).default(8),
@@ -36,3 +44,6 @@ export type StartEntityGenerationInput = z.infer<
 >;
 export type GeneratedAgentDraft = z.infer<typeof generatedAgentDraftDtoSchema>;
 export type GeneratedSkillDraft = z.infer<typeof generatedSkillDraftDtoSchema>;
+export type GeneratedScenarioApply = z.infer<
+  typeof generatedScenarioApplyDtoSchema
+>;

@@ -17,10 +17,4 @@ export {
 } from "./CompactEntitySelector";
 export { ProvidedEntitySidebarCard } from "./ProvidedEntitySidebarCard";
 export { ProvidedEntityManageHeader } from "./ProvidedEntityManageHeader";
-export {
-  CompactToolStatus,
-  type CompactToolStatusProps,
-  type CompactToolStatusTriggerProps,
-  type CompactToolStatusExpandableProps,
-} from "./CompactToolStatus";
 export { ContextMeter } from "./ContextMeter";

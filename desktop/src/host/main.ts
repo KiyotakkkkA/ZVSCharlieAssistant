@@ -292,16 +292,6 @@ app.whenReady().then(() => {
     chatRepository,
     secretRepository,
   );
-  const entityGenerations = new EntityGenerationRepository(database);
-  entityGenerations.recoverInterrupted();
-  registerEntityGenerationHandlers(
-    new EntityGenerationService(
-      entityGenerations,
-      automationRepository,
-      providerRegistry,
-      BUILTIN_AUTOMATION_TOOLS,
-    ),
-  );
   const scenarioExecutions = new ScenarioExecutionRepository(database);
   scenarioExecutions.recoverInterruptedRuns();
   const integrationRepository = new IntegrationRepository(database);
@@ -343,12 +333,32 @@ app.whenReady().then(() => {
   );
   const taskPlans = new TaskPlanRepository(database);
   const automationJobs = new AutomationJobRepository(database);
+  const userQuestionRepository = new UserQuestionRepository(database);
   const questionService = new UserQuestionService(
-    new UserQuestionRepository(database),
+    userQuestionRepository,
     integrationRepository,
     secretRepository,
     scenarioDeliveries,
     automationJobs,
+  );
+  const entityGenerations = new EntityGenerationRepository(
+    database,
+    userQuestionRepository,
+  );
+  entityGenerations.recoverInterrupted();
+  registerEntityGenerationHandlers(
+    new EntityGenerationService(
+      entityGenerations,
+      automationRepository,
+      providerRegistry,
+      BUILTIN_AUTOMATION_TOOLS,
+      questionService,
+      scenarioGraphs,
+      integrationRepository,
+      vectorRepository,
+      secretRepository,
+      () => chatRepository.listEnabledTextModels(),
+    ),
   );
   const ollamaWebService = new OllamaWebService(
     automationRepository,
