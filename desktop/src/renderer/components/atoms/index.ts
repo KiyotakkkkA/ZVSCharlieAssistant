@@ -14,3 +14,4 @@ export {
   type GlobalSettingsFormDescriptor,
   type GlobalSettingsAnchorDescriptor,
 } from "./GlobalSettingsContext";
+export { AppBreadcrumbs, type AppBreadcrumbItem } from "./AppBreadcrumbs";

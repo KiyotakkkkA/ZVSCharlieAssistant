@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { AppBreadcrumbs, type AppBreadcrumbItem } from "../molecules";
+import { AppBreadcrumbs, type AppBreadcrumbItem } from "../atoms";
 
 interface PageHeaderProps {
   title: ReactNode;
