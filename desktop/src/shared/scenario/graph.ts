@@ -3,7 +3,7 @@ import { entityIdSchema } from "../dto/ipc-dto";
 
 export const SCENARIO_GRAPH_VERSION = 2 as const;
 
-export const scenarioDataKindSchema = z.enum(["main", "knowledge"]);
+export const scenarioDataKindSchema = z.enum(["main", "knowledge", "files"]);
 export type ScenarioDataKind = z.infer<typeof scenarioDataKindSchema>;
 
 export const nodeErrorModeSchema = z.enum(["stop", "continue", "errorOutput"]);

@@ -483,7 +483,7 @@ export const BUILTIN_AUTOMATION_TOOLS: readonly AutomationTool[] = [
     category: "Документы",
     builtin: true,
     enabled: true,
-    requiresConfirmation: true,
+    requiresConfirmation: false,
     inputSchema: {
       type: "object",
       required: ["fileName", "template", "blocks"],

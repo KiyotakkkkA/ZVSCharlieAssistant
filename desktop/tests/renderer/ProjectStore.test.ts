@@ -13,6 +13,7 @@ describe("DTO сохранения проекта", () => {
       instructions: "",
       defaultAgentId: null,
       defaultModelId: null,
+      compactModelId: null,
       compactThreshold: 0.78,
       archived: false,
       grants: [

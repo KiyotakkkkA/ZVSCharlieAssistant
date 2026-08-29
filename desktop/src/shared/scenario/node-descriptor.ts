@@ -164,3 +164,22 @@ export const knowledgeOutput = (): PortSpec => ({
   side: "right",
   multiple: true,
 });
+
+export const filesInput = (overrides: Partial<PortSpec> = {}): PortSpec => ({
+  id: "files",
+  label: "Входные файлы",
+  dataKind: "files",
+  side: "top",
+  multiple: true,
+  optional: true,
+  ...overrides,
+});
+
+export const filesOutput = (overrides: Partial<PortSpec> = {}): PortSpec => ({
+  id: "files",
+  label: "Выходные файлы",
+  dataKind: "files",
+  side: "bottom",
+  multiple: true,
+  ...overrides,
+});

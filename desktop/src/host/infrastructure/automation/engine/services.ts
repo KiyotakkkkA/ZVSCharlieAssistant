@@ -5,10 +5,12 @@ import type {
   AgentTerminalPolicy,
 } from "../../../../shared/dto";
 import type { ScenarioFileReference } from "../../../../shared/dto/scenario-trigger-event.dto";
+import type { ScenarioBinaryRef } from "../../../../shared/scenario/items";
 
 export interface GenerateTextRequest {
   runId: string;
   nodeId: string;
+  nodeRunId: string;
   modelId: string;
   system: string;
   prompt: unknown;
@@ -19,6 +21,7 @@ export interface GenerateTextRequest {
   tools?: ToolSet;
   maxToolCalls?: number;
   onDelta?(delta: string): void;
+  onGeneratedFile?(ref: ScenarioBinaryRef): void;
 }
 
 export interface GenerateObjectRequest<T> {
@@ -104,6 +107,7 @@ export interface DeliverResponseRequest {
   config: unknown;
   triggerInput: unknown;
   output: unknown;
+  attachments: ScenarioBinaryRef[];
 }
 
 export interface RunSubScenarioRequest {

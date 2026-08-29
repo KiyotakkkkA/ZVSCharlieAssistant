@@ -134,6 +134,7 @@ import { CoreInteractorService } from "./infrastructure/electron/core-interactor
 import { ScenarioFileRepository } from "./infrastructure/database/scenario-file.repository";
 import { ScenarioFileDownloadService } from "./infrastructure/automation/scenario-file-download.service";
 import { ScenarioFileReaderService } from "./infrastructure/automation/scenario-file-reader.service";
+import { ScenarioAgentConversationRepository } from "./infrastructure/database/scenario-agent-conversation.repository";
 import { ScenarioDeliveryRepository } from "./infrastructure/database/scenario-delivery.repository";
 import { ScenarioResponseService } from "./infrastructure/automation/scenario-response.service";
 import { ScenarioDeliveryAdapterRegistry } from "./infrastructure/automation/delivery/scenario-delivery.adapter";
@@ -423,6 +424,10 @@ app.whenReady().then(() => {
     join(app.getPath("userData"), "executions"),
   );
   let scenarioRuntimeEngine: ScenarioRuntimeEngine;
+  const scenarioFileReader = new ScenarioFileReaderService(
+    scenarioDownloadsRoot,
+    textExtraction,
+  );
   const engineServices = new HostScenarioEngineServices(
     scenarioExecutions,
     providerRegistry,
@@ -430,9 +435,11 @@ app.whenReady().then(() => {
     vectorService,
     secretRepository,
     scenarioFileDownloads,
-    new ScenarioFileReaderService(scenarioDownloadsRoot, textExtraction),
+    scenarioFileReader,
     new ScenarioResponseService(scenarioDeliveries),
     questionService,
+    new ScenarioAgentConversationRepository(database),
+    () => chatRepository.listEnabledTextModels(),
     () => scenarioRuntimeEngine,
   );
   engineLogger = createLogger({
@@ -626,8 +633,16 @@ app.whenReady().then(() => {
   scenarioDeliveryWorker = new ScenarioDeliveryWorker(
     scenarioDeliveries,
     new ScenarioDeliveryAdapterRegistry([
-      new TelegramDeliveryAdapter(integrationRepository, secretRepository),
-      new EmailDeliveryAdapter(integrationRepository, secretRepository),
+      new TelegramDeliveryAdapter(
+        integrationRepository,
+        secretRepository,
+        scenarioFileReader,
+      ),
+      new EmailDeliveryAdapter(
+        integrationRepository,
+        secretRepository,
+        scenarioFileReader,
+      ),
     ]),
   );
   scenarioJobWorker.start();

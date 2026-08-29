@@ -3,6 +3,8 @@ import { entityIdSchema } from "../../dto/ipc-dto";
 import { exprText } from "../config-fields";
 import {
   errorOutput,
+  filesInput,
+  filesOutput,
   knowledgeInput,
   mainInput,
   mainOutput,
@@ -44,8 +46,8 @@ export const agentDescriptor: ScenarioNodeDescriptor<
     temperature: null,
     targetField: "text",
   }),
-  inputs: [mainInput(), knowledgeInput()],
-  outputs: [mainOutput({ label: "Результат" }), errorOutput()],
+  inputs: [mainInput(), knowledgeInput(), filesInput()],
+  outputs: [mainOutput({ label: "Результат" }), filesOutput(), errorOutput()],
   itemMode: "collection",
   defaults: {
     retry: {

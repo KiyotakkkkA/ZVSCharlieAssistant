@@ -1,7 +1,12 @@
 import { z } from "zod";
 import { entityIdSchema } from "../../dto/ipc-dto";
 import { exprText } from "../config-fields";
-import { mainInput, type ScenarioNodeDescriptor } from "../node-descriptor";
+import {
+  filesInput,
+  mainInput,
+  type PortSpec,
+  type ScenarioNodeDescriptor,
+} from "../node-descriptor";
 
 export const responseChannelSchema = z.object({
   channel: z.enum(["telegram", "email"]),
@@ -40,7 +45,15 @@ export const outputDescriptor: ScenarioNodeDescriptor<
     saveArtifact: false,
     artifactFileName: "",
   }),
-  inputs: [mainInput({ label: "Результат" })],
+  inputs: (config) => {
+    const ports: PortSpec[] = [mainInput({ label: "Результат" })];
+    const channels = Array.isArray(config.channels)
+      ? (config.channels as Array<{ enabled?: unknown; attachFiles?: unknown }>)
+      : [];
+    if (channels.some((channel) => channel.enabled !== false && channel.attachFiles))
+      ports.push(filesInput({ label: "Вложения" }));
+    return ports;
+  },
   outputs: [],
   itemMode: "collection",
   isTerminal: true,

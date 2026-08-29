@@ -8,6 +8,8 @@ import {
 } from "../config-fields";
 import {
   errorOutput,
+  filesInput,
+  filesOutput,
   knowledgeOutput,
   mainInput,
   mainOutput,
@@ -294,8 +296,12 @@ export const downloadFilesDescriptor: ScenarioNodeDescriptor<
     maxFiles: 20,
     cleanupOnFinish: true,
   }),
-  inputs: [mainInput()],
-  outputs: [mainOutput({ label: "Файлы" }), errorOutput()],
+  inputs: [mainInput(), filesInput()],
+  outputs: [
+    mainOutput({ label: "Файлы" }),
+    filesOutput(),
+    errorOutput(),
+  ],
   itemMode: "collection",
   defaults: {
     retry: {
@@ -334,7 +340,7 @@ export const readFilesDescriptor: ScenarioNodeDescriptor<
     targetField: "text",
     itemPerFile: true,
   }),
-  inputs: [mainInput()],
+  inputs: [mainInput(), filesInput()],
   outputs: [mainOutput({ label: "Текст" }), errorOutput()],
   itemMode: "collection",
   defaults: { onError: "continue", timeoutSeconds: 600 },

@@ -180,10 +180,11 @@ export function createDownloadFilesExecutor(
     kind: "downloadFiles",
     async execute(context) {
       const config = context.config;
+      const filesPortItems = context.inputs.files ?? [];
       const value =
         config.source === "urls"
           ? config.urls
-          : context.items.map((item) => item.json);
+          : [...context.items, ...filesPortItems].map((item) => item.json);
 
       const files = await services.downloadFiles({
         executionId: context.executionId,
@@ -201,13 +202,13 @@ export function createDownloadFilesExecutor(
       for (const file of files)
         binary[`file_${file.id}`] = file as ScenarioBinaryRef;
 
+      const item = {
+        json: { files },
+        binary: Object.keys(binary).length ? binary : undefined,
+      };
+
       return {
-        items: [
-          {
-            json: { files },
-            binary: Object.keys(binary).length ? binary : undefined,
-          },
-        ],
+        outputs: { main: [item], files: [item] },
         diagnostics: { downloaded: files.length },
       };
     },
@@ -227,7 +228,9 @@ export const createReadFilesExecutor = (
   kind: "readFiles",
   async execute(context) {
     const config = context.config;
-    const values = context.items.map((item) => item.json);
+    const values = [...context.items, ...(context.inputs.files ?? [])].map(
+      (item) => item.json,
+    );
     const files = collectFiles(values);
 
     if (files.length === 0) {

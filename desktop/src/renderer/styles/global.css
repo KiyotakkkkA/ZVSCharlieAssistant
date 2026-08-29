@@ -54,6 +54,7 @@
 
   --port-main: #bef264;
   --port-knowledge: #67e8f9;
+  --port-files: #fb923c;
 
   --canvas-dots: rgb(255 255 255 / 0.14);
   --canvas-mask: rgb(10 10 10 / 0.65);
@@ -77,6 +78,7 @@
 
   --port-main: #4d7c0f;
   --port-knowledge: #0e7490;
+  --port-files: #c2410c;
 
   --canvas-dots: rgb(15 23 42 / 0.16);
   --canvas-mask: rgb(148 163 184 / 0.35);

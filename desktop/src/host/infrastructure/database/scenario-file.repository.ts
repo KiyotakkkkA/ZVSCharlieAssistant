@@ -1,4 +1,5 @@
 import { notifyWork } from "../automation/background/work-signal";
+import { randomUUID } from "node:crypto";
 import type Database from "better-sqlite3";
 import { newEntityId } from "./entity-id";
 import type {
@@ -225,6 +226,65 @@ export class ScenarioFileRepository {
         "UPDATE execution_files SET deleted_at=CURRENT_TIMESTAMP WHERE id=?",
       )
       .run(id);
+  }
+
+  registerGenerated(input: {
+    executionId: string;
+    nodeRunId: string;
+    nodeId: string;
+    fileName: string;
+    mimeType: string | null;
+    size: number;
+    sha256: string;
+    storageKey: string;
+    localPath: string;
+  }): ScenarioFileReference {
+    const jobId = newEntityId();
+    const fileId = newEntityId();
+    this.db.transaction(() => {
+      this.db
+        .prepare(
+          `INSERT INTO scenario_file_jobs(
+          id,execution_id,node_run_id,node_id,source_kind,source_external_id,
+          integration_profile_id,source_scope,input_json,cleanup_on_finish,status
+        ) VALUES(?,?,?,?,'generated',?,NULL,'tool','{}',0,'completed')`,
+        )
+        .run(
+          jobId,
+          input.executionId,
+          input.nodeRunId,
+          input.nodeId,
+          randomUUID(),
+        );
+      this.db
+        .prepare(
+          `INSERT INTO execution_files(
+          id,execution_id,node_run_id,job_id,source_kind,source_external_id,
+          file_name,mime_type,size,sha256,storage_key,local_path
+        ) VALUES(?,?,?,?,'generated',?,?,?,?,?,?,?)`,
+        )
+        .run(
+          fileId,
+          input.executionId,
+          input.nodeRunId,
+          jobId,
+          fileId,
+          input.fileName,
+          input.mimeType,
+          input.size,
+          input.sha256,
+          input.storageKey,
+          input.localPath,
+        );
+    })();
+    return {
+      id: fileId,
+      fileName: input.fileName,
+      mimeType: input.mimeType,
+      size: input.size,
+      sha256: input.sha256,
+      storageKey: input.storageKey,
+    };
   }
 
   chatAttachment(id: string, conversationId: string) {

@@ -61,6 +61,10 @@ export class ScenarioFileReaderService {
     };
   }
 
+  async readBinary(file: ScenarioFileReference): Promise<Buffer> {
+    return readFile(this.resolveStorageKey(file.storageKey));
+  }
+
   private async readFileText(file: ScenarioFileReference): Promise<string> {
     const path = this.resolveStorageKey(file.storageKey);
     const extension = extname(file.fileName).toLocaleLowerCase();

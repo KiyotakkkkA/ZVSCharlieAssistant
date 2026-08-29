@@ -1,5 +1,8 @@
 import { toText } from "../../../../../shared/expressions";
-import { isRecord } from "../../../../../shared/scenario/items";
+import {
+  isRecord,
+  type ScenarioBinaryRef,
+} from "../../../../../shared/scenario/items";
 import type { NodeExecutor } from "../../../../../shared/scenario/node-descriptor";
 import type { ScenarioEngineServices } from "../services";
 
@@ -28,6 +31,9 @@ export function createOutputExecutor(
     async execute(context) {
       const config = context.config;
       const text = config.text.trim() || defaultText(context.items[0]?.json);
+      const attachments: ScenarioBinaryRef[] = [];
+      for (const item of context.inputs.files ?? [])
+        if (item.binary) attachments.push(...Object.values(item.binary));
 
       services.deliverResponse({
         executionId: context.executionId,
@@ -35,6 +41,7 @@ export function createOutputExecutor(
         config: { channels: config.channels },
         triggerInput: context.scope().$trigger,
         output: text,
+        attachments,
       });
 
       if (config.saveArtifact) {

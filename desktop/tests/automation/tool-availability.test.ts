@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { BUILTIN_AUTOMATION_TOOLS } from "../../src/host/infrastructure/automation/builtin-tools.registry";
 import { getToolDisabledReason } from "../../src/host/infrastructure/automation/tool-availability";
 import type { AutomationTool } from "../../src/shared/models/automation";
 
@@ -18,6 +19,14 @@ const tool = (overrides: Partial<AutomationTool> = {}): AutomationTool => ({
 });
 
 describe("доступность инструментов", () => {
+  it("создаёт DOCX-отчёт без дополнительного подтверждения", () => {
+    const reportTool = BUILTIN_AUTOMATION_TOOLS.find(
+      ({ id }) => id === "reports_docx",
+    );
+
+    expect(reportTool?.requiresConfirmation).toBe(false);
+  });
+
   it("объясняет отключение глобальной политикой терминала", () => {
     expect(getToolDisabledReason(tool({ id: "cmd_exec" }), [], false)).toBe(
       "Выполнение команд отключено глобальной политикой терминала.",

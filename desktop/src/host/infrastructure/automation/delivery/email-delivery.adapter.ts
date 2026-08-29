@@ -3,15 +3,24 @@ import { connect as connectTls, type TLSSocket } from "node:tls";
 import type { IntegrationRepository } from "../../database/integration.repository";
 import type { SecretStorageRepository } from "../../database/secret-storage.repository";
 import type { ScenarioDeliveryJob } from "../../database/scenario-delivery.repository";
+import type { ScenarioFileReaderService } from "../scenario-file-reader.service";
+import type { ScenarioBinaryRef } from "../../../../shared/scenario/items";
 import type { ScenarioDeliveryAdapter } from "./scenario-delivery.adapter";
 
 type MailSocket = Socket | TLSSocket;
+
+interface MailAttachment {
+  fileName: string;
+  mimeType: string | null;
+  buffer: Buffer;
+}
 
 export class EmailDeliveryAdapter implements ScenarioDeliveryAdapter {
   readonly channel = "email" as const;
   constructor(
     private integrations: IntegrationRepository,
     private secrets: SecretStorageRepository,
+    private fileReader: ScenarioFileReaderService,
   ) {}
 
   async deliver(job: ScenarioDeliveryJob) {
@@ -35,6 +44,16 @@ export class EmailDeliveryAdapter implements ScenarioDeliveryAdapter {
       throw new Error(
         "Заполните SMTP host, порт, отправителя и пароль интеграции",
       );
+    const refs = Array.isArray(job.payload.attachments)
+      ? (job.payload.attachments as ScenarioBinaryRef[])
+      : [];
+    const attachments: MailAttachment[] = await Promise.all(
+      refs.map(async (ref) => ({
+        fileName: ref.fileName,
+        mimeType: ref.mimeType,
+        buffer: await this.fileReader.readBinary(ref),
+      })),
+    );
     await sendSmtp({
       host,
       port,
@@ -49,6 +68,7 @@ export class EmailDeliveryAdapter implements ScenarioDeliveryAdapter {
         typeof job.payload.inReplyTo === "string"
           ? job.payload.inReplyTo
           : undefined,
+      attachments,
     });
   }
 }
@@ -64,6 +84,7 @@ async function sendSmtp(mail: {
   subject: string;
   text: string;
   inReplyTo?: string;
+  attachments?: MailAttachment[];
 }) {
   let socket: MailSocket = await connect(mail.host, mail.port, mail.secure);
   let reader = new SmtpReader(socket);
@@ -132,12 +153,20 @@ async function command(
   socket.write(`${value}\r\n`);
   return reader.expect(code);
 }
+function base64Body(buffer: Buffer): string {
+  return buffer
+    .toString("base64")
+    .replace(/.{1,76}/g, "$&\r\n")
+    .trimEnd();
+}
+
 function mimeMessage(mail: {
   from: string;
   to: string;
   subject: string;
   text: string;
   inReplyTo?: string;
+  attachments?: MailAttachment[];
 }) {
   const headers = [
     `From: <${mail.from}>`,
@@ -146,18 +175,45 @@ function mimeMessage(mail: {
     `Date: ${new Date().toUTCString()}`,
     `Message-ID: <${crypto.randomUUID()}@zvs-assistant>`,
     "MIME-Version: 1.0",
-    "Content-Type: text/plain; charset=UTF-8",
-    "Content-Transfer-Encoding: base64",
   ];
   if (mail.inReplyTo)
     headers.push(
       `In-Reply-To: ${mail.inReplyTo}`,
       `References: ${mail.inReplyTo}`,
     );
-  return `${headers.join("\r\n")}\r\n\r\n${Buffer.from(mail.text)
-    .toString("base64")
-    .replace(/.{1,76}/g, "$&\r\n")
-    .trimEnd()}`;
+
+  const attachments = mail.attachments ?? [];
+  if (attachments.length === 0) {
+    headers.push(
+      "Content-Type: text/plain; charset=UTF-8",
+      "Content-Transfer-Encoding: base64",
+    );
+    return `${headers.join("\r\n")}\r\n\r\n${base64Body(Buffer.from(mail.text))}`;
+  }
+
+  const boundary = `zvs-${crypto.randomUUID()}`;
+  headers.push(`Content-Type: multipart/mixed; boundary="${boundary}"`);
+  const parts = [
+    [
+      `--${boundary}`,
+      "Content-Type: text/plain; charset=UTF-8",
+      "Content-Transfer-Encoding: base64",
+      "",
+      base64Body(Buffer.from(mail.text)),
+    ].join("\r\n"),
+    ...attachments.map((attachment) =>
+      [
+        `--${boundary}`,
+        `Content-Type: ${attachment.mimeType ?? "application/octet-stream"}; name="${attachment.fileName}"`,
+        `Content-Disposition: attachment; filename="${attachment.fileName}"`,
+        "Content-Transfer-Encoding: base64",
+        "",
+        base64Body(attachment.buffer),
+      ].join("\r\n"),
+    ),
+    `--${boundary}--`,
+  ];
+  return `${headers.join("\r\n")}\r\n\r\n${parts.join("\r\n")}`;
 }
 
 class SmtpReader {

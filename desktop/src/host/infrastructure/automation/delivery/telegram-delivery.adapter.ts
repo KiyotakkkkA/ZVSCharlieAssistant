@@ -1,13 +1,18 @@
 import type { IntegrationRepository } from "../../database/integration.repository";
 import type { SecretStorageRepository } from "../../database/secret-storage.repository";
 import type { ScenarioDeliveryJob } from "../../database/scenario-delivery.repository";
+import type { ScenarioFileReaderService } from "../scenario-file-reader.service";
+import type { ScenarioBinaryRef } from "../../../../shared/scenario/items";
 import type { ScenarioDeliveryAdapter } from "./scenario-delivery.adapter";
+
+const MAX_ATTACHMENT_BYTES = 45 * 1024 * 1024;
 
 export class TelegramDeliveryAdapter implements ScenarioDeliveryAdapter {
   readonly channel = "telegram" as const;
   constructor(
     private integrations: IntegrationRepository,
     private secrets: SecretStorageRepository,
+    private fileReader: ScenarioFileReaderService,
   ) {}
 
   async deliver(job: ScenarioDeliveryJob) {
@@ -24,11 +29,10 @@ export class TelegramDeliveryAdapter implements ScenarioDeliveryAdapter {
       ? this.secrets.findSecret(tokenId)?.content
       : undefined;
     if (!token) throw new Error("Не найден токен Telegram-бота");
-    const telegramHtml = this.sanitizeMarkdownToTelegramHtml(
-      String(job.payload.text ?? ""),
-    );
-    const chunks = splitTelegram(telegramHtml);
-    await this.sendTypingStatus(token, job.recipient);
+    const rawText = String(job.payload.text ?? "").trim();
+    const telegramHtml = this.sanitizeMarkdownToTelegramHtml(rawText);
+    const chunks = rawText ? splitTelegram(telegramHtml) : [];
+    if (chunks.length) await this.sendTypingStatus(token, job.recipient);
     for (let index = 0; index < chunks.length; index++) {
       if (index > 0) {
         await this.sendTypingStatus(token, job.recipient);
@@ -52,6 +56,41 @@ export class TelegramDeliveryAdapter implements ScenarioDeliveryAdapter {
               : {}),
           }),
         },
+      );
+      const result = (await response.json()) as {
+        ok?: boolean;
+        description?: string;
+      };
+      if (!response.ok || !result.ok)
+        throw new Error(
+          redactToken(
+            result.description ?? `Telegram HTTP ${response.status}`,
+            token,
+          ),
+        );
+    }
+
+    const attachments = Array.isArray(job.payload.attachments)
+      ? (job.payload.attachments as ScenarioBinaryRef[])
+      : [];
+    for (const attachment of attachments) {
+      if (attachment.size > MAX_ATTACHMENT_BYTES)
+        throw new Error(
+          `Файл «${attachment.fileName}» превышает ${MAX_ATTACHMENT_BYTES / (1024 * 1024)} МБ — Telegram не примет вложение`,
+        );
+      const bytes = await this.fileReader.readBinary(attachment);
+      const form = new FormData();
+      form.set("chat_id", job.recipient);
+      form.set(
+        "document",
+        new Blob([new Uint8Array(bytes)], {
+          type: attachment.mimeType ?? "application/octet-stream",
+        }),
+        attachment.fileName,
+      );
+      const response = await fetch(
+        `https://api.telegram.org/bot${token}/sendDocument`,
+        { method: "POST", signal: AbortSignal.timeout(60_000), body: form },
       );
       const result = (await response.json()) as {
         ok?: boolean;

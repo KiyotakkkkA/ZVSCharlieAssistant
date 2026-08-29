@@ -163,25 +163,70 @@ export class ScenarioFileDownloadService {
       job.input.attachment.fileName ??
         `${job.sourceKind}-${job.sourceExternalId}`,
     );
-    const storageKey = `${job.executionId}/${job.nodeRunId}/${randomUUID()}-${fileName}`;
-    const target = join(this.root, storageKey);
-    const temporary = `${target}.part`;
-    await mkdir(
-      join(this.root, String(job.executionId), String(job.nodeRunId)),
-      {
-        recursive: true,
-      },
+    const persisted = await this.persistBytes(
+      content,
+      job.executionId,
+      job.nodeRunId,
+      fileName,
     );
-    await writeFile(temporary, content);
-    await rename(temporary, target);
     return {
       fileName,
       mimeType: job.input.attachment.mimeType,
+      ...persisted,
+    };
+  }
+
+  private async persistBytes(
+    content: Buffer,
+    executionId: string,
+    nodeRunId: string,
+    fileName: string,
+  ): Promise<{
+    size: number;
+    sha256: string;
+    storageKey: string;
+    localPath: string;
+  }> {
+    const storageKey = `${executionId}/${nodeRunId}/${randomUUID()}-${fileName}`;
+    const target = join(this.root, storageKey);
+    const temporary = `${target}.part`;
+    await mkdir(join(this.root, String(executionId), String(nodeRunId)), {
+      recursive: true,
+    });
+    await writeFile(temporary, content);
+    await rename(temporary, target);
+    return {
       size: content.byteLength,
       sha256: createHash("sha256").update(content).digest("hex"),
       storageKey,
       localPath: target,
     };
+  }
+
+  async registerGeneratedFile(input: {
+    executionId: string;
+    nodeRunId: string;
+    nodeId: string;
+    sourcePath: string;
+    fileName: string;
+  }): Promise<ScenarioFileReference> {
+    const fileName = safeFileName(input.fileName);
+    const content = await readFile(input.sourcePath);
+    const persisted = await this.persistBytes(
+      content,
+      input.executionId,
+      input.nodeRunId,
+      fileName,
+    );
+    return this.data.registerGenerated({
+      executionId: input.executionId,
+      nodeRunId: input.nodeRunId,
+      nodeId: input.nodeId,
+      fileName,
+      mimeType:
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      ...persisted,
+    });
   }
 
   private async downloadChatAttachment(job: ScenarioFileJob) {

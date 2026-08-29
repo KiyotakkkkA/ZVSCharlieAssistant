@@ -35,7 +35,20 @@ export class InMemoryCompactor {
   private segments: ContextSegment[] = [];
   private nextIndex = 0;
 
-  constructor(private readonly runId: string) {}
+  constructor(
+    private readonly runId: string,
+    initial?: {
+      messages: ChatMessage[];
+      segments: ContextSegment[];
+      nextIndex: number;
+    },
+  ) {
+    if (initial) {
+      this.messages = initial.messages;
+      this.segments = initial.segments;
+      this.nextIndex = initial.nextIndex;
+    }
+  }
 
   get currentMessages(): ChatMessage[] {
     return this.messages;

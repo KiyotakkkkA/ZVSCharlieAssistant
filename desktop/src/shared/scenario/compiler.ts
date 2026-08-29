@@ -5,12 +5,15 @@ import {
   SCENARIO_GRAPH_VERSION,
   type NodeErrorMode,
   type NodeRetryPolicy,
+  type ScenarioDataKind,
   type ScenarioEdge,
   type ScenarioGraph,
   type ScenarioNode,
   type ScenarioValidationIssue,
   type ScenarioValidationResult,
 } from "./graph";
+
+const FLOW_KINDS = new Set<ScenarioDataKind>(["main", "files"]);
 import type { ScenarioDescriptorRegistry } from "./descriptor-registry";
 import {
   resolvePorts,
@@ -347,10 +350,10 @@ export class ScenarioCompiler {
 
     const mainEdges = edges.filter((edge) => {
       const sourcePorts = portsCache.get(edge.source);
-      return (
-        sourcePorts?.outputs.find((port) => port.id === edge.sourcePort)
-          ?.dataKind === "main"
-      );
+      const dataKind = sourcePorts?.outputs.find(
+        (port) => port.id === edge.sourcePort,
+      )?.dataKind;
+      return dataKind !== undefined && FLOW_KINDS.has(dataKind);
     });
     const { backEdgeIds } = findBackEdges(
       nodes.map((node) => node.id),
@@ -489,13 +492,12 @@ export class ScenarioCompiler {
     const triggers = graph.nodes
       .filter((node) => nodes.get(node.id)!.descriptor.isTrigger)
       .map((node) => node.id);
-    const mainEdges = graph.edges.filter(
-      (edge) =>
-        nodes
-          .get(edge.source)
-          ?.outputs.find((port) => port.id === edge.sourcePort)?.dataKind ===
-        "main",
-    );
+    const mainEdges = graph.edges.filter((edge) => {
+      const dataKind = nodes
+        .get(edge.source)
+        ?.outputs.find((port) => port.id === edge.sourcePort)?.dataKind;
+      return dataKind !== undefined && FLOW_KINDS.has(dataKind);
+    });
     const { backEdgeIds } = findBackEdges(
       [...nodes.keys()],
       mainEdges,
@@ -526,7 +528,9 @@ export class ScenarioCompiler {
 }
 
 function describeKind(kind: string): string {
-  return kind === "knowledge" ? "контекст базы знаний" : "поток данных";
+  if (kind === "knowledge") return "контекст базы знаний";
+  if (kind === "files") return "файлы";
+  return "поток данных";
 }
 
 export function findBackEdges(

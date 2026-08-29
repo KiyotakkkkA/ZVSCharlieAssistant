@@ -22,7 +22,7 @@ describe("UUID baseline schema", () => {
 
     expect(
       database.prepare("SELECT COUNT(*) count FROM schema_migrations").get(),
-    ).toEqual({ count: 7 });
+    ).toEqual({ count: 8 });
     expect(
       database
         .prepare(
@@ -239,6 +239,78 @@ describe("UUID baseline schema", () => {
            VALUES(?,?,?,?)`,
         )
         .run("question-1", "generation", "run-1", "Какой узел добавить?"),
+    ).not.toThrow();
+
+    expect(database.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
+  });
+
+  it("добавляет устойчивый журнал диалога агент-узла сценария", () => {
+    database = new Database(":memory:");
+    database.pragma("foreign_keys = ON");
+    runMigrations(database);
+
+    database
+      .prepare(`INSERT INTO automation_scenarios(id,name) VALUES(?,?)`)
+      .run("scenario-1", "Тестовый сценарий");
+    database
+      .prepare(
+        `INSERT INTO automation_scenario_revisions(id,scenario_id,version,graph_json)
+         VALUES(?,?,?,?)`,
+      )
+      .run("revision-1", "scenario-1", 1, "{}");
+    database
+      .prepare(
+        `INSERT INTO execution_runs(id,kind,origin,scenario_id,scenario_revision_id,status,input_json)
+         VALUES(?,?,?,?,?,?,?)`,
+      )
+      .run(
+        "exec-1",
+        "scenario",
+        "background",
+        "scenario-1",
+        "revision-1",
+        "running",
+        "{}",
+      );
+
+    expect(() =>
+      database
+        .prepare(
+          `INSERT INTO scenario_agent_conversations(id,execution_id,node_id,active_model_id)
+           VALUES(?,?,?,?)`,
+        )
+        .run("conv-1", "exec-1", "node-1", "model-1"),
+    ).not.toThrow();
+
+    expect(() =>
+      database
+        .prepare(
+          `INSERT INTO scenario_agent_segments(
+             id,conversation_id,from_message_id,to_message_id,summary,
+             model_id,message_count,tokens_before,tokens_after,reason
+           ) VALUES(?,?,?,?,?,?,?,?,?,?)`,
+        )
+        .run(
+          "seg-1",
+          "conv-1",
+          "msg-1",
+          "msg-2",
+          "сводка",
+          "model-1",
+          2,
+          100,
+          20,
+          "threshold",
+        ),
+    ).not.toThrow();
+
+    expect(() =>
+      database
+        .prepare(
+          `INSERT INTO scenario_agent_messages(id,conversation_id,step_index,role,parts_json,compacted_into)
+           VALUES(?,?,?,?,?,?)`,
+        )
+        .run("msg-3", "conv-1", 0, "user", "[]", null),
     ).not.toThrow();
 
     expect(database.prepare("PRAGMA foreign_key_check").all()).toEqual([]);

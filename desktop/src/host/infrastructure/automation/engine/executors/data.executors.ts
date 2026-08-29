@@ -346,11 +346,11 @@ function passthroughTrigger(kind: string): NodeExecutor<unknown, unknown> {
   return {
     kind,
     async execute(context) {
-      const defaults = (
-        context.config as {
-          inputFields?: Array<{ name: string; defaultValue?: string }>;
-        }
-      )?.inputFields;
+      const config = context.config as {
+        inputFields?: Array<{ name: string; defaultValue?: string }>;
+        includeAttachments?: boolean;
+      };
+      const defaults = config?.inputFields;
       if (kind === "trigger.manual" && defaults?.length) {
         const first = context.items[0];
         const json = isRecord(first?.json) ? { ...first.json } : {};
@@ -366,6 +366,11 @@ function passthroughTrigger(kind: string): NodeExecutor<unknown, unknown> {
             });
         return { items: [{ json, binary: first?.binary }] };
       }
+      if (
+        (kind === "trigger.telegram" || kind === "trigger.email") &&
+        config?.includeAttachments
+      )
+        return { outputs: { main: context.items, files: context.items } };
       return { items: context.items };
     },
   };

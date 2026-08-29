@@ -435,6 +435,7 @@ export const ScenarioGraphEditorPage = observer(
       () => ({
         main: readCssColor("--port-main"),
         knowledge: readCssColor("--port-knowledge"),
+        files: readCssColor("--port-files"),
         error: readCssColor("--color-danger-medium"),
       }),
       [themeMode],
@@ -454,6 +455,7 @@ export const ScenarioGraphEditorPage = observer(
               ).find((item) => item.id === edge.sourcePort)
             : undefined;
           const isKnowledge = port?.dataKind === "knowledge";
+          const isFiles = port?.dataKind === "files";
           const isError = edge.sourcePort === "error";
           return {
             id: edge.id,
@@ -466,22 +468,29 @@ export const ScenarioGraphEditorPage = observer(
             style: {
               stroke: isKnowledge
                 ? edgeColors.knowledge
-                : isError
-                  ? edgeColors.error
-                  : edgeColors.main,
+                : isFiles
+                  ? edgeColors.files
+                  : isError
+                    ? edgeColors.error
+                    : edgeColors.main,
               strokeWidth: 1.25,
               strokeDasharray: isKnowledge
                 ? "1 5"
-                : isError
-                  ? "4 4"
-                  : undefined,
-              strokeLinecap: isKnowledge ? ("round" as const) : undefined,
+                : isFiles
+                  ? "2 4"
+                  : isError
+                    ? "4 4"
+                    : undefined,
+              strokeLinecap:
+                isKnowledge || isFiles ? ("round" as const) : undefined,
             },
             data: {
               edgeId: edge.id,
               dataKind: isKnowledge
                 ? ("knowledge" as const)
-                : ("main" as const),
+                : isFiles
+                  ? ("files" as const)
+                  : ("main" as const),
               onDelete: deleteEdge,
             },
           };

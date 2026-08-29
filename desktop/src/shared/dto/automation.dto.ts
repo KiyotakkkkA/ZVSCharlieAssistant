@@ -12,6 +12,7 @@ export const scenarioResponseChannelDtoSchema = z.object({
   mode: z.enum(["reply_to_trigger", "explicit_recipient"]),
   integrationProfileId: entityIdSchema.nullable(),
   recipient: z.string().trim().max(320),
+  attachFiles: z.boolean().default(false),
 });
 export const scenarioResponseConfigDtoSchema = z.object({
   channels: z.array(scenarioResponseChannelDtoSchema),

@@ -106,6 +106,46 @@ const MIGRATIONS: Migration[] = [
       CREATE INDEX idx_user_questions_generation ON user_questions(entity_generation_run_id,status);
     `,
   },
+  {
+    version: 8,
+    name: "scenario-agent-durability",
+    sql: `
+      CREATE TABLE scenario_agent_conversations (
+        id TEXT PRIMARY KEY,
+        execution_id TEXT NOT NULL REFERENCES execution_runs(id) ON DELETE CASCADE,
+        node_id TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','completed','failed')),
+        active_model_id TEXT NOT NULL,
+        next_index INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(execution_id, node_id)
+      );
+      CREATE TABLE scenario_agent_segments (
+        id TEXT PRIMARY KEY,
+        conversation_id TEXT NOT NULL REFERENCES scenario_agent_conversations(id) ON DELETE CASCADE,
+        from_message_id TEXT NOT NULL,
+        to_message_id TEXT NOT NULL,
+        summary TEXT NOT NULL,
+        model_id TEXT NOT NULL,
+        message_count INTEGER NOT NULL,
+        tokens_before INTEGER NOT NULL,
+        tokens_after INTEGER NOT NULL,
+        reason TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE TABLE scenario_agent_messages (
+        id TEXT PRIMARY KEY,
+        conversation_id TEXT NOT NULL REFERENCES scenario_agent_conversations(id) ON DELETE CASCADE,
+        step_index INTEGER NOT NULL,
+        role TEXT NOT NULL CHECK(role IN ('user','assistant')),
+        parts_json TEXT NOT NULL,
+        compacted_into TEXT REFERENCES scenario_agent_segments(id) ON DELETE SET NULL,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX idx_scenario_agent_messages_conv ON scenario_agent_messages(conversation_id, step_index);
+    `,
+  },
 ];
 
 export function runMigrations(database: Database.Database): void {

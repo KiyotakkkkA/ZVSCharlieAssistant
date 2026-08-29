@@ -74,9 +74,11 @@ export function createAgentExecutor(
         directoryPolicy: agent.directoryPolicy,
       });
 
+      const generatedFiles: ScenarioItems = [];
       const text = await services.generateText({
         runId: context.executionId,
         nodeId: context.node.id,
+        nodeRunId: context.nodeRunId,
         modelId,
         system,
         prompt: { task, knowledge },
@@ -86,6 +88,13 @@ export function createAgentExecutor(
         tools,
         maxToolCalls: config.maxToolCalls ?? agent.maxToolCalls,
         onDelta: (delta) => context.stream(delta),
+        onGeneratedFile: (ref) => {
+          context.trackBinary(ref);
+          generatedFiles.push({
+            json: { fileName: ref.fileName, mimeType: ref.mimeType },
+            binary: { [`file_${ref.id}`]: ref },
+          });
+        },
       });
 
       let value: unknown = text;
@@ -100,7 +109,12 @@ export function createAgentExecutor(
         }
       }
 
-      return { items: [{ json: { [config.targetField || "text"]: value } }] };
+      return {
+        outputs: {
+          main: [{ json: { [config.targetField || "text"]: value } }],
+          files: [...(context.inputs.files ?? []), ...generatedFiles],
+        },
+      };
     },
   };
 }
@@ -285,6 +299,7 @@ export function createOrchestratorExecutor(
           const text = await services.generateText({
             runId: context.executionId,
             nodeId: worker.nodeId,
+            nodeRunId: context.nodeRunId,
             modelId: modelIdForWorker,
             system: `${agent.instructions}\n\nТы исполнитель внутри сценария. Выполни только поручение и верни полезный результат без приветствий и пересказа задания.`,
             prompt: {
@@ -321,6 +336,7 @@ export function createOrchestratorExecutor(
       const finalText = await services.generateText({
         runId: context.executionId,
         nodeId: context.node.id,
+        nodeRunId: context.nodeRunId,
         modelId,
         system:
           `Ты финальный редактор результата сценария. Сформируй прямой, цельный ответ на основе результатов исполнителей. ` +

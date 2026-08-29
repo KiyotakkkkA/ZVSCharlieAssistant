@@ -1,5 +1,6 @@
 import { scenarioResponseConfigDtoSchema } from "../../../shared/dto";
 import { scenarioMessageTriggerInputDtoSchema } from "../../../shared/dto/scenario-trigger-event.dto";
+import type { ScenarioBinaryRef } from "../../../shared/scenario/items";
 import type { ScenarioDeliveryRepository } from "../database/scenario-delivery.repository";
 
 export class ScenarioResponseService {
@@ -12,6 +13,7 @@ export class ScenarioResponseService {
     config: unknown;
     triggerInput: unknown;
     output: unknown;
+    attachments?: ScenarioBinaryRef[];
   }) {
     const parsedConfig = scenarioResponseConfigDtoSchema.safeParse(
       input.config,
@@ -21,11 +23,13 @@ export class ScenarioResponseService {
       input.triggerInput,
     );
     const text = outputText(input.output);
-    if (!text) return;
+    const attachments = input.attachments ?? [];
 
     for (const channel of parsedConfig.data.channels.filter(
       (item) => item.enabled,
     )) {
+      const channelAttachments = channel.attachFiles ? attachments : [];
+      if (!text && channelAttachments.length === 0) continue;
       let profileId = channel.integrationProfileId;
       let recipient = channel.recipient.trim();
       const payload: Record<string, unknown> = { text };
@@ -43,6 +47,7 @@ export class ScenarioResponseService {
         }
       } else if (channel.channel === "email")
         payload.subject = "Ответ ZVS Assistant";
+      if (channelAttachments.length) payload.attachments = channelAttachments;
       if (!profileId || !recipient) continue;
       this.deliveries.enqueue({
         executionId: input.executionId,

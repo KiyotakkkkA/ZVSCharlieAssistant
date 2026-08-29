@@ -1,6 +1,11 @@
 import { z } from "zod";
 import { entityIdSchema } from "../../dto/ipc-dto";
-import { mainOutput, type ScenarioNodeDescriptor } from "../node-descriptor";
+import {
+  filesOutput,
+  mainOutput,
+  type PortSpec,
+  type ScenarioNodeDescriptor,
+} from "../node-descriptor";
 
 const manualConfigSchema = z.object({
   fromEditor: z.boolean().default(true),
@@ -96,7 +101,12 @@ export const telegramTriggerDescriptor: ScenarioNodeDescriptor<
     ignoreBots: true,
   }),
   inputs: [],
-  outputs: [mainOutput({ label: "Сообщение" })],
+  outputs: (config) => {
+    const ports: PortSpec[] = [mainOutput({ label: "Сообщение" })];
+    if (config.includeAttachments)
+      ports.push(filesOutput({ label: "Вложения" }));
+    return ports;
+  },
   itemMode: "collection",
   isTrigger: true,
   validate: ({ node }) => {
@@ -152,7 +162,12 @@ export const emailTriggerDescriptor: ScenarioNodeDescriptor<
     markAsRead: false,
   }),
   inputs: [],
-  outputs: [mainOutput({ label: "Письмо" })],
+  outputs: (config) => {
+    const ports: PortSpec[] = [mainOutput({ label: "Письмо" })];
+    if (config.includeAttachments)
+      ports.push(filesOutput({ label: "Вложения" }));
+    return ports;
+  },
   itemMode: "collection",
   isTrigger: true,
   validate: ({ node }) => {

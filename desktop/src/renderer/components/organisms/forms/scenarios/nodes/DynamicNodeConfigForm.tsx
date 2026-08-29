@@ -200,7 +200,7 @@ const NodeField = observer(function NodeField({
         <Field label={label}>
           <ModelOrientedSelect
             value={value ? String(value) : ""}
-            onChange={(next) => onSet(spec.key, next ? Number(next) : null)}
+            onChange={(next) => onSet(spec.key, next || null)}
             className="w-full"
           />
           {hint}

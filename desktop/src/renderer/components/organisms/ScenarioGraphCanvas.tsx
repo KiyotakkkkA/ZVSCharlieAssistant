@@ -54,7 +54,7 @@ export type ScenarioFlowNode = FlowNode<ScenarioNodeData, "scenario">;
 
 type ScenarioEdgeData = {
   edgeId: string;
-  dataKind: "main" | "knowledge";
+  dataKind: "main" | "knowledge" | "files";
   onDelete: (edgeId: string) => void;
 } & Record<string, unknown>;
 export type ScenarioFlowEdge = FlowEdge<ScenarioEdgeData, "scenario">;
@@ -260,6 +260,10 @@ export function ScenarioGraphCanvas({
               shape="size-2.5 rounded-[2px] bg-[var(--port-knowledge)]"
               label="База знаний"
             />
+            <PortLegend
+              shape="size-2.5 rounded-[2px] bg-[var(--port-files)]"
+              label="Файлы"
+            />
           </div>
         </Panel>
       </ReactFlow>
@@ -340,7 +344,9 @@ const ScenarioFlowEdgeView = memo(function ScenarioFlowEdgeView({
                   className={`block size-1.5 rounded-full ${
                     data?.dataKind === "knowledge"
                       ? "bg-(--port-knowledge)"
-                      : "bg-(--port-main)"
+                      : data?.dataKind === "files"
+                        ? "bg-(--port-files)"
+                        : "bg-(--port-main)"
                   }`}
                 />
               }
@@ -451,7 +457,9 @@ function ScenarioPort({
   const shape =
     port.dataKind === "knowledge"
       ? "size-2.5! rounded-[2px]! bg-[var(--port-knowledge)]!"
-      : "size-2.5! rounded-full! bg-[var(--port-main)]!";
+      : port.dataKind === "files"
+        ? "size-2.5! rounded-[2px]! bg-[var(--port-files)]!"
+        : "size-2.5! rounded-full! bg-[var(--port-main)]!";
   return (
     <Handle
       id={port.id}

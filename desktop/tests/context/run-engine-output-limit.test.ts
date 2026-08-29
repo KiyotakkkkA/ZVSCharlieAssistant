@@ -66,7 +66,10 @@ describe("восстановление RunEngine после лимита выв�
       const engine = new RunEngine(
         data as never,
         providers as never,
-        { skillCatalog: vi.fn(() => "") } as never,
+        {
+          skillCatalog: vi.fn(() => ""),
+          selectedSkillBlock: vi.fn(() => ""),
+        } as never,
         { contextBlock: vi.fn(() => "") } as never,
         { promptBlock: vi.fn(() => "") } as never,
         { shouldCompact: vi.fn(() => false) } as never,
