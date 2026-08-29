@@ -20,7 +20,7 @@ import type { AutomationRepository } from "../database/automation.repository";
 import type { ConfigurationTransferRepository } from "./configuration-transfer.repository";
 import {
   decryptJsonContainer,
-  createJsonContainer,
+  encryptJsonContainer,
 } from "./encrypted-json-container";
 import {
   dataTransferPayloadSchema,
@@ -94,9 +94,9 @@ export class DataTransferService {
     const payload = dataTransferPayloadSchema.parse({
       sections,
     });
-    const serialized = createJsonContainer(
+    const serialized = encryptJsonContainer(
       payload,
-      input.encryption === "password" ? input.password : null,
+      input.password,
       app.getVersion(),
     );
     if (Buffer.byteLength(serialized, "utf8") > MAX_IMPORT_BYTES)

@@ -1,6 +1,9 @@
 import { z } from "zod";
 
 const passwordSchema = z.string().max(256);
+const exportPasswordSchema = passwordSchema.min(8, {
+  message: "Пароль должен содержать не менее 8 символов",
+});
 
 export const dataTransferEntitySchema = z.enum([
   "secretCategories",
@@ -17,17 +20,11 @@ export const dataTransferEntitySchema = z.enum([
 
 export const exportDataDtoSchema = z
   .object({
-    password: passwordSchema,
-    encryption: z.enum(["password", "none"]),
+    password: exportPasswordSchema,
     entities: z.array(dataTransferEntitySchema).min(1),
   })
+  .strict()
   .superRefine((input, context) => {
-    if (input.encryption === "password" && input.password.length < 8)
-      context.addIssue({
-        code: "custom",
-        path: ["password"],
-        message: "Пароль должен содержать не менее 8 символов",
-      });
     if (
       input.entities.includes("secrets") &&
       !input.entities.includes("secretCategories")
@@ -36,16 +33,6 @@ export const exportDataDtoSchema = z
         code: "custom",
         path: ["entities"],
         message: "Для экспорта секретов необходимо экспортировать категории",
-      });
-    if (
-      input.encryption !== "password" &&
-      resolveDataTransferEntities(input.entities).includes("secrets")
-    )
-      context.addIssue({
-        code: "custom",
-        path: ["encryption"],
-        message:
-          "Экспорт секретов (в том числе как зависимость провайдеров, интеграций, векторных хранилищ, агентов или сценариев) требует шифрования паролем",
       });
   });
 

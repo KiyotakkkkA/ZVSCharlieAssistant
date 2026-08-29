@@ -53,18 +53,32 @@ describe("encrypted data transfer container", () => {
   it("requires categories when secrets are selected", () => {
     expect(
       exportDataDtoSchema.safeParse({
-        password: "",
-        encryption: "none",
+        password: "strong-password",
         entities: ["secrets"],
       }).success,
     ).toBe(false);
     expect(
       exportDataDtoSchema.safeParse({
-        password: "",
-        encryption: "none",
+        password: "strong-password",
         entities: ["secretCategories", "secrets"],
       }).success,
     ).toBe(true);
+  });
+
+  it("requires a password for every export", () => {
+    expect(
+      exportDataDtoSchema.safeParse({
+        password: "",
+        entities: ["terminalPolicy"],
+      }).success,
+    ).toBe(false);
+    expect(
+      exportDataDtoSchema.safeParse({
+        password: "strong-password",
+        encryption: "none",
+        entities: ["terminalPolicy"],
+      }).success,
+    ).toBe(false);
   });
 
   it("accepts policies and user skills as independent sections", () => {

@@ -72,6 +72,15 @@ const scenarioStatusOptions = [
   { value: "disabled", label: "Отключён" },
 ];
 
+function serializeEditableScenario(input: {
+  nodes: ScenarioNode[];
+  edges: ScenarioEdge[];
+  name: string;
+  status: AutomationStatus;
+}) {
+  return JSON.stringify(input);
+}
+
 function starterGraph(): ScenarioGraph {
   const triggerId = newUuidV7();
   const resultId = newUuidV7();
@@ -202,6 +211,7 @@ export const ScenarioGraphEditorPage = observer(
     const [showNodeDescriptions, setShowNodeDescriptions] = useState(true);
     const [nodeSearch, setNodeSearch] = useState("");
     const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
+    const pendingSaveSnapshot = useRef<string | null>(null);
     const [pendingExit, setPendingExit] = useState(false);
     const [issues, setIssues] = useState<ScenarioValidationIssue[]>([]);
     const [generatingWithModel, setGeneratingWithModel] = useState(false);
@@ -255,13 +265,26 @@ export const ScenarioGraphEditorPage = observer(
 
     useEffect(() => {
       if (!scenario) return;
-      const localSnapshot = JSON.stringify({
+      const localSnapshot = serializeEditableScenario({
         nodes,
         edges,
         name: scenarioName,
         status,
       });
-      if (savedSnapshot !== null && savedSnapshot !== localSnapshot) {
+      const scenarioSnapshot = serializeEditableScenario({
+        nodes: scenario.graph.nodes,
+        edges: scenario.graph.edges,
+        name: scenario.name,
+        status: scenario.status,
+      });
+      const isOwnSave = pendingSaveSnapshot.current === scenarioSnapshot;
+      if (isOwnSave) pendingSaveSnapshot.current = null;
+
+      if (
+        !isOwnSave &&
+        savedSnapshot !== null &&
+        savedSnapshot !== localSnapshot
+      ) {
         toasts.info({
           title: "Сценарий изменён моделью",
           description:
@@ -275,18 +298,12 @@ export const ScenarioGraphEditorPage = observer(
       setStatus(scenario.status);
       setScenarioName(scenario.name);
       setIsEditingName(false);
-      setSavedSnapshot(
-        JSON.stringify({
-          nodes: scenario.graph.nodes,
-          edges: scenario.graph.edges,
-          name: scenario.name,
-          status: scenario.status,
-        }),
-      );
+      setSavedSnapshot(scenarioSnapshot);
     }, [scenario]);
 
     const currentSnapshot = useMemo(
-      () => JSON.stringify({ nodes, edges, name: scenarioName, status }),
+      () =>
+        serializeEditableScenario({ nodes, edges, name: scenarioName, status }),
       [nodes, edges, scenarioName, status],
     );
     const [initialSnapshot] = useState(() => currentSnapshot);
@@ -576,13 +593,21 @@ export const ScenarioGraphEditorPage = observer(
     }, [isDirty, leaveEditor]);
 
     const saveScenario = async () => {
+      const graph = buildGraph();
+      const name = scenarioName.trim() || "Новый сценарий";
+      pendingSaveSnapshot.current = serializeEditableScenario({
+        nodes: graph.nodes,
+        edges: graph.edges,
+        name,
+        status,
+      });
       try {
         const saved = await automationStore.upsertScenario({
           id: scenario?.id,
-          name: scenarioName.trim() || "Новый сценарий",
+          name,
           description: scenario?.description ?? "Сценарий автоматизации.",
           status,
-          graph: buildGraph(),
+          graph,
           toolSettings: scenario?.toolSettings ?? [],
         });
         if (!scenarioId)
@@ -593,10 +618,18 @@ export const ScenarioGraphEditorPage = observer(
             ),
             { replace: true },
           );
-        setSavedSnapshot(currentSnapshot);
+        setSavedSnapshot(
+          serializeEditableScenario({
+            nodes: saved.graph.nodes,
+            edges: saved.graph.edges,
+            name: saved.name,
+            status: saved.status,
+          }),
+        );
         toasts.success({ title: "Сценарий сохранён" });
         return saved;
       } catch (error) {
+        pendingSaveSnapshot.current = null;
         toasts.danger({
           title: "Не удалось сохранить сценарий",
           description:

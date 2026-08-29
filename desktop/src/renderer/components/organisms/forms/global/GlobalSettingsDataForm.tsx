@@ -2,7 +2,6 @@ import { useState } from "react";
 import {
   Alert,
   Button,
-  InputCheckBox,
   InputSmall,
   Switcher,
   useToasts,
@@ -52,7 +51,6 @@ export function GlobalSettingsDataForm() {
   const toasts = useToasts();
   const [exportPassword, setExportPassword] = useState("");
   const [exportConfirmation, setExportConfirmation] = useState("");
-  const [withoutEncryption, setWithoutEncryption] = useState(false);
   const [exportEntities, setExportEntities] = useState<Record<string, boolean>>(
     {
       secretCategories: true,
@@ -84,29 +82,24 @@ export function GlobalSettingsDataForm() {
       toasts.warning({ title: "Выберите данные для экспорта" });
       return;
     }
-    if (!withoutEncryption && exportPassword.length < 8) {
+    if (exportPassword.length < 8) {
       toasts.warning({ title: "Пароль должен содержать не менее 8 символов" });
       return;
     }
-    if (!withoutEncryption && exportPassword !== exportConfirmation) {
+    if (exportPassword !== exportConfirmation) {
       toasts.warning({ title: "Пароли не совпадают" });
       return;
     }
     setBusy("export");
     try {
       const saved = await window.desktop.dataTransfer.exportData({
-        password: withoutEncryption ? "" : exportPassword,
-        encryption: withoutEncryption ? "none" : "password",
+        password: exportPassword,
         entities,
       });
       if (saved) {
         setExportPassword("");
         setExportConfirmation("");
-        toasts.success({
-          title: withoutEncryption
-            ? "Копия создана"
-            : "Защищённая копия создана",
-        });
+        toasts.success({ title: "Защищённая копия создана" });
       }
     } catch (error) {
       showError(toasts, "Не удалось экспортировать данные", error);
@@ -196,55 +189,36 @@ export function GlobalSettingsDataForm() {
             );
           }}
         />
-        <InputCheckBox
-          checked={withoutEncryption}
-          onChange={(checked) => {
-            setWithoutEncryption(checked);
-            if (checked) {
-              setExportPassword("");
-              setExportConfirmation("");
-            }
-          }}
-        >
-          Не использовать пароль для шифрования
-        </InputCheckBox>
-        {withoutEncryption ? (
-          <Alert variant="warning" title="Экспорт без защиты паролем">
-            Значения секретов будут записаны в файл в открытом виде. Любой, кто
-            получит доступ к файлу, сможет их прочитать.
-          </Alert>
-        ) : (
-          <div className="grid gap-3 grid-cols-5">
-            <InputSmall
-              className="col-span-2"
-              preset="password"
-              autoComplete="new-password"
-              maxLength={256}
-              value={exportPassword}
-              placeholder="Пароль шифрования"
-              onChange={(event) => setExportPassword(event.target.value)}
-            />
-            <InputSmall
-              className="col-span-2"
-              preset="password"
-              autoComplete="new-password"
-              maxLength={256}
-              value={exportConfirmation}
-              placeholder="Повторите пароль"
-              onChange={(event) => setExportConfirmation(event.target.value)}
-            />
-            <Button
-              variant="primary"
-              className="px-2"
-              loading={busy === "export"}
-              disabled={busy !== null}
-              onClick={() => void exportData()}
-            >
-              <DownloadIcon className="size-4" />
-              Экспортировать
-            </Button>
-          </div>
-        )}
+        <div className="grid gap-3 grid-cols-5">
+          <InputSmall
+            className="col-span-2"
+            preset="password"
+            autoComplete="new-password"
+            maxLength={256}
+            value={exportPassword}
+            placeholder="Пароль шифрования"
+            onChange={(event) => setExportPassword(event.target.value)}
+          />
+          <InputSmall
+            className="col-span-2"
+            preset="password"
+            autoComplete="new-password"
+            maxLength={256}
+            value={exportConfirmation}
+            placeholder="Повторите пароль"
+            onChange={(event) => setExportConfirmation(event.target.value)}
+          />
+          <Button
+            variant="primary"
+            className="px-2"
+            loading={busy === "export"}
+            disabled={busy !== null}
+            onClick={() => void exportData()}
+          >
+            <DownloadIcon className="size-4" />
+            Экспортировать
+          </Button>
+        </div>
       </section>
 
       <section className="space-y-5 border-t border-main-700/35 pt-8">
