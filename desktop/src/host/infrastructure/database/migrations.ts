@@ -146,6 +146,25 @@ const MIGRATIONS: Migration[] = [
       CREATE INDEX idx_scenario_agent_messages_conv ON scenario_agent_messages(conversation_id, step_index);
     `,
   },
+  {
+    version: 9,
+    name: "report-builder-session-durability",
+    sql: `
+      CREATE TABLE report_builder_sessions (
+        id TEXT PRIMARY KEY,
+        owner_id TEXT NOT NULL,
+        file_name TEXT NOT NULL,
+        template TEXT NOT NULL,
+        title TEXT,
+        blocks_json TEXT NOT NULL DEFAULT '[]',
+        next_sequence INTEGER NOT NULL DEFAULT 0,
+        bytes_received INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        touched_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX idx_report_builder_sessions_touched ON report_builder_sessions(touched_at);
+    `,
+  },
 ];
 
 export function runMigrations(database: Database.Database): void {

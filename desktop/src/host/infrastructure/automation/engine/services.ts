@@ -78,6 +78,7 @@ export interface DownloadFilesRequest {
   value: unknown;
   maxFileSizeBytes: number;
   maxFiles: number;
+  cleanupOnFinish: boolean;
   signal: AbortSignal;
 }
 

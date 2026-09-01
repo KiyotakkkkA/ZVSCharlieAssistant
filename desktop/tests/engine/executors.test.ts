@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { graph, node, edge, resetIds } from "../support/graph-builder";
 import { runGraph } from "../support/runtime-harness";
 import {
@@ -97,7 +97,8 @@ describe("узел http", () => {
     expect(result.status).toBe("completed");
     expect(capturedHeaders?.get("Authorization")).toBe("Bearer top-secret");
     const httpOutput = result.outputs["Запрос"] as
-      { json: unknown } | undefined;
+      | { json: unknown }
+      | undefined;
     expect(httpOutput).toBeTruthy();
   });
 
@@ -360,17 +361,18 @@ describe("узел classify", () => {
 describe("узел downloadFiles + readFiles", () => {
   it("скачанные файлы прокидываются как binary и распознаются readFiles", async () => {
     resetIds();
+    const downloadFiles = vi.fn(async () => [
+      {
+        id: "019cba09-8f30-7000-8000-000000000020",
+        fileName: "a.txt",
+        mimeType: "text/plain",
+        size: 3,
+        sha256: "x",
+        storageKey: "k",
+      },
+    ]);
     const services = fakeServices({
-      downloadFiles: async () => [
-        {
-          id: "019cba09-8f30-7000-8000-000000000020",
-          fileName: "a.txt",
-          mimeType: "text/plain",
-          size: 3,
-          sha256: "x",
-          storageKey: "k",
-        },
-      ],
+      downloadFiles,
       readFiles: async ({ files }) => ({
         documents: files.map((file) => ({
           fileId: file.id,
@@ -402,6 +404,9 @@ describe("узел downloadFiles + readFiles", () => {
       json: { text: string };
     };
     expect(readOutput.json.text).toBe("text");
+    expect(downloadFiles).toHaveBeenCalledWith(
+      expect.objectContaining({ cleanupOnFinish: true }),
+    );
   });
 });
 

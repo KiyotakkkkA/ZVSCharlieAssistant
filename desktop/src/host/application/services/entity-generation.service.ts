@@ -1,4 +1,4 @@
-import { streamText, stepCountIs, tool, type ToolSet } from "ai";
+import { tool, type ToolSet } from "ai";
 import { z } from "zod";
 import type { AutomationRepository } from "../../infrastructure/database/automation.repository";
 import type { EntityGenerationRepository } from "../../infrastructure/database/entity-generation.repository";
@@ -18,7 +18,7 @@ import type {
   GenerationRunEvent,
   GenerationTranscriptMessage,
 } from "../../../shared/models/entity-generation";
-import type { JsonValue, ChatMessageContentPart } from "../../../shared/dto";
+import type { ChatMessageContentPart } from "../../../shared/dto";
 import {
   generatedAgentDraftDtoSchema,
   generatedSkillDraftDtoSchema,
@@ -37,6 +37,7 @@ import {
 import { resolvePorts } from "../../../shared/scenario/node-descriptor";
 import { resolveContextBudget } from "../context/context-budget";
 import { InMemoryCompactor, type EnabledModelInfo } from "../context/generation-context";
+import { runStepWithRetry } from "../context/agentic-step-loop";
 
 const MAX_STEPS = 16;
 const MAX_TRACKED_TRANSCRIPTS = 50;
@@ -172,132 +173,68 @@ export class EntityGenerationService {
 
     try {
       for (let step = 0; step < MAX_STEPS && !state.outcome; step += 1) {
-        let compacted = false;
-        let assistantParts: ChatMessageContentPart[] = [];
-        let resultParts: ChatMessageContentPart[] = [];
+        const stepResult = await runStepWithRetry({
+          providers: this.providers,
+          failover: this.failover,
+          activeModelId,
+          system,
+          tools,
+          maxOutputTokens: Infinity,
+          abortSignal: new AbortController().signal,
+          budgetFor: (modelId) =>
+            resolveContextBudget({
+              contextLength: this.providers.modelInfo(modelId).contextLength,
+              maxOutputTokens:
+                this.providers.generationSettings(modelId).maxOutputTokens,
+            }),
+          buildMessages: (budget) =>
+            compactor.buildStepContext(system, budget).messages,
+          compact: (compacted, budget) => {
+            if (!compacted && !compactor.shouldCompact(system, budget))
+              return Promise.resolve();
+            return compactor
+              .compact({
+                providers: this.providers,
+                listEnabledModels: this.listEnabledModels,
+                summarizerModelId: activeModelId,
+                reason: compacted ? "overflow" : "threshold",
+              })
+              .then(() => undefined);
+          },
+          onDelta: (delta) =>
+            this.emit({ type: "text.delta", runId: run.id, delta }),
+          onReasoningDelta: (delta) =>
+            this.emit({ type: "reasoning.delta", runId: run.id, delta }),
+          onToolCall: ({ toolCallId, toolName, input }) =>
+            this.emit({
+              type: "tool.call",
+              runId: run.id,
+              toolCallId,
+              toolName,
+              input,
+            }),
+          onToolResult: ({ toolCallId, toolName, output, isError }) =>
+            this.emit({
+              type: "tool.result",
+              runId: run.id,
+              toolCallId,
+              toolName,
+              output,
+              isError,
+            }),
+        });
+        activeModelId = stepResult.activeModelId;
 
-        for (let attempt = 0; ; ) {
-          const budget = resolveContextBudget({
-            contextLength: this.providers.modelInfo(activeModelId).contextLength,
-            maxOutputTokens:
-              this.providers.generationSettings(activeModelId).maxOutputTokens,
-          });
-          if (compacted || compactor.shouldCompact(system, budget)) {
-            await compactor.compact({
-              providers: this.providers,
-              listEnabledModels: this.listEnabledModels,
-              summarizerModelId: activeModelId,
-              reason: compacted ? "overflow" : "threshold",
-            });
-          }
-          const context = compactor.buildStepContext(system, budget);
-
-          assistantParts = [];
-          resultParts = [];
-          let textAccum = "";
-          let reasoningAccum = "";
-          const toolCallParts: ChatMessageContentPart[] = [];
-
-          try {
-            const result = streamText({
-              model: this.providers.resolve(activeModelId),
-              ...this.providers.generationSettings(activeModelId),
-              system,
-              messages: context.messages,
-              tools,
-              stopWhen: stepCountIs(1),
-            });
-            for await (const raw of result.stream) {
-              const part = raw as unknown as GenerationStreamPart;
-              if (part.type === "error") {
-                throw normalizeStreamError(part.error);
-              } else if (part.type === "text-delta") {
-                textAccum += part.text ?? "";
-                this.emit({
-                  type: "text.delta",
-                  runId: run.id,
-                  delta: part.text ?? "",
-                });
-              } else if (part.type === "reasoning-delta") {
-                reasoningAccum += part.text ?? "";
-                this.emit({
-                  type: "reasoning.delta",
-                  runId: run.id,
-                  delta: part.text ?? "",
-                });
-              } else if (part.type === "tool-call") {
-                toolCallParts.push({
-                  type: "tool-call",
-                  toolCallId: part.toolCallId ?? "",
-                  toolName: part.toolName ?? "",
-                  input: (part.input ?? null) as JsonValue,
-                });
-                this.emit({
-                  type: "tool.call",
-                  runId: run.id,
-                  toolCallId: part.toolCallId ?? "",
-                  toolName: part.toolName ?? "",
-                  input: part.input ?? null,
-                });
-              } else if (part.type === "tool-result") {
-                resultParts.push({
-                  type: "tool-result",
-                  toolCallId: part.toolCallId ?? "",
-                  toolName: part.toolName ?? "",
-                  output: (part.output ?? null) as JsonValue,
-                });
-                this.emit({
-                  type: "tool.result",
-                  runId: run.id,
-                  toolCallId: part.toolCallId ?? "",
-                  toolName: part.toolName ?? "",
-                  output: part.output ?? null,
-                });
-              } else if (part.type === "tool-error") {
-                const output = errorToJson(part.error);
-                resultParts.push({
-                  type: "tool-result",
-                  toolCallId: part.toolCallId ?? "",
-                  toolName: part.toolName ?? "",
-                  output,
-                  isError: true,
-                });
-                this.emit({
-                  type: "tool.result",
-                  runId: run.id,
-                  toolCallId: part.toolCallId ?? "",
-                  toolName: part.toolName ?? "",
-                  output,
-                  isError: true,
-                });
-              }
-            }
-            if (reasoningAccum.trim())
-              assistantParts.push({ type: "reasoning", text: reasoningAccum });
-            if (textAccum.trim())
-              assistantParts.push({ type: "text", text: textAccum });
-            assistantParts.push(...toolCallParts);
-            break;
-          } catch (error) {
-            const decision = this.failover.decide(error, {
-              activeModelId,
-              attempt,
-              compacted,
-            });
-            if (decision.kind === "fail") throw error;
-            if (decision.kind === "retry") {
-              attempt += 1;
-              await delay(decision.delayMs);
-              continue;
-            }
-            if (decision.kind === "compact") {
-              compacted = true;
-              continue;
-            }
-            activeModelId = decision.modelId;
-            attempt = 0;
-          }
-        }
+        const assistantParts: ChatMessageContentPart[] = [
+          ...(stepResult.reasoning.trim()
+            ? [{ type: "reasoning" as const, text: stepResult.reasoning }]
+            : []),
+          ...(stepResult.text.trim()
+            ? [{ type: "text" as const, text: stepResult.text }]
+            : []),
+          ...stepResult.toolCallParts,
+        ];
+        const resultParts = stepResult.resultParts;
 
         if (assistantParts.length || resultParts.length)
           compactor.appendAssistant([...assistantParts, ...resultParts]);
@@ -677,33 +614,3 @@ function cleanJsonSchema(value: unknown): unknown {
   );
 }
 
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-interface GenerationStreamPart {
-  type: string;
-  text?: string;
-  error?: unknown;
-  toolCallId?: string;
-  toolName?: string;
-  input?: unknown;
-  output?: unknown;
-}
-
-function errorToJson(error: unknown): JsonValue {
-  if (error instanceof Error) return { error: error.message };
-  if (typeof error === "string") return { error };
-  return { error: "Инструмент завершился с ошибкой" };
-}
-
-function normalizeStreamError(error: unknown): Error {
-  if (error instanceof Error) return error;
-  if (typeof error === "string") return new Error(error);
-  if (error && typeof error === "object" && "message" in error) {
-    const message = (error as { message?: unknown }).message;
-    if (typeof message === "string" && message.trim())
-      return Object.assign(new Error(message, { cause: error }), error);
-  }
-  return new Error("Ошибка при обращении к модели");
-}

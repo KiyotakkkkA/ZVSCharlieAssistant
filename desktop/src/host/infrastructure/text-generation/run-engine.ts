@@ -1,4 +1,4 @@
-import { streamText, stepCountIs, type ModelMessage, type ToolSet } from "ai";
+import type { ToolSet } from "ai";
 import type { RunEvent } from "../../../shared/models/chat";
 import type { Project } from "../../../shared/models/project";
 import type {
@@ -20,6 +20,7 @@ import type { MemoryService } from "../../application/services/memory.service";
 import type { UserProfileRepository } from "../database/user-profile.repository";
 import type { CompactionService } from "../../application/context/compaction.service";
 import type { ModelFailover } from "./model-failover";
+import type { ModelSwitchReason } from "../../../shared/dto";
 import type { ProjectContextService } from "../../application/services/project-context.service";
 import {
   buildContext,
@@ -30,6 +31,7 @@ import {
   type ContextBudget,
 } from "../../application/context/context-budget";
 import { estimateTextTokens } from "../../application/context/token-estimator";
+import { runStepWithRetry } from "../../application/context/agentic-step-loop";
 import { newEntityId } from "../database/entity-id";
 import {
   generationLimitKind,
@@ -527,127 +529,154 @@ export class RunEngine {
         controller.signal.throwIfAborted();
         flushContent();
 
-        let attempt = 0;
-        let compacted = false;
-        let stepResult: StepResult | undefined;
+        let stepMessageCount = 0;
+        let stepModelId = activeModelId;
+        let switchFrom = activeModelId;
 
-        for (;;) {
-          controller.signal.throwIfAborted();
-          const budget = this.budgetFor(
-            activeModelId,
-            project?.compactThreshold,
-          );
-          const generationSettings =
-            this.providers.generationSettings(activeModelId);
-
-          if (compacted) {
-            await this.forceCompaction({
+        const stepResult = await runStepWithRetry({
+          providers: this.providers,
+          failover: this.failover,
+          activeModelId,
+          system,
+          tools,
+          abortSignal: controller.signal,
+          budgetFor: (modelId) =>
+            this.budgetFor(modelId, project?.compactThreshold),
+          compact: async (compacted, budget, modelId) => {
+            const compaction = {
               conversationId,
               runId,
               system,
               budget,
-              modelId: activeModelId,
+              modelId,
               protectedFromMessageId: userMessageId,
               emit,
-            });
-          } else {
-            await this.compactIfNeeded({
-              conversationId,
-              runId,
+            };
+            if (compacted) await this.forceCompaction(compaction);
+            else await this.compactIfNeeded(compaction);
+          },
+          buildMessages: (budget, modelId) => {
+            stepModelId = modelId;
+            const context = buildContext({
               system,
+              messages: this.data.journalMessages(conversationId),
+              segments: this.data.contextSegments(conversationId),
               budget,
-              modelId: activeModelId,
               protectedFromMessageId: userMessageId,
-              emit,
             });
-          }
-
-          const context = buildContext({
-            system,
-            messages: this.data.journalMessages(conversationId),
-            segments: this.data.contextSegments(conversationId),
-            budget,
-            protectedFromMessageId: userMessageId,
-          });
-          emit({
-            type: "context.window",
-            window: {
-              conversationId,
-              modelId: activeModelId,
-              usedTokens: context.tokens,
-              usableTokens: budget.usable,
-              compactAtTokens: budget.compactAt,
-              contextLength: budget.contextLength,
-              estimated: budget.estimated,
-              breakdown: this.systemBreakdown(
-                systemBlocks,
-                context.tokens,
-                system,
-              ),
-            },
-          });
-
-          const stepMessages = continuationRequested
-            ? [
-                ...context.messages,
-                { role: "user" as const, content: continuationPrompt },
-              ]
-            : context.messages;
-
-          try {
-            stepResult = await this.runStep({
+            emit({
+              type: "context.window",
+              window: {
+                conversationId,
+                modelId,
+                usedTokens: context.tokens,
+                usableTokens: budget.usable,
+                compactAtTokens: budget.compactAt,
+                contextLength: budget.contextLength,
+                estimated: budget.estimated,
+                breakdown: this.systemBreakdown(
+                  systemBlocks,
+                  context.tokens,
+                  system,
+                ),
+              },
+            });
+            const stepMessages = continuationRequested
+              ? [
+                  ...context.messages,
+                  { role: "user" as const, content: continuationPrompt },
+                ]
+              : context.messages;
+            stepMessageCount = stepMessages.length;
+            return stepMessages;
+          },
+          recoverStreamError: (error, consumed) => {
+            const interrupted = consumed.interruptedToolInput;
+            if (!interrupted && !isMissingFinishReasonError(error))
+              return undefined;
+            return {
+              finishReason: "length",
+              rawFinishReason: interrupted
+                ? `incomplete_tool_input:${interrupted.toolName}`
+                : "stream_ended_without_finish_reason",
+            };
+          },
+          onStepComplete: (consumed) => {
+            const usage = normalizeUsage(
+              consumed.usage as RawUsage | undefined,
+              stepModelId,
+              this.providers,
+            );
+            if (usage) this.data.addRunUsage(runId, usage);
+            this.data.addStep(
               runId,
               step,
-              system,
-              messages: stepMessages,
-              modelId: activeModelId,
-              generationSettings,
-              tools,
-              controller,
-              emit,
-              assistantMessageId,
-              parts,
-              appendText,
-              scheduleFlush,
+              {
+                messages: stepMessageCount,
+                hasToolCalls: consumed.hasToolCalls,
+                rawFinishReason: consumed.rawFinishReason,
+              },
+              consumed.finishReason,
+              usage,
+            );
+          },
+          onDelta: (delta) => {
+            appendText("text", delta);
+            emit({
+              type: "text.delta",
+              runId,
+              messageId: assistantMessageId,
+              delta,
             });
-            continuationRequested = false;
-            break;
-          } catch (error) {
-            if (controller.signal.aborted) throw error;
-            const decision = this.failover.decide(error, {
-              activeModelId,
-              attempt,
-              compacted,
+          },
+          onReasoningDelta: (delta) => {
+            appendText("reasoning", delta);
+            emit({
+              type: "reasoning.delta",
+              runId,
+              messageId: assistantMessageId,
+              delta,
             });
-            if (decision.kind === "fail") throw error;
-            if (decision.kind === "retry") {
-              attempt += 1;
-              await delay(decision.delayMs);
-              continue;
-            }
-            if (decision.kind === "compact") {
-              compacted = true;
-              continue;
-            }
+          },
+          onToolCall: (part) => {
+            parts.push({
+              type: "tool-call",
+              toolCallId: part.toolCallId,
+              toolName: part.toolName,
+              input: (part.input ?? null) as JsonValue,
+            } satisfies ChatToolCallPart);
+            scheduleFlush();
+          },
+          onToolResult: (part) => {
+            parts.push({
+              type: "tool-result",
+              toolCallId: part.toolCallId,
+              toolName: part.toolName,
+              output: (part.output ?? null) as JsonValue,
+              ...(part.isError ? { isError: true } : {}),
+            });
+            scheduleFlush();
+          },
+          onModelSwitch: (modelId, reason, detail) => {
             const change = this.failover.record(runId, conversationId, {
-              from: activeModelId,
-              to: decision.modelId,
-              reason: decision.reason,
-              detail: decision.detail,
+              from: switchFrom,
+              to: modelId,
+              reason: reason as ModelSwitchReason,
+              detail,
             });
-            activeModelId = decision.modelId;
-            attempt = 0;
+            switchFrom = modelId;
             emit({
               type: "run.model.switched",
               runId,
               conversationId,
               change,
             });
-          }
-        }
+          },
+        });
+        activeModelId = stepResult.activeModelId;
+        continuationRequested = false;
 
         flushContent();
-        if (!stepResult) break;
 
         const limitKind = generationLimitKind(
           stepResult.finishReason,
@@ -660,7 +689,8 @@ export class RunEngine {
           continuations += 1;
           continuationRequested = true;
           continuationPrompt =
-            stepResult.interruptedToolInput || stepResult.recoverableStreamEnd
+            stepResult.interruptedToolInput ||
+            stepResult.rawFinishReason === "stream_ended_without_finish_reason"
               ? TOOL_INPUT_CONTINUATION_PROMPT
               : CONTINUATION_PROMPT;
           const compactedSegment =
@@ -942,184 +972,6 @@ export class RunEngine {
         segment,
       });
   }
-
-  private async runStep(input: {
-    runId: string;
-    step: number;
-    system: string;
-    messages: ModelMessage[];
-    modelId: string;
-    generationSettings: {
-      maxOutputTokens: number;
-      temperature: number;
-      topP: number;
-    };
-    tools: ToolSet | undefined;
-    controller: AbortController;
-    emit: Emit;
-    assistantMessageId: string;
-    parts: ChatMessageContentPart[];
-    appendText: (kind: "text" | "reasoning", delta: string) => void;
-    scheduleFlush: () => void;
-  }): Promise<StepResult> {
-    const {
-      runId,
-      controller,
-      emit,
-      assistantMessageId,
-      parts,
-      appendText,
-      scheduleFlush,
-    } = input;
-    let hasToolCalls = false;
-    let usage: RunUsage | undefined;
-    let finishReason: string | undefined;
-    let rawFinishReason: string | undefined;
-    let streamError: Error | undefined;
-    const partialToolInputs = new Map<
-      string,
-      { toolName: string; receivedBytes: number }
-    >();
-
-    const result = streamText({
-      model: this.providers.resolve(input.modelId),
-      ...input.generationSettings,
-      system: input.system,
-      messages: input.messages,
-      tools: input.tools,
-      stopWhen: stepCountIs(1),
-      abortSignal: controller.signal,
-    });
-
-    for await (const raw of result.stream) {
-      const part = raw as unknown as StreamPart;
-      if (part.type === "error") {
-        streamError ??= normalizeStreamError(part.error);
-      } else if (part.type === "tool-input-start") {
-        partialToolInputs.set(part.id ?? "", {
-          toolName: part.toolName ?? "unknown",
-          receivedBytes: 0,
-        });
-      } else if (part.type === "tool-input-delta") {
-        const current = partialToolInputs.get(part.id ?? "");
-        if (current)
-          current.receivedBytes += Buffer.byteLength(part.delta ?? "", "utf8");
-      } else if (part.type === "text-delta") {
-        appendText("text", part.text ?? "");
-        emit({
-          type: "text.delta",
-          runId,
-          messageId: assistantMessageId,
-          delta: part.text ?? "",
-        });
-      } else if (part.type === "reasoning-delta") {
-        appendText("reasoning", part.text ?? "");
-        emit({
-          type: "reasoning.delta",
-          runId,
-          messageId: assistantMessageId,
-          delta: part.text ?? "",
-        });
-      } else if (part.type === "tool-call") {
-        hasToolCalls = true;
-        partialToolInputs.delete(part.toolCallId ?? "");
-        parts.push({
-          type: "tool-call",
-          toolCallId: part.toolCallId ?? "",
-          toolName: part.toolName ?? "",
-          input: (part.input ?? null) as JsonValue,
-        } satisfies ChatToolCallPart);
-        scheduleFlush();
-      } else if (part.type === "tool-result") {
-        parts.push({
-          type: "tool-result",
-          toolCallId: part.toolCallId ?? "",
-          toolName: part.toolName ?? "",
-          output: (part.output ?? null) as JsonValue,
-        });
-        scheduleFlush();
-      } else if (part.type === "tool-error") {
-        parts.push({
-          type: "tool-result",
-          toolCallId: part.toolCallId ?? "",
-          toolName: part.toolName ?? "",
-          output: errorToJson(part.error),
-          isError: true,
-        });
-        scheduleFlush();
-      } else if (part.type === "finish-step" || part.type === "finish") {
-        finishReason = part.finishReason ?? finishReason;
-        rawFinishReason = part.rawFinishReason ?? rawFinishReason;
-        usage =
-          normalizeUsage(
-            part.usage ?? part.totalUsage,
-            input.modelId,
-            this.providers,
-          ) ?? usage;
-      }
-    }
-
-    if (usage) this.data.addRunUsage(runId, usage);
-    const interruptedToolInput = partialToolInputs.values().next().value as
-      | { toolName: string; receivedBytes: number }
-      | undefined;
-    const recoverableStreamEnd = Boolean(
-      streamError && isMissingFinishReasonError(streamError),
-    );
-    if (streamError && (interruptedToolInput || recoverableStreamEnd)) {
-      finishReason = "length";
-      rawFinishReason = interruptedToolInput
-        ? `incomplete_tool_input:${interruptedToolInput.toolName}`
-        : "stream_ended_without_finish_reason";
-    }
-    this.data.addStep(
-      runId,
-      input.step,
-      { messages: input.messages.length, hasToolCalls, rawFinishReason },
-      finishReason,
-      usage,
-    );
-    if (streamError && !interruptedToolInput && !recoverableStreamEnd)
-      throw streamError;
-    return {
-      hasToolCalls,
-      finishReason,
-      rawFinishReason,
-      interruptedToolInput,
-      recoverableStreamEnd,
-    };
-  }
-}
-
-interface StepResult {
-  hasToolCalls: boolean;
-  finishReason: string | undefined;
-  rawFinishReason: string | undefined;
-  interruptedToolInput?: { toolName: string; receivedBytes: number };
-  recoverableStreamEnd?: boolean;
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    const timer = setTimeout(resolve, ms);
-    timer.unref();
-  });
-}
-
-interface StreamPart {
-  type: string;
-  id?: string;
-  delta?: string;
-  text?: string;
-  error?: unknown;
-  toolCallId?: string;
-  toolName?: string;
-  input?: unknown;
-  output?: unknown;
-  finishReason?: string;
-  rawFinishReason?: string;
-  usage?: RawUsage;
-  totalUsage?: RawUsage;
 }
 
 interface RawUsage {
@@ -1153,23 +1005,6 @@ function normalizeUsage(
     cachedInputTokens: usage.cachedInputTokens ?? 0,
     costUsd,
   };
-}
-
-function errorToJson(error: unknown): JsonValue {
-  if (error instanceof Error) return { error: error.message };
-  if (typeof error === "string") return { error };
-  return { error: "Инструмент завершился с ошибкой" };
-}
-
-function normalizeStreamError(error: unknown): Error {
-  if (error instanceof Error) return error;
-  if (typeof error === "string") return new Error(error);
-  if (error && typeof error === "object" && "message" in error) {
-    const message = (error as { message?: unknown }).message;
-    if (typeof message === "string" && message.trim())
-      return Object.assign(new Error(message, { cause: error }), error);
-  }
-  return new Error("Ошибка при обращении к модели");
 }
 
 function vectorContextBlock(

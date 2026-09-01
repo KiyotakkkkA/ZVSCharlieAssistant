@@ -193,6 +193,7 @@ export function createDownloadFilesExecutor(
         value,
         maxFileSizeBytes: config.maxFileSizeMb * 1024 * 1024,
         maxFiles: config.maxFiles,
+        cleanupOnFinish: config.cleanupOnFinish,
         signal: context.signal,
       });
 

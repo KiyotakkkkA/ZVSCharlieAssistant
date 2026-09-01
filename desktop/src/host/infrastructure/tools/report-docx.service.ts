@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
+import type Database from "better-sqlite3";
 import {
   AlignmentType,
   BorderStyle,
@@ -61,13 +62,13 @@ interface ReportSession {
   blocks: ReportBlock[];
   nextSequence: number;
   bytesReceived: number;
-  touchedAt: number;
 }
 
 export class ReportDocxService {
-  private readonly sessions = new Map<string, ReportSession>();
-
-  constructor(private readonly outputRoot: string) {}
+  constructor(
+    private readonly outputRoot: string,
+    private readonly db: Database.Database,
+  ) {}
 
   begin(
     input: Omit<CreateReportInput, "blocks">,
@@ -80,15 +81,12 @@ export class ReportDocxService {
   } {
     this.cleanupExpiredSessions();
     const id = randomUUID();
-    this.sessions.set(id, {
-      id,
-      ownerId,
-      ...input,
-      blocks: [],
-      nextSequence: 0,
-      bytesReceived: 0,
-      touchedAt: Date.now(),
-    });
+    this.db
+      .prepare(
+        `INSERT INTO report_builder_sessions(id,owner_id,file_name,template,title)
+         VALUES(?,?,?,?,?)`,
+      )
+      .run(id, ownerId, input.fileName, input.template, input.title ?? null);
     return {
       sessionId: id,
       fileName: input.fileName,
@@ -122,17 +120,23 @@ export class ReportDocxService {
       throw new Error(
         `Структура отчёта превышает ${REPORT_SESSION_MAX_BYTES} байт`,
       );
-    session.blocks.push(...input.blocks);
-    session.bytesReceived += bytes;
-    session.nextSequence += 1;
-    session.touchedAt = Date.now();
+    const blocks = [...session.blocks, ...input.blocks];
+    const bytesReceived = session.bytesReceived + bytes;
+    const nextSequence = session.nextSequence + 1;
+    this.db
+      .prepare(
+        `UPDATE report_builder_sessions
+         SET blocks_json=?,bytes_received=?,next_sequence=?,touched_at=CURRENT_TIMESTAMP
+         WHERE id=?`,
+      )
+      .run(JSON.stringify(blocks), bytesReceived, nextSequence, session.id);
     return {
       sessionId: session.id,
       fileName: session.fileName,
       acceptedSequence: input.sequence,
-      nextSequence: session.nextSequence,
-      blocksReceived: session.blocks.length,
-      bytesReceived: session.bytesReceived,
+      nextSequence,
+      blocksReceived: blocks.length,
+      bytesReceived,
     };
   }
 
@@ -149,7 +153,9 @@ export class ReportDocxService {
       title: session.title,
       blocks: session.blocks,
     });
-    this.sessions.delete(session.id);
+    this.db
+      .prepare(`DELETE FROM report_builder_sessions WHERE id=?`)
+      .run(session.id);
     return result;
   }
 
@@ -158,13 +164,16 @@ export class ReportDocxService {
     ownerId: string,
   ): { sessionId: string; fileName: string; aborted: true } {
     const session = this.session(input.sessionId, ownerId);
-    this.sessions.delete(session.id);
+    this.db
+      .prepare(`DELETE FROM report_builder_sessions WHERE id=?`)
+      .run(session.id);
     return { sessionId: session.id, fileName: session.fileName, aborted: true };
   }
 
   abortConversation(conversationId: string): void {
-    for (const session of this.sessions.values())
-      if (session.ownerId === conversationId) this.sessions.delete(session.id);
+    this.db
+      .prepare(`DELETE FROM report_builder_sessions WHERE owner_id=?`)
+      .run(conversationId);
   }
 
   async create(
@@ -376,18 +385,44 @@ export class ReportDocxService {
 
   private session(sessionId: string, ownerId: string): ReportSession {
     this.cleanupExpiredSessions();
-    const session = this.sessions.get(sessionId);
-    if (!session)
-      throw new Error("Сессия сборки отчёта не найдена или истекла");
-    if (session.ownerId !== ownerId)
+    const row = this.db
+      .prepare(
+        `SELECT id,owner_id,file_name,template,title,blocks_json,next_sequence,bytes_received
+         FROM report_builder_sessions WHERE id=?`,
+      )
+      .get(sessionId) as
+      | {
+          id: string;
+          owner_id: string;
+          file_name: string;
+          template: "mirea-report-gost";
+          title: string | null;
+          blocks_json: string;
+          next_sequence: number;
+          bytes_received: number;
+        }
+      | undefined;
+    if (!row) throw new Error("Сессия сборки отчёта не найдена или истекла");
+    if (row.owner_id !== ownerId)
       throw new Error("Сессия сборки отчёта принадлежит другой задаче");
-    return session;
+    return {
+      id: row.id,
+      ownerId: row.owner_id,
+      fileName: row.file_name,
+      template: row.template,
+      title: row.title ?? undefined,
+      blocks: JSON.parse(row.blocks_json) as ReportBlock[],
+      nextSequence: row.next_sequence,
+      bytesReceived: row.bytes_received,
+    };
   }
 
   private cleanupExpiredSessions(): void {
-    const expiresBefore = Date.now() - REPORT_SESSION_TTL_MS;
-    for (const session of this.sessions.values())
-      if (session.touchedAt < expiresBefore) this.sessions.delete(session.id);
+    this.db
+      .prepare(
+        `DELETE FROM report_builder_sessions WHERE touched_at < datetime('now', ?)`,
+      )
+      .run(`-${Math.floor(REPORT_SESSION_TTL_MS / 1000)} seconds`);
   }
 
   private heading(

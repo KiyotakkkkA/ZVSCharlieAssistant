@@ -400,7 +400,7 @@ app.whenReady().then(() => {
     ollamaWebService,
     vectorService,
     skillContent,
-    new ReportDocxService(reportsRoot),
+    new ReportDocxService(reportsRoot, database),
     commandExecutionService,
     new NativeSearchService(
       join(app.getAppPath(), "native"),

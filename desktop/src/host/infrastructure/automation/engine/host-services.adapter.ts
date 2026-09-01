@@ -1,14 +1,9 @@
-import {
-  generateObject as aiGenerateObject,
-  stepCountIs,
-  streamText,
-  type ToolSet,
-} from "ai";
+import { generateObject as aiGenerateObject, type ToolSet } from "ai";
 import { ScenarioSuspended as SharedScenarioSuspended } from "../../../../shared/scenario/errors";
 import { PermanentError } from "../../../../shared/scenario/errors";
 import type { ScenarioFileReference } from "../../../../shared/dto/scenario-trigger-event.dto";
 import type { ScenarioBinaryRef } from "../../../../shared/scenario/items";
-import type { ChatMessageContentPart, JsonValue } from "../../../../shared/dto";
+import type { ChatMessageContentPart } from "../../../../shared/dto";
 import type { ScenarioExecutionRepository } from "../../database/scenario-execution.repository";
 import type { ScenarioAgentConversationRepository } from "../../database/scenario-agent-conversation.repository";
 import type { ProviderRegistry } from "../../text-generation/provider.registry";
@@ -28,6 +23,7 @@ import {
 } from "../../text-generation/model-failover";
 import { resolveContextBudget } from "../../../application/context/context-budget";
 import type { EnabledModelInfo } from "../../../application/context/generation-context";
+import { runStepWithRetry } from "../../../application/context/agentic-step-loop";
 import { DurableAgentContext } from "./durable-agent-context";
 import type { ScenarioRuntimeEngine } from "./scenario-runtime-engine";
 import type {
@@ -47,16 +43,6 @@ import type {
 
 const MAX_TOTAL_STEPS = 40;
 const REPORT_FILE_TOOL_IDS = new Set(["reports_docx", "reports_commit"]);
-
-interface GenerationStreamPart {
-  type: string;
-  text?: string;
-  error?: unknown;
-  toolCallId?: string;
-  toolName?: string;
-  input?: unknown;
-  output?: unknown;
-}
 
 export class HostScenarioEngineServices implements ScenarioEngineServices {
   private readonly failover: ModelFailover;
@@ -131,121 +117,77 @@ export class HostScenarioEngineServices implements ScenarioEngineServices {
     const maxToolCalls = request.maxToolCalls ?? 10;
 
     for (let step = 0; step < MAX_TOTAL_STEPS; step += 1) {
-      let compacted = false;
-      let assistantParts: ChatMessageContentPart[] = [];
-      let resultParts: ChatMessageContentPart[] = [];
-      let textAccum = "";
-      let hadToolCalls = false;
       const allowTools = Boolean(request.tools) && toolSteps < maxToolCalls;
+      const stepStartedAt = Date.now();
 
-      for (let attempt = 0; ; ) {
-        const settings = this.providers.generationSettings(activeModelId);
-        const budget = resolveContextBudget({
-          contextLength: this.providers.modelInfo(activeModelId).contextLength,
-          maxOutputTokens: Math.min(
-            request.maxOutputTokens,
-            settings.maxOutputTokens,
-          ),
-        });
-        await context.compactIfNeeded(
-          request.system,
-          budget,
-          {
-            providers: this.providers,
-            listEnabledModels: this.listEnabledModels,
-            summarizerModelId: activeModelId,
-            reason: compacted ? "overflow" : "threshold",
-          },
-          compacted,
-        );
-        const built = context.compactor.buildStepContext(
-          request.system,
-          budget,
-        );
-
-        assistantParts = [];
-        resultParts = [];
-        textAccum = "";
-        const toolCallParts: ChatMessageContentPart[] = [];
-
-        try {
-          const result = streamText({
-            model: this.providers.resolve(activeModelId),
-            system: request.system,
-            messages: built.messages,
-            tools: allowTools ? request.tools : undefined,
-            stopWhen: stepCountIs(1),
-            abortSignal: request.signal,
+      const stepResult = await runStepWithRetry({
+        providers: this.providers,
+        failover: this.failover,
+        activeModelId,
+        system: request.system,
+        tools: allowTools ? request.tools : undefined,
+        maxOutputTokens: request.maxOutputTokens,
+        temperature: request.temperature,
+        topP: request.topP,
+        abortSignal: request.signal,
+        budgetFor: (modelId) =>
+          resolveContextBudget({
+            contextLength: this.providers.modelInfo(modelId).contextLength,
             maxOutputTokens: Math.min(
               request.maxOutputTokens,
-              settings.maxOutputTokens,
+              this.providers.generationSettings(modelId).maxOutputTokens,
             ),
-            temperature: request.temperature ?? settings.temperature,
-            topP: request.topP ?? settings.topP,
-          });
-          for await (const raw of result.stream) {
-            const part = raw as unknown as GenerationStreamPart;
-            if (part.type === "error") {
-              throw normalizeStreamError(part.error);
-            } else if (part.type === "text-delta") {
-              textAccum += part.text ?? "";
-              request.onDelta?.(part.text ?? "");
-            } else if (part.type === "tool-call") {
-              toolCallParts.push({
-                type: "tool-call",
-                toolCallId: part.toolCallId ?? "",
-                toolName: part.toolName ?? "",
-                input: (part.input ?? null) as JsonValue,
-              });
-            } else if (part.type === "tool-result") {
-              resultParts.push({
-                type: "tool-result",
-                toolCallId: part.toolCallId ?? "",
-                toolName: part.toolName ?? "",
-                output: (part.output ?? null) as JsonValue,
-              });
-            } else if (part.type === "tool-error") {
-              resultParts.push({
-                type: "tool-result",
-                toolCallId: part.toolCallId ?? "",
-                toolName: part.toolName ?? "",
-                output: errorToJson(part.error),
-                isError: true,
-              });
-            }
-          }
-          if (textAccum.trim())
-            assistantParts.push({ type: "text", text: textAccum });
-          assistantParts.push(...toolCallParts);
-          hadToolCalls = toolCallParts.length > 0;
-          break;
-        } catch (error) {
-          const decision = this.failover.decide(error, {
-            activeModelId,
-            attempt,
+          }),
+        buildMessages: (budget) =>
+          context.compactor.buildStepContext(request.system, budget).messages,
+        compact: (compacted, budget) =>
+          context.compactIfNeeded(
+            request.system,
+            budget,
+            {
+              providers: this.providers,
+              listEnabledModels: this.listEnabledModels,
+              summarizerModelId: activeModelId,
+              reason: compacted ? "overflow" : "threshold",
+            },
             compacted,
+          ),
+        onDelta: request.onDelta,
+        onModelSwitch: (modelId) => context.switchModel(modelId),
+        onFail: () => {
+          context.markFailed();
+          this.data.recordLlmCall({
+            executionId: request.runId,
+            nodeRunId: request.nodeRunId,
+            modelId: activeModelId,
+            finishReason: "error",
+            latencyMs: Date.now() - stepStartedAt,
           });
-          if (decision.kind === "fail") {
-            context.markFailed();
-            throw error;
-          }
-          if (decision.kind === "retry") {
-            attempt += 1;
-            await delay(decision.delayMs);
-            continue;
-          }
-          if (decision.kind === "compact") {
-            compacted = true;
-            continue;
-          }
-          activeModelId = decision.modelId;
-          context.switchModel(activeModelId);
-          attempt = 0;
-        }
-      }
+        },
+      });
+
+      activeModelId = stepResult.activeModelId;
+      const textAccum = stepResult.text;
+      const hadToolCalls = stepResult.hasToolCalls;
+      const assistantParts: ChatMessageContentPart[] = [
+        ...(textAccum.trim()
+          ? [{ type: "text" as const, text: textAccum }]
+          : []),
+        ...stepResult.toolCallParts,
+      ];
+      const resultParts = stepResult.resultParts;
 
       if (assistantParts.length || resultParts.length)
         context.appendAssistant([...assistantParts, ...resultParts]);
+
+      this.data.recordLlmCall({
+        executionId: request.runId,
+        nodeRunId: request.nodeRunId,
+        modelId: activeModelId,
+        outputText: textAccum || undefined,
+        finishReason: hadToolCalls ? "tool-calls" : "stop",
+        latencyMs: Date.now() - stepStartedAt,
+      });
 
       for (const part of resultParts) {
         if (
@@ -366,7 +308,7 @@ export class HostScenarioEngineServices implements ScenarioEngineServices {
       nodeRunId: request.nodeRunId,
       nodeId: request.nodeId,
       value: request.value,
-      cleanupOnFinish: false,
+      cleanupOnFinish: request.cleanupOnFinish,
       maxFileSizeBytes: request.maxFileSizeBytes,
       signal: request.signal,
     });
@@ -443,25 +385,4 @@ export class HostScenarioEngineServices implements ScenarioEngineServices {
       throw error;
     }
   }
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function errorToJson(error: unknown): JsonValue {
-  if (error instanceof Error) return { error: error.message };
-  if (typeof error === "string") return { error };
-  return { error: "Инструмент завершился с ошибкой" };
-}
-
-function normalizeStreamError(error: unknown): Error {
-  if (error instanceof Error) return error;
-  if (typeof error === "string") return new Error(error);
-  if (error && typeof error === "object" && "message" in error) {
-    const message = (error as { message?: unknown }).message;
-    if (typeof message === "string" && message.trim())
-      return Object.assign(new Error(message, { cause: error }), error);
-  }
-  return new Error("Ошибка при обращении к модели");
 }

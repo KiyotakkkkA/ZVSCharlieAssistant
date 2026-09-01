@@ -13,6 +13,34 @@ const parse = (value: string | null): unknown =>
 export class ScenarioExecutionRepository {
   constructor(private readonly db: Database.Database) {}
 
+  recordLlmCall(input: {
+    executionId: string;
+    nodeRunId: string;
+    modelId: string | null;
+    outputText?: string;
+    promptTokens?: number;
+    completionTokens?: number;
+    latencyMs?: number;
+    finishReason?: string;
+  }): void {
+    this.db
+      .prepare(
+        `INSERT INTO llm_calls(id,execution_id,node_run_id,model_id,output_text,prompt_tokens,completion_tokens,latency_ms,finish_reason)
+         VALUES(?,?,?,?,?,?,?,?,?)`,
+      )
+      .run(
+        newEntityId(),
+        input.executionId,
+        input.nodeRunId,
+        input.modelId,
+        input.outputText ?? null,
+        input.promptTokens ?? null,
+        input.completionTokens ?? null,
+        input.latencyMs ?? null,
+        input.finishReason ?? null,
+      );
+  }
+
   recoverInterruptedRuns(): void {
     this.db.transaction(() => {
       this.db
