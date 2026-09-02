@@ -13,10 +13,7 @@ import { compactValue } from "./output";
 import { commandCatalog } from "./commands";
 import { ZvsTui, type TuiMenu } from "./organisms/ZvsTui";
 import { initialTuiState, reduceTuiState, type TuiAction } from "./state";
-import {
-  addCliAttachment,
-  type CliAttachment,
-} from "./attachments";
+import { addCliAttachment, type CliAttachment } from "./attachments";
 import type { CliSkillOption } from "./autocomplete";
 import { formatShellResult, runShellCommand } from "./shell";
 
@@ -131,6 +128,7 @@ function InkRuntime(props: {
   const [recentSessions, setRecentSessions] = useState(props.recentSessions);
   const [menu, setMenu] = useState<(TuiMenu & { kind: string }) | undefined>();
   const [inputPrompt, setInputPrompt] = useState<"rename" | undefined>();
+  const [mouseEnabled, setMouseEnabled] = useState(props.options.mouse);
   const [attachments, setAttachments] = useState<CliAttachment[]>([]);
   const [selectedSkills, setSelectedSkills] = useState<CliSkillOption[]>([]);
   const shellRoot =
@@ -147,9 +145,7 @@ function InkRuntime(props: {
       attachments?: CliAttachment[],
       skillIds?: string[],
     ) => Promise<void>
-  >(
-    async () => undefined,
-  );
+  >(async () => undefined);
   const sequence = useRef(0);
 
   const appendSystem = useCallback((text: string, error = false) => {
@@ -191,6 +187,10 @@ function InkRuntime(props: {
               "",
               "# Горячие клавиши",
               "- `Tab` — дополнить команду или поставить сообщение в очередь",
+              "- `Ctrl+W` / `Ctrl+U` / `Ctrl+K` — удалить слово / до начала / до конца строки",
+              "- `Ctrl+←` `Ctrl+→` — по словам, `Home` `End` — в начало и конец",
+              "- `PageUp` / `PageDown` или колесо мыши — прокрутка ленты, `Ctrl+L` — к концу",
+              "- клик мышью — выбрать пункт списка или поставить курсор в поле ввода",
               "- `@file путь` — прикрепить файл из проекта",
               "- `@skill имя` — загрузить навык для следующего запроса",
               "- `! команда` — выполнить shell-команду в папке проекта",
@@ -390,6 +390,21 @@ function InkRuntime(props: {
           );
           return true;
         }
+        case "/mouse": {
+          const next =
+            argument === "on"
+              ? true
+              : argument === "off"
+                ? false
+                : !mouseEnabled;
+          setMouseEnabled(next);
+          appendSystem(
+            next
+              ? "Мышь включена: колесо листает ленту, клик выбирает пункт списка и ставит курсор. Выделение текста мышью — с зажатым Shift."
+              : "Мышь выключена: терминал снова выделяет текст без Shift.",
+          );
+          return true;
+        }
         case "/clear":
           queuedMessages.current = [];
           setAttachments([]);
@@ -405,7 +420,7 @@ function InkRuntime(props: {
           return true;
       }
     },
-    [appendSystem, props, settings, showMenu],
+    [appendSystem, mouseEnabled, props, settings, showMenu],
   );
 
   const startRun = useCallback(
@@ -447,9 +462,10 @@ function InkRuntime(props: {
             tool: {
               callId: shellId,
               toolId: "shell",
-              status: result.exitCode === 0 && !result.timedOut
-                ? "completed"
-                : "failed",
+              status:
+                result.exitCode === 0 && !result.timedOut
+                  ? "completed"
+                  : "failed",
               summary: `Shell · ${command} · ${result.timedOut ? "тайм-аут" : `exit ${result.exitCode}`}`,
             },
           });
@@ -458,7 +474,8 @@ function InkRuntime(props: {
             result.exitCode !== 0 || result.timedOut,
           );
         } catch (error) {
-          const message = error instanceof Error ? error.message : String(error);
+          const message =
+            error instanceof Error ? error.message : String(error);
           dispatch({
             type: "tool.changed",
             tool: {
@@ -861,6 +878,7 @@ function InkRuntime(props: {
       inputPrompt={
         inputPrompt === "rename" ? "Новое название диалога" : undefined
       }
+      mouseEnabled={mouseEnabled}
       onSubmit={(value) => {
         const selectedAttachments = attachments;
         const selectedSkillIds = selectedSkills.map((skill) => skill.id);

@@ -24,6 +24,7 @@ export const commandCatalog: CommandDescriptor[] = [
   { name: "/diff", description: "правки файлов" },
   { name: "/undo", description: "откатить задачу", usage: "[runId]" },
   { name: "/clear", description: "очистить экран" },
+  { name: "/mouse", description: "включить или выключить мышь" },
   { name: "/exit", description: "выйти" },
 ];
 

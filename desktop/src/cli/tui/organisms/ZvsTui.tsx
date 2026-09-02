@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
-import { Box, useInput, useWindowSize } from "ink";
+import { Box, useInput, useWindowSize, type DOMElement } from "ink";
 import type { UserQuestion } from "../../../shared/models/user-question";
 import type { RecentChatSession } from "../../../shared/models/chat";
 import {
@@ -9,7 +9,7 @@ import {
   type CompletionItem,
 } from "../autocomplete";
 import { commandSuggestions } from "../commands";
-import { Composer } from "../molecules/Composer";
+import { Composer, composerTextWidth } from "../molecules/Composer";
 import { QuestionPanel } from "../molecules/QuestionPanel";
 import {
   SelectionPanel,
@@ -25,13 +25,32 @@ import {
   type TuiState,
 } from "../state";
 import { SessionFooter } from "./SessionFooter";
-import { Transcript } from "./Transcript";
+import { Transcript, type TranscriptHandle } from "./Transcript";
 import type { CliAttachment } from "../attachments";
+import { absoluteRect, containsPoint, rowWithin } from "../geometry";
+import { visibleWindow } from "../windowing";
+import { useMouse } from "../useMouse";
+import { isMouseInput } from "../mouse";
+import {
+  deleteToLineEnd,
+  deleteToLineStart,
+  deleteWordAfter,
+  deleteWordBefore,
+  nextWordBoundary,
+  offsetFromPoint,
+  pointFromOffset,
+  previousWordBoundary,
+  wrapDraft,
+} from "../editing";
 
 export interface TuiMenu {
   title: string;
   items: SelectionItem[];
 }
+
+/** Строк ленты за один щелчок колеса. */
+const WHEEL_LINES = 3;
+const MENU_MAX_ITEMS = 10;
 
 export interface ZvsTuiProps {
   version: string;
@@ -48,6 +67,7 @@ export interface ZvsTuiProps {
   dispatch?: (action: TuiAction) => void;
   menu?: TuiMenu;
   inputPrompt?: string;
+  mouseEnabled?: boolean;
   onSubmit: (value: string) => void;
   onQueue: (value: string) => void;
   onCancel: () => void;
@@ -81,7 +101,15 @@ export function ZvsTui(props: ZvsTuiProps) {
     undefined,
   );
   useEffect(() => () => clearTimeout(exitArmedTimeout.current), []);
-  const { rows } = useWindowSize();
+  const { rows, columns } = useWindowSize();
+
+  const transcript = useRef<TranscriptHandle>(null);
+  const suggestionList = useRef<DOMElement>(null);
+  const menuList = useRef<DOMElement>(null);
+  const questionList = useRef<DOMElement>(null);
+  const composerInput = useRef<DOMElement>(null);
+
+  const mouseEnabled = props.mouseEnabled !== false;
   const options = state.question?.options ?? [];
   const commands = commandSuggestions(state.draft);
   const suggestions: CompletionItem[] = state.draft.startsWith("/")
@@ -102,15 +130,18 @@ export function ZvsTui(props: ZvsTuiProps) {
       ? "@"
       : state.draft === "@file "
         ? "@file"
-          : state.draft === "@skill "
-            ? "@skill"
-            : state.draft.startsWith("!") && !state.draft.includes(" ")
-              ? "!"
-              : undefined;
+        : state.draft === "@skill "
+          ? "@skill"
+          : state.draft.startsWith("!") && !state.draft.includes(" ")
+            ? "!"
+            : undefined;
   const suggestionsVisible =
     !props.menu &&
     !state.question &&
     (suggestions.length > 0 || specialPrefix !== undefined);
+  const suggestionMaxItems = Math.max(1, Math.min(8, rows - 6));
+  const draftRows = wrapDraft(state.draft, composerTextWidth(columns));
+  const caret = pointFromOffset(draftRows, cursor);
 
   useEffect(() => setCursor(state.draft.length), [state.question?.id]);
   useEffect(() => {
@@ -124,6 +155,10 @@ export function ZvsTui(props: ZvsTuiProps) {
     dispatch({ type: "draft.changed", value });
     setCursor(value.length);
   };
+  const editDraft = (edit: { value: string; cursor: number }) => {
+    dispatch({ type: "draft.changed", value: edit.value });
+    setCursor(Math.max(0, Math.min(edit.value.length, edit.cursor)));
+  };
   const submit = (value: string) => {
     const trimmed = value.trim();
     if (!trimmed) return;
@@ -136,7 +171,124 @@ export function ZvsTui(props: ZvsTuiProps) {
     setDraft("");
   };
 
+  /** Общий путь для Tab, Enter и клика по строке подсказки. */
+  const applySuggestion = (item: CompletionItem | undefined): boolean => {
+    if (!item) return false;
+    if (item.kind === "file") {
+      props.onAttach(item.value);
+      setDraft("");
+      return true;
+    }
+    if (item.kind === "skill") {
+      props.onSelectSkill(item.value);
+      setDraft("");
+      return true;
+    }
+    setDraft(`${item.value}${item.appendSpace ? " " : ""}`);
+    return true;
+  };
+
+  const answerOption = (index: number) => {
+    const question = state.question;
+    const option = options[index];
+    if (!question || !option) return;
+    setSelectedOption(index);
+    if (question.multiSelect) {
+      setSelectedOptions((values) =>
+        values.includes(option.label)
+          ? values.filter((value) => value !== option.label)
+          : [...values, option.label],
+      );
+      return;
+    }
+    props.onAnswer(question, [option.label]);
+  };
+
+  useMouse(
+    (event) => {
+      if (event.kind === "wheel") {
+        const step = event.direction === "up" ? -1 : 1;
+        if (suggestionsVisible && suggestions.length)
+          setSelectedSuggestion(
+            (value) => (value + step + suggestions.length) % suggestions.length,
+          );
+        else if (props.menu?.items.length)
+          setSelectedMenuItem(
+            (value) =>
+              (value + step + props.menu!.items.length) %
+              props.menu!.items.length,
+          );
+        else if (state.question && options.length)
+          setSelectedOption(
+            (value) => (value + step + options.length) % options.length,
+          );
+        else
+          transcript.current?.scrollBy(
+            event.direction === "up" ? WHEEL_LINES : -WHEEL_LINES,
+          );
+        return;
+      }
+      if (event.kind !== "press" || event.button !== "left") return;
+
+      if (suggestionsVisible && suggestions.length) {
+        const row = rowWithin(absoluteRect(suggestionList.current), event.y);
+        if (row !== undefined) {
+          const { start } = visibleWindow(
+            selectedSuggestion,
+            suggestions.length,
+            suggestionMaxItems,
+          );
+          const item = suggestions[start + row];
+          if (item) {
+            setSelectedSuggestion(start + row);
+            applySuggestion(item);
+          }
+          return;
+        }
+      }
+      if (props.menu?.items.length) {
+        const row = rowWithin(absoluteRect(menuList.current), event.y);
+        if (row !== undefined) {
+          const { start } = visibleWindow(
+            selectedMenuItem,
+            props.menu.items.length,
+            MENU_MAX_ITEMS,
+          );
+          const item = props.menu.items[start + row];
+          if (item) {
+            setSelectedMenuItem(start + row);
+            props.onMenuSelect(item.value);
+          }
+        }
+        return;
+      }
+      if (state.question && options.length) {
+        const row = rowWithin(absoluteRect(questionList.current), event.y);
+        if (row !== undefined) {
+          const { start } = visibleWindow(
+            selectedOption,
+            options.length,
+            MENU_MAX_ITEMS,
+          );
+          answerOption(start + row);
+        }
+        return;
+      }
+      const inputRect = absoluteRect(composerInput.current);
+      if (inputRect && containsPoint(inputRect, event.x, event.y))
+        setCursor(
+          offsetFromPoint(
+            wrapDraft(state.draft, inputRect.width),
+            event.y - inputRect.top,
+            event.x - inputRect.left,
+          ),
+        );
+    },
+    { isActive: mouseEnabled },
+  );
+
   useInput((input, key) => {
+    if (isMouseInput(input)) return;
     if (key.ctrl && input === "c") {
       if (
         state.phase === "running" ||
@@ -188,15 +340,9 @@ export function ZvsTui(props: ZvsTuiProps) {
         );
       else if (key.downArrow)
         setSelectedOption((value) => (value + 1) % options.length);
-      else if (input === " " && state.question.multiSelect) {
-        const label = options[selectedOption]?.label;
-        if (label)
-          setSelectedOptions((values) =>
-            values.includes(label)
-              ? values.filter((value) => value !== label)
-              : [...values, label],
-          );
-      } else if (key.return) {
+      else if (input === " " && state.question.multiSelect)
+        answerOption(selectedOption);
+      else if (key.return) {
         const option = options[selectedOption];
         const answer = state.question.multiSelect
           ? selectedOptions
@@ -209,6 +355,22 @@ export function ZvsTui(props: ZvsTuiProps) {
     }
     if (key.escape && state.draft) {
       setDraft("");
+      return;
+    }
+    if (key.ctrl && input === "w") {
+      editDraft(deleteWordBefore(state.draft, cursor));
+      return;
+    }
+    if (key.ctrl && input === "u") {
+      editDraft(deleteToLineStart(state.draft, cursor));
+      return;
+    }
+    if (key.ctrl && input === "k") {
+      editDraft(deleteToLineEnd(state.draft, cursor));
+      return;
+    }
+    if (key.ctrl && input === "l") {
+      transcript.current?.scrollToBottom();
       return;
     }
     if (key.home || (key.ctrl && input === "a")) {
@@ -229,6 +391,14 @@ export function ZvsTui(props: ZvsTuiProps) {
       setSelectedSuggestion((value) => (value + 1) % suggestions.length);
       return;
     }
+    if (key.upArrow && caret.row > 0) {
+      setCursor(offsetFromPoint(draftRows, caret.row - 1, caret.column));
+      return;
+    }
+    if (key.downArrow && caret.row < draftRows.length - 1) {
+      setCursor(offsetFromPoint(draftRows, caret.row + 1, caret.column));
+      return;
+    }
     if (key.upArrow && history.length) {
       const next = Math.min(history.length - 1, historyIndex + 1);
       setHistoryIndex(next);
@@ -242,11 +412,19 @@ export function ZvsTui(props: ZvsTuiProps) {
       return;
     }
     if (key.leftArrow) {
-      setCursor((value) => Math.max(0, value - 1));
+      setCursor((value) =>
+        key.ctrl || key.meta
+          ? previousWordBoundary(state.draft, value)
+          : Math.max(0, value - 1),
+      );
       return;
     }
     if (key.rightArrow) {
-      setCursor((value) => Math.min(state.draft.length, value + 1));
+      setCursor((value) =>
+        key.ctrl || key.meta
+          ? nextWordBoundary(state.draft, value)
+          : Math.min(state.draft.length, value + 1),
+      );
       return;
     }
     if (key.backspace) {
@@ -255,6 +433,10 @@ export function ZvsTui(props: ZvsTuiProps) {
           props.onRemoveLastSkill();
         else if (!state.draft && props.attachments.length)
           props.onRemoveLastAttachment();
+        return;
+      }
+      if (key.ctrl || key.meta) {
+        editDraft(deleteWordBefore(state.draft, cursor));
         return;
       }
       dispatch({
@@ -266,6 +448,10 @@ export function ZvsTui(props: ZvsTuiProps) {
     }
     if (key.delete) {
       if (cursor >= state.draft.length) return;
+      if (key.ctrl || key.meta) {
+        editDraft(deleteWordAfter(state.draft, cursor));
+        return;
+      }
       dispatch({
         type: "draft.changed",
         value: state.draft.slice(0, cursor) + state.draft.slice(cursor + 1),
@@ -273,16 +459,8 @@ export function ZvsTui(props: ZvsTuiProps) {
       return;
     }
     if (key.tab) {
-      const suggestion = suggestions[selectedSuggestion];
-      if (suggestion?.kind === "file") {
-        props.onAttach(suggestion.value);
-        setDraft("");
-      } else if (suggestion?.kind === "skill") {
-        props.onSelectSkill(suggestion.value);
-        setDraft("");
-      } else if (suggestion) {
-        setDraft(`${suggestion.value}${suggestion.appendSpace ? " " : ""}`);
-      } else if (state.phase === "running") {
+      if (applySuggestion(suggestions[selectedSuggestion])) return;
+      if (state.phase === "running") {
         props.onQueue(state.draft);
         dispatch({ type: "message.queued", value: state.draft });
         setCursor(0);
@@ -290,7 +468,7 @@ export function ZvsTui(props: ZvsTuiProps) {
       return;
     }
     if (key.return) {
-      if (key.shift) {
+      if (key.shift || key.meta) {
         dispatch({
           type: "draft.changed",
           value:
@@ -300,18 +478,12 @@ export function ZvsTui(props: ZvsTuiProps) {
         return;
       }
       const selected = suggestions[selectedSuggestion];
-      if (selected?.kind === "file") {
-        props.onAttach(selected.value);
-        setDraft("");
-        return;
-      }
-      if (selected?.kind === "skill") {
-        props.onSelectSkill(selected.value);
-        setDraft("");
-        return;
-      }
-      if (selected?.kind === "directory") {
-        setDraft(`${selected.value}${selected.appendSpace ? " " : ""}`);
+      if (
+        selected?.kind === "file" ||
+        selected?.kind === "skill" ||
+        selected?.kind === "directory"
+      ) {
+        applySuggestion(selected);
         return;
       }
       const exactCommand = suggestions.find(
@@ -335,20 +507,19 @@ export function ZvsTui(props: ZvsTuiProps) {
     if (props.inputPrompt) return props.inputPrompt;
     if (state.question) return "Ответ";
     if (state.phase === "running")
-      return "Следующее сообщение · Enter/Tab — в очередь";
-    return "Сообщение · / команды · @file · @skill · ! shell";
+      return "Следующее сообщение · Tab — в очередь";
+    return "Спросите что-нибудь · / команды · @ контекст · ! shell";
   }, [props.inputPrompt, state.phase, state.question]);
 
   const busy = state.phase === "running" || state.phase === "cancelling";
-  const footerHint = exitArmed
-    ? "Нажмите Ctrl+C ещё раз, чтобы выйти"
-    : !busy &&
-        !state.draft &&
-        !props.menu &&
-        !state.question &&
-        !suggestionsVisible
-      ? "/help — команды и горячие клавиши"
-      : undefined;
+  const footerHint = footerHintFor({
+    exitArmed,
+    menu: Boolean(props.menu),
+    question: Boolean(state.question),
+    suggestions: suggestionsVisible,
+    busy,
+    draft: Boolean(state.draft),
+  });
 
   return (
     <Box flexDirection="column" height={Math.max(1, rows)}>
@@ -361,6 +532,7 @@ export function ZvsTui(props: ZvsTuiProps) {
         overflowY="hidden"
       >
         <Transcript
+          handleRef={transcript}
           entries={state.transcript}
           scrollEnabled={!props.menu && !state.question}
           emptyContent={
@@ -369,6 +541,7 @@ export function ZvsTui(props: ZvsTuiProps) {
               version={props.version}
               model={props.model}
               project={props.project}
+              mouse={mouseEnabled}
             />
           }
         />
@@ -378,7 +551,9 @@ export function ZvsTui(props: ZvsTuiProps) {
               items={suggestions}
               selected={selectedSuggestion}
               prefix={specialPrefix}
-              maxItems={Math.max(1, Math.min(8, rows - 6))}
+              maxItems={suggestionMaxItems}
+              listRef={suggestionList}
+              mouse={mouseEnabled}
             />
           </Box>
         ) : null}
@@ -388,6 +563,9 @@ export function ZvsTui(props: ZvsTuiProps) {
           question={state.question}
           selected={selectedOption}
           selectedValues={selectedOptions}
+          maxItems={MENU_MAX_ITEMS}
+          listRef={questionList}
+          mouse={mouseEnabled}
         />
       )}
       {props.menu && (
@@ -395,6 +573,9 @@ export function ZvsTui(props: ZvsTuiProps) {
           title={props.menu.title}
           items={props.menu.items}
           selected={selectedMenuItem}
+          maxItems={MENU_MAX_ITEMS}
+          listRef={menuList}
+          mouse={mouseEnabled}
         />
       )}
       {busy && (
@@ -409,9 +590,11 @@ export function ZvsTui(props: ZvsTuiProps) {
         prompt={prompt}
         value={state.draft}
         cursor={cursor}
+        width={columns}
         queued={state.queued}
         attachments={props.attachments}
         skills={props.selectedSkills}
+        inputRef={composerInput}
       />
       <SessionFooter
         version={props.version}
@@ -421,9 +604,28 @@ export function ZvsTui(props: ZvsTuiProps) {
         permission={props.permission}
         hint={footerHint}
         phase={state.phase}
+        width={columns}
       />
     </Box>
   );
+}
+
+/** Подсказка под составителем: показывает то, что уместно прямо сейчас. */
+export function footerHintFor(context: {
+  exitArmed: boolean;
+  menu: boolean;
+  question: boolean;
+  suggestions: boolean;
+  busy: boolean;
+  draft: boolean;
+}): string | undefined {
+  if (context.exitArmed) return "Ctrl+C ещё раз — выйти";
+  if (context.menu || context.suggestions) return undefined;
+  if (context.question) return "↑↓ выбрать · Enter ответить · Esc отменить";
+  if (context.busy) return "Esc прервать · Tab поставить сообщение в очередь";
+  if (context.draft)
+    return "Enter отправить · Shift+Enter перенос строки · Esc очистить";
+  return "/help — команды и горячие клавиши";
 }
 
 function namespaceSuggestions(
@@ -451,9 +653,7 @@ function namespaceSuggestions(
       },
     ].filter((item) => item.value.slice(1).startsWith(query));
   }
-  if (/^@file(?:\s|$)/i.test(draft))
-    return fileSuggestions(fileRoot, draft);
-  if (/^@skill(?:\s|$)/i.test(draft))
-    return skillSuggestions(skills, draft);
+  if (/^@file(?:\s|$)/i.test(draft)) return fileSuggestions(fileRoot, draft);
+  if (/^@skill(?:\s|$)/i.test(draft)) return skillSuggestions(skills, draft);
   return [];
 }

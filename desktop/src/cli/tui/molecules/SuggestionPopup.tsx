@@ -1,24 +1,38 @@
-import { Box, Text } from "ink";
+import type { RefObject } from "react";
+import { Box, Text, type DOMElement } from "ink";
 import type { CompletionItem } from "../autocomplete";
 import { tuiColors } from "../theme";
+import { visibleWindow } from "../windowing";
+
+const KIND_ICONS: Record<string, string> = {
+  directory: "▸",
+  file: "▪",
+  skill: "◆",
+  mode: "@",
+};
 
 export function SuggestionPopup(props: {
   items: CompletionItem[];
   selected: number;
   prefix?: "@" | "@file" | "@skill" | "!";
   maxItems?: number;
+  listRef?: RefObject<DOMElement | null>;
+  mouse?: boolean;
 }) {
   const maxItems = Math.max(1, props.maxItems ?? 8);
-  const start = Math.max(
-    0,
-    Math.min(props.selected - maxItems + 1, props.items.length - maxItems),
+  const { start, count } = visibleWindow(
+    props.selected,
+    props.items.length,
+    maxItems,
   );
-  const visibleItems = props.items.slice(start, start + maxItems);
+  const visibleItems = props.items.slice(start, start + count);
+  const hidden = props.items.length - (start + visibleItems.length);
+
   if (props.prefix && !props.items.length)
     return (
       <Box
-        borderStyle="single"
-        borderColor={tuiColors.subtle}
+        borderStyle="round"
+        borderColor={tuiColors.border}
         backgroundColor={tuiColors.panel}
         flexDirection="column"
         paddingX={1}
@@ -38,45 +52,49 @@ export function SuggestionPopup(props: {
   if (!props.items.length) return null;
   return (
     <Box
-      borderStyle="single"
-      borderColor={tuiColors.subtle}
+      borderStyle="round"
+      borderColor={tuiColors.border}
       backgroundColor={tuiColors.panel}
       flexDirection="column"
       paddingX={1}
       width="100%"
     >
-      {visibleItems.map((item, index) => {
-        const absoluteIndex = start + index;
-        return (
-          <Text
-            key={item.value}
-            color={
-              absoluteIndex === props.selected
-                ? tuiColors.text
-                : tuiColors.muted
-            }
-            backgroundColor={
-              absoluteIndex === props.selected
-                ? tuiColors.panelSelected
-                : tuiColors.panel
-            }
-          >
-            {absoluteIndex === props.selected ? "›" : " "}{" "}
-            {item.kind === "directory"
-              ? "▸"
-              : item.kind === "file"
-                ? "▪"
-                : item.kind === "skill"
-                  ? "◆"
-                  : item.kind === "mode"
-                    ? "@"
-                    : ""}{" "}
-            {item.label} · {item.description}
-          </Text>
-        );
-      })}
-      <Text color={tuiColors.muted} backgroundColor={tuiColors.panel}>
-        ↑↓ выбрать · Tab дополнить · Enter выполнить
+      <Box ref={props.listRef} flexDirection="column">
+        {visibleItems.map((item, index) => {
+          const absoluteIndex = start + index;
+          const active = absoluteIndex === props.selected;
+          const background = active ? tuiColors.panelSelected : tuiColors.panel;
+          return (
+            <Text
+              key={item.value}
+              color={active ? tuiColors.text : tuiColors.muted}
+              backgroundColor={background}
+              wrap="truncate-end"
+            >
+              <Text
+                bold={active}
+                color={active ? tuiColors.accent : tuiColors.subtle}
+                backgroundColor={background}
+              >
+                {active ? "›" : " "} {KIND_ICONS[item.kind] ?? " "}{" "}
+              </Text>
+              <Text
+                bold={active}
+                color={active ? tuiColors.text : tuiColors.muted}
+                backgroundColor={background}
+              >
+                {item.label}
+              </Text>
+              <Text color={tuiColors.subtle} backgroundColor={background}>
+                {item.description ? ` · ${item.description}` : ""}
+              </Text>
+            </Text>
+          );
+        })}
+      </Box>
+      <Text color={tuiColors.subtle} backgroundColor={tuiColors.panel}>
+        {hidden > 0 ? `↓ ещё ${hidden} · ` : ""}↑↓ выбрать · Tab дополнить ·
+        Enter применить{props.mouse ? " · клик мышью" : ""}
       </Text>
     </Box>
   );

@@ -7,6 +7,8 @@ export const tuiColors = {
   text: "#d7d3cb",
   danger: "#e06c75",
   warning: "#d6ad60",
+  border: "#4a4d55",
+  borderActive: "#7d8590",
   panel: "#303238",
   panelSelected: "#3a3b3f",
   syntaxKeyword: "#ff7ab2",

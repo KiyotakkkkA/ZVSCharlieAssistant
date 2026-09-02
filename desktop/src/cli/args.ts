@@ -20,6 +20,7 @@ export interface CliOptions {
   runId?: string;
   focus?: string;
   permissionMode: "plan" | "edit" | "deny";
+  mouse: boolean;
   output: "text" | "json" | "stream-json";
   home?: string;
   positional: string[];
@@ -42,6 +43,7 @@ export function parseArgs(argv: string[]): CliOptions {
     command: "chat",
     permissionMode: "edit",
     output: "text",
+    mouse: true,
     projectDirectory: false,
     positional: [],
   };
@@ -103,6 +105,9 @@ export function parseArgs(argv: string[]): CliOptions {
         options.permissionMode = value;
         break;
       }
+      case "--no-mouse":
+        options.mouse = false;
+        break;
       case "--json":
         options.output = "json";
         break;
@@ -156,6 +161,7 @@ export const CLI_OPTIONS_HELP = [
   ["--conversation <id>", "продолжить существующий диалог"],
   ["--permission-mode <m>", "plan | edit | deny, по умолчанию edit"],
   ["--home <path>", "каталог данных приложения"],
+  ["--no-mouse", "не перехватывать мышь в интерактивном режиме"],
   ["-h, --help", "эта справка"],
 ] as const;
 
@@ -175,6 +181,7 @@ ${plainSection("Использование", CLI_USAGE)}
 
 ${plainSection("Параметры", CLI_OPTIONS_HELP)}
 
-Интерактивно: Tab — команды, ↑↓ — история, Ctrl+C — отмена задачи или выход, /help — помощь.
+Интерактивно: Tab — дополнить, ↑↓ — история, колесо мыши — лента, клик — выбор,
+Ctrl+C — отмена задачи или выход, /help — помощь.
 
 Коды возврата: 0 успех, 1 ошибка, 2 запрещено, 3 приложение недоступно.`;
