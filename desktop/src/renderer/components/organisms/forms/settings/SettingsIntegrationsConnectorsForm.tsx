@@ -1,8 +1,8 @@
 import {
   InputCheckSlided,
   InputSmall,
-  Select,
 } from "@kiyotakkkka/zvs-uikit-lib";
+import { BasicSelect } from "../../../atoms/basic";
 import type { UpsertIntegrationProfileInput } from "../../../../../shared/dto";
 import { SYSTEM_SECRET_CATEGORY_IDS } from "../../../../../shared/entity-ids";
 import type { IntegrationConnectionMetadata } from "../../../../../shared/models/integration";
@@ -50,7 +50,7 @@ export function SettingsIntegrationsConnectorsForm({
           />
         </Field>
         <Field label="Поставщик коннектора">
-          <Select
+          <BasicSelect
             value={provider}
             onChange={(next) => changeProvider(next as "github" | "gitlab")}
             options={[
@@ -58,13 +58,7 @@ export function SettingsIntegrationsConnectorsForm({
               { value: "gitlab", label: "GitLab" },
             ]}
             className="w-full"
-          >
-            <Select.Trigger className="w-full" />
-            <Select.Menu>
-              <Select.Option value="github" label="GitHub" />
-              <Select.Option value="gitlab" label="GitLab" />
-            </Select.Menu>
-          </Select>
+          />
         </Field>
         <Field className="md:col-span-2" label="Адрес репозитория">
           <InputSmall

@@ -8,7 +8,6 @@ import {
   InputSmall,
   ProgressBar,
   ScrollArea,
-  Select,
   Tabs,
   useToasts,
 } from "@kiyotakkkka/zvs-uikit-lib";
@@ -21,7 +20,7 @@ import {
   SearchIcon,
   TrashIcon,
 } from "../../../atoms";
-import { ControlButton } from "../../../atoms/buttons";
+import { BasicSelect, ControlButton } from "../../../atoms/basic";
 import { DangerModal } from "../../modals";
 import {
   textProviderStore,
@@ -340,7 +339,7 @@ export const StorageVecdbManageForm = observer(function StorageVecdbManageForm({
                 }
                 className="md:col-span-2"
               >
-                <Select
+                <BasicSelect
                   value={embeddingModelId}
                   onChange={setEmbeddingModelId}
                   className="w-full"
@@ -352,18 +351,7 @@ export const StorageVecdbManageForm = observer(function StorageVecdbManageForm({
                   placeholder="Выберите embedding-модель"
                   searchable
                   classNames={{ search: "mb-3" }}
-                >
-                  <Select.Trigger className="w-full" />
-                  <Select.Menu>
-                    {embeddingModels.map((item) => (
-                      <Select.Option
-                        key={item.id}
-                        value={String(item.id)}
-                        label={textProviderStore.modelLabel(item.id)}
-                      />
-                    ))}
-                  </Select.Menu>
-                </Select>
+                />
               </Field>
               <Field
                 label={
@@ -404,7 +392,7 @@ export const StorageVecdbManageForm = observer(function StorageVecdbManageForm({
                 }
                 className="md:col-span-2 w-fit"
               >
-                <Select
+                <BasicSelect
                   value={searchMode}
                   onChange={(value) =>
                     setSearchMode(value as "vector" | "hybrid")
@@ -413,13 +401,7 @@ export const StorageVecdbManageForm = observer(function StorageVecdbManageForm({
                     { value: "vector", label: "Векторный" },
                     { value: "hybrid", label: "Гибридный" },
                   ]}
-                >
-                  <Select.Trigger className="w-full" />
-                  <Select.Menu>
-                    <Select.Option value="vector" label="Векторный" />
-                    <Select.Option value="hybrid" label="Гибридный" />
-                  </Select.Menu>
-                </Select>
+                />
               </Field>
               <Alert
                 variant="info"

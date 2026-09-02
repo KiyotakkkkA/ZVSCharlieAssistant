@@ -12,7 +12,6 @@ import {
   InputBig,
   Modal,
   ScrollArea,
-  Select,
   Tooltip,
   type SelectOption,
 } from "@kiyotakkkka/zvs-uikit-lib";
@@ -28,6 +27,7 @@ import {
   TasksIcon,
   ModelOrientedSelect,
 } from "../../atoms";
+import { BasicSelect } from "../../atoms/basic";
 
 export type ChatMode = "chat" | "planner" | "agent" | "scenario";
 export type ChatModel = string;
@@ -265,7 +265,7 @@ export function ChatComposer(props: ChatComposerProps) {
                 </Dropdown>
               </div>
               {props.mode === "agent" ? (
-                <Select
+                <BasicSelect
                   disabled={props.agentOptions.length === 0}
                   className="max-w-48 w-fit shrink-0"
                   value={props.agentId}
@@ -278,24 +278,14 @@ export function ChatComposer(props: ChatComposerProps) {
                   menuWidth={240}
                   classNames={{ search: "mb-3" }}
                   menuPlacement="top-left"
-                >
-                  <Select.Trigger
-                    rounded="rounded-full"
-                    className="h-9 w-full border-0! px-3 text-xs shadow-none ring-0! hover:bg-main-600/70"
-                  />
-                  <Select.Menu rounded="rounded-3xl">
-                    {props.agentOptions.map((agent) => (
-                      <Select.Option
-                        key={agent.value}
-                        {...agent}
-                        rounded="rounded-full"
-                      />
-                    ))}
-                  </Select.Menu>
-                </Select>
+                  triggerRounded="rounded-full"
+                  triggerClassName="h-9 w-full border-0! px-3 text-xs shadow-none ring-0! hover:bg-main-600/70"
+                  menuRounded="rounded-3xl"
+                  optionRounded="rounded-full"
+                />
               ) : null}
               {props.mode === "scenario" ? (
-                <Select
+                <BasicSelect
                   disabled={props.scenarioOptions.length === 0}
                   className="max-w-56 w-fit shrink-0"
                   value={props.scenarioId}
@@ -312,21 +302,11 @@ export function ChatComposer(props: ChatComposerProps) {
                   emptyMessage="Сценарии не найдены"
                   menuWidth={260}
                   menuPlacement="top-left"
-                >
-                  <Select.Trigger
-                    rounded="rounded-full"
-                    className="h-9 w-full border-0! px-3 text-xs shadow-none ring-0! hover:bg-main-600/70"
-                  />
-                  <Select.Menu rounded="rounded-3xl">
-                    {props.scenarioOptions.map((scenario) => (
-                      <Select.Option
-                        key={scenario.value}
-                        {...scenario}
-                        rounded="rounded-full"
-                      />
-                    ))}
-                  </Select.Menu>
-                </Select>
+                  triggerRounded="rounded-full"
+                  triggerClassName="h-9 w-full border-0! px-3 text-xs shadow-none ring-0! hover:bg-main-600/70"
+                  menuRounded="rounded-3xl"
+                  optionRounded="rounded-full"
+                />
               ) : null}
             </div>
             <div

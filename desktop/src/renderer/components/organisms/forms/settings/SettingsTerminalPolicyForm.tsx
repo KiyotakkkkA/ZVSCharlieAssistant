@@ -6,13 +6,13 @@ import {
   InputCheckBox,
   InputSmall,
   Modal,
-  Select,
   useToasts,
 } from "@kiyotakkkka/zvs-uikit-lib";
+import { BasicSelect } from "../../../atoms/basic";
 import type { UpsertTerminalPolicyInput } from "../../../../../shared/dto";
 import { automationStore, terminalPolicyStore } from "../../../../stores";
 import { Field, ParameterLabel } from "../../../atoms";
-import { PrimaryButton } from "../../../atoms/buttons";
+import { PrimaryButton } from "../../../atoms/basic";
 import { CompactEntitySelector } from "../../../molecules";
 import {
   parseIpcDto,
@@ -145,7 +145,7 @@ export const SettingsTerminalPolicyForm = observer(
               }
               className="w-fit"
             >
-              <Select
+              <BasicSelect
                 value={model.confirmationMode}
                 onChange={(value) =>
                   update(
@@ -158,20 +158,7 @@ export const SettingsTerminalPolicyForm = observer(
                   { value: "risky", label: "Подтверждать рискованные" },
                   { value: "policy", label: "По правилам политики" },
                 ]}
-              >
-                <Select.Trigger />
-                <Select.Menu>
-                  <Select.Option
-                    value="always"
-                    label="Подтверждать каждую команду"
-                  />
-                  <Select.Option
-                    value="risky"
-                    label="Подтверждать рискованные"
-                  />
-                  <Select.Option value="policy" label="По правилам политики" />
-                </Select.Menu>
-              </Select>
+              />
             </Field>
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               <Field

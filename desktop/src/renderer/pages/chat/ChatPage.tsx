@@ -34,7 +34,7 @@ import {
   vectorStoreStore,
 } from "../../stores";
 import { BrainIcon } from "@renderer/components/atoms";
-import { PrimaryButton } from "@renderer/components/atoms/buttons";
+import { PrimaryButton } from "@renderer/components/atoms/basic";
 import { DangerModal } from "@renderer/components/organisms/modals";
 import type { StartRunInput } from "../../../shared/dto";
 import type { Project } from "../../../ipc/contracts";

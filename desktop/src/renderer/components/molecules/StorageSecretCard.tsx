@@ -1,6 +1,6 @@
 import type { SecretEntity } from "../../../ipc/contracts";
 import { KeyIcon } from "../atoms";
-import { ControlButton } from "../atoms/buttons";
+import { ControlButton } from "../atoms/basic";
 
 interface StorageSecretCardProps {
   secret: SecretEntity;

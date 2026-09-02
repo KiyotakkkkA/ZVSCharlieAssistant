@@ -1,6 +1,6 @@
 import type { AutomationSkill } from "../../../ipc/contracts";
 import { EntityStatusBadge, SkillIcon } from "../atoms";
-import { ControlButton } from "../atoms/buttons";
+import { ControlButton } from "../atoms/basic";
 
 interface AutomationSkillCardProps {
   skill: AutomationSkill;

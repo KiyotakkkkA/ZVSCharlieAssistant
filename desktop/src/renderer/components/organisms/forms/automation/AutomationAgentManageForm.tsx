@@ -5,7 +5,6 @@ import {
   InputBig,
   InputCheckBox,
   InputSmall,
-  Select,
   Tabs,
 } from "@kiyotakkkka/zvs-uikit-lib";
 import type { AutomationAgent } from "../../../../../ipc/contracts";
@@ -22,7 +21,7 @@ import {
   memoryStore,
 } from "../../../../stores";
 import { Field } from "../../../atoms";
-import { PrimaryButton } from "../../../atoms/buttons";
+import { BasicSelect, PrimaryButton } from "../../../atoms/basic";
 import { CompactEntitySelector } from "../../../molecules";
 
 interface AutomationAgentManageFormProps {
@@ -377,7 +376,7 @@ export const AutomationAgentManageForm = observer(
                 />
               </Field>
               <Field label="Статус" className="w-fit">
-                <Select
+                <BasicSelect
                   className="w-fit"
                   value={status}
                   onChange={(value) => setStatus(value as AutomationStatus)}
@@ -386,14 +385,7 @@ export const AutomationAgentManageForm = observer(
                     { value: "active", label: "Активен" },
                     { value: "disabled", label: "Отключён" },
                   ]}
-                >
-                  <Select.Trigger className="w-full" />
-                  <Select.Menu>
-                    <Select.Option value="draft" label="Черновик" />
-                    <Select.Option value="active" label="Активен" />
-                    <Select.Option value="disabled" label="Отключён" />
-                  </Select.Menu>
-                </Select>
+                />
               </Field>
             </FormSection>
 
@@ -419,7 +411,7 @@ export const AutomationAgentManageForm = observer(
               title="Модель"
               description="Текстовая модель, которая будет использоваться агентом для обработки запросов."
             >
-              <Select
+              <BasicSelect
                 className="w-full"
                 value={textModelId}
                 onChange={setTextModelId}
@@ -430,18 +422,7 @@ export const AutomationAgentManageForm = observer(
                 placeholder="Выберите модель"
                 searchable
                 classNames={{ search: "mb-3" }}
-              >
-                <Select.Trigger />
-                <Select.Menu>
-                  {textProviderStore.enabledModels.map((item) => (
-                    <Select.Option
-                      key={item.id}
-                      value={String(item.id)}
-                      label={textProviderStore.modelLabel(item.id)}
-                    />
-                  ))}
-                </Select.Menu>
-              </Select>
+              />
             </FormSection>
 
             <FormSection
@@ -639,7 +620,7 @@ export const AutomationAgentManageForm = observer(
                   Разрешить этому агенту использовать терминал
                 </InputCheckBox>
                 <Field label="Подтверждение" className="max-w-md">
-                  <Select
+                  <BasicSelect
                     value={terminalConfirmationMode}
                     onChange={(value) =>
                       setTerminalConfirmationMode(
@@ -647,14 +628,7 @@ export const AutomationAgentManageForm = observer(
                       )
                     }
                     options={availableConfirmationModeOptions}
-                  >
-                    <Select.Trigger />
-                    <Select.Menu>
-                      {availableConfirmationModeOptions.map((option) => (
-                        <Select.Option key={option.value} {...option} />
-                      ))}
-                    </Select.Menu>
-                  </Select>
+                  />
                 </Field>
                 <Field label="Таймаут команды, сек." className="max-w-xs">
                   <InputSmall

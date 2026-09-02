@@ -4,8 +4,8 @@ import {
   InputBig,
   InputCheckBox,
   InputSmall,
-  Select,
 } from "@kiyotakkkka/zvs-uikit-lib";
+import { BasicSelect } from "../../../../atoms/basic";
 import type { ConditionRule } from "../../../../../../shared/scenario/descriptors/flow";
 import type { ScenarioNode } from "../../../../../../shared/scenario/graph";
 import {
@@ -20,7 +20,7 @@ import {
   ModelOrientedSelect,
   PlusIcon,
 } from "../../../../atoms";
-import { ControlButton } from "../../../../atoms/buttons";
+import { ControlButton } from "../../../../atoms/basic";
 import { ExpressionField } from "../../../../molecules";
 import { ConditionGroupEditor } from "./ConditionGroupEditor";
 import { NODE_FIELDS } from "./node-fields.registry";
@@ -363,7 +363,7 @@ function OptionSelect({
   onChange(value: string): void;
 }) {
   return (
-    <Select
+    <BasicSelect
       value={value}
       onChange={onChange}
       options={options}
@@ -371,18 +371,7 @@ function OptionSelect({
       placeholder={placeholder}
       searchable={options.length > 8}
       classNames={{ search: "mb-3" }}
-    >
-      <Select.Trigger className="w-full" />
-      <Select.Menu>
-        {options.map((option) => (
-          <Select.Option
-            key={option.value}
-            value={option.value}
-            label={option.label}
-          />
-        ))}
-      </Select.Menu>
-    </Select>
+    />
   );
 }
 

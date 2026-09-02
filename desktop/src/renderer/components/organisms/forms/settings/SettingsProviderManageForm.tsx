@@ -6,9 +6,9 @@ import {
   InputCheckBox,
   InputSmall,
   ScrollArea,
-  Select,
   useToasts,
 } from "@kiyotakkkka/zvs-uikit-lib";
+import { BasicSelect } from "../../../atoms/basic";
 import type { TextProviderLimits } from "../../../../../shared/dto";
 import type { TextProviderModelInfo } from "../../../../../shared/models/text-provider";
 import type {
@@ -187,7 +187,7 @@ export function SettingsProviderManageForm({
               />
             </Field>
             <Field label="Поставщик модели">
-              <Select
+              <BasicSelect
                 searchable
                 className="w-full"
                 value={model.kind}
@@ -206,14 +206,7 @@ export function SettingsProviderManageForm({
                   { value: "mistral", label: "Mistral" },
                 ]}
                 classNames={{ search: "mb-3" }}
-              >
-                <Select.Trigger className="w-full" />
-                <Select.Menu>
-                  <Select.Option value="ollama" label="Ollama" />
-                  <Select.Option value="openrouter" label="OpenRouter" />
-                  <Select.Option value="mistral" label="Mistral" />
-                </Select.Menu>
-              </Select>
+              />
             </Field>
             <Field label="Base API URL" className="md:col-span-2">
               <InputSmall

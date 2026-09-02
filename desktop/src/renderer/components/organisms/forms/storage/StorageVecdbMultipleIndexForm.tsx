@@ -1,10 +1,10 @@
 import {
   Button,
   Modal,
-  Select,
   Switcher,
   useToasts,
 } from "@kiyotakkkka/zvs-uikit-lib";
+import { BasicSelect } from "../../../atoms/basic";
 import { observer } from "mobx-react-lite";
 import { useEffect, useMemo, useState } from "react";
 import type { VectorDirectoryPreview } from "../../../../../ipc/contracts";
@@ -174,21 +174,15 @@ export const StorageVecdbMultipleIndexForm = observer(
               title="Коннектор"
               description="Подключение из раздела «Интеграции»"
             >
-              <Select
+              <BasicSelect
                 value={connectorId}
                 onChange={setConnectorId}
                 options={connectors}
                 placeholder="Выберите коннектор"
                 emptyMessage="Подходящих коннекторов нет"
                 className="w-full"
-              >
-                <Select.Trigger className="w-full" />
-                <Select.Menu rounded="rounded-2xl">
-                  {connectors.map((connector) => (
-                    <Select.Option key={connector.value} {...connector} />
-                  ))}
-                </Select.Menu>
-              </Select>
+                menuRounded="rounded-2xl"
+              />
             </FormRow>
           )}
 

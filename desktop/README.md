@@ -1,80 +1,129 @@
-# ZVS Desktop
+# ZVS Assistant — desktop client
 
-Electron-приложение на Vite, React, TypeScript и Tailwind CSS 4 для Node.js 26+.
+Electron application built with Vite, React, TypeScript and Tailwind CSS 4,
+targeting Node.js 26+. It connects to ZVS ID so the assistant can act on
+behalf of a signed-in account.
 
-## Архитектура
+## Contents
 
-- `src/host` — Electron main process и прикладной жизненный цикл.
-- `src/ipc` — общие контракты, main-handlers и preload-адаптер.
-- `src/renderer` — изолированный React UI.
-- `src/renderer/components` — Atomic Design: atoms, molecules, organisms,
-  templates; страницы находятся в `pages`.
+- [Architecture](#architecture)
+- [Commands](#commands)
+- [Connecting ZVS ID](#connecting-zvs-id)
+- [Registering the client in ZVS ID](#registering-the-client-in-zvs-id)
+- [Environment variables](#environment-variables)
+- [Packaging](#packaging)
 
-Renderer работает с host только через типизированный `window.desktop`.
-`nodeIntegration` отключён, `contextIsolation` и sandbox включены.
+## Architecture
 
-## Команды
+| Path                        | Contents                                              |
+| --------------------------- | ----------------------------------------------------- |
+| `src/host`                  | Electron main process and application lifecycle       |
+| `src/ipc`                   | Shared contracts, main handlers, preload adapter      |
+| `src/renderer`              | Isolated React UI                                     |
+| `src/renderer/components`   | Atomic Design: atoms, molecules, organisms, templates |
 
-```bash
+The renderer talks to the host only through the typed `window.desktop` bridge.
+`nodeIntegration` is off; `contextIsolation` and the sandbox are on.
+
+The application does not register a URL scheme with the operating system. It
+launches like any other program, and the ZVS ID connection starts from inside
+it — see [ADR-0004](../docs/adr/0004-drop-the-zvsdesk-scheme.md). The website
+only hands out the installer.
+
+## Commands
+
+```sh
 npm install
 npm run dev
 npm run typecheck
+npm run test
 npm run build
 ```
 
-## Подключение ZVS ID
+## Connecting ZVS ID
 
-Настройки → «ZVS ID» → «Подключить». Вход открывается в системном браузере,
-код возвращается на временный `http://127.0.0.1:<порт>/callback`, токены
-шифруются через `safeStorage` и лежат в `userData/zvs-id.json`.
-Решение и отвергнутые варианты — [ADR-0001](../docs/adr/0001-zvs-id-desktop-authentication.md).
+**Settings → Account → Connect.** The sign-in page opens in the system
+browser, the authorization code comes back to a temporary
+`http://127.0.0.1:<port>/callback`, and the tokens are encrypted with
+`safeStorage` and stored in `userData/zvs-id.json`. The reasoning, and the
+options rejected, are in
+[ADR-0001](../docs/adr/0001-zvs-id-desktop-authentication.md).
 
-Приложение не хранит client_id внутри себя. При старте оно спрашивает его у
-сервера по адресу из `ZVS_ID_CLIENT_CONFIG_URL` и кладёт ответ в
-`userData/zvs-id-client.json`. Если сервер недоступен, берётся последнее
-сохранённое значение, поэтому офлайн-запуск работает. Смена client_id на
-сервере подхватывается сама, пересобирать приложение не нужно.
+The binary contains no `client_id`. At startup it asks the server for one at
+`ZVS_ID_CLIENT_CONFIG_URL` and caches the answer in
+`userData/zvs-id-client.json`. If the server is unreachable the cached value
+is used, so an offline launch still works. Rotating the `client_id` on the
+server is picked up automatically — no rebuild, no reinstall.
 
-Что настроить один раз со стороны ZVS ID:
+The response is only trusted so far: if it names an issuer other than the one
+compiled into the binary, it is rejected. A hijacked API cannot point users at
+a different identity provider.
 
-1. `hub.zvsd.ru` → «Интеграции» → «Приложения» → создать OIDC-приложение.
-2. Тип приложения — **native**, метод аутентификации — **none** (публичный
-   клиент, `client_secret` не используется).
-3. Redirect URI — `http://127.0.0.1:*/callback`, порт эфемерный.
-4. Grant types — `authorization_code` и `refresh_token`.
-5. Полученный client_id положить в `ZVS_ASSISTANT_CLIENT_ID` в `docker/.env.*`
-   и перезапустить backend.
+Dynamic client registration (RFC 7591) would have avoided this exchange
+entirely, but Zitadel advertises no `registration_endpoint`, so a client
+cannot register itself.
 
-Проверить, что сервер отдаёт настройки:
+## Registering the client in ZVS ID
 
-```bash
+One-time setup, done in the ZVS ID web app rather than the Zitadel console:
+
+1. Open `hub.zvsd.ru` → **Integrations** → **Applications** → create an OIDC
+   application.
+2. Application type **Native**, client authentication **None (PKCE)** — a
+   public client holds no secret.
+3. Grant types **Authorization Code** and **Refresh Token**. Without the
+   refresh grant, signing in appears to work but the connection is lost on the
+   next launch.
+4. Redirect URI: a concrete loopback address such as
+   `http://127.0.0.1:8123/callback`.
+5. Put the resulting **Client ID** — not the App ID, which looks confusingly
+   similar — into `ZVS_ASSISTANT_CLIENT_ID` in `docker/.env.*`, then restart
+   the backend.
+
+The loopback server binds port `0`, so the real port differs on every run.
+Zitadel ignores the port when matching loopback redirect URIs, as RFC 8252
+§7.3 recommends, so the port registered above does not matter.
+
+Check that the server hands out the configuration:
+
+```sh
 curl https://api.zvsd.ru/library/apps/zvs-assistant/oauth-client
 ```
 
-Пока переменная пуста, эндпоинт отвечает 503 с пояснением, а форма в
-настройках показывает предупреждение и не даёт нажать «Подключить».
+While the variable is empty this returns `503` with an explanation, and the
+settings screen shows a warning instead of letting **Connect** be pressed.
 
-Переменные окружения самого приложения нужны только чтобы что-то переопределить:
+To verify the Zitadel side, run from `ZVSMain/backend`:
 
-| Переменная                 | По умолчанию                                                  | Назначение                            |
-| -------------------------- | ------------------------------------------------------------- | ------------------------------------- |
-| `ZVS_ID_CLIENT_CONFIG_URL` | `https://api.zvsd.ru/library/apps/zvs-assistant/oauth-client` | откуда брать client_id                |
-| `ZVS_ID_CLIENT_ID`         | —                                                             | жёстко задать client_id, минуя сервер |
-| `ZVS_ID_ISSUER`            | `https://id.zvsd.ru`                                          | issuer для discovery                  |
-| `ZVS_ID_AUTHORIZE_URL`     | `https://hub.zvsd.ru/oauth/authorize`                         | экран согласия ZVS ID                 |
-| `ZVS_ID_SCOPES`            | `openid profile email offline_access`                         | запрашиваемые права                   |
+```sh
+npm run check:desktop-app -- <clientId>
+```
 
-`ZVS_ID_CLIENT_ID` имеет приоритет над сервером — удобно, когда нужно
-проверить приложение против локального стенда.
+## Environment variables
 
-Динамическая регистрация клиента (RFC 7591) тут не подошла бы: Zitadel не
-объявляет `registration_endpoint` в discovery, так что зарегистрировать себя
-сам клиент не может.
+All optional — they exist to override the defaults, typically to point a build
+at a local stack.
 
-## Запуск и подключение
+| Variable                   | Default                                                       | Purpose                                |
+| -------------------------- | ------------------------------------------------------------- | -------------------------------------- |
+| `ZVS_ID_CLIENT_CONFIG_URL` | `https://api.zvsd.ru/library/apps/zvs-assistant/oauth-client` | Where the `client_id` comes from       |
+| `ZVS_ID_CLIENT_ID`         | —                                                             | Pin a `client_id`, skipping the server |
+| `ZVS_ID_ISSUER`            | `https://id.zvsd.ru`                                          | Issuer used for discovery              |
+| `ZVS_ID_AUTHORIZE_URL`     | `https://hub.zvsd.ru/oauth/authorize`                         | ZVS ID consent screen                  |
+| `ZVS_ID_SCOPES`            | `openid profile email offline_access`                         | Requested scopes                       |
 
-Приложение не регистрирует собственную схему в системе — см.
-[ADR-0004](../docs/adr/0004-drop-the-zvsdesk-scheme.md). Запускается оно
-как обычная программа, а подключение ZVS ID начинается изнутри: настройки
-→ «Аккаунт» → «Подключить». Сайт на `hub.zvsd.ru/library` только раздаёт
-установщик.
+`ZVS_ID_CLIENT_ID` takes precedence over the server.
+
+These are read from the environment **at runtime**, on the user's machine —
+`electron-vite` does not inline `process.env` into the main bundle. Setting one
+at build time has no effect on the shipped application.
+
+## Packaging
+
+`npm run dist:win` produces an NSIS installer in `release/`. Configuration
+lives in `electron-builder.yml`; the full procedure, including the release
+manifest and publishing, is in
+[`../docs/DEPLOYMENT.md`](../docs/DEPLOYMENT.md).
+
+Auto-updates stay disabled until the installer is code-signed — an update
+channel is a code-execution channel.

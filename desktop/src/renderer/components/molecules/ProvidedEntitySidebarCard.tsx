@@ -11,7 +11,7 @@ import {
   TelegramIcon,
 } from "../atoms";
 import type { SvgIcon } from "../atoms";
-import { ControlButton } from "../atoms/buttons";
+import { ControlButton } from "../atoms/basic";
 import { ProvidedEntityStatus } from "src/shared/dto/shared";
 import { VectorStoreStatus } from "src/shared/models/vector-store";
 

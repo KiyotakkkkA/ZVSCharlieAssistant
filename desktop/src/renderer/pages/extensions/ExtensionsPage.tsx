@@ -9,7 +9,7 @@ import {
   useToasts,
 } from "@kiyotakkkka/zvs-uikit-lib";
 import { PageHeader } from "@renderer/components/organisms";
-import { PrimaryButton } from "@renderer/components/atoms/buttons";
+import { PrimaryButton } from "@renderer/components/atoms/basic";
 import { PuzzleIcon, ScriptIcon } from "@renderer/components/atoms";
 import { extensionStore } from "@renderer/stores";
 

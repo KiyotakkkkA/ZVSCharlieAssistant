@@ -1,8 +1,8 @@
 import {
   InputCheckSlided,
   InputSmall,
-  Select,
 } from "@kiyotakkkka/zvs-uikit-lib";
+import { BasicSelect } from "../../../atoms/basic";
 import type { UpsertIntegrationProfileInput } from "../../../../../shared/dto";
 import { SYSTEM_SECRET_CATEGORY_IDS } from "../../../../../shared/entity-ids";
 import type { IntegrationConnectionMetadata } from "../../../../../shared/models/integration";
@@ -50,17 +50,12 @@ export function SettingsIntegrationsBotsForm({
         </Field>
 
         <Field label="Поставщик бота">
-          <Select
+          <BasicSelect
             value={value.config.botProvider ?? "telegram"}
             onChange={() => patchConfig({ botProvider: "telegram" })}
             options={[{ value: "telegram", label: "Telegram" }]}
             className="w-full"
-          >
-            <Select.Trigger className="w-full" />
-            <Select.Menu>
-              <Select.Option value="telegram" label="Telegram" />
-            </Select.Menu>
-          </Select>
+          />
         </Field>
 
         <Field className="col-span-2" label="Токен бота">

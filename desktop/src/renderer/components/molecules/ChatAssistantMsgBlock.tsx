@@ -11,7 +11,7 @@ import remarkGfm from "remark-gfm";
 import type { ChatToolCall } from "../../../ipc/contracts";
 import type { ChatMessageContentPart } from "../../../shared/dto";
 import { ChatIcon } from "../atoms";
-import { ControlButton } from "../atoms/buttons";
+import { ControlButton } from "../atoms/basic";
 import {
   isFileSystemTool,
   CompactToolAskUserBlock,

@@ -8,7 +8,7 @@ import {
   useToasts,
 } from "@kiyotakkkka/zvs-uikit-lib";
 import { RobotIcon } from "../../../components/atoms";
-import { PrimaryButton } from "../../../components/atoms/buttons";
+import { PrimaryButton } from "../../../components/atoms/basic";
 
 import type { TextProviderType } from "../../../../shared/dto";
 import { textProviderStore } from "../../../stores";

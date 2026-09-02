@@ -30,7 +30,6 @@ export const ControlButton = ({
   disabled?: boolean;
   icon?: keyof typeof ICONS;
   title?: string;
-  loading?: boolean;
   variant?: "manage" | "delete";
   onClick?: () => void;
 }) => (

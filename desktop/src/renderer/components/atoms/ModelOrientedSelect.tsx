@@ -1,17 +1,14 @@
-import { Select, type SelectProps } from "@kiyotakkkka/zvs-uikit-lib";
 import { observer } from "mobx-react-lite";
 import { textProviderStore } from "../../stores";
+import { BasicSelect, type BasicSelectProps } from "./basic";
 
 type ModelOrientedSelectVariant = "ghost" | "select";
 
 interface ModelOrientedSelectProps extends Omit<
-  SelectProps,
-  "children" | "options" | "variant"
+  BasicSelectProps,
+  "options"
 > {
   variant?: ModelOrientedSelectVariant;
-  triggerClassName?: string;
-  menuClassName?: string;
-  optionClassName?: string;
 }
 
 const PROVIDER_LABELS = {
@@ -42,36 +39,25 @@ export const ModelOrientedSelect = observer(function ModelOrientedSelect({
   const ghost = variant === "ghost";
 
   return (
-    <Select
+    <BasicSelect
       {...selectProps}
       options={options}
-      className={`${ghost && "w-fit! shrink-0"} ${className ?? ""}`}
+      className={`${ghost ? "w-fit! shrink-0" : ""} ${className ?? ""}`.trim()}
       placeholder={options.length ? placeholder : emptyMessage}
       emptyMessage={emptyMessage}
       disabled={selectProps.disabled || options.length === 0}
       searchable
       classNames={{ search: "mb-3" }}
-    >
-      <Select.Trigger
-        rounded={ghost ? "rounded-full" : undefined}
-        className={`${
-          ghost &&
-          "h-9 border-0! px-3 text-xs shadow-none ring-0! hover:bg-main-600/70"
-        } ${triggerClassName ?? ""}`}
-      />
-      <Select.Menu
-        rounded={ghost ? "rounded-3xl" : undefined}
-        className={menuClassName}
-      >
-        {options.map((option) => (
-          <Select.Option
-            key={option.value}
-            {...option}
-            rounded={ghost ? "rounded-full" : undefined}
-            className={optionClassName}
-          />
-        ))}
-      </Select.Menu>
-    </Select>
+      triggerRounded={ghost ? "rounded-full" : undefined}
+      triggerClassName={`${
+        ghost
+          ? "h-9 border-0! px-3 text-xs shadow-none ring-0! hover:bg-main-600/70"
+          : ""
+      } ${triggerClassName ?? ""}`.trim()}
+      menuRounded={ghost ? "rounded-3xl" : undefined}
+      menuClassName={menuClassName}
+      optionRounded={ghost ? "rounded-full" : undefined}
+      optionClassName={optionClassName}
+    />
   );
 });

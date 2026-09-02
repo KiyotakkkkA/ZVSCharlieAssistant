@@ -3,7 +3,7 @@ import { observer } from "mobx-react-lite";
 import { Modal, ScrollArea } from "@kiyotakkkka/zvs-uikit-lib";
 import type { MemoryEntry } from "../../../../ipc/contracts";
 import { BrainIcon } from "../../atoms";
-import { ControlButton } from "../../atoms/buttons";
+import { ControlButton } from "../../atoms/basic";
 import { memoryStore } from "../../../stores";
 import { DangerModal } from "../modals";
 

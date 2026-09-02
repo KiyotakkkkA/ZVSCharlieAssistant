@@ -21,7 +21,7 @@ import {
   StorageSecretCategoryCard,
 } from "../../../components/molecules";
 import { secretStorageStore } from "../../../stores";
-import { PrimaryButton } from "@renderer/components/atoms/buttons";
+import { PrimaryButton } from "@renderer/components/atoms/basic";
 import { FormModal, DangerModal } from "@renderer/components/organisms/modals";
 import {
   StorageSecretCategoriesListTable,

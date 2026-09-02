@@ -2,15 +2,15 @@ import {
   Button,
   InputCheckBox,
   InputSmall,
-  Select,
 } from "@kiyotakkkka/zvs-uikit-lib";
+import { BasicSelect } from "../../../../atoms/basic";
 import {
   UNARY_OPERATORS,
   type ComparisonOperator,
   type ConditionRule,
 } from "../../../../../../shared/scenario/descriptors/flow";
 import { PlusIcon } from "../../../../atoms";
-import { ControlButton } from "../../../../atoms/buttons";
+import { ControlButton } from "../../../../atoms/basic";
 import { OPERATOR_OPTIONS } from "./node-fields.registry";
 
 const emptyCondition = (): ConditionRule => ({
@@ -58,25 +58,14 @@ export function ConditionGroupEditor({
                   className="w-full font-mono text-xs"
                 />
                 <div className="flex gap-2">
-                  <Select
+                  <BasicSelect
                     value={condition.operator}
                     onChange={(operator) =>
                       patch(index, { operator: operator as ComparisonOperator })
                     }
                     options={OPERATOR_OPTIONS}
                     className="w-40 shrink-0"
-                  >
-                    <Select.Trigger className="w-full" />
-                    <Select.Menu>
-                      {OPERATOR_OPTIONS.map((option) => (
-                        <Select.Option
-                          key={option.value}
-                          value={option.value}
-                          label={option.label}
-                        />
-                      ))}
-                    </Select.Menu>
-                  </Select>
+                  />
                   {unary ? null : (
                     <InputSmall
                       value={String(condition.right ?? "")}

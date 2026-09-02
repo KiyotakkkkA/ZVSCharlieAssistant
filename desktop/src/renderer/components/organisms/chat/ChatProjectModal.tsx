@@ -13,7 +13,7 @@ import {
 import type { Project } from "../../../../ipc/contracts";
 import type { DirectoryPermission } from "../../../../shared/dto";
 import { FolderIcon, ParameterLabel } from "../../atoms";
-import { ControlButton, PrimaryButton } from "../../atoms/buttons";
+import { ControlButton, PrimaryButton } from "../../atoms/basic";
 import { projectStore } from "../../../stores/ProjectStore";
 
 const PERMISSIONS: Array<{ value: DirectoryPermission; label: string }> = [

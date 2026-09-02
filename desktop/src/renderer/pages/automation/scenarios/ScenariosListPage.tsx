@@ -13,7 +13,7 @@ import { PageHeader } from "../../../components/organisms";
 import type { AutomationScenario } from "../../../../ipc/contracts";
 import { useAppNavigation } from "../../../hooks";
 import { automationStore } from "../../../stores";
-import { PrimaryButton } from "@renderer/components/atoms/buttons";
+import { PrimaryButton } from "@renderer/components/atoms/basic";
 import { useMemo, useState } from "react";
 import { DangerModal } from "@renderer/components/organisms/modals";
 import { AutomationScenariosListTable } from "@renderer/components/organisms/tables";

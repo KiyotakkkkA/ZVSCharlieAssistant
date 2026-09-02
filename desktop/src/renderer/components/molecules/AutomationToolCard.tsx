@@ -1,6 +1,6 @@
 import type { AutomationTool } from "../../../ipc/contracts";
 import { EntityStatusBadge, ToolsIcon } from "../atoms";
-import { ControlButton } from "../atoms/buttons";
+import { ControlButton } from "../atoms/basic";
 
 interface AutomationToolCardProps {
   tool: AutomationTool;

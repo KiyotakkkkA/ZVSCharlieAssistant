@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { observer } from "mobx-react-lite";
 import { ScrollArea, Tabs, useToasts } from "@kiyotakkkka/zvs-uikit-lib";
-import { PrimaryButton } from "../../../components/atoms/buttons";
+import { PrimaryButton } from "../../../components/atoms/basic";
 import {
   ProvidedEntityManageHeader,
   ProvidedEntitySidebarCard,

@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { observer } from "mobx-react-lite";
 import { EmptyState, ScrollArea, useToasts } from "@kiyotakkkka/zvs-uikit-lib";
 import { StorageIcon } from "../../../components/atoms";
-import { PrimaryButton } from "../../../components/atoms/buttons";
+import { PrimaryButton } from "../../../components/atoms/basic";
 import { PageHeader } from "../../../components/organisms";
 import { vectorStoreStore, type VectorStoreModel } from "../../../stores";
 import { StorageVecdbManageForm } from "@renderer/components/organisms/forms";

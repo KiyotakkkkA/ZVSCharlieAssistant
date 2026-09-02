@@ -2,7 +2,7 @@ import { useEffect, useState, type SubmitEvent } from "react";
 import { Button, InputSmall, useToasts } from "@kiyotakkkka/zvs-uikit-lib";
 import type { SecretCategory } from "../../../../../ipc/contracts";
 import type { UpsertSecretCategoryInput } from "../../../../../shared/dto";
-import { PrimaryButton } from "@renderer/components/atoms/buttons";
+import { PrimaryButton } from "@renderer/components/atoms/basic";
 
 interface StorageSecretCategoryManageFormProps {
   model?: SecretCategory;
@@ -60,6 +60,7 @@ export function StorageSecretCategoryManageForm({
           Отмена
         </Button>
         <PrimaryButton
+          variant={model ? "save" : "create"}
           loading={saving}
           label={model ? "Сохранить" : "Добавить"}
           type="submit"

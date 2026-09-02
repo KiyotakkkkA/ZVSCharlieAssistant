@@ -8,7 +8,7 @@ import type {
 } from "../../../../../shared/dto";
 import { automationStore, directoryPolicyStore } from "../../../../stores";
 import { ParameterLabel } from "../../../atoms";
-import { ControlButton, PrimaryButton } from "../../../atoms/buttons";
+import { ControlButton, PrimaryButton } from "../../../atoms/basic";
 import {
   parseIpcDto,
   upsertDirectoryPolicyDtoSchema,

@@ -1,6 +1,6 @@
 import type { SecretCategory } from "../../../ipc/contracts";
 import { FolderIcon } from "../atoms";
-import { ControlButton } from "../atoms/buttons";
+import { ControlButton } from "../atoms/basic";
 
 interface StorageSecretCategoryCardProps {
   category: SecretCategory;

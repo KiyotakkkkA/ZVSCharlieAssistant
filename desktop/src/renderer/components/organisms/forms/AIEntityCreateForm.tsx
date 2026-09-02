@@ -8,7 +8,7 @@ import {
   useToasts,
 } from "@kiyotakkkka/zvs-uikit-lib";
 import { Field, ModelOrientedSelect } from "../../atoms";
-import { PrimaryButton } from "../../atoms/buttons";
+import { PrimaryButton } from "../../atoms/basic";
 import { entityGenerationStore, textProviderStore } from "../../../stores";
 import type { GeneratedEntityKind } from "../../../../ipc/contracts";
 

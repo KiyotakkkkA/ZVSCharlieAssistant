@@ -1,24 +1,16 @@
 import { observer } from "mobx-react-lite";
-import { Select, type SelectProps } from "@kiyotakkkka/zvs-uikit-lib";
 import { secretStorageStore } from "../../stores";
+import { BasicSelect, type BasicSelectProps } from "./basic";
 
 interface SecretOrientedSelectProps extends Omit<
-  SelectProps,
-  "children" | "options"
+  BasicSelectProps,
+  "options"
 > {
   categoryId: string;
-  className?: string;
-  triggerClassName?: string;
-  menuClassName?: string;
-  optionClassName?: string;
 }
 
 export const SecretOrientedSelect = observer(function SecretOrientedSelect({
   categoryId,
-  className,
-  triggerClassName,
-  menuClassName,
-  optionClassName,
   emptyMessage = "В категории нет доступных секретов",
   ...selectProps
 }: SecretOrientedSelectProps) {
@@ -27,24 +19,12 @@ export const SecretOrientedSelect = observer(function SecretOrientedSelect({
     .map((secret) => ({ value: String(secret.id), label: secret.label }));
 
   return (
-    <Select
+    <BasicSelect
       {...selectProps}
       options={options}
       emptyMessage={emptyMessage}
-      className={className}
       searchable
       classNames={{ search: "mb-3" }}
-    >
-      <Select.Trigger className={triggerClassName} />
-      <Select.Menu className={menuClassName}>
-        {options.map((option) => (
-          <Select.Option
-            key={option.value}
-            {...option}
-            className={optionClassName}
-          />
-        ))}
-      </Select.Menu>
-    </Select>
+    />
   );
 });

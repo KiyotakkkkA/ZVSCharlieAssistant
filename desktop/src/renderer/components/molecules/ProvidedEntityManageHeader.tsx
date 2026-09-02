@@ -12,7 +12,7 @@ import {
   GitlabIcon,
   MistralIcon,
 } from "../atoms";
-import { PrimaryButton } from "../atoms/buttons";
+import { PrimaryButton } from "../atoms/basic";
 
 type SupportedKind = IntegrationKind | TextProviderKind | "vecstore";
 

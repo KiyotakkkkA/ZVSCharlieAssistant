@@ -1,7 +1,7 @@
 import { Table, type TableColumn } from "@kiyotakkkka/zvs-uikit-lib";
 import type { SecretCategory } from "../../../../ipc/contracts";
 import { FolderIcon } from "../../atoms";
-import { ControlButton } from "../../atoms/buttons";
+import { ControlButton } from "../../atoms/basic";
 
 interface Row extends SecretCategory {
   [key: string]: unknown;

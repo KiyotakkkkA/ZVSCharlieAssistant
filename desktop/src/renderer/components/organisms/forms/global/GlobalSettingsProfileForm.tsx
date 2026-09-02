@@ -8,7 +8,7 @@ import {
 } from "@kiyotakkkka/zvs-uikit-lib";
 import { Field, GlobalSettingsLabel } from "../../../atoms";
 import { PROFILE_ANCHORS } from "./settings-sections";
-import { PrimaryButton } from "../../../atoms/buttons";
+import { PrimaryButton } from "../../../atoms/basic";
 import { userProfileStore } from "../../../../stores";
 import {
   parseIpcDto,

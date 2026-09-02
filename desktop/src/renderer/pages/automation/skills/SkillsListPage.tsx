@@ -12,7 +12,7 @@ import type { AutomationSkill } from "../../../../ipc/contracts";
 import { APP_PATHS } from "../../../app/routes";
 import { CreationIcon, SkillIcon } from "../../../components/atoms";
 import { AutomationSkillCard } from "../../../components/molecules";
-import { PrimaryButton } from "../../../components/atoms/buttons";
+import { PrimaryButton } from "../../../components/atoms/basic";
 import { PageHeader } from "../../../components/organisms";
 import { DangerModal } from "../../../components/organisms/modals";
 import { useAppNavigation } from "../../../hooks";

@@ -1,9 +1,6 @@
 import type { AutomationScenario } from "../../../ipc/contracts";
-import {
-  EntityStatusBadge,
-  ScriptIcon,
-} from "../atoms";
-import { ControlButton } from "../atoms/buttons";
+import { EntityStatusBadge, ScriptIcon } from "../atoms";
+import { ControlButton } from "../atoms/basic";
 
 interface AutomationScenarioCardProps {
   scenario: AutomationScenario;

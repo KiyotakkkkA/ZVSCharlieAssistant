@@ -1,6 +1,6 @@
 import { Table, type TableColumn } from "@kiyotakkkka/zvs-uikit-lib";
 import type { AutomationSkill } from "../../../../ipc/contracts";
-import { ControlButton } from "../../atoms/buttons";
+import { ControlButton } from "../../atoms/basic";
 import { EntityStatusBadge } from "@renderer/components/atoms";
 
 interface Row extends AutomationSkill {

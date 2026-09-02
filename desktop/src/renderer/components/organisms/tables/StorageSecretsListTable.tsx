@@ -1,7 +1,7 @@
 import { Table, type TableColumn } from "@kiyotakkkka/zvs-uikit-lib";
 import type { SecretEntity } from "../../../../ipc/contracts";
 import { KeyIcon } from "../../atoms";
-import { ControlButton } from "../../atoms/buttons";
+import { ControlButton } from "../../atoms/basic";
 
 interface Row extends SecretEntity {
   [key: string]: unknown;

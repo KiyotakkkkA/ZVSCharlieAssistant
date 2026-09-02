@@ -5,7 +5,7 @@ import {
   Tooltip,
 } from "@kiyotakkkka/zvs-uikit-lib";
 import { FolderIcon, PlusIcon } from "../../atoms";
-import { ControlButton } from "../../atoms/buttons";
+import { ControlButton } from "../../atoms/basic";
 
 export interface ChatDialog {
   id: string;

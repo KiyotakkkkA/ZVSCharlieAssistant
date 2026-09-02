@@ -1,6 +1,6 @@
 import { Button, InputBig } from "@kiyotakkkka/zvs-uikit-lib";
 import { memo, useState } from "react";
-import { ControlButton } from "../atoms/buttons";
+import { ControlButton } from "../atoms/basic";
 import { FileIcon } from "../atoms";
 import type { ChatAttachmentPart } from "../../../shared/dto";
 

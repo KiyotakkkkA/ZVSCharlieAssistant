@@ -1,11 +1,11 @@
 import {
   InputSmall,
-  Select,
   Switcher,
   useStyle,
   useToasts,
   type StyleThemePalette,
 } from "@kiyotakkkka/zvs-uikit-lib";
+import { BasicSelect } from "../../../atoms/basic";
 import { useState } from "react";
 import { GlobalSettingsLabel } from "../../../atoms";
 import { APPEARANCE_ANCHORS } from "./settings-sections";
@@ -24,7 +24,7 @@ import {
   DARK_THEME_PRESETS,
   LIGHT_THEME_PRESETS,
 } from "../../../../../default/themes";
-import { PrimaryButton } from "@renderer/components/atoms/buttons";
+import { PrimaryButton } from "@renderer/components/atoms/basic";
 
 type ThemePreset = {
   value: string;
@@ -165,24 +165,13 @@ function ThemeColumn({
   return (
     <article className="min-w-0 py-3">
       <SettingDescription title={title} description={hint} />
-      <Select
+      <BasicSelect
         value={value}
         onChange={onChange}
         options={options}
         placeholder="Выберите палитру"
         className="my-3! w-full!"
-      >
-        <Select.Trigger />
-        <Select.Menu>
-          {options.map(({ value: optionValue, label }) => (
-            <Select.Option
-              key={optionValue}
-              value={optionValue}
-              label={label}
-            />
-          ))}
-        </Select.Menu>
-      </Select>
+      />
       {active ? <PalettePreview palette={active.palette} /> : null}
     </article>
   );

@@ -1,12 +1,8 @@
-import {
-  EntityStatusBadge,
-  ClockIcon,
-  GraphIcon,
-} from "../atoms";
+import { EntityStatusBadge, ClockIcon, GraphIcon } from "../atoms";
 import { APP_PATHS } from "../../app/routes";
 import type { AutomationAgent } from "../../../ipc/contracts";
 import { useAppNavigation } from "../../hooks";
-import { ControlButton } from "../atoms/buttons";
+import { ControlButton } from "../atoms/basic";
 
 interface AutomationAgentCardProps {
   agent: AutomationAgent;

@@ -6,7 +6,6 @@ import {
   InputCheckBox,
   InputCheckBoxGroup,
   InputSmall,
-  Select,
 } from "@kiyotakkkka/zvs-uikit-lib";
 import type { AutomationSkill } from "../../../../../ipc/contracts";
 import type {
@@ -15,7 +14,7 @@ import type {
 } from "../../../../../shared/dto";
 import { automationStore } from "../../../../stores";
 import { Field, ParameterLabel } from "../../../atoms";
-import { PrimaryButton } from "../../../atoms/buttons";
+import { BasicSelect, PrimaryButton } from "../../../atoms/basic";
 
 export const AutomationSkillManageForm = observer(
   function AutomationSkillManageForm({
@@ -172,7 +171,7 @@ export const AutomationSkillManageForm = observer(
             }
             className="w-fit"
           >
-            <Select
+            <BasicSelect
               disabled={readOnly}
               value={status}
               onChange={(value) => setStatus(value as AutomationStatus)}
@@ -181,14 +180,7 @@ export const AutomationSkillManageForm = observer(
                 { value: "active", label: "Активен" },
                 { value: "disabled", label: "Отключён" },
               ]}
-            >
-              <Select.Trigger />
-              <Select.Menu>
-                <Select.Option value="draft" label="Черновик" />
-                <Select.Option value="active" label="Активен" />
-                <Select.Option value="disabled" label="Отключён" />
-              </Select.Menu>
-            </Select>
+            />
           </Field>
         </section>
         <section
@@ -256,6 +248,7 @@ export const AutomationSkillManageForm = observer(
           {!readOnly ? (
             <PrimaryButton
               type="submit"
+              variant="save"
               loading={submitting}
               disabled={
                 submitting ||

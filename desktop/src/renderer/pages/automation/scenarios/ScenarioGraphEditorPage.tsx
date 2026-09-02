@@ -6,7 +6,6 @@ import {
   InputCheckBox,
   InputSmall,
   ScrollArea,
-  Select,
   Tooltip,
   useToasts,
 } from "@kiyotakkkka/zvs-uikit-lib";
@@ -62,6 +61,7 @@ import {
 import { resolvePorts } from "../../../../shared/scenario/node-descriptor";
 import type { AutomationStatus } from "../../../../shared/dto";
 import { newUuidV7 } from "../../../../shared/uuid-v7";
+import { BasicSelect } from "../../../components/atoms/basic";
 
 const NODE_WIDTH = 190;
 const NODE_HEIGHT = 60;
@@ -764,23 +764,12 @@ export const ScenarioGraphEditorPage = observer(
           </div>
 
           <div className="flex items-center gap-2">
-            <Select
+            <BasicSelect
               value={status}
               onChange={(next) => setStatus(next as AutomationStatus)}
               options={scenarioStatusOptions}
               className="w-40"
-            >
-              <Select.Trigger className="w-full" />
-              <Select.Menu>
-                {scenarioStatusOptions.map((option) => (
-                  <Select.Option
-                    key={option.value}
-                    value={option.value}
-                    label={option.label}
-                  />
-                ))}
-              </Select.Menu>
-            </Select>
+            />
             <Button
               className="gap-1.5 px-2"
               variant="ghost"

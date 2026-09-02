@@ -14,7 +14,7 @@ import { PageHeader } from "../../../components/organisms";
 import { useAppNavigation } from "../../../hooks";
 import { automationStore, textProviderStore } from "../../../stores";
 import { useMemo, useState } from "react";
-import { PrimaryButton } from "@renderer/components/atoms/buttons";
+import { PrimaryButton } from "@renderer/components/atoms/basic";
 import type { AutomationAgent } from "../../../../ipc/contracts";
 import { DangerModal } from "@renderer/components/organisms/modals";
 import { AutomationAgentsListTable } from "@renderer/components/organisms/tables";

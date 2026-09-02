@@ -2,15 +2,15 @@ import { useEffect, useMemo, useState, type SubmitEvent } from "react";
 import {
   Button,
   InputSmall,
-  Select,
   useToasts,
 } from "@kiyotakkkka/zvs-uikit-lib";
+import { BasicSelect } from "../../../atoms/basic";
 import type {
   SecretCategory,
   SecretEntity,
 } from "../../../../../ipc/contracts";
 import type { UpsertSecretInput } from "../../../../../shared/dto";
-import { PrimaryButton } from "@renderer/components/atoms/buttons";
+import { PrimaryButton } from "@renderer/components/atoms/basic";
 
 interface StorageSecretManageFormProps {
   categories: SecretCategory[];
@@ -97,21 +97,14 @@ export function StorageSecretManageForm({
         className="grid gap-2 text-sm text-main-200"
       >
         Категория
-        <Select
+        <BasicSelect
           value={categoryId}
           onChange={setCategoryId}
           options={options}
           placeholder="Выберите категорию"
           searchable
           classNames={{ search: "mb-3" }}
-        >
-          <Select.Trigger className="w-full" />
-          <Select.Menu>
-            {options.map((option) => (
-              <Select.Option key={option.value} {...option} />
-            ))}
-          </Select.Menu>
-        </Select>
+        />
       </div>
 
       <label
@@ -139,6 +132,7 @@ export function StorageSecretManageForm({
         </Button>
         <PrimaryButton
           type="submit"
+          variant={model ? "save" : "create"}
           loading={saving}
           disabled={!categoryId}
           label={model ? "Сохранить" : "Добавить"}
