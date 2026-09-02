@@ -60,6 +60,8 @@ import {
   DATA_TRANSFER_IPC_CHANNELS,
   MCP_IPC_CHANNELS,
   type McpSnapshot,
+  ZVS_ID_IPC_CHANNELS,
+  type ZvsIdConnection,
 } from "../contracts";
 import type {
   ImportPreview,
@@ -697,6 +699,31 @@ export const desktopApi: DesktopApi = {
       ipcRenderer.on(MCP_IPC_CHANNELS.snapshotChanged, handler);
       return () =>
         ipcRenderer.removeListener(MCP_IPC_CHANNELS.snapshotChanged, handler);
+    },
+  },
+  zvsId: {
+    status: (): Promise<ZvsIdConnection> =>
+      ipcRenderer.invoke(
+        ZVS_ID_IPC_CHANNELS.status,
+      ) as Promise<ZvsIdConnection>,
+    connect: (): Promise<ZvsIdConnection> =>
+      ipcRenderer.invoke(
+        ZVS_ID_IPC_CHANNELS.connect,
+      ) as Promise<ZvsIdConnection>,
+    cancelConnect: (): Promise<void> =>
+      ipcRenderer.invoke(ZVS_ID_IPC_CHANNELS.cancelConnect) as Promise<void>,
+    disconnect: (): Promise<ZvsIdConnection> =>
+      ipcRenderer.invoke(
+        ZVS_ID_IPC_CHANNELS.disconnect,
+      ) as Promise<ZvsIdConnection>,
+    subscribe: (listener: (connection: ZvsIdConnection) => void) => {
+      const handler = (
+        _event: Electron.IpcRendererEvent,
+        payload: ZvsIdConnection,
+      ) => listener(payload);
+      ipcRenderer.on(ZVS_ID_IPC_CHANNELS.changed, handler);
+      return () =>
+        ipcRenderer.removeListener(ZVS_ID_IPC_CHANNELS.changed, handler);
     },
   },
 };

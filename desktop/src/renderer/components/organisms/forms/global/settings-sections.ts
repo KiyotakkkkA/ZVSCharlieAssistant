@@ -3,10 +3,31 @@ import {
   ApplicationIcon,
   BellIcon,
   CogIcon,
+  IdentifierIcon,
   PaletteIcon,
   StorageIcon,
 } from "../../../atoms";
 import type { GlobalSettingsAnchorDescriptor } from "../../../atoms";
+
+export const ZVS_SECTION = {
+  id: "zvs",
+  label: "ZVS ID",
+  description: "Подключение аккаунта ZVS ID.",
+  keywords: ["zvs", "id", "аккаунт", "интеграция"],
+  icon: IdentifierIcon,
+};
+
+export const ZVS_ANCHORS = {
+  account: {
+    id: "zvs-account",
+    parentId: "zvs",
+    label: "Аккаунт ZVS ID",
+    description:
+      "Подключите единый аккаунт ZVS, чтобы приложение работало от вашего имени в сервисах экосистемы.",
+    keywords: ["zvs", "id", "аккаунт", "вход", "oauth", "openid"],
+    icon: IdentifierIcon,
+  },
+} satisfies Record<string, GlobalSettingsAnchorDescriptor>;
 
 export const APPEARANCE_SECTION = {
   id: "appearance",

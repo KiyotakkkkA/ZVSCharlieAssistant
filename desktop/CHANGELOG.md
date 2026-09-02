@@ -1,0 +1,17 @@
+# Changelog
+
+Формат — [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/),
+версии — [Semantic Versioning](https://semver.org/lang/ru/).
+
+Раздел `[Unreleased]` наполняется по ходу работы. При выпуске он
+переименовывается в номер версии с датой, а сверху заводится новый пустой.
+`npm run release:manifest` собирает из этого файла `RELEASES.json` для
+страницы обновлений и окна «Что нового».
+
+## [Unreleased]
+
+## [0.2.0] — 2026-09-03
+
+### Added
+
+- Добавлена авторизация через ZVS ID.

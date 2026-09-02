@@ -117,6 +117,14 @@ export type { AssistantApi } from "./assistant.contract";
 export { ASSISTANT_IPC_CHANNELS } from "./assistant.contract";
 
 export type {
+  ZvsIdApi,
+  ZvsIdConnection,
+  ZvsIdConnectionStatus,
+  ZvsIdentity,
+} from "./zvs-id.contract";
+export { ZVS_ID_IPC_CHANNELS } from "./zvs-id.contract";
+
+export type {
   McpApi,
   McpSnapshot,
   McpServerState,

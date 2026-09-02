@@ -324,7 +324,7 @@ export function GlobalSettingsDataForm() {
         ) : null}
       </section>
 
-      <section className="space-y-5 border-t border-danger-medium/25 pt-8">
+      <section className="space-y-5 border-t border-main-700/45 pt-8">
         <GlobalSettingsLabel {...DATA_ANCHORS.reset} />
         <div className="flex flex-col gap-4 rounded-xl border border-danger-medium/30 bg-danger-medium/5 p-4 md:flex-row md:items-center md:justify-between">
           <div className="max-w-2xl">

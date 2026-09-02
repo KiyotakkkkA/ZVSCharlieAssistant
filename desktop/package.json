@@ -1,6 +1,6 @@
 {
   "name": "zvs-desktop",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "main": "out/main/index.js",
@@ -18,7 +18,11 @@
     "rebuild:native": "electron-rebuild -f -w better-sqlite3",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck:test": "tsc -p tsconfig.test.json"
+    "typecheck:test": "tsc -p tsconfig.test.json",
+    "dist": "npm run build && electron-builder --publish never",
+    "dist:win": "npm run build && electron-builder --win --publish never",
+    "dist:dir": "npm run build && electron-builder --dir --publish never",
+    "release:manifest": "node scripts/build-release-manifest.mjs"
   },
   "dependencies": {
     "@ai-sdk/mcp": "2.0.40",
@@ -54,6 +58,7 @@
     "@types/react-dom": "^19.2.2",
     "@vitejs/plugin-react": "^5.0.4",
     "electron": "^39.8.10",
+    "electron-builder": "^26.15.3",
     "electron-vite": "^4.0.1",
     "tailwindcss": "^4.1.16",
     "typescript": "^5.9.3",
@@ -71,5 +76,10 @@
   },
   "bin": {
     "zvs": "bin/zvs.mjs"
+  },
+  "description": "Настольный ассистент ZVS",
+  "author": {
+    "name": "ZVS",
+    "email": "support@zvsd.ru"
   }
 }

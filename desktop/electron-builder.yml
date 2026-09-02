@@ -1,0 +1,59 @@
+appId: dev.zvs.assistant
+productName: ZVS Assistant
+copyright: © 2026 ZVS
+
+directories:
+  output: release
+  buildResources: assets
+
+files:
+  - out/**
+  - assets/app_logo.png
+  - assets/app_icon.ico
+  - "!**/*.map"
+  - "!**/*.ts"
+
+extraResources:
+  - from: native
+    to: native
+    filter:
+      - "*.node"
+
+asar: true
+asarUnpack:
+  - "**/*.node"
+
+npmRebuild: true
+
+win:
+  icon: assets/app_logo.png
+  target:
+    - target: nsis
+      arch:
+        - x64
+  artifactName: ZVS-Assistant-Setup-${version}.${ext}
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: ZVS Assistant
+  deleteAppDataOnUninstall: false
+
+linux:
+  icon: assets/app_logo.png
+  category: Utility
+  target:
+    - AppImage
+  artifactName: ZVS-Assistant-${version}.${ext}
+
+mac:
+  icon: assets/app_logo.png
+  category: public.app-category.productivity
+  target:
+    - dmg
+  artifactName: ZVS-Assistant-${version}.${ext}
+
+publish: null

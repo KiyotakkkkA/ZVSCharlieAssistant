@@ -6,4 +6,6 @@ crates/tools/node_modules
 desktop/node_modules
 desktop/out
 desktop/*.tsbuildinfo
-docs/
+docs/*
+!docs/adr/
+!docs/DEPLOYMENT.md

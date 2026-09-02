@@ -13,7 +13,8 @@ export type AppCommand =
   | "new-chat"
   | "open-tasks"
   | "open-scenarios"
-  | "open-settings";
+  | "open-settings"
+  | "open-zvs-id";
 
 export interface AppInfo {
   name: string;
@@ -52,6 +53,7 @@ export interface DesktopApi {
   core: import("./core-interactor.contract").CoreInteractorApi;
   assistant: import("./assistant.contract").AssistantApi;
   mcp: import("./mcp.contract").McpApi;
+  zvsId: import("./zvs-id.contract").ZvsIdApi;
 }
 
 export interface ApplicationSettingsApi {

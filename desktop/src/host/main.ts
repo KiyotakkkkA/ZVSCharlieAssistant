@@ -1,4 +1,4 @@
-import { app, Menu, dialog } from "electron";
+import { app, Menu, dialog, shell } from "electron";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { AppWindowController } from "./infrastructure/electron/app-window.controller";
@@ -163,6 +163,17 @@ import {
   disposeLogger,
   type Logger,
 } from "./infrastructure/observability/logger";
+import { resolveZvsIdConfig } from "./infrastructure/zvs-id/zvs-id.config";
+import { ZvsIdOAuthClient } from "./infrastructure/zvs-id/zvs-id-oauth.client";
+import { ZvsIdClientResolver } from "./infrastructure/zvs-id/zvs-id-client.resolver";
+import { LoopbackCallbackServer } from "./infrastructure/zvs-id/loopback-callback.server";
+import { ZvsIdConnectionStore } from "./infrastructure/zvs-id/zvs-id-connection.store";
+import { ZvsIdService } from "./application/services/zvs-id.service";
+import {
+  registerZvsIdHandlers,
+  removeZvsIdHandlers,
+} from "../ipc/main/register-zvs-id-handlers";
+import { ZVS_ID_IPC_CHANNELS } from "../ipc/contracts";
 
 let database: ReturnType<typeof createSqliteDatabase> | undefined;
 let scenarioJobWorker: ScenarioJobWorker | undefined;
@@ -177,6 +188,7 @@ let engineLogger: Logger | undefined;
 let localBridge: LocalBridgeServer | undefined;
 const appWindow = new AppWindowController();
 let trayController: TrayController | undefined;
+let releaseZvsIdSubscription: (() => void) | undefined;
 const isPrimaryInstance = app.requestSingleInstanceLock();
 const applicationDataReset = new ApplicationDataResetService(
   app.getPath("userData"),
@@ -574,6 +586,22 @@ app.whenReady().then(() => {
     },
   );
 
+  const zvsIdResolver = new ZvsIdClientResolver(
+    resolveZvsIdConfig(),
+    join(app.getPath("userData"), "zvs-id-client.json"),
+  );
+  const zvsId: ZvsIdService = new ZvsIdService(
+    zvsIdResolver,
+    new ZvsIdOAuthClient(() => zvsId.config()),
+    new LoopbackCallbackServer(),
+    new ZvsIdConnectionStore(join(app.getPath("userData"), "zvs-id.json")),
+    (url) => shell.openExternal(url),
+  );
+  registerZvsIdHandlers(zvsId);
+  void zvsId.refreshClient();
+  releaseZvsIdSubscription = zvsId.onChange((connection) =>
+    appWindow.send(ZVS_ID_IPC_CHANNELS.changed, connection),
+  );
   appWindow.create({
     showOnReady: !launchedInBackground,
   });
@@ -699,6 +727,9 @@ function shutdownRuntime(): void {
   removeEntityGenerationHandlers();
   removeIntegrationHandlers();
   removeAssistantHandlers();
+  removeZvsIdHandlers();
+  releaseZvsIdSubscription?.();
+  releaseZvsIdSubscription = undefined;
   if (engineLogger) disposeLogger(engineLogger);
   engineLogger = undefined;
   database?.close();
