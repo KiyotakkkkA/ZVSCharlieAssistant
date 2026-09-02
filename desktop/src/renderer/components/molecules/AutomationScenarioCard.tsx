@@ -1,9 +1,6 @@
 import type { AutomationScenario } from "../../../ipc/contracts";
 import {
-  BlockIcon,
   EntityStatusBadge,
-  CheckIcon,
-  FileClockIcon,
   ScriptIcon,
 } from "../atoms";
 import { ControlButton } from "../atoms/buttons";

@@ -9,7 +9,6 @@ import type { IntegrationConnectionMetadata } from "../../../../../shared/models
 import {
   Field,
   Lead,
-  ParameterLabel,
   SecretOrientedSelect,
 } from "../../../atoms";
 

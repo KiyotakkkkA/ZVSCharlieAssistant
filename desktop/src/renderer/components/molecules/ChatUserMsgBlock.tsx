@@ -7,7 +7,6 @@ import type { ChatAttachmentPart } from "../../../shared/dto";
 export const ChatUserMsgBlock = memo(function ChatUserMsgBlock({
   text,
   attachments = [],
-  usageLabel,
   disabled = false,
   showControls = true,
   onCopy,
@@ -16,7 +15,6 @@ export const ChatUserMsgBlock = memo(function ChatUserMsgBlock({
 }: {
   text: string;
   attachments?: ChatAttachmentPart[];
-  usageLabel?: string;
   disabled?: boolean;
   showControls?: boolean;
   onCopy?: () => void;

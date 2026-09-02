@@ -184,7 +184,6 @@ export class ModelFailover {
 
   record(
     runId: string,
-    conversationId: string,
     change: Omit<ModelSwitch, "at">,
   ): ModelSwitch {
     const entry: ModelSwitch = { ...change, at: new Date().toISOString() };

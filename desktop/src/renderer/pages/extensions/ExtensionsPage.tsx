@@ -10,26 +10,8 @@ import {
 } from "@kiyotakkkka/zvs-uikit-lib";
 import { PageHeader } from "@renderer/components/organisms";
 import { PrimaryButton } from "@renderer/components/atoms/buttons";
-import { CopyIcon, PuzzleIcon, ScriptIcon } from "@renderer/components/atoms";
+import { PuzzleIcon, ScriptIcon } from "@renderer/components/atoms";
 import { extensionStore } from "@renderer/stores";
-
-const QUICK_COMMANDS: Array<{ command: string; description: string }> = [
-  { command: "zvs", description: "интерактивный режим с навигацией" },
-  {
-    command: 'zvs -p "почини падающие тесты"',
-    description: "одна задача и выход",
-  },
-  {
-    command: 'zvs -p "..." --permission-mode plan',
-    description: "только чтение, без правок",
-  },
-  {
-    command: 'zvs -p "..." --json',
-    description: "машинный вывод для скриптов",
-  },
-  { command: "zvs projects", description: "список проектов" },
-  { command: "zvs diff", description: "правки файлов текущего диалога" },
-];
 
 export const ExtensionsPage = observer(function ExtensionsPage() {
   const toasts = useToasts();
@@ -215,35 +197,3 @@ export const ExtensionsPage = observer(function ExtensionsPage() {
     </div>
   );
 });
-
-function PathRow({
-  label,
-  value,
-  onCopy,
-}: {
-  label: string;
-  value: string;
-  onCopy: (value: string) => void;
-}) {
-  return (
-    <div className="min-w-0">
-      <dt className="text-main-500">{label}</dt>
-      <dd className="mt-1 flex items-center gap-2">
-        <span className="min-w-0 flex-1 truncate font-mono text-main-300">
-          {value}
-        </span>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          rounded="rounded-lg"
-          label={`Скопировать ${label.toLowerCase()}`}
-          className="shrink-0 border-0! p-1 shadow-none ring-0! hover:bg-main-700/50"
-          onClick={() => onCopy(value)}
-        >
-          <CopyIcon className="size-4" />
-        </Button>
-      </dd>
-    </div>
-  );
-}

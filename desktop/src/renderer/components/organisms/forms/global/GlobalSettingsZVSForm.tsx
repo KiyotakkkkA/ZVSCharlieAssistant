@@ -8,7 +8,7 @@ const SCOPE_LABELS: Record<string, string> = {
   openid: "Идентификатор аккаунта",
   profile: "Профиль",
   email: "Электронная почта",
-  offline_access: "Доступ без вашего участия",
+  offline_access: "Оффлайн-доступ",
 };
 
 export const GlobalSettingsZVSForm = () => {
@@ -59,7 +59,7 @@ export const GlobalSettingsZVSForm = () => {
     setBusy(true);
     try {
       setConnection(await window.desktop.zvsId.disconnect());
-      toasts.info({ title: "ZVS ID отключён" });
+      toasts.success({ title: "ZVS ID отключён" });
     } catch (error) {
       toasts.danger({
         title: "Не удалось отключить ZVS ID",

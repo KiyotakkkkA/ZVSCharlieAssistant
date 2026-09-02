@@ -1,9 +1,6 @@
 import {
-  BlockIcon,
   EntityStatusBadge,
-  CheckIcon,
   ClockIcon,
-  FileClockIcon,
   GraphIcon,
 } from "../atoms";
 import { APP_PATHS } from "../../app/routes";

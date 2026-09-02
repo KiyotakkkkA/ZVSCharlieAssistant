@@ -19,7 +19,6 @@ import {
   Lead,
   ParameterLabel,
   SearchIcon,
-  StorageIcon,
   TrashIcon,
 } from "../../../atoms";
 import { ControlButton } from "../../../atoms/buttons";
@@ -210,11 +209,6 @@ export const StorageVecdbManageForm = observer(function StorageVecdbManageForm({
             <StorageSummary
               model={model}
               documents={documents}
-              embeddingModelLabel={
-                model.embeddingModelId
-                  ? textProviderStore.modelLabel(model.embeddingModelId)
-                  : "Не выбрана"
-              }
               backgroundIndexing={backgroundIndexing}
               progress={directoryProgress}
               progressLabel={
@@ -652,14 +646,12 @@ function DocumentRow({
 function StorageSummary({
   model,
   documents,
-  embeddingModelLabel,
   backgroundIndexing,
   progress,
   progressLabel,
 }: {
   model: VectorStoreModel;
   documents: VectorDocument[];
-  embeddingModelLabel: string;
   backgroundIndexing: boolean;
   progress: number;
   progressLabel: string;

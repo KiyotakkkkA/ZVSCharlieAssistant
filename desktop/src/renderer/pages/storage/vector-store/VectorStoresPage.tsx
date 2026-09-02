@@ -132,19 +132,3 @@ export const VectorStoresPage = observer(function VectorStoresPage() {
     </section>
   );
 });
-
-function Status({ status }: { status: VectorStoreModel["status"] }) {
-  const labels = {
-    ready: "Готово",
-    indexing: "Индексация",
-    degraded: "Есть ошибки",
-    disabled: "Не настроено",
-  };
-  return (
-    <span
-      className={`mt-2 inline-flex text-[10px] ${status === "ready" ? "text-success-light" : "text-main-500"}`}
-    >
-      {labels[status]}
-    </span>
-  );
-}

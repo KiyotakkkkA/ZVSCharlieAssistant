@@ -1,4 +1,3 @@
-import type { Element, Nodes } from "hast";
 import powershell from "highlight.js/lib/languages/powershell";
 import { common, createLowlight } from "lowlight";
 
@@ -27,6 +26,9 @@ export interface HighlightedCode {
 
 const highlighter = createLowlight(common);
 highlighter.register({ powershell });
+type HighlightNode = ReturnType<
+  typeof highlighter.highlight
+>["children"][number];
 
 const LANGUAGE_ALIASES: Record<string, string> = {
   bat: "dos",
@@ -99,7 +101,7 @@ export function highlightCode(
 }
 
 function appendNode(
-  node: Nodes,
+  node: HighlightNode,
   inheritedClasses: string[],
   lines: SyntaxToken[][],
 ): void {
@@ -128,7 +130,9 @@ function appendText(
   });
 }
 
-function classNames(node: Element): string[] {
+function classNames(
+  node: Extract<HighlightNode, { type: "element" }>,
+): string[] {
   const value = node.properties.className;
   if (!Array.isArray(value)) return [];
   return value.filter((item): item is string => typeof item === "string");

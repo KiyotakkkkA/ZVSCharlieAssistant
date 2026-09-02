@@ -1,9 +1,4 @@
-import {
-  Alert,
-  Button,
-  ScrollArea,
-  useToasts,
-} from "@kiyotakkkka/zvs-uikit-lib";
+import { ScrollArea, useToasts } from "@kiyotakkkka/zvs-uikit-lib";
 import {
   memo,
   useLayoutEffect,
@@ -37,9 +32,6 @@ import {
   type ChatArtifact,
 } from "./ChatArtifactPanel";
 import { DangerModal } from "../modals";
-import { textProviderStore } from "@renderer/stores";
-import { APP_PATHS } from "../../../app/routes";
-import { useAppNavigation } from "../../../hooks";
 
 const EMPTY_SCENARIO_EXECUTIONS = new Map<
   string,
@@ -115,7 +107,6 @@ export function ChatFeed({
   scenarioNodeOutput = EMPTY_SCENARIO_OUTPUT,
 }: ChatFeedProps) {
   const toasts = useToasts();
-  const { goTo } = useAppNavigation();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [openedSources, setOpenedSources] =
     useState<ChatSources>(EMPTY_CHAT_SOURCES);
@@ -235,7 +226,6 @@ export function ChatFeed({
                     key={message.id}
                     text={message.text}
                     attachments={attachmentParts(message.parts)}
-                    usageLabel={message.usageLabel}
                     disabled={actionsDisabled}
                     onCopy={() => void copyMessage(message.text)}
                     onEdit={(text) => onEditMessage(message.id, text)}

@@ -658,7 +658,7 @@ export class RunEngine {
             scheduleFlush();
           },
           onModelSwitch: (modelId, reason, detail) => {
-            const change = this.failover.record(runId, conversationId, {
+            const change = this.failover.record(runId, {
               from: switchFrom,
               to: modelId,
               reason: reason as ModelSwitchReason,
@@ -714,7 +714,7 @@ export class RunEngine {
               ? this.failover.widerContextModel(activeModelId)
               : this.failover.widerOutputModel(activeModelId);
           if (wider) {
-            const change = this.failover.record(runId, conversationId, {
+            const change = this.failover.record(runId, {
               from: activeModelId,
               to: wider,
               reason: limitKind,

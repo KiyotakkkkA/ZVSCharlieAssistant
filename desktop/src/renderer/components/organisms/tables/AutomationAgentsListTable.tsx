@@ -14,12 +14,6 @@ interface Props {
   onDelete: (agent: AutomationAgent) => void;
 }
 
-const labels: Record<AutomationAgent["status"], string> = {
-  active: "Активен",
-  draft: "Черновик",
-  disabled: "Отключён",
-};
-
 export function AutomationAgentsListTable({
   agents,
   modelLabel,

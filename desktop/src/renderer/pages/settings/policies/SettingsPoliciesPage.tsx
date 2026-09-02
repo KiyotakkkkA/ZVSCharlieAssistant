@@ -1,6 +1,5 @@
 import { ScrollArea, Tabs } from "@kiyotakkkka/zvs-uikit-lib";
 import { observer } from "mobx-react-lite";
-import { APP_PATHS } from "../../../app/routes";
 import { PrimaryButton } from "../../../components/atoms/buttons";
 import { PageHeader } from "../../../components/organisms";
 import {
