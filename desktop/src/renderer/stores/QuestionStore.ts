@@ -35,6 +35,13 @@ export class QuestionStore {
     );
   }
 
+  stop() {
+    this.unsubscribe?.();
+    this.unsubscribe = undefined;
+    this.pending = [];
+    this.conversationId = null;
+  }
+
   async load(conversationId: string | null) {
     runInAction(() => (this.conversationId = conversationId));
     if (!conversationId) {

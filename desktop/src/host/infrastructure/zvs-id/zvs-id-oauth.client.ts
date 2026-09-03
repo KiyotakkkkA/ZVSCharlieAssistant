@@ -1,5 +1,5 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
-import type { ZvsIdConfig } from "./zvs-id.config";
+import type { ZvsIdConfig, ZvsIdFetch } from "./zvs-id.config";
 
 export interface PkcePair {
   verifier: string;
@@ -38,7 +38,10 @@ export class ZvsIdOAuthClient {
     expiresAt: number;
   };
 
-  constructor(private readonly readConfig: () => ZvsIdConfig) {}
+  constructor(
+    private readonly readConfig: () => ZvsIdConfig,
+    private readonly request: ZvsIdFetch = globalThis.fetch,
+  ) {}
 
   private get config(): ZvsIdConfig {
     return this.readConfig();
@@ -100,9 +103,11 @@ export class ZvsIdOAuthClient {
 
   async fetchUserInfo(accessToken: string): Promise<UserInfo> {
     const { userinfo_endpoint } = await this.resolveDiscovery();
-    const response = await fetch(userinfo_endpoint, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
+    const response = await this.fetchZvsId(
+      userinfo_endpoint,
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+      "получить профиль пользователя",
+    );
 
     if (!response.ok) {
       throw new Error(
@@ -117,25 +122,33 @@ export class ZvsIdOAuthClient {
     const discovery = await this.resolveDiscovery();
     if (!discovery.revocation_endpoint) return;
 
-    await fetch(discovery.revocation_endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ token, client_id: this.config.clientId }),
-    });
+    await this.fetchZvsId(
+      discovery.revocation_endpoint,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ token, client_id: this.config.clientId }),
+      },
+      "завершить сессию",
+    );
   }
 
   private async requestToken(
     params: Record<string, string>,
   ): Promise<TokenSet> {
     const { token_endpoint } = await this.resolveDiscovery();
-    const response = await fetch(token_endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        client_id: this.config.clientId,
-        ...params,
-      }),
-    });
+    const response = await this.fetchZvsId(
+      token_endpoint,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          client_id: this.config.clientId,
+          ...params,
+        }),
+      },
+      "обменять код авторизации",
+    );
 
     const body = (await response.json().catch(() => null)) as {
       access_token?: string;
@@ -171,7 +184,11 @@ export class ZvsIdOAuthClient {
       return this.discovery.document;
     }
 
-    const response = await fetch(`${issuer}/.well-known/openid-configuration`);
+    const response = await this.fetchZvsId(
+      `${issuer}/.well-known/openid-configuration`,
+      undefined,
+      "загрузить конфигурацию OpenID Connect",
+    );
     if (!response.ok) {
       throw new Error(
         `ZVS ID недоступен: не удалось загрузить конфигурацию (${response.status})`,
@@ -185,6 +202,21 @@ export class ZvsIdOAuthClient {
 
     this.discovery = { issuer, document, expiresAt: now + DISCOVERY_TTL_MS };
     return document;
+  }
+
+  private async fetchZvsId(
+    url: string,
+    init: RequestInit | undefined,
+    action: string,
+  ): Promise<Response> {
+    try {
+      return await this.request(url, {
+        ...init,
+        signal: init?.signal ?? AbortSignal.timeout(20_000),
+      });
+    } catch (cause) {
+      throw new Error(`ZVS ID недоступен: не удалось ${action}`, { cause });
+    }
   }
 }
 

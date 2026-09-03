@@ -5,6 +5,11 @@ export interface ZvsIdConfig {
   scopes: string[];
 }
 
+export type ZvsIdFetch = (
+  input: string,
+  init?: RequestInit,
+) => Promise<Response>;
+
 export interface ZvsIdBaseConfig extends ZvsIdConfig {
   clientConfigUrl: string;
 }

@@ -1,4 +1,4 @@
-import { app, Menu, dialog, shell } from "electron";
+import { app, Menu, dialog, net, shell } from "electron";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { AppWindowController } from "./infrastructure/electron/app-window.controller";
@@ -241,7 +241,6 @@ app.whenReady().then(() => {
     new McpConfigStore(join(app.getPath("userData"), "mcp.json")),
   );
   registerMcpHandlers(mcpService);
-  void mcpService.revalidate();
 
   const reportsRoot = join(
     app.getPath("documents"),
@@ -329,7 +328,6 @@ app.whenReady().then(() => {
     secretRepository,
     scenarioDownloadsRoot,
   );
-  scenarioFileDownloads.start();
   registerIntegrationHandlers(
     new IntegrationProfileService(integrationRepository, secretRepository),
   );
@@ -563,7 +561,6 @@ app.whenReady().then(() => {
         hint: "возможно, запущен другой экземпляр приложения",
       }),
   });
-  localBridge.start();
   registerExtensionHandlers(
     new CliInstallerService(
       app.getPath("userData"),
@@ -589,19 +586,28 @@ app.whenReady().then(() => {
   const zvsIdResolver = new ZvsIdClientResolver(
     resolveZvsIdConfig(),
     join(app.getPath("userData"), "zvs-id-client.json"),
+    (input, init) => net.fetch(input, init),
   );
   const zvsId: ZvsIdService = new ZvsIdService(
     zvsIdResolver,
-    new ZvsIdOAuthClient(() => zvsId.config()),
+    new ZvsIdOAuthClient(
+      () => zvsId.config(),
+      (input, init) => net.fetch(input, init),
+    ),
     new LoopbackCallbackServer(),
     new ZvsIdConnectionStore(join(app.getPath("userData"), "zvs-id.json")),
     (url) => shell.openExternal(url),
   );
   registerZvsIdHandlers(zvsId);
   void zvsId.refreshClient();
-  releaseZvsIdSubscription = zvsId.onChange((connection) =>
-    appWindow.send(ZVS_ID_IPC_CHANNELS.changed, connection),
-  );
+  let runtimeActive = false;
+  let startAuthenticatedRuntime = () => undefined;
+  let stopAuthenticatedRuntime = () => undefined;
+  releaseZvsIdSubscription = zvsId.onChange((connection) => {
+    appWindow.send(ZVS_ID_IPC_CHANNELS.changed, connection);
+    if (connection.status === "connected") startAuthenticatedRuntime();
+    else stopAuthenticatedRuntime();
+  });
   appWindow.create({
     showOnReady: !launchedInBackground,
   });
@@ -673,13 +679,37 @@ app.whenReady().then(() => {
       ),
     ]),
   );
-  scenarioJobWorker.start();
-  intervalScheduleWorker.start();
-  telegramWatchListener.start();
-  mailWatchListener.start();
-  scenarioDeliveryWorker.start();
-  questionSweeper = setInterval(() => questionService.sweepTimeouts(), 30_000);
-  questionSweeper.unref();
+  startAuthenticatedRuntime = () => {
+    if (runtimeActive) return;
+    runtimeActive = true;
+    void mcpService.revalidate();
+    scenarioFileDownloads?.start();
+    localBridge?.start();
+    scenarioJobWorker?.start();
+    intervalScheduleWorker?.start();
+    telegramWatchListener?.start();
+    mailWatchListener?.start();
+    scenarioDeliveryWorker?.start();
+    questionSweeper = setInterval(
+      () => questionService.sweepTimeouts(),
+      30_000,
+    );
+    questionSweeper.unref();
+  };
+  stopAuthenticatedRuntime = () => {
+    if (!runtimeActive) return;
+    runtimeActive = false;
+    if (questionSweeper) clearInterval(questionSweeper);
+    questionSweeper = undefined;
+    scenarioDeliveryWorker?.stop();
+    mailWatchListener?.stop();
+    telegramWatchListener?.stop();
+    intervalScheduleWorker?.stop();
+    scenarioJobWorker?.stop();
+    localBridge?.stop();
+    scenarioFileDownloads?.stop();
+  };
+  if (zvsId.status().status === "connected") startAuthenticatedRuntime();
 
   app.on("activate", () => {
     appWindow.show();

@@ -13,8 +13,7 @@ export type AppCommand =
   | "new-chat"
   | "open-tasks"
   | "open-scenarios"
-  | "open-settings"
-  | "open-zvs-id";
+  | "open-settings";
 
 export interface AppInfo {
   name: string;

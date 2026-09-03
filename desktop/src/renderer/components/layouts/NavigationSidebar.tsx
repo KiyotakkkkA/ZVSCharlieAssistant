@@ -2,6 +2,7 @@ import { NavLink } from "react-router-dom";
 import { Button, Tooltip } from "@kiyotakkkka/zvs-uikit-lib";
 import { useAppNavigation } from "../../hooks";
 import { NavigationTreeItem } from "../molecules";
+import { ZvsProfileCard } from "../molecules/ZvsProfileCard";
 import { ZVSLogoIcon, HorizontalExpandIcon } from "../atoms";
 import { AnimatedSlidedPanel } from "../organisms/AnimatedSlidedPanel";
 import type { NavigationRoute } from "../../app/routes";
@@ -27,8 +28,8 @@ export const NavigationSidebar = () => {
       side="left"
       defaultWidth={240}
       collapsedWidth={56}
-      className="space-y-2 overflow-visible rounded-xl bg-main-800/40 p-2 shadow-sm"
-      contentClassName="min-h-0 flex-1 overflow-visible"
+      className="flex min-h-0 flex-col gap-2 overflow-visible rounded-xl bg-main-800/40 p-2 shadow-sm"
+      contentClassName="flex min-h-0 flex-1 flex-col overflow-visible"
       header={({ collapsed, contentVisible, toggle }) => (
         <div
           className={[
@@ -65,50 +66,60 @@ export const NavigationSidebar = () => {
         </div>
       )}
       collapsedContent={
-        <nav
-          aria-label="Основная навигация"
-          className="space-y-1 overflow-visible"
-        >
-          {compactRoutes.map((route) => {
-            const RouteIcon = route.icon;
-            return (
-              <Tooltip
-                key={route.id}
-                label={route.label}
-                placement="bottom-left"
-                className="block"
-              >
-                <NavLink
-                  data-tour={`nav-${route.id.replace(/^(automation|storage|settings)-/, "")}`}
-                  to={route.path!}
-                  aria-label={route.label}
-                  className={({ isActive }) =>
-                    [
-                      "group grid size-10 place-items-center rounded-lg outline-none",
-                      "transition-colors duration-150 hover:bg-main-700/70",
-                      isActive
-                        ? "bg-main-700/70 text-main-50"
-                        : "text-main-400 hover:text-main-100",
-                    ].join(" ")
-                  }
+        <div className="flex h-full flex-col">
+          <nav
+            aria-label="Основная навигация"
+            className="space-y-1 overflow-visible"
+          >
+            {compactRoutes.map((route) => {
+              const RouteIcon = route.icon;
+              return (
+                <Tooltip
+                  key={route.id}
+                  label={route.label}
+                  placement="bottom-left"
+                  className="block"
                 >
-                  <RouteIcon className="size-5" />
-                </NavLink>
-              </Tooltip>
-            );
-          })}
-        </nav>
+                  <NavLink
+                    data-tour={`nav-${route.id.replace(/^(automation|storage|settings)-/, "")}`}
+                    to={route.path!}
+                    aria-label={route.label}
+                    className={({ isActive }) =>
+                      [
+                        "group grid size-10 place-items-center rounded-lg outline-none",
+                        "transition-colors duration-150 hover:bg-main-700/70",
+                        isActive
+                          ? "bg-main-700/70 text-main-50"
+                          : "text-main-400 hover:text-main-100",
+                      ].join(" ")
+                    }
+                  >
+                    <RouteIcon className="size-5" />
+                  </NavLink>
+                </Tooltip>
+              );
+            })}
+          </nav>
+          <div className="mt-auto flex justify-center pt-2">
+            <ZvsProfileCard collapsed />
+          </div>
+        </div>
       }
     >
-      <nav aria-label="Основная навигация" className="space-y-0.5">
-        {routes.map((route) => (
-          <NavigationTreeItem
-            key={route.id}
-            node={route}
-            currentPath={currentPath}
-          />
-        ))}
-      </nav>
+      <div className="flex h-full flex-col">
+        <nav aria-label="Основная навигация" className="space-y-0.5">
+          {routes.map((route) => (
+            <NavigationTreeItem
+              key={route.id}
+              node={route}
+              currentPath={currentPath}
+            />
+          ))}
+        </nav>
+        <div className="mt-auto pt-2">
+          <ZvsProfileCard collapsed={false} />
+        </div>
+      </div>
     </AnimatedSlidedPanel>
   );
 };

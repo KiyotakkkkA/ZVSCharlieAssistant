@@ -36,17 +36,9 @@ import {
   DATA_ANCHORS,
   DATA_SECTION,
   GlobalSettingsDataForm,
-  ZVS_SECTION,
-  ZVS_ANCHORS,
-  GlobalSettingsZVSForm,
 } from "../organisms/forms";
 
 const SETTINGS_FORMS: GlobalSettingsFormDescriptor[] = [
-  {
-    ...ZVS_SECTION,
-    anchors: Object.values(ZVS_ANCHORS),
-    Component: GlobalSettingsZVSForm,
-  },
   {
     ...PROFILE_SECTION,
     anchors: Object.values(PROFILE_ANCHORS),
@@ -128,9 +120,6 @@ export const Header = observer(function Header() {
             break;
           case "open-settings":
             uiStore.openSettings();
-            break;
-          case "open-zvs-id":
-            uiStore.openSettings(ZVS_ANCHORS.account.id);
             break;
         }
       }),

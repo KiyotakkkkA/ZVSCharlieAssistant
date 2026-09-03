@@ -24,6 +24,8 @@ import {
 } from "../stores";
 import { TerminalApprovalModal } from "../components/organisms/modals";
 import { OnboardingTourOverlay } from "../components/organisms/onboarding";
+import { ZvsIdAuthScreen } from "../components/organisms/ZvsIdAuthScreen";
+import { useZvsIdConnection } from "../hooks/useZvsIdConnection";
 
 const CRITICAL_STORES = [
   ["Секреты", () => secretStorageStore.bootstrap()],
@@ -50,6 +52,8 @@ interface AppProps {
 export function App({ initialPalette }: AppProps) {
   const [failed, setFailed] = useState<string[]>([]);
   const [retrying, setRetrying] = useState(false);
+  const zvsId = useZvsIdConnection();
+  const connected = zvsId.connection?.status === "connected";
 
   const load = useCallback(async () => {
     const run = async (
@@ -69,9 +73,11 @@ export function App({ initialPalette }: AppProps) {
   }, []);
 
   useEffect(() => {
+    if (!connected) return;
     void load();
     questionStore.start();
-  }, [load]);
+    return () => questionStore.stop();
+  }, [connected, load]);
 
   const retry = useCallback(async () => {
     setRetrying(true);
@@ -85,27 +91,39 @@ export function App({ initialPalette }: AppProps) {
   return (
     <StyleProvider initialPalette={initialPalette}>
       <ToastProvider>
-        {failed.length ? (
-          <Alert
-            variant="danger"
-            title="Не удалось загрузить данные"
-            className="m-3 mb-0"
-          >
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <span>Разделы недоступны: {failed.join(", ")}.</span>
-              <Button
-                variant="ghost"
-                loading={retrying}
-                onClick={() => void retry()}
+        {!connected ? (
+          <ZvsIdAuthScreen
+            connection={zvsId.connection}
+            loading={zvsId.loading}
+            busy={zvsId.busy}
+            error={zvsId.error}
+            onConnect={zvsId.connect}
+          />
+        ) : (
+          <>
+            {failed.length ? (
+              <Alert
+                variant="danger"
+                title="Не удалось загрузить данные"
+                className="m-3 mb-0"
               >
-                Повторить
-              </Button>
-            </div>
-          </Alert>
-        ) : null}
-        <Outlet />
-        <TerminalApprovalModal />
-        <OnboardingTourOverlay />
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <span>Разделы недоступны: {failed.join(", ")}.</span>
+                  <Button
+                    variant="ghost"
+                    loading={retrying}
+                    onClick={() => void retry()}
+                  >
+                    Повторить
+                  </Button>
+                </div>
+              </Alert>
+            ) : null}
+            <Outlet />
+            <TerminalApprovalModal />
+            <OnboardingTourOverlay />
+          </>
+        )}
       </ToastProvider>
     </StyleProvider>
   );

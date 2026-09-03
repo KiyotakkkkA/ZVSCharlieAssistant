@@ -1,5 +1,9 @@
 import { readFileSync, writeFileSync } from "node:fs";
-import type { ZvsIdBaseConfig, ZvsIdConfig } from "./zvs-id.config";
+import type {
+  ZvsIdBaseConfig,
+  ZvsIdConfig,
+  ZvsIdFetch,
+} from "./zvs-id.config";
 
 export type ClientIdSource = "env" | "server" | "cache" | "none";
 
@@ -23,6 +27,7 @@ export class ZvsIdClientResolver {
   constructor(
     private readonly base: ZvsIdBaseConfig,
     private readonly cachePath: string,
+    private readonly request: ZvsIdFetch = globalThis.fetch,
   ) {}
 
   current(): ResolvedClient {
@@ -49,7 +54,7 @@ export class ZvsIdClientResolver {
   private async fetchFromServer(): Promise<ResolvedClient> {
     let response: Response;
     try {
-      response = await fetch(this.base.clientConfigUrl, {
+      response = await this.request(this.base.clientConfigUrl, {
         headers: { Accept: "application/json" },
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
