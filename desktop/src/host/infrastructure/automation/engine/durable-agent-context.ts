@@ -99,6 +99,6 @@ export class DurableAgentContext {
   }
 
   markFailed(): void {
-    this.repo.delete(this.conversationId);
+    this.repo.markFailed(this.conversationId);
   }
 }
