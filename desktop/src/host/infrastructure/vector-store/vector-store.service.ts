@@ -28,6 +28,9 @@ import { isBuiltinEmbeddingModelId } from "../../../shared/entity-ids";
 const INGEST_CONCURRENCY = 2;
 const DURATION_WINDOW = 24;
 const EMBED_BATCH = 16;
+const MAX_SEARCH_RESULTS = 20;
+const OVERFETCH_FACTOR = 3;
+const RRF_K = 60;
 
 interface QueuedIngest {
   storeId: string;
@@ -423,12 +426,15 @@ export class VectorStoreService {
       input.scoreThreshold !== undefined &&
       (input.scoreThreshold < 0 || input.scoreThreshold > 1)
     )
-      throw new Error("Порог релевантности должен быть от 0 до 1");
+      throw new Error(
+        "Порог релевантности должен быть от 0 до 1. Он отсекает слабые совпадения внутри каждого хранилища по его собственной шкале, а не сравнивает хранилища между собой",
+      );
     const requestedLimit = input.limit ?? 5;
     if (!Number.isInteger(requestedLimit))
       throw new Error("Количество результатов должно быть целым числом");
-    const limit = Math.min(Math.max(requestedLimit, 1), 20);
-    const results: VectorSearchResultItem[] = [];
+    const limit = Math.min(Math.max(requestedLimit, 1), MAX_SEARCH_RESULTS);
+    const fetchLimit = Math.min(limit * OVERFETCH_FACTOR, MAX_SEARCH_RESULTS);
+    const ranked: VectorSearchResultItem[][] = [];
     const queryVectors = new Map<string, Promise<number[]>>();
     for (const storeId of [...new Set(input.vectorStoreIds)]) {
       const store = this.data.store(storeId);
@@ -448,12 +454,13 @@ export class VectorStoreService {
         query,
         vector,
         store.searchMode,
-        limit,
+        fetchLimit,
       );
+      const items: VectorSearchResultItem[] = [];
       for (const row of rows) {
         const score = row.score;
         if (score < (input.scoreThreshold ?? 0)) continue;
-        results.push({
+        items.push({
           documentId: row.documentId,
           fileName: row.fileName,
           chunkIndex: row.chunkIndex,
@@ -463,8 +470,9 @@ export class VectorStoreService {
           headingPath: row.headingPath ?? "",
         });
       }
+      ranked.push(items);
     }
-    return results.sort((a, b) => b.score - a.score).slice(0, limit);
+    return fuseByRank(ranked, limit);
   }
 
   private async ingest(
@@ -610,6 +618,28 @@ export class VectorStoreService {
 }
 
 class IndexingPausedError extends Error {}
+
+export function fuseByRank(
+  ranked: VectorSearchResultItem[][],
+  limit: number,
+): VectorSearchResultItem[] {
+  const fused = new Map<
+    string,
+    { item: VectorSearchResultItem; weight: number }
+  >();
+  for (const list of ranked)
+    list.forEach((item, index) => {
+      const key = `${item.documentId}:${item.chunkIndex}`;
+      const weight = 1 / (RRF_K + index + 1);
+      const existing = fused.get(key);
+      if (existing) existing.weight += weight;
+      else fused.set(key, { item, weight });
+    });
+  return [...fused.values()]
+    .sort((left, right) => right.weight - left.weight)
+    .slice(0, limit)
+    .map((entry) => entry.item);
+}
 
 function groupByStore(rows: StoredDocumentRow[]) {
   const groups = new Map<string, StoredDocumentRow[]>();

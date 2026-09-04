@@ -453,7 +453,8 @@ export const BUILTIN_AUTOMATION_TOOLS: readonly AutomationTool[] = [
   {
     id: "vecdb_search",
     name: "Поиск в векторной базе",
-    description: "Ищет релевантные фрагменты в разрешённых базах знаний.",
+    description:
+      "Ищет релевантные фрагменты в разрешённых базах знаний. Результаты из нескольких хранилищ объединяются по рангу; scoreThreshold отсекает слабые совпадения внутри каждого хранилища по его собственной шкале.",
     category: "База знаний",
     builtin: true,
     enabled: true,
