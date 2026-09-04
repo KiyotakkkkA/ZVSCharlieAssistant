@@ -43,6 +43,7 @@ import { AutomationRepository } from "./infrastructure/database/automation.repos
 import { BUILTIN_AUTOMATION_TOOLS } from "./infrastructure/automation/builtin-tools.registry";
 import { FileSystemSkillContentStore } from "./infrastructure/filesystem/skill-content.store";
 import { ProviderConnectionService } from "./infrastructure/text-generation/provider-connection.service";
+import { ModelsDevCatalog } from "./infrastructure/text-generation/models-dev.catalog";
 import { TextProviderRepository } from "./infrastructure/database/text-provider.repository";
 import { ChatRepository } from "./infrastructure/database/chat.repository";
 import { ProviderRegistry } from "./infrastructure/text-generation/provider.registry";
@@ -316,7 +317,13 @@ app.whenReady().then(() => {
   registerSecretStorageHandlers(secretRepository);
   const providerRepository = new TextProviderRepository(database);
   registerTextProviderHandlers(
-    new ProviderConnectionService(secretRepository, providerRepository),
+    new ProviderConnectionService(
+      secretRepository,
+      providerRepository,
+      new ModelsDevCatalog(
+        join(app.getPath("userData"), "models-dev-catalog.json"),
+      ),
+    ),
   );
   const chatRepository = new ChatRepository(database);
   registerTaskHandlers(new TaskHistoryRepository(database));

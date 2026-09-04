@@ -2,6 +2,7 @@ import { InputCheckSlided } from "@kiyotakkkka/zvs-uikit-lib";
 import type { TextProviderModelInfo } from "../../../shared/models/text-provider";
 import { OpenInNewIcon, OpenrouterIcon } from "../atoms";
 import { ModelCapabilityChips } from "./ModelCapabilityChips";
+import { ModelCatalogFacts } from "./ModelCatalogFacts";
 import type { ModelCapabilityKey } from "../../../shared/models/model-capabilities";
 
 interface Props {
@@ -73,6 +74,7 @@ export function SettingsProviderOpenrouterModelCard({
           details={model.details}
           onOverride={onCapabilityOverride}
         />
+        <ModelCatalogFacts details={model.details} />
       </div>
       <InputCheckSlided checked={enabled} onChange={onEnabledChange} />
     </article>

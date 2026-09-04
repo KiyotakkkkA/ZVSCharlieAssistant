@@ -124,6 +124,10 @@ export function SettingsProviderManageForm({
   const [capabilityFilter, setCapabilityFilter] = useState<string[]>([]);
   const [freeOnly, setFreeOnly] = useState(false);
   const [noTrainingOnly, setNoTrainingOnly] = useState(false);
+  const [openWeightsOnly, setOpenWeightsOnly] = useState(false);
+  const hasCatalogData = model.models.some(
+    (item) => item.details.catalogSource !== undefined,
+  );
   const visibleModels = model.models.filter((item) => {
     const query = modelQuery.trim().toLocaleLowerCase();
     const matchesQuery =
@@ -145,7 +149,8 @@ export function SettingsProviderManageForm({
       (model.kind !== "openrouter" ||
         !noTrainingOnly ||
         item.details.doesNotTrain === true ||
-        item.details.zeroDataRetention === true)
+        item.details.zeroDataRetention === true) &&
+      (!openWeightsOnly || item.details.openWeights === true)
     );
   });
   const save = async () => {
@@ -447,22 +452,36 @@ export function SettingsProviderManageForm({
                 </Button>
               </div>
             </div>
-            {model.kind === "openrouter" && model.models.length ? (
+            {model.models.length &&
+            (model.kind === "openrouter" || hasCatalogData) ? (
               <div className="mb-3 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-main-700/30 pt-3">
-                <InputCheckBox
-                  checked={freeOnly}
-                  onChange={setFreeOnly}
-                  className="whitespace-nowrap text-xs text-main-300"
-                >
-                  Только бесплатные
-                </InputCheckBox>
-                <InputCheckBox
-                  checked={noTrainingOnly}
-                  onChange={setNoTrainingOnly}
-                  className="whitespace-nowrap text-xs text-main-300"
-                >
-                  Не использует данные для обучения
-                </InputCheckBox>
+                {model.kind === "openrouter" ? (
+                  <>
+                    <InputCheckBox
+                      checked={freeOnly}
+                      onChange={setFreeOnly}
+                      className="whitespace-nowrap text-xs text-main-300"
+                    >
+                      Только бесплатные
+                    </InputCheckBox>
+                    <InputCheckBox
+                      checked={noTrainingOnly}
+                      onChange={setNoTrainingOnly}
+                      className="whitespace-nowrap text-xs text-main-300"
+                    >
+                      Не использует данные для обучения
+                    </InputCheckBox>
+                  </>
+                ) : null}
+                {hasCatalogData ? (
+                  <InputCheckBox
+                    checked={openWeightsOnly}
+                    onChange={setOpenWeightsOnly}
+                    className="whitespace-nowrap text-xs text-main-300"
+                  >
+                    Только открытые веса
+                  </InputCheckBox>
+                ) : null}
               </div>
             ) : null}
             {visibleModels.length ? (
@@ -492,7 +511,8 @@ export function SettingsProviderManageForm({
                 (modelQuery.trim() ||
                   capabilityFilter.length ||
                   freeOnly ||
-                  noTrainingOnly)
+                  noTrainingOnly ||
+                  openWeightsOnly)
                   ? "Модели не соответствуют выбранным фильтрам. Синхронизируйте список, если провайдер был проверен до добавления фильтров."
                   : model.status === "error"
                     ? "Исправьте параметры и повторите проверку подключения."

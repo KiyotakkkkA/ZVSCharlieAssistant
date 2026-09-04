@@ -8,6 +8,7 @@ export { StorageSecretCard } from "./StorageSecretCard";
 export { StorageSecretCategoryCard } from "./StorageSecretCategoryCard";
 export { NavigationTreeItem } from "./NavigationTreeItem";
 export { ModelCapabilityChips } from "./ModelCapabilityChips";
+export { ModelCatalogFacts } from "./ModelCatalogFacts";
 export { SettingsProviderOllamaModelCard } from "./SettingsProviderOllamaModelCard";
 export { SettingsProviderOpenrouterModelCard } from "./SettingsProviderOpenrouterModelCard";
 export { SettingsProviderMistralModelCard } from "./SettingsProviderMistralModelCard";

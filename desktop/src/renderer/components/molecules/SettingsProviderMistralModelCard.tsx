@@ -3,6 +3,7 @@ import type { TextProviderModelInfo } from "../../../shared/models/text-provider
 import { MistralIcon, OpenInNewIcon } from "../atoms";
 import { formatContext } from "@renderer/lib/format";
 import { ModelCapabilityChips } from "./ModelCapabilityChips";
+import { ModelCatalogFacts } from "./ModelCatalogFacts";
 import type { ModelCapabilityKey } from "../../../shared/models/model-capabilities";
 
 interface Props {
@@ -96,6 +97,7 @@ export function SettingsProviderMistralModelCard({
           details={model.details}
           onOverride={onCapabilityOverride}
         />
+        <ModelCatalogFacts details={model.details} showPricing />
       </div>
       <InputCheckSlided checked={enabled} onChange={onEnabledChange} />
     </article>

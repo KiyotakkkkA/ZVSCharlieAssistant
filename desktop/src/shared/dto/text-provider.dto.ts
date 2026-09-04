@@ -38,6 +38,13 @@ export const textProviderModelDetailsDtoSchema = z.object({
   supportsStructuredOutput: z.boolean().optional(),
   supportsVision: z.boolean().optional(),
   supportsReasoning: z.boolean().optional(),
+  knowledgeCutoff: z.string().optional(),
+  releaseDate: z.string().optional(),
+  lastUpdated: z.string().optional(),
+  openWeights: z.boolean().optional(),
+  cachedInputPrice: z.string().optional(),
+  catalogSource: z.literal("models.dev").optional(),
+  catalogUrl: z.string().optional(),
 });
 export const modelCapabilityOverrideDtoSchema = z.object({
   supportsTools: z.boolean().optional(),

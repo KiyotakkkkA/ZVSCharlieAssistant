@@ -62,6 +62,7 @@ between options. Do not write one for a variable name or a date library.
 | [0002](0002-desktop-update-distribution.md)   | Delivering desktop updates              | Proposed                        |
 | [0003](0003-zvs-id-owns-the-login-ui.md)      | ZVS ID as Zitadel's login UI            | Accepted                        |
 | [0004](0004-drop-the-zvsdesk-scheme.md)       | Dropping the `zvsdesk://` scheme        | Accepted                        |
+| [0005](0005-models-dev-model-catalog.md)      | models.dev as a model-metadata source   | Accepted                        |
 
 The records themselves are written in Russian. They are deliberately left as
 written: an ADR is a dated record of a decision, and rewriting one after the

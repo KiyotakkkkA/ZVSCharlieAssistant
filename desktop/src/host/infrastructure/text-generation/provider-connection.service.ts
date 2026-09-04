@@ -12,6 +12,7 @@ import type {
 import { SecretStorageRepository } from "../database/secret-storage.repository";
 import { describeProviderHttpError } from "./provider-error";
 import { TextProviderRepository } from "../database/text-provider.repository";
+import type { ModelsDevCatalog, ModelsDevEntry } from "./models-dev.catalog";
 
 import { SYSTEM_SECRET_CATEGORY_IDS } from "../../../shared/entity-ids";
 
@@ -416,6 +417,48 @@ function normalizeBaseUrl(value: string): string {
   return url.toString().replace(/\/+$/, "");
 }
 
+function applyCatalogEntry(
+  kind: TextProviderKind,
+  details: TextProviderModelInfo["details"],
+  entry: ModelsDevEntry,
+): void {
+  const local = kind === "ollama";
+  const fill = <K extends keyof typeof details>(
+    key: K,
+    value: (typeof details)[K] | undefined,
+  ) => {
+    if (value !== undefined && details[key] === undefined) details[key] = value;
+  };
+  fill("contextLength", entry.contextLength);
+  fill("maxCompletionTokens", entry.maxCompletionTokens);
+  if (!local) {
+    fill("promptPrice", entry.promptPrice);
+    fill("completionPrice", entry.completionPrice);
+    fill("cachedInputPrice", entry.cachedInputPrice);
+  }
+  fill("knowledgeCutoff", entry.knowledgeCutoff);
+  fill("releaseDate", entry.releaseDate);
+  fill("lastUpdated", entry.lastUpdated);
+  fill("openWeights", entry.openWeights);
+  fill("catalogUrl", entry.catalogUrl);
+  if (!details.family && entry.family) details.family = entry.family;
+  if (!details.description && entry.description)
+    details.description = entry.description;
+  if (!details.inputModalities?.length && entry.inputModalities)
+    details.inputModalities = [...entry.inputModalities];
+  if (!details.outputModalities?.length && entry.outputModalities)
+    details.outputModalities = [...entry.outputModalities];
+  if (!details.supportedParameters?.length) {
+    const parameters = new Set<string>();
+    if (entry.supportsTools) parameters.add("tools");
+    if (entry.supportsStructuredOutput) parameters.add("structured_outputs");
+    if (entry.supportsReasoning) parameters.add("reasoning");
+    if (entry.supportsVision) parameters.add("vision");
+    if (parameters.size) details.supportedParameters = [...parameters];
+  }
+  details.catalogSource = "models.dev";
+}
+
 export class ProviderConnectionService {
   private readonly checkers: Record<
     TextProviderKind,
@@ -429,6 +472,7 @@ export class ProviderConnectionService {
   constructor(
     private readonly secrets: SecretStorageRepository,
     private readonly providers: TextProviderRepository,
+    private readonly catalog?: ModelsDevCatalog,
   ) {}
 
   getSnapshot(): TextProviderSnapshot {
@@ -456,6 +500,7 @@ export class ProviderConnectionService {
       apiKey,
       providerType: input.providerType,
     });
+    await this.enrich(input.kind, result.models);
     return { ...result, checkedAt: new Date().toISOString() };
   }
 
@@ -490,6 +535,22 @@ export class ProviderConnectionService {
       models,
       result.limits,
     );
+  }
+
+  private async enrich(
+    kind: TextProviderKind,
+    models: TextProviderModelInfo[],
+  ): Promise<void> {
+    if (!this.catalog || !models.length) return;
+    const entries = await this.catalog.entriesFor(
+      kind,
+      models.map((model) => model.id),
+    );
+    if (!entries.size) return;
+    for (const model of models) {
+      const entry = entries.get(model.id);
+      if (entry) applyCatalogEntry(kind, model.details, entry);
+    }
   }
 
   deleteProvider(id: string): TextProviderSnapshot {
