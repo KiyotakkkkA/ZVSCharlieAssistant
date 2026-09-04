@@ -1,9 +1,24 @@
-import { describe, expect, it, vi } from "vitest";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { VectorStoreService } from "../../src/host/infrastructure/vector-store/vector-store.service";
 import type {
   NativeRerankResult,
   NativeVectorSearchResult,
 } from "../../src/host/infrastructure/vector-store/native-indexer.service";
+
+let directory: string | undefined;
+
+function createDirectory() {
+  directory = mkdtempSync(join(tmpdir(), "zvs-rerank-"));
+  return directory;
+}
+
+afterEach(() => {
+  if (directory) rmSync(directory, { recursive: true, force: true });
+  directory = undefined;
+});
 
 function row(documentId: string, score: number): NativeVectorSearchResult {
   return {
@@ -45,7 +60,7 @@ function createService(options: {
   const service = new VectorStoreService(
     data as never,
     { embed: vi.fn(async () => [[0.1]]) } as never,
-    "files",
+    createDirectory(),
     indexer as never,
   );
   return { service, rerank };

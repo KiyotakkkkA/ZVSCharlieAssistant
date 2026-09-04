@@ -1,6 +1,21 @@
-import { describe, expect, it, vi } from "vitest";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { VectorStoreService } from "../../src/host/infrastructure/vector-store/vector-store.service";
 import type { NativeVectorSearchResult } from "../../src/host/infrastructure/vector-store/native-indexer.service";
+
+let directory: string | undefined;
+
+function createDirectory() {
+  directory = mkdtempSync(join(tmpdir(), "zvs-fusion-"));
+  return directory;
+}
+
+afterEach(() => {
+  if (directory) rmSync(directory, { recursive: true, force: true });
+  directory = undefined;
+});
 
 type StoreShape = {
   searchMode: "vector" | "hybrid";
@@ -56,7 +71,7 @@ function createService(stores: Record<string, StoreShape>) {
   const service = new VectorStoreService(
     data as never,
     embeddings as never,
-    "files",
+    createDirectory(),
     indexer as never,
   );
   return { service, requested };

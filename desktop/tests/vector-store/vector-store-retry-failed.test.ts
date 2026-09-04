@@ -30,7 +30,7 @@ function createService(failed: Array<Record<string, string>>) {
   const service = new VectorStoreService(
     data as never,
     {} as never,
-    "files",
+    createDirectory(),
     { finalizeVectorIndex: vi.fn(async () => undefined) } as never,
   );
   return { service, data };
@@ -147,7 +147,7 @@ describe("VectorStoreService resumeInterrupted", () => {
     const service = new VectorStoreService(
       data as never,
       {} as never,
-      "files",
+      createDirectory(),
       {
         initializeVectorIndex: vi.fn(() => false),
         completeVectorIndexInitialization: vi.fn(),

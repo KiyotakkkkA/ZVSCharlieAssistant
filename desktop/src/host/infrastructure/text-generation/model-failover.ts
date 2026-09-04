@@ -1,3 +1,10 @@
+import {
+  APICallError,
+  InvalidArgumentError,
+  LoadAPIKeyError,
+  RetryError,
+  UnsupportedFunctionalityError,
+} from "ai";
 import type { ModelSwitch, ModelSwitchReason } from "../../../shared/dto";
 import type { ProviderRegistry } from "./provider.registry";
 
@@ -149,45 +156,14 @@ export class ModelFailover {
   }
 
   classify(error: unknown): FailureKind {
-    const status = statusOf(error);
-    const text = messageOf(error).toLowerCase();
-
-    if (status === 401 || status === 403) return "auth";
-    if (status === 429) return "rate_limit";
-    if (text.includes("rate limit") || text.includes("quota"))
-      return "rate_limit";
-    if (
-      text.includes("context length") ||
-      text.includes("context_length") ||
-      text.includes("context window") ||
-      text.includes("too many tokens") ||
-      text.includes("maximum context") ||
-      text.includes("prompt is too long") ||
-      text.includes("input is too long") ||
-      text.includes("input length") ||
-      text.includes("num_ctx")
-    )
-      return "context_overflow";
-    if (
-      text.includes("max output tokens") ||
-      text.includes("maximum output tokens") ||
-      text.includes("max completion tokens")
-    )
-      return "output_limit";
-    if (text.includes("moderation") || text.includes("content policy"))
-      return "moderation";
-    if (status !== undefined && status >= 500) return "transient";
-    if (
-      text.includes("timeout") ||
-      text.includes("econnreset") ||
-      text.includes("econnrefused") ||
-      text.includes("etimedout") ||
-      text.includes("socket hang up") ||
-      text.includes("fetch failed") ||
-      text.includes("network")
-    )
-      return "transient";
-    return "fatal";
+    const signal = readSignal(error);
+    return (
+      fromTypedError(signal.source) ??
+      fromStatus(signal.status) ??
+      fromProviderCode(signal.codes) ??
+      fromText(signal.text) ??
+      (signal.retryable === true ? "transient" : "fatal")
+    );
   }
 
   decide(error: unknown, state: FailoverState): FailoverDecision {
@@ -334,7 +310,179 @@ export class ModelFailover {
   }
 }
 
+interface ErrorSignal {
+  source: unknown;
+  status: number | undefined;
+  codes: string[];
+  retryable: boolean | undefined;
+  text: string;
+}
+
+const CODE_KINDS: Record<string, FailureKind> = {
+  context_length_exceeded: "context_overflow",
+  context_window_exceeded: "context_overflow",
+  string_above_max_length: "context_overflow",
+  prompt_too_long: "context_overflow",
+  request_too_large: "context_overflow",
+  max_tokens_exceeded: "output_limit",
+  output_limit_exceeded: "output_limit",
+  max_output_tokens_exceeded: "output_limit",
+  max_completion_tokens_exceeded: "output_limit",
+  rate_limit_exceeded: "rate_limit",
+  rate_limit_error: "rate_limit",
+  insufficient_quota: "rate_limit",
+  quota_exceeded: "rate_limit",
+  invalid_api_key: "auth",
+  authentication_error: "auth",
+  invalid_authentication: "auth",
+  permission_error: "auth",
+  permission_denied: "auth",
+  content_filter: "moderation",
+  content_policy_violation: "moderation",
+  moderation_blocked: "moderation",
+  overloaded_error: "transient",
+  server_error: "transient",
+  service_unavailable: "transient",
+  api_error: "transient",
+  timeout: "transient",
+  econnreset: "transient",
+  econnrefused: "transient",
+  etimedout: "transient",
+  enotfound: "transient",
+  epipe: "transient",
+};
+
+function readSignal(error: unknown): ErrorSignal {
+  const source = unwrap(error);
+  return {
+    source,
+    status: statusOf(source) ?? statusOf(error),
+    codes: providerCodes(source, error),
+    retryable: APICallError.isInstance(source) ? source.isRetryable : undefined,
+    text: messageOf(error).toLowerCase(),
+  };
+}
+
+function unwrap(error: unknown, depth = 0): unknown {
+  if (depth >= 4) return error;
+  if (RetryError.isInstance(error) && error.lastError !== undefined)
+    return unwrap(error.lastError, depth + 1);
+  if (APICallError.isInstance(error)) return error;
+  if (error instanceof Error) {
+    const cause = (error as Error & { cause?: unknown }).cause;
+    if (cause !== undefined && cause !== error && isKnownError(cause))
+      return unwrap(cause, depth + 1);
+  }
+  return error;
+}
+
+function isKnownError(error: unknown): boolean {
+  return (
+    APICallError.isInstance(error) ||
+    RetryError.isInstance(error) ||
+    LoadAPIKeyError.isInstance(error) ||
+    UnsupportedFunctionalityError.isInstance(error) ||
+    InvalidArgumentError.isInstance(error)
+  );
+}
+
+function fromTypedError(error: unknown): FailureKind | undefined {
+  if (LoadAPIKeyError.isInstance(error)) return "auth";
+  if (UnsupportedFunctionalityError.isInstance(error)) return "fatal";
+  if (InvalidArgumentError.isInstance(error)) return "fatal";
+  return undefined;
+}
+
+function fromStatus(status: number | undefined): FailureKind | undefined {
+  if (status === undefined) return undefined;
+  if (status === 401 || status === 403) return "auth";
+  if (status === 429) return "rate_limit";
+  if (status >= 500) return "transient";
+  return undefined;
+}
+
+function fromProviderCode(codes: string[]): FailureKind | undefined {
+  for (const code of codes) {
+    const kind = CODE_KINDS[code];
+    if (kind) return kind;
+  }
+  return undefined;
+}
+
+function fromText(text: string): FailureKind | undefined {
+  if (text.includes("rate limit") || text.includes("quota"))
+    return "rate_limit";
+  if (
+    text.includes("context length") ||
+    text.includes("context_length") ||
+    text.includes("context window") ||
+    text.includes("too many tokens") ||
+    text.includes("maximum context") ||
+    text.includes("prompt is too long") ||
+    text.includes("input is too long") ||
+    text.includes("input length") ||
+    text.includes("num_ctx")
+  )
+    return "context_overflow";
+  if (
+    text.includes("max output tokens") ||
+    text.includes("maximum output tokens") ||
+    text.includes("max completion tokens")
+  )
+    return "output_limit";
+  if (text.includes("moderation") || text.includes("content policy"))
+    return "moderation";
+  if (
+    text.includes("timeout") ||
+    text.includes("econnreset") ||
+    text.includes("econnrefused") ||
+    text.includes("etimedout") ||
+    text.includes("socket hang up") ||
+    text.includes("fetch failed") ||
+    text.includes("network")
+  )
+    return "transient";
+  return undefined;
+}
+
+function providerCodes(...errors: unknown[]): string[] {
+  const codes: string[] = [];
+  for (const error of errors) {
+    if (APICallError.isInstance(error)) {
+      collectCodes(error.data, codes);
+      collectCodes(parseBody(error.responseBody), codes);
+    }
+    if (error && typeof error === "object") {
+      const candidate = error as { data?: unknown; responseBody?: unknown };
+      collectCodes(candidate.data, codes);
+      collectCodes(parseBody(candidate.responseBody), codes);
+      collectCodes(error, codes);
+    }
+  }
+  return codes;
+}
+
+function parseBody(value: unknown): unknown {
+  if (typeof value !== "string") return undefined;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return undefined;
+  }
+}
+
+function collectCodes(body: unknown, into: string[], depth = 0): void {
+  if (!body || typeof body !== "object" || depth >= 4) return;
+  const node = body as { code?: unknown; type?: unknown; error?: unknown };
+  for (const value of [node.code, node.type]) {
+    if (typeof value === "string" && value) into.push(value.toLowerCase());
+  }
+  collectCodes(node.error, into, depth + 1);
+}
+
 function statusOf(error: unknown): number | undefined {
+  if (APICallError.isInstance(error) && typeof error.statusCode === "number")
+    return error.statusCode;
   if (!error || typeof error !== "object") return undefined;
   const candidate = error as {
     statusCode?: unknown;

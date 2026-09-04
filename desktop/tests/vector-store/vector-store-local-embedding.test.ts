@@ -1,6 +1,21 @@
-import { describe, expect, it, vi } from "vitest";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { VectorStoreService } from "../../src/host/infrastructure/vector-store/vector-store.service";
 import { BUILTIN_EMBEDDING_MODEL_IDS } from "../../src/shared/entity-ids";
+
+let directory: string | undefined;
+
+function createDirectory() {
+  directory = mkdtempSync(join(tmpdir(), "zvs-embedding-"));
+  return directory;
+}
+
+afterEach(() => {
+  if (directory) rmSync(directory, { recursive: true, force: true });
+  directory = undefined;
+});
 
 const LOCAL = BUILTIN_EMBEDDING_MODEL_IDS.bgeM3;
 
@@ -16,7 +31,7 @@ function createService() {
     service: new VectorStoreService(
       data as never,
       {} as never,
-      "files",
+      createDirectory(),
       {} as never,
     ),
   };

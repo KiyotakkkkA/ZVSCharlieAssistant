@@ -1,8 +1,23 @@
-import { describe, expect, it, vi } from "vitest";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   VectorStoreService,
   type IngestBatchResult,
 } from "../../src/host/infrastructure/vector-store/vector-store.service";
+
+let directory: string | undefined;
+
+function createDirectory() {
+  directory = mkdtempSync(join(tmpdir(), "zvs-batch-"));
+  return directory;
+}
+
+afterEach(() => {
+  if (directory) rmSync(directory, { recursive: true, force: true });
+  directory = undefined;
+});
 
 function createService() {
   let index = 0;
@@ -25,7 +40,7 @@ function createService() {
   const service = new VectorStoreService(
     data as never,
     {} as never,
-    "files",
+    createDirectory(),
     { finalizeVectorIndex: vi.fn(async () => undefined) } as never,
     (event) => events.push(event),
   );
@@ -45,7 +60,9 @@ describe("VectorStoreService batch notification", () => {
   it("reports once for the whole task, not once per document", async () => {
     const { service, events } = createService();
     const releases: Array<(outcome: "succeeded" | "failed") => void> = [];
-    const internal = service as unknown as { ingest: () => Promise<"succeeded" | "failed"> };
+    const internal = service as unknown as {
+      ingest: () => Promise<"succeeded" | "failed">;
+    };
     vi.spyOn(internal, "ingest").mockImplementation(
       () => new Promise((resolve) => releases.push(resolve)),
     );
@@ -70,7 +87,9 @@ describe("VectorStoreService batch notification", () => {
   it("counts the documents that failed inside the task", async () => {
     const { service, events } = createService();
     const releases: Array<(outcome: "succeeded" | "failed") => void> = [];
-    const internal = service as unknown as { ingest: () => Promise<"succeeded" | "failed"> };
+    const internal = service as unknown as {
+      ingest: () => Promise<"succeeded" | "failed">;
+    };
     vi.spyOn(internal, "ingest").mockImplementation(
       () => new Promise((resolve) => releases.push(resolve)),
     );
@@ -90,7 +109,9 @@ describe("VectorStoreService batch notification", () => {
   it("says nothing until every document in the task is done", async () => {
     const { service, events } = createService();
     const releases: Array<(outcome: "succeeded" | "failed") => void> = [];
-    const internal = service as unknown as { ingest: () => Promise<"succeeded" | "failed"> };
+    const internal = service as unknown as {
+      ingest: () => Promise<"succeeded" | "failed">;
+    };
     vi.spyOn(internal, "ingest").mockImplementation(
       () => new Promise((resolve) => releases.push(resolve)),
     );
