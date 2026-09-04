@@ -85,6 +85,7 @@ export function parseArgs(argv: string[]): CliOptions {
         options.projectDirectory = true;
         break;
       case "--conversation":
+      case "--resume":
         options.conversation = next();
         break;
       case "--run":
@@ -148,6 +149,7 @@ export const CLI_USAGE = [
   ["zvs projects", "список проектов"],
   ["zvs models", "включённые текстовые модели"],
   ["zvs agents", "доступные агенты"],
+  ["zvs --resume <id>", "продолжить диалог с того же места"],
   ['zvs compact --focus "..."', "сжать контекст текущего диалога"],
   ["zvs diff", "правки файлов в диалоге"],
   ["zvs undo <runId>", "откатить правки задачи"],
@@ -159,6 +161,7 @@ export const CLI_OPTIONS_HELP = [
   ["--project <id>", "привязать диалог к проекту"],
   ["--pd, --project-dir", "создать или выбрать проект для текущего каталога"],
   ["--conversation <id>", "продолжить существующий диалог"],
+  ["--resume <id>", "то же самое: продолжить диалог по идентификатору"],
   ["--permission-mode <m>", "plan | edit | deny, по умолчанию edit"],
   ["--home <path>", "каталог данных приложения"],
   ["--no-mouse", "не перехватывать мышь в интерактивном режиме"],

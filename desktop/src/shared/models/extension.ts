@@ -8,5 +8,9 @@ export interface CliIntegrationStatus {
   installed: boolean;
   onPath: boolean;
   shellProfile: string | null;
+  home: string;
+  homeVariable: string;
+  homeConfigured: boolean;
+  autoStartConfigured: boolean;
   error: string | null;
 }

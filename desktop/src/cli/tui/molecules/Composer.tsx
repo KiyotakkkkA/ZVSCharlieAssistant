@@ -73,7 +73,11 @@ export function Composer(props: {
         </Box>
       )}
       <Box
-        borderStyle="round"
+        borderStyle="single"
+        borderTop={true}
+        borderBottom={true}
+        borderLeft={false}
+        borderRight={false}
         borderColor={props.focusColor ?? tuiColors.border}
         paddingX={1}
       >

@@ -9,8 +9,7 @@ import type { ChatMode } from "../../shared/dto";
 import type { UserQuestion } from "../../shared/models/user-question";
 import type { CliOptions } from "../args";
 import type { BridgeClient } from "../client";
-import { compactValue } from "./output";
-import { commandCatalog } from "./commands";
+import { compactValue, resumeHint } from "./output";
 import { ZvsTui, type TuiMenu } from "./organisms/ZvsTui";
 import { initialTuiState, reduceTuiState, type TuiAction } from "./state";
 import { addCliAttachment, type CliAttachment } from "./attachments";
@@ -57,6 +56,7 @@ export async function runInkRepl(
       resolve(code);
     };
   });
+  let lastConversationId = options.conversation;
   let instance: ReturnType<typeof render>;
   instance = render(
     <InkRuntime
@@ -69,6 +69,9 @@ export async function runInkRepl(
       skills={skills}
       projects={projects}
       recentSessions={recentSessions}
+      onConversation={(conversationId) => {
+        lastConversationId = conversationId;
+      }}
       onExit={(code) => {
         instance.unmount();
         finish(code);
@@ -77,7 +80,10 @@ export async function runInkRepl(
     { exitOnCtrlC: false, alternateScreen: true },
   );
   void instance.waitUntilExit().then(() => finish(0));
-  return completion;
+  const code = await completion;
+  await instance.waitUntilExit().catch(() => undefined);
+  if (lastConversationId) resumeHint(lastConversationId);
+  return code;
 }
 
 function InkRuntime(props: {
@@ -90,6 +96,7 @@ function InkRuntime(props: {
   skills: CliSkillOption[];
   projects: ProjectOption[];
   recentSessions: RecentChatSession[];
+  onConversation: (conversationId: string) => void;
   onExit: (code: number) => void;
 }) {
   const [state, dispatch] = useReducer(
@@ -127,6 +134,7 @@ function InkRuntime(props: {
   });
   const [recentSessions, setRecentSessions] = useState(props.recentSessions);
   const [menu, setMenu] = useState<(TuiMenu & { kind: string }) | undefined>();
+  const [helpOpen, setHelpOpen] = useState(false);
   const [inputPrompt, setInputPrompt] = useState<"rename" | undefined>();
   const [mouseEnabled, setMouseEnabled] = useState(props.options.mouse);
   const [attachments, setAttachments] = useState<CliAttachment[]>([]);
@@ -177,29 +185,7 @@ function InkRuntime(props: {
       const argument = parts.join(" ");
       switch (name) {
         case "/help":
-          appendSystem(
-            [
-              "# Команды",
-              ...commandCatalog.map(
-                (command) =>
-                  `- \`${command.name}${command.usage ? ` ${command.usage}` : ""}\` — ${command.description}`,
-              ),
-              "",
-              "# Горячие клавиши",
-              "- `Tab` — дополнить команду или поставить сообщение в очередь",
-              "- `Ctrl+W` / `Ctrl+U` / `Ctrl+K` — удалить слово / до начала / до конца строки",
-              "- `Ctrl+←` `Ctrl+→` — по словам, `Home` `End` — в начало и конец",
-              "- `PageUp` / `PageDown` или колесо мыши — прокрутка ленты, `Ctrl+L` — к концу",
-              "- клик мышью — выбрать пункт списка или поставить курсор в поле ввода",
-              "- `@file путь` — прикрепить файл из проекта",
-              "- `@skill имя` — загрузить навык для следующего запроса",
-              "- `! команда` — выполнить shell-команду в папке проекта",
-              "- `Backspace` в пустом поле — убрать последний контекст",
-              "- `Shift+Enter` — новая строка",
-              "- `Ctrl+C` — отменить задачу или выйти",
-              "- `Esc` — закрыть меню или очистить ввод",
-            ].join("\n"),
-          );
+          setHelpOpen(true);
           return true;
         case "/model":
           showMenu(
@@ -698,6 +684,7 @@ function InkRuntime(props: {
         activeRunId.current = result.runId;
         lastRunId.current = result.runId;
         conversationId.current = result.conversationId;
+        props.onConversation(result.conversationId);
       } catch (error) {
         dispatch({
           type: "run.failed",
@@ -875,6 +862,7 @@ function InkRuntime(props: {
       state={state}
       dispatch={externalDispatch}
       menu={menu}
+      help={helpOpen}
       inputPrompt={
         inputPrompt === "rename" ? "Новое название диалога" : undefined
       }
@@ -900,6 +888,7 @@ function InkRuntime(props: {
       onAnswer={answer}
       onMenuSelect={selectMenuItem}
       onEscape={() => {
+        setHelpOpen(false);
         setMenu(undefined);
         setInputPrompt(undefined);
         dispatch({ type: "draft.changed", value: "" });

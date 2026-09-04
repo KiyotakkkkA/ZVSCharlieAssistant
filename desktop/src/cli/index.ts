@@ -8,6 +8,7 @@ import {
   parseArgs,
   type CliOptions,
 } from "./args";
+import { readLaunchSpec, startApplication } from "./launch";
 import { runChat } from "./render";
 import { runRepl } from "./repl";
 import { errorMessage, helpScreen } from "./tui/output";
@@ -20,6 +21,8 @@ if (process.platform === "win32") {
 }
 
 const EXIT_OK = 0;
+const APP_STARTUP_TIMEOUT_MS = 60_000;
+const APP_PROBE_INTERVAL_MS = 500;
 const EXIT_ERROR = 1;
 const EXIT_DENIED = 2;
 const EXIT_UNAVAILABLE = 3;
@@ -39,9 +42,10 @@ async function main(): Promise<number> {
     return EXIT_OK;
   }
 
-  const client = new BridgeClient(options.home ?? defaultUserDataPath());
+  const home = options.home ?? defaultUserDataPath();
+  const client = new BridgeClient(home);
   try {
-    const hello = await client.connect();
+    const hello = await connectOrStart(client, home);
     if (options.projectDirectory) {
       const project = (await client.request("projects.ensure-directory", {
         path: process.cwd(),
@@ -72,6 +76,39 @@ async function main(): Promise<number> {
   } finally {
     client.disconnect();
   }
+}
+
+async function connectOrStart(
+  client: BridgeClient,
+  home: string,
+): Promise<{ version: string; protocol: number }> {
+  try {
+    return await client.connect();
+  } catch (error) {
+    if (!(error instanceof BridgeUnavailableError)) throw error;
+    const spec = readLaunchSpec(home);
+    if (!spec) throw error;
+
+    process.stderr.write("Приложение ZVS не запущено — запускаю его...\n");
+    startApplication(spec);
+
+    const deadline = Date.now() + APP_STARTUP_TIMEOUT_MS;
+    while (Date.now() < deadline) {
+      await delay(APP_PROBE_INTERVAL_MS);
+      try {
+        return await client.connect();
+      } catch (retry) {
+        if (!(retry instanceof BridgeUnavailableError)) throw retry;
+      }
+    }
+    throw new BridgeUnavailableError(
+      "Приложение ZVS не успело запуститься за отведённое время",
+    );
+  }
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function dispatch(

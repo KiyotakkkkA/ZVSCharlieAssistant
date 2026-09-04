@@ -62,6 +62,13 @@ describe("подсказка под полем ввода", () => {
     expect(footerHintFor({ ...context, draft: true })).toContain("Shift+Enter");
     expect(footerHintFor(context)).toContain("/help");
   });
+
+  it("показывает навигацию отдельного экрана справки", () => {
+    const hint = footerHintFor({ ...context, help: true });
+    expect(hint).toContain("Tab");
+    expect(hint).toContain("PageUp");
+    expect(hint).toContain("Esc");
+  });
 });
 
 describe("ширина поля ввода", () => {

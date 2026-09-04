@@ -9,17 +9,25 @@ import {
 } from "node:fs";
 import { delimiter, join } from "node:path";
 import { homedir } from "node:os";
+import {
+  cliLaunchPath,
+  HOME_ENV_VARIABLE,
+} from "../../../shared/bridge/bridge-paths";
 import type { CliIntegrationStatus } from "../../../shared/models/extension";
 
 const COMMAND = "zvs";
 const SHELL_MARKER = "# zvs-assistant cli";
-const POWERSHELL_TIMEOUT_MS = 10_000;
+const SHELL_MARKER_END = "# zvs-assistant cli end";
+const POWERSHELL_TIMEOUT_MS = 45_000;
+const REGISTRY_TIMEOUT_MS = 5_000;
+const USER_ENVIRONMENT_KEY = "HKCU\\Environment";
 
 export class CliInstallerService {
   constructor(
     private readonly userDataPath: string,
     private readonly executablePath: string,
     private readonly entryPath: string,
+    private readonly appLaunchArgs: string[] = [],
   ) {}
 
   get binDir(): string {
@@ -37,10 +45,16 @@ export class CliInstallerService {
     return join(this.binDir, `${COMMAND}.ps1`);
   }
 
+  private get launchConfigPath(): string {
+    return cliLaunchPath(this.userDataPath);
+  }
+
   status(): CliIntegrationStatus {
     const installed =
       existsSync(this.launcherPath) &&
       (process.platform !== "win32" || existsSync(this.powershellLauncherPath));
+    const environment = this.readUserEnvironment();
+    const target = normalize(this.binDir);
     return {
       command: COMMAND,
       platform: process.platform,
@@ -49,8 +63,13 @@ export class CliInstallerService {
       entryPath: this.entryPath,
       entryExists: existsSync(this.entryPath),
       installed,
-      onPath: this.isOnPath(),
+      onPath: environment.path.some((entry) => normalize(entry) === target),
       shellProfile: process.platform === "win32" ? null : this.shellProfile(),
+      home: this.userDataPath,
+      homeVariable: HOME_ENV_VARIABLE,
+      homeConfigured:
+        normalize(environment.home) === normalize(this.userDataPath),
+      autoStartConfigured: existsSync(this.launchConfigPath),
       error: null,
     };
   }
@@ -73,11 +92,13 @@ export class CliInstallerService {
       );
     else chmodSync(this.launcherPath, 0o755);
 
+    this.writeLaunchConfig();
+
     let error: string | null = null;
     try {
-      this.addToPath();
+      this.applyEnvironment();
     } catch (cause) {
-      error = cause instanceof Error ? cause.message : String(cause);
+      error = describeEnvironmentFailure(cause);
     }
     return { ...this.status(), error };
   }
@@ -86,13 +107,30 @@ export class CliInstallerService {
     rmSync(this.launcherPath, { force: true });
     if (process.platform === "win32")
       rmSync(this.powershellLauncherPath, { force: true });
+    rmSync(this.launchConfigPath, { force: true });
     let error: string | null = null;
     try {
-      this.removeFromPath();
+      this.clearEnvironment();
     } catch (cause) {
-      error = cause instanceof Error ? cause.message : String(cause);
+      error = describeEnvironmentFailure(cause);
     }
     return { ...this.status(), error };
+  }
+
+  private writeLaunchConfig() {
+    writeFileSync(
+      this.launchConfigPath,
+      `${JSON.stringify(
+        {
+          executablePath: this.executablePath,
+          args: this.appLaunchArgs,
+          home: this.userDataPath,
+        },
+        null,
+        2,
+      )}\n`,
+      "utf8",
+    );
   }
 
   private launcherScript(): string {
@@ -101,6 +139,7 @@ export class CliInstallerService {
         "@echo off",
         "setlocal",
         "chcp 65001 >nul",
+        `if "%${HOME_ENV_VARIABLE}%"=="" set ${HOME_ENV_VARIABLE}=${this.userDataPath}`,
         "where.exe node >nul 2>nul",
         "if not errorlevel 1 (",
         `  node "${this.entryPath}" %*`,
@@ -113,6 +152,8 @@ export class CliInstallerService {
     return [
       "#!/bin/sh",
       SHELL_MARKER,
+      `: "\${${HOME_ENV_VARIABLE}:=${this.userDataPath}}"`,
+      `export ${HOME_ENV_VARIABLE}`,
       `ELECTRON_RUN_AS_NODE=1 exec "${this.executablePath}" "${this.entryPath}" "$@"`,
       "",
     ].join("\n");
@@ -130,23 +171,19 @@ export class CliInstallerService {
     ].join("\r\n");
   }
 
-  private isOnPath(): boolean {
-    const entries =
-      process.platform === "win32"
-        ? this.readWindowsUserPath()
-        : (process.env.PATH ?? "").split(delimiter);
-    const target = normalize(this.binDir);
-    return entries.some((entry) => normalize(entry) === target);
-  }
-
-  private addToPath() {
+  private applyEnvironment() {
     if (process.platform === "win32") {
-      const entries = this.readWindowsUserPath();
-      const target = normalize(this.binDir);
-      if (entries.some((entry) => normalize(entry) === target)) return;
-      const next = [...entries.filter(Boolean), this.binDir].join(";");
       this.powershell(
-        `[Environment]::SetEnvironmentVariable('Path', ${quote(next)}, 'User')`,
+        [
+          `$bin = ${quote(this.binDir)}`,
+          `$zvsHome = ${quote(this.userDataPath)}`,
+          "$current = [Environment]::GetEnvironmentVariable('Path','User')",
+          "if (-not $current) { $current = '' }",
+          "$parts = @($current.Split(';') | Where-Object { $_.Trim() -ne '' })",
+          "$known = @($parts | Where-Object { $_.Trim().TrimEnd('\\','/') -ieq $bin.TrimEnd('\\','/') })",
+          "if ($known.Count -eq 0) { [Environment]::SetEnvironmentVariable('Path', (($parts + $bin) -join ';'), 'User') }",
+          `[Environment]::SetEnvironmentVariable('${HOME_ENV_VARIABLE}', $zvsHome, 'User')`,
+        ].join("; "),
       );
       return;
     }
@@ -154,47 +191,74 @@ export class CliInstallerService {
     const profile = this.shellProfile();
     if (!profile) return;
     const current = existsSync(profile) ? readFileSync(profile, "utf8") : "";
-    if (current.includes(SHELL_MARKER)) return;
+    const cleaned = stripShellBlock(current);
     writeFileSync(
       profile,
-      `${current}${current.endsWith("\n") || !current ? "" : "\n"}${SHELL_MARKER}\nexport PATH="$PATH:${this.binDir}"\n`,
+      `${cleaned}${cleaned.endsWith("\n") || !cleaned ? "" : "\n"}${[
+        SHELL_MARKER,
+        `export ${HOME_ENV_VARIABLE}="${this.userDataPath}"`,
+        `export PATH="$PATH:${this.binDir}"`,
+        SHELL_MARKER_END,
+        "",
+      ].join("\n")}`,
       "utf8",
     );
   }
 
-  private removeFromPath() {
+  private clearEnvironment() {
     if (process.platform === "win32") {
-      const entries = this.readWindowsUserPath();
-      const target = normalize(this.binDir);
-      const next = entries.filter(
-        (entry) => entry && normalize(entry) !== target,
-      );
-      if (next.length === entries.filter(Boolean).length) return;
       this.powershell(
-        `[Environment]::SetEnvironmentVariable('Path', ${quote(next.join(";"))}, 'User')`,
+        [
+          `$bin = ${quote(this.binDir)}`,
+          "$current = [Environment]::GetEnvironmentVariable('Path','User')",
+          "if ($current) { $parts = @($current.Split(';') | Where-Object { $_.Trim() -ne '' -and $_.Trim().TrimEnd('\\','/') -ine $bin.TrimEnd('\\','/') }); [Environment]::SetEnvironmentVariable('Path', ($parts -join ';'), 'User') }",
+          `[Environment]::SetEnvironmentVariable('${HOME_ENV_VARIABLE}', $null, 'User')`,
+        ].join("; "),
       );
       return;
     }
 
     const profile = this.shellProfile();
     if (!profile || !existsSync(profile)) return;
-    const lines = readFileSync(profile, "utf8").split("\n");
-    const kept: string[] = [];
-    for (let index = 0; index < lines.length; index += 1) {
-      if (lines[index]?.trim() === SHELL_MARKER) {
-        index += 1;
-        continue;
-      }
-      kept.push(lines[index] ?? "");
-    }
-    writeFileSync(profile, kept.join("\n"), "utf8");
+    writeFileSync(profile, stripShellBlock(readFileSync(profile, "utf8")));
   }
 
-  private readWindowsUserPath(): string[] {
-    const raw = this.powershell(
-      "[Environment]::GetEnvironmentVariable('Path','User')",
+  private readUserEnvironment(): { path: string[]; home: string } {
+    if (process.platform !== "win32")
+      return {
+        path: (process.env.PATH ?? "").split(delimiter),
+        home: this.readProfileHome(),
+      };
+    return {
+      path: (this.readUserRegistryValue("Path") ?? "").split(";"),
+      home: this.readUserRegistryValue(HOME_ENV_VARIABLE) ?? "",
+    };
+  }
+
+  private readUserRegistryValue(name: string): string | undefined {
+    try {
+      const output = execFileSync(
+        "reg.exe",
+        ["query", USER_ENVIRONMENT_KEY, "/v", name],
+        { encoding: "utf8", timeout: REGISTRY_TIMEOUT_MS, windowsHide: true },
+      );
+      const match = new RegExp(
+        `^\\s*${name}\\s+REG_[A-Z_]+\\s+(.*)$`,
+        "im",
+      ).exec(output);
+      return match?.[1]?.trim();
+    } catch {
+      return undefined;
+    }
+  }
+
+  private readProfileHome(): string {
+    const profile = this.shellProfile();
+    if (!profile || !existsSync(profile)) return "";
+    const match = new RegExp(`export ${HOME_ENV_VARIABLE}="([^"]*)"`, "u").exec(
+      readFileSync(profile, "utf8"),
     );
-    return raw.split(";");
+    return match?.[1] ?? "";
   }
 
   private powershell(script: string): string {
@@ -216,6 +280,36 @@ export class CliInstallerService {
     if (shell.includes("bash")) return join(home, ".bashrc");
     return join(home, ".profile");
   }
+}
+
+function describeEnvironmentFailure(cause: unknown): string {
+  const message = cause instanceof Error ? cause.message : String(cause);
+  const code = (cause as { code?: unknown } | null)?.code;
+  if (code === "ETIMEDOUT" || /ETIMEDOUT/i.test(message))
+    return "Windows не ответил на запрос к переменным среды за отведённое время. Повторите включение — обычно со второй попытки проходит.";
+  return message;
+}
+
+function stripShellBlock(content: string): string {
+  const kept: string[] = [];
+  let inside = false;
+  for (const line of content.split("\n")) {
+    const trimmed = line.trim();
+    if (trimmed === SHELL_MARKER) {
+      inside = true;
+      continue;
+    }
+    if (inside) {
+      if (trimmed === SHELL_MARKER_END) {
+        inside = false;
+        continue;
+      }
+      if (trimmed.startsWith("export ")) continue;
+      inside = false;
+    }
+    kept.push(line);
+  }
+  return kept.join("\n");
 }
 
 function normalize(value: string): string {

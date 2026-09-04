@@ -135,9 +135,17 @@ export const ExtensionsPage = observer(function ExtensionsPage() {
             </div>
 
             {status && status.entryExists ? (
-              <div className="mt-4 text-sm text-main-400">
-                Попробуйте <Code>zvs</Code> или <Code>zvs help</Code> в
-                командной строке
+              <div className="mt-4 space-y-2 text-sm text-main-400">
+                <div>
+                  Попробуйте <Code>zvs</Code> или <Code>zvs help</Code> в
+                  командной строке
+                </div>
+                {status.installed ? (
+                  <div className="text-xs text-main-500">
+                    Каталог данных записан в переменную среды{" "}
+                    <Code>{status.homeVariable}</Code>: {status.home}
+                  </div>
+                ) : null}
               </div>
             ) : null}
 
@@ -174,11 +182,6 @@ export const ExtensionsPage = observer(function ExtensionsPage() {
                   : ""}
               </BasicAlert>
             ) : null}
-            <BasicAlert
-              variant="warning"
-              title="Для работы расширения - основное приложение должно быть запущено"
-              className="mt-5"
-            />
           </section>
 
           <section className="rounded-xl bg-main-800/10 p-5 text-xs text-main-500 ring-1 ring-main-700/25">

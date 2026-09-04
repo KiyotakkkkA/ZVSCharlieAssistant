@@ -26,6 +26,11 @@ import {
 } from "../state";
 import { SessionFooter } from "./SessionFooter";
 import { Transcript, type TranscriptHandle } from "./Transcript";
+import {
+  HELP_TABS,
+  HelpPanel,
+  type HelpPanelHandle,
+} from "./HelpPanel";
 import type { CliAttachment } from "../attachments";
 import { absoluteRect, containsPoint, rowWithin } from "../geometry";
 import { visibleWindow } from "../windowing";
@@ -66,6 +71,7 @@ export interface ZvsTuiProps {
   state?: TuiState;
   dispatch?: (action: TuiAction) => void;
   menu?: TuiMenu;
+  help?: boolean;
   inputPrompt?: string;
   mouseEnabled?: boolean;
   onSubmit: (value: string) => void;
@@ -93,6 +99,7 @@ export function ZvsTui(props: ZvsTuiProps) {
   const [selectedOption, setSelectedOption] = useState(0);
   const [selectedMenuItem, setSelectedMenuItem] = useState(0);
   const [selectedSuggestion, setSelectedSuggestion] = useState(0);
+  const [helpTab, setHelpTab] = useState(0);
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
   const [history, setHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
@@ -104,6 +111,7 @@ export function ZvsTui(props: ZvsTuiProps) {
   const { rows, columns } = useWindowSize();
 
   const transcript = useRef<TranscriptHandle>(null);
+  const helpPanel = useRef<HelpPanelHandle>(null);
   const suggestionList = useRef<DOMElement>(null);
   const menuList = useRef<DOMElement>(null);
   const questionList = useRef<DOMElement>(null);
@@ -136,6 +144,7 @@ export function ZvsTui(props: ZvsTuiProps) {
             ? "!"
             : undefined;
   const suggestionsVisible =
+    !props.help &&
     !props.menu &&
     !state.question &&
     (suggestions.length > 0 || specialPrefix !== undefined);
@@ -150,6 +159,7 @@ export function ZvsTui(props: ZvsTuiProps) {
   }, [state.question?.id]);
   useEffect(() => setSelectedMenuItem(0), [props.menu?.title]);
   useEffect(() => setSelectedSuggestion(0), [state.draft]);
+  useEffect(() => setHelpTab(0), [props.help]);
 
   const setDraft = (value: string) => {
     dispatch({ type: "draft.changed", value });
@@ -207,6 +217,13 @@ export function ZvsTui(props: ZvsTuiProps) {
   useMouse(
     (event) => {
       if (event.kind === "wheel") {
+        if (props.help) {
+          if (helpPanel.current?.containsPoint(event.x, event.y))
+            helpPanel.current.scrollBy(
+              event.direction === "up" ? -WHEEL_LINES : WHEEL_LINES,
+            );
+          return;
+        }
         const step = event.direction === "up" ? -1 : 1;
         if (suggestionsVisible && suggestions.length)
           setSelectedSuggestion(
@@ -226,6 +243,13 @@ export function ZvsTui(props: ZvsTuiProps) {
           transcript.current?.scrollBy(
             event.direction === "up" ? WHEEL_LINES : -WHEEL_LINES,
           );
+        return;
+      }
+      if (props.help) {
+        if (event.kind === "press" && event.button === "left") {
+          const tab = helpPanel.current?.tabAtPoint(event.x, event.y);
+          if (tab !== undefined) setHelpTab(tab);
+        }
         return;
       }
       if (event.kind !== "press" || event.button !== "left") return;
@@ -308,6 +332,18 @@ export function ZvsTui(props: ZvsTuiProps) {
       return;
     }
     if (exitArmed) setExitArmed(false);
+    if (props.help) {
+      if (key.escape) props.onEscape();
+      else if (key.leftArrow)
+        setHelpTab((value) => (value - 1 + HELP_TABS.length) % HELP_TABS.length);
+      else if (key.rightArrow || key.tab)
+        setHelpTab((value) => (value + 1) % HELP_TABS.length);
+      else if (key.upArrow) helpPanel.current?.scrollBy(-1);
+      else if (key.downArrow) helpPanel.current?.scrollBy(1);
+      else if (key.pageUp) helpPanel.current?.pageBy(-1);
+      else if (key.pageDown) helpPanel.current?.pageBy(1);
+      return;
+    }
     if (key.escape && !props.menu && !state.question && !props.inputPrompt) {
       if (state.phase === "running") {
         props.onCancel();
@@ -517,6 +553,7 @@ export function ZvsTui(props: ZvsTuiProps) {
     menu: Boolean(props.menu),
     question: Boolean(state.question),
     suggestions: suggestionsVisible,
+    help: Boolean(props.help),
     busy,
     draft: Boolean(state.draft),
   });
@@ -531,21 +568,25 @@ export function ZvsTui(props: ZvsTuiProps) {
         minHeight={0}
         overflowY="hidden"
       >
-        <Transcript
-          handleRef={transcript}
-          entries={state.transcript}
-          scrollEnabled={!props.menu && !state.question}
-          emptyContent={
-            <WelcomePanel
-              sessions={props.recentSessions}
-              version={props.version}
-              model={props.model}
-              project={props.project}
-              mouse={mouseEnabled}
-            />
-          }
-        />
-        {suggestionsVisible ? (
+        {props.help ? (
+          <HelpPanel activeTab={helpTab} handleRef={helpPanel} />
+        ) : (
+          <Transcript
+            handleRef={transcript}
+            entries={state.transcript}
+            scrollEnabled={!props.menu && !state.question}
+            emptyContent={
+              <WelcomePanel
+                sessions={props.recentSessions}
+                version={props.version}
+                model={props.model}
+                project={props.project}
+                mouse={mouseEnabled}
+              />
+            }
+          />
+        )}
+        {!props.help && suggestionsVisible ? (
           <Box position="absolute" bottom={0} width="100%">
             <SuggestionPopup
               items={suggestions}
@@ -618,8 +659,11 @@ export function footerHintFor(context: {
   suggestions: boolean;
   busy: boolean;
   draft: boolean;
+  help?: boolean;
 }): string | undefined {
   if (context.exitArmed) return "Ctrl+C ещё раз — выйти";
+  if (context.help)
+    return "Esc закрыть · ←→ / Tab вкладки · ↑↓ / PageUp PageDown прокрутка";
   if (context.menu || context.suggestions) return undefined;
   if (context.question) return "↑↓ выбрать · Enter ответить · Esc отменить";
   if (context.busy) return "Esc прервать · Tab поставить сообщение в очередь";

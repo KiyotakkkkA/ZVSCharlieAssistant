@@ -2,6 +2,17 @@ export function errorMessage(text: string, hint?: string) {
   process.stderr.write(`Ошибка: ${text}${hint ? `\n${hint}` : ""}\n`);
 }
 
+export function resumeHint(conversationId: string) {
+  process.stdout.write(
+    [
+      "",
+      "Диалог сохранён. Продолжить с этого же места:",
+      `  zvs --resume ${conversationId}`,
+      "",
+    ].join("\n"),
+  );
+}
+
 export function helpScreen(
   usage: ReadonlyArray<readonly [string, string]>,
   options: ReadonlyArray<readonly [string, string]>,

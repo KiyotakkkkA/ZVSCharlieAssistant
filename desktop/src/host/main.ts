@@ -624,6 +624,9 @@ app.whenReady().then(() => {
       app.getPath("userData"),
       process.execPath,
       join(dirname(fileURLToPath(import.meta.url)), "cli.js"),
+      app.isPackaged
+        ? [BACKGROUND_LAUNCH_ARGUMENT]
+        : [app.getAppPath(), BACKGROUND_LAUNCH_ARGUMENT],
     ),
   );
   registerCoreInteractorHandlers(new CoreInteractorService());

@@ -2,6 +2,8 @@ import { createHash } from "node:crypto";
 import { join } from "node:path";
 
 export const BRIDGE_TOKEN_FILE = "bridge.token";
+export const CLI_LAUNCH_FILE = "cli-launch.json";
+export const HOME_ENV_VARIABLE = "ZVS_HOME";
 
 export function bridgeSocketPath(userDataPath: string): string {
   if (process.platform === "win32") {
@@ -18,8 +20,12 @@ export function bridgeTokenPath(userDataPath: string): string {
   return join(userDataPath, BRIDGE_TOKEN_FILE);
 }
 
+export function cliLaunchPath(userDataPath: string): string {
+  return join(userDataPath, CLI_LAUNCH_FILE);
+}
+
 export function defaultUserDataPath(): string {
-  const override = process.env.ZVS_HOME?.trim();
+  const override = process.env[HOME_ENV_VARIABLE]?.trim();
   if (override) return override;
   const home = process.env.HOME ?? process.env.USERPROFILE ?? ".";
   if (process.platform === "win32")
