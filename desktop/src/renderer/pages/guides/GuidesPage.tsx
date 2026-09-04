@@ -1,9 +1,6 @@
 import { Button, ProgressBar } from "@kiyotakkkka/zvs-uikit-lib";
 import { observer } from "mobx-react-lite";
-import {
-  CheckIcon,
-  PlayCircleIcon,
-} from "../../components/atoms";
+import { CheckIcon, PlayCircleIcon } from "../../components/atoms";
 import {
   GUIDES,
   findGuide,

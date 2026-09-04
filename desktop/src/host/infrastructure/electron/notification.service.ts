@@ -7,7 +7,8 @@ export type NotificationEventKind =
   | "agentQuestionAsked"
   | "scenarioStarted"
   | "scenarioCompleted"
-  | "vectorizationCompleted";
+  | "vectorizationCompleted"
+  | "downloadCompleted";
 
 export interface AppNotification {
   kind: NotificationEventKind;

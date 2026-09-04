@@ -10,7 +10,11 @@ import {
   useToasts,
 } from "@kiyotakkkka/zvs-uikit-lib";
 import { APP_PATHS } from "../../app/routes";
-import { ChevronLeftIcon, OpenInNewIcon, TasksIcon } from "../../components/atoms";
+import {
+  ChevronLeftIcon,
+  OpenInNewIcon,
+  TasksIcon,
+} from "../../components/atoms";
 import { ChatAssistantMsgBlock } from "../../components/molecules/ChatAssistantMsgBlock";
 import { ChatUserMsgBlock } from "../../components/molecules/ChatUserMsgBlock";
 import { PageHeader } from "../../components/organisms";
@@ -48,17 +52,22 @@ const STATUS_META: Record<
     tone: "text-success-light",
     dot: "bg-success-light",
   },
-  failed: { label: "Ошибка", tone: "text-danger-light", dot: "bg-danger-light" },
+  failed: {
+    label: "Ошибка",
+    tone: "text-danger-light",
+    dot: "bg-danger-light",
+  },
   cancelled: { label: "Отменена", tone: "text-main-500", dot: "bg-main-600" },
 };
 
-const ACTIVE_STATUSES = new Set(["queued", "running", "clarification_requested"]);
+const ACTIVE_STATUSES = new Set([
+  "queued",
+  "running",
+  "clarification_requested",
+]);
 const FALLBACK_POLL_MS = 5_000;
 
-const ENTITY_ROUTE_BY_KIND: Record<
-  EntityGenerationRun["kind"],
-  string
-> = {
+const ENTITY_ROUTE_BY_KIND: Record<EntityGenerationRun["kind"], string> = {
   agent: APP_PATHS.automation.agents.edit,
   skill: APP_PATHS.automation.skills.edit,
   scenario: APP_PATHS.automation.scenarios.edit,
@@ -112,9 +121,8 @@ export const GenerationRunDetailPage = observer(
       if (!runId) return;
       let cancelled = false;
       const refreshTranscript = async () => {
-        const messages = await window.desktop.entityGeneration.getTranscript(
-          runId,
-        );
+        const messages =
+          await window.desktop.entityGeneration.getTranscript(runId);
         if (!cancelled) setTranscript(messages);
       };
       void refreshTranscript();

@@ -1,0 +1,7 @@
+# tools crate
+tools/target/*
+tools/node_modules/*
+
+# indexer crate
+indexer/target/*
+indexer/node_modules/*

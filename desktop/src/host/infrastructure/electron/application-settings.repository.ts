@@ -1,8 +1,20 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import type {
   ApplicationSettings,
+  OcrProviderPreference,
   UpdateApplicationSettingsInput,
 } from "../../../ipc/contracts";
+
+const PROVIDER_PREFERENCES: readonly OcrProviderPreference[] = [
+  "auto",
+  "cuda",
+  "directml",
+  "cpu",
+];
+
+function isProviderPreference(value: unknown): value is OcrProviderPreference {
+  return (PROVIDER_PREFERENCES as readonly unknown[]).includes(value);
+}
 
 const DEFAULT_SETTINGS: ApplicationSettings = {
   runInBackground: true,
@@ -14,12 +26,16 @@ const DEFAULT_SETTINGS: ApplicationSettings = {
     scenarioStarted: true,
     scenarioCompleted: true,
     vectorizationCompleted: true,
+    downloadCompleted: true,
   },
   onboarding: {
     version: 2,
     tourCompleted: false,
     completedGuides: [],
     firstLaunchAt: null,
+  },
+  indexing: {
+    provider: "auto",
   },
 };
 
@@ -52,6 +68,7 @@ export class ApplicationSettingsRepository {
     }
     validateNotificationPatch(input.notifications);
     validateOnboardingPatch(input.onboarding);
+    validateIndexingPatch(input.indexing);
     const current = this.get();
     const settings: ApplicationSettings = {
       ...current,
@@ -71,6 +88,10 @@ export class ApplicationSettingsRepository {
         completedGuides: input.onboarding?.completedGuides
           ? uniqueStrings(input.onboarding.completedGuides)
           : current.onboarding.completedGuides,
+      },
+      indexing: {
+        ...current.indexing,
+        ...input.indexing,
       },
     };
     writeFileSync(this.path, `${JSON.stringify(settings, null, 2)}\n`, {
@@ -93,6 +114,10 @@ function parseSettings(value: unknown): ApplicationSettings {
   const onboarding =
     record.onboarding && typeof record.onboarding === "object"
       ? (record.onboarding as Record<string, unknown>)
+      : {};
+  const indexing =
+    record.indexing && typeof record.indexing === "object"
+      ? (record.indexing as Record<string, unknown>)
       : {};
   return {
     runInBackground:
@@ -128,6 +153,10 @@ function parseSettings(value: unknown): ApplicationSettings {
         notifications.vectorizationCompleted,
         DEFAULT_SETTINGS.notifications.vectorizationCompleted,
       ),
+      downloadCompleted: readBoolean(
+        notifications.downloadCompleted,
+        DEFAULT_SETTINGS.notifications.downloadCompleted,
+      ),
     },
     onboarding: {
       version: readNumber(
@@ -144,6 +173,11 @@ function parseSettings(value: unknown): ApplicationSettings {
           ? onboarding.firstLaunchAt
           : null,
     },
+    indexing: {
+      provider: isProviderPreference(indexing.provider)
+        ? indexing.provider
+        : "auto",
+    },
   };
 }
 
@@ -155,6 +189,7 @@ function createDefaultSettings(): ApplicationSettings {
       ...DEFAULT_SETTINGS.onboarding,
       completedGuides: [],
     },
+    indexing: { ...DEFAULT_SETTINGS.indexing },
   };
 }
 
@@ -169,6 +204,20 @@ function validateNotificationPatch(
     if (typeof value !== "boolean") {
       throw new TypeError(`notifications.${key} must be a boolean`);
     }
+  }
+}
+
+function validateIndexingPatch(
+  patch: UpdateApplicationSettingsInput["indexing"],
+): void {
+  if (patch === undefined) return;
+  if (!patch || typeof patch !== "object") {
+    throw new TypeError("indexing must be an object");
+  }
+  if (patch.provider !== undefined && !isProviderPreference(patch.provider)) {
+    throw new TypeError(
+      "indexing.provider must be auto, cuda, directml or cpu",
+    );
   }
 }
 

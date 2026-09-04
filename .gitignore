@@ -1,8 +1,6 @@
 TODO.md
 WRITING.md
 desktop/native/*.node
-crates/tools/target
-crates/tools/node_modules
 desktop/node_modules
 desktop/out
 desktop/*.tsbuildinfo

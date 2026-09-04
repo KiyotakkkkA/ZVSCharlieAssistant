@@ -19,7 +19,8 @@ export async function scanVectorDirectory(directoryPath: string): Promise<{
 }> {
   const root = resolve(directoryPath);
   const rootStat = await stat(root);
-  if (!rootStat.isDirectory()) throw new Error("Выбранный путь не является папкой");
+  if (!rootStat.isDirectory())
+    throw new Error("Выбранный путь не является папкой");
 
   const pending = [root];
   const files: ScannedVectorFile[] = [];

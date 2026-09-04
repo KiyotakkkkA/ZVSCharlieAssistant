@@ -31,6 +31,7 @@ describe("ApplicationSettingsRepository", () => {
       launchAtLogin: false,
       notifications: defaultNotifications(),
       onboarding: defaultOnboarding(),
+      indexing: defaultIndexing(),
     });
 
     expect(
@@ -40,18 +41,21 @@ describe("ApplicationSettingsRepository", () => {
       launchAtLogin: true,
       notifications: defaultNotifications(),
       onboarding: defaultOnboarding(),
+      indexing: defaultIndexing(),
     });
     expect(repository.get()).toEqual({
       runInBackground: false,
       launchAtLogin: true,
       notifications: defaultNotifications(),
       onboarding: defaultOnboarding(),
+      indexing: defaultIndexing(),
     });
     expect(JSON.parse(readFileSync(settingsPath(), "utf8"))).toEqual({
       runInBackground: false,
       launchAtLogin: true,
       notifications: defaultNotifications(),
       onboarding: defaultOnboarding(),
+      indexing: defaultIndexing(),
     });
   });
 
@@ -65,6 +69,7 @@ describe("ApplicationSettingsRepository", () => {
       launchAtLogin: false,
       notifications: defaultNotifications(),
       onboarding: defaultOnboarding(),
+      indexing: defaultIndexing(),
     });
     expect(log).toHaveBeenCalledOnce();
   });
@@ -78,6 +83,7 @@ describe("ApplicationSettingsRepository", () => {
       launchAtLogin: false,
       notifications: defaultNotifications(),
       onboarding: { ...defaultOnboarding(), tourCompleted: true },
+      indexing: defaultIndexing(),
     });
   });
 
@@ -107,7 +113,41 @@ describe("ApplicationSettingsRepository", () => {
         tourCompleted: true,
         completedGuides: ["beginning", "chat"],
       },
+      indexing: defaultIndexing(),
     });
+  });
+
+  it("persists the processing provider and defaults to automatic", () => {
+    const repository = createRepository();
+
+    expect(repository.get().indexing).toEqual({ provider: "auto" });
+    expect(
+      repository.update({ indexing: { provider: "directml" } }).indexing,
+    ).toEqual({ provider: "directml" });
+    expect(repository.get().indexing).toEqual({ provider: "directml" });
+    expect(
+      repository.update({ indexing: { provider: "cpu" } }).indexing,
+    ).toEqual({ provider: "cpu" });
+  });
+
+  it("rejects an unknown processing provider", () => {
+    const repository = createRepository();
+
+    expect(() =>
+      repository.update({
+        indexing: { provider: "opencl" as never },
+      }),
+    ).toThrow(TypeError);
+  });
+
+  it("discards a malformed provider stored on disk", () => {
+    const repository = createRepository();
+    writeFileSync(
+      settingsPath(),
+      JSON.stringify({ indexing: { provider: "opencl" } }),
+    );
+
+    expect(repository.get().indexing).toEqual({ provider: "auto" });
   });
 
   it("migrates and updates notification policy without losing event choices", () => {
@@ -148,6 +188,7 @@ function defaultNotifications() {
     scenarioStarted: true,
     scenarioCompleted: true,
     vectorizationCompleted: true,
+    downloadCompleted: true,
   };
 }
 
@@ -158,6 +199,10 @@ function defaultOnboarding() {
     completedGuides: [],
     firstLaunchAt: null,
   };
+}
+
+function defaultIndexing() {
+  return { provider: "auto" };
 }
 
 function createRepository(): ApplicationSettingsRepository {

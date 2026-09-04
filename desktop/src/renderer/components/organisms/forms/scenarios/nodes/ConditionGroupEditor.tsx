@@ -1,8 +1,4 @@
-import {
-  Button,
-  InputCheckBox,
-  InputSmall,
-} from "@kiyotakkkka/zvs-uikit-lib";
+import { Button, InputCheckBox, InputSmall } from "@kiyotakkkka/zvs-uikit-lib";
 import { BasicSelect } from "../../../../atoms/basic";
 import {
   UNARY_OPERATORS,

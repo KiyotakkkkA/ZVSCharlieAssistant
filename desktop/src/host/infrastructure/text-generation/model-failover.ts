@@ -182,10 +182,7 @@ export class ModelFailover {
     return (this.degradedUntil.get(modelId) ?? 0) > Date.now();
   }
 
-  record(
-    runId: string,
-    change: Omit<ModelSwitch, "at">,
-  ): ModelSwitch {
+  record(runId: string, change: Omit<ModelSwitch, "at">): ModelSwitch {
     const entry: ModelSwitch = { ...change, at: new Date().toISOString() };
     this.data.recordModelSwitch(runId, entry);
     return entry;

@@ -1,5 +1,9 @@
 import { makeAutoObservable, runInAction } from "mobx";
 import type {
+  OcrProviderPreference,
+  IngestProgress,
+  ResourceSample,
+  IndexingCapabilities,
   VectorStoreConfig,
   VectorStoreDocument,
   VectorStoreSnapshot,
@@ -15,6 +19,8 @@ import {
 export type VectorStoreModel = VectorStoreConfig;
 export type VectorDocument = VectorStoreDocument;
 
+const EMPTY_DOCUMENTS: VectorStoreDocument[] = [];
+
 export class VectorStoreStore {
   stores: VectorStoreConfig[] = [];
   documents: VectorStoreDocument[] = [];
@@ -22,13 +28,30 @@ export class VectorStoreStore {
   loading = false;
   selectedStoreId: string | null = null;
   activeDirectoryBatches = new Map<string, string[]>();
+  capabilities: IndexingCapabilities | null = null;
+  resourceSample: ResourceSample | null = null;
+  ingestProgress: IngestProgress | null = null;
+  cancelling = false;
   private readonly updateVersions = new Map<string, number>();
+  private resourceWatcher?: () => void;
+  private ingestProgressTimer?: ReturnType<typeof setInterval>;
   private processingMonitor?: Promise<void>;
 
   constructor() {
-    makeAutoObservable<this, "updateVersions" | "processingMonitor">(
+    makeAutoObservable<
       this,
-      { updateVersions: false, processingMonitor: false },
+      | "updateVersions"
+      | "processingMonitor"
+      | "resourceWatcher"
+      | "ingestProgressTimer"
+    >(
+      this,
+      {
+        updateVersions: false,
+        processingMonitor: false,
+        resourceWatcher: false,
+        ingestProgressTimer: false,
+      },
       { autoBind: true },
     );
   }
@@ -48,8 +71,14 @@ export class VectorStoreStore {
     if (this.loading || (this.initialized && !force)) return;
     this.loading = true;
     try {
-      const snapshot = await window.desktop.vectorStores.getSnapshot();
-      runInAction(() => this.apply(snapshot));
+      const [snapshot, capabilities] = await Promise.all([
+        window.desktop.vectorStores.getSnapshot(),
+        window.desktop.vectorStores.getIndexingCapabilities().catch(() => null),
+      ]);
+      runInAction(() => {
+        this.apply(snapshot);
+        this.capabilities = capabilities;
+      });
       this.ensureProcessingMonitor();
     } finally {
       runInAction(() => {
@@ -62,8 +91,18 @@ export class VectorStoreStore {
     return this.stores.find((item) => item.id === this.selectedStoreId);
   }
 
+  get documentsByStore(): Map<string, VectorStoreDocument[]> {
+    const groups = new Map<string, VectorStoreDocument[]>();
+    for (const item of this.documents) {
+      const group = groups.get(item.vectorStoreId);
+      if (group) group.push(item);
+      else groups.set(item.vectorStoreId, [item]);
+    }
+    return groups;
+  }
+
   documentsFor(storeId: string) {
-    return this.documents.filter((item) => item.vectorStoreId === storeId);
+    return this.documentsByStore.get(storeId) ?? EMPTY_DOCUMENTS;
   }
 
   activeDirectoryDocuments(storeId: string) {
@@ -72,10 +111,71 @@ export class VectorStoreStore {
   }
 
   processingDocuments(storeId: string) {
-    return this.documents.filter(
-      (item) =>
-        item.vectorStoreId === storeId && isProcessingStatus(item.status),
+    return this.documentsFor(storeId).filter((item) =>
+      isProcessingStatus(item.status),
     );
+  }
+
+  startMonitoring(storeId: string) {
+    if (!this.resourceWatcher)
+      this.resourceWatcher =
+        window.desktop.vectorStores.subscribeResourceSample?.((sample) => {
+          runInAction(() => {
+            this.resourceSample = sample;
+          });
+        });
+    void window.desktop.vectorStores.startResourceMonitor?.();
+    if (this.ingestProgressTimer) return;
+    const poll = () =>
+      void window.desktop.vectorStores
+        .getIngestProgress(storeId)
+        .then((progress) =>
+          runInAction(() => {
+            this.ingestProgress = progress;
+          }),
+        )
+        .catch(() => undefined);
+    poll();
+    this.ingestProgressTimer = setInterval(poll, 1000);
+  }
+
+  stopMonitoring() {
+    void window.desktop.vectorStores.stopResourceMonitor?.();
+    if (this.ingestProgressTimer) clearInterval(this.ingestProgressTimer);
+    this.ingestProgressTimer = undefined;
+    this.resourceWatcher?.();
+    this.resourceWatcher = undefined;
+    runInAction(() => {
+      this.resourceSample = null;
+      this.ingestProgress = null;
+    });
+  }
+
+  async stopIndexing() {
+    this.cancelling = true;
+    try {
+      const snapshot =
+        await window.desktop.vectorStores.stopIndexing();
+      runInAction(() => this.apply(snapshot));
+    } finally {
+      runInAction(() => {
+        this.cancelling = false;
+      });
+    }
+  }
+
+  async resumeIndexing() {
+    const snapshot = await window.desktop.vectorStores.resumeIndexing();
+    runInAction(() => this.apply(snapshot));
+    this.ensureProcessingMonitor();
+  }
+
+  async setOcrProvider(preference: OcrProviderPreference) {
+    const capabilities =
+      await window.desktop.vectorStores.setOcrProvider(preference);
+    runInAction(() => {
+      this.capabilities = capabilities;
+    });
   }
 
   async createStore() {
@@ -129,6 +229,12 @@ export class VectorStoreStore {
       if (this.updateVersions.get(id) === version) await this.bootstrap(true);
       throw error;
     }
+  }
+
+  async retryFailedDocuments(id: string) {
+    const snapshot = await window.desktop.vectorStores.retryFailedDocuments(id);
+    runInAction(() => this.apply(snapshot));
+    this.ensureProcessingMonitor();
   }
 
   async deleteStore(id: string) {
@@ -282,10 +388,12 @@ export class VectorStoreStore {
           )
         ).flat();
         runInAction(() => {
-          const updates = new Map(documents.map((item) => [item.id, item]));
-          this.documents = this.documents.map(
-            (item) => updates.get(item.id) ?? item,
-          );
+          for (const update of documents) {
+            const index = this.documents.findIndex(
+              (item) => item.id === update.id,
+            );
+            if (index >= 0) this.documents[index] = update;
+          }
         });
         if (
           documents.length !== ids.length ||

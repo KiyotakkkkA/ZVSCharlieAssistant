@@ -10,6 +10,16 @@ export const GLOBAL_ENTITY_IDS = {
   userProfile: "00000000-0000-7000-8000-000000000104",
 } as const;
 
+export const BUILTIN_EMBEDDING_MODEL_IDS = {
+  bgeM3: "00000000-0000-7000-8000-000000000301",
+} as const;
+
+export function isBuiltinEmbeddingModelId(modelId: string): boolean {
+  return Object.values(BUILTIN_EMBEDDING_MODEL_IDS).some(
+    (candidate) => candidate === modelId,
+  );
+}
+
 export const SYSTEM_SKILL_IDS = {
   reportDocxGost: "00000000-0000-7000-8000-000000000201",
   managedPowerShell: "00000000-0000-7000-8000-000000000202",

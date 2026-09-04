@@ -50,7 +50,11 @@ export const outputDescriptor: ScenarioNodeDescriptor<
     const channels = Array.isArray(config.channels)
       ? (config.channels as Array<{ enabled?: unknown; attachFiles?: unknown }>)
       : [];
-    if (channels.some((channel) => channel.enabled !== false && channel.attachFiles))
+    if (
+      channels.some(
+        (channel) => channel.enabled !== false && channel.attachFiles,
+      )
+    )
       ports.push(filesInput({ label: "Вложения" }));
     return ports;
   },

@@ -10,10 +10,7 @@ export const IPC_CHANNELS = {
 } as const;
 
 export type AppCommand =
-  | "new-chat"
-  | "open-tasks"
-  | "open-scenarios"
-  | "open-settings";
+  "new-chat" | "open-tasks" | "open-scenarios" | "open-settings";
 
 export interface AppInfo {
   name: string;
@@ -40,6 +37,7 @@ export interface DesktopApi {
   automation: import("./automation.contract").AutomationApi;
   textProviders: import("./text-provider.contract").TextProviderApi;
   vectorStores: import("./vector-store.contract").VectorStoreApi;
+  downloads: import("./downloads.contract").DownloadsApi;
   chat: import("./chat.contract").ChatApi;
   projects: import("./project.contract").ProjectApi;
   extensions: import("./extension.contract").ExtensionApi;
@@ -71,6 +69,7 @@ import type {
 
 export type {
   ApplicationSettings,
+  OcrProviderPreference,
   OnboardingState,
   UpdateApplicationSettingsInput,
 } from "../../shared/dto";

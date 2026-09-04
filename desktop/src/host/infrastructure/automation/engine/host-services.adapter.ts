@@ -197,9 +197,7 @@ export class HostScenarioEngineServices implements ScenarioEngineServices {
         )
           continue;
         const output = part.output as
-          | { path?: unknown; fileName?: unknown }
-          | null
-          | undefined;
+          { path?: unknown; fileName?: unknown } | null | undefined;
         if (
           !output ||
           typeof output.path !== "string" ||

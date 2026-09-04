@@ -1,12 +1,22 @@
 import type Database from "better-sqlite3";
-import type {
-  VectorStoreConfig,
-  VectorStoreDocument,
-  VectorStoreSnapshot,
-  VectorDocumentStatus,
+import {
+  isProcessing,
+  PROCESSING_STATUSES_SQL,
+  type VectorStoreConfig,
+  type VectorStoreDocument,
+  type VectorStoreSnapshot,
+  type VectorDocumentStatus,
 } from "../../../shared/models/vector-store";
 import type { UpsertVectorStoreInput } from "../../../shared/dto";
 import { newEntityId } from "./entity-id";
+
+export interface StoredDocumentRow {
+  id: string;
+  vector_store_id: string;
+  file_name: string;
+  mime_type: string;
+  local_path: string;
+}
 
 export class VectorStoreRepository {
   constructor(readonly db: Database.Database) {}
@@ -107,25 +117,43 @@ export class VectorStoreRepository {
     return Boolean(
       this.db
         .prepare(
-          "SELECT 1 FROM vector_store_documents WHERE vector_store_id=? AND status IN ('queued','extracting','embedding') LIMIT 1",
+          `SELECT 1 FROM vector_store_documents WHERE vector_store_id=? AND status IN (${PROCESSING_STATUSES_SQL}) LIMIT 1`,
         )
         .get(storeId),
     );
   }
-  recoverInterruptedDocuments() {
-    const storeIds = (
-      this.db
-        .prepare(
-          "SELECT DISTINCT vector_store_id FROM vector_store_documents WHERE status IN ('queued','extracting','embedding')",
-        )
-        .all() as Array<{ vector_store_id: string }>
-    ).map((item) => item.vector_store_id);
+  recoverInterruptedDocuments(): StoredDocumentRow[] {
+    const rows = this.db
+      .prepare(
+        `SELECT id,vector_store_id,file_name,mime_type,local_path FROM vector_store_documents WHERE status IN (${PROCESSING_STATUSES_SQL}) ORDER BY created_at`,
+      )
+      .all() as StoredDocumentRow[];
     this.db
       .prepare(
-        "UPDATE vector_store_documents SET status='failed',error_message='Обработка была прервана перезапуском приложения' WHERE status IN ('queued','extracting','embedding')",
+        `UPDATE vector_store_documents SET status='queued',progress=0,error_message=NULL WHERE status IN (${PROCESSING_STATUSES_SQL})`,
       )
       .run();
-    for (const storeId of storeIds) this.refreshStoreState(storeId);
+    for (const storeId of new Set(rows.map((row) => row.vector_store_id)))
+      this.refreshStoreState(storeId);
+    return rows;
+  }
+  resetDocumentsForNativeIndex(): StoredDocumentRow[] {
+    const rows = this.db
+      .prepare(
+        "SELECT d.id,d.vector_store_id,d.file_name,d.mime_type,d.local_path FROM vector_store_documents d JOIN vector_stores s ON s.id=d.vector_store_id WHERE s.embedding_model_id IS NOT NULL ORDER BY d.created_at",
+      )
+      .all() as StoredDocumentRow[];
+    this.db
+      .prepare(
+        "UPDATE vector_store_documents SET status='queued',progress=0,chunk_count=0,error_message=NULL WHERE vector_store_id IN (SELECT id FROM vector_stores WHERE embedding_model_id IS NOT NULL)",
+      )
+      .run();
+    this.db
+      .prepare(
+        "UPDATE vector_stores SET status=CASE WHEN embedding_model_id IS NULL THEN 'disabled' WHEN EXISTS(SELECT 1 FROM vector_store_documents d WHERE d.vector_store_id=vector_stores.id) THEN 'indexing' ELSE 'ready' END,vector_dimension=NULL,updated_at=CURRENT_TIMESTAMP",
+      )
+      .run();
+    return rows;
   }
   createDocument(
     storeId: string,
@@ -153,6 +181,13 @@ export class VectorStoreRepository {
       )
       .run(id, storeId, fileName, mimeType, path, hash, size);
     return id;
+  }
+  failedDocuments(storeId: string): StoredDocumentRow[] {
+    return this.db
+      .prepare(
+        "SELECT id,vector_store_id,file_name,mime_type,local_path FROM vector_store_documents WHERE vector_store_id=? AND status='failed' ORDER BY created_at",
+      )
+      .all(storeId) as StoredDocumentRow[];
   }
   documentByHash(storeId: string, hash: string) {
     return this.db
@@ -216,7 +251,7 @@ export class VectorStoreRepository {
       )
       .all(id) as Array<{ status: VectorDocumentStatus }>;
     const status: VectorStoreConfig["status"] = statuses.some((item) =>
-      ["queued", "extracting", "embedding"].includes(item.status),
+      isProcessing(item.status),
     )
       ? "indexing"
       : statuses.some((item) => item.status === "failed")

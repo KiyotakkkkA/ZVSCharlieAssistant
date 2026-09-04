@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
-import { Button, InputSmall, Modal, useToasts } from "@kiyotakkkka/zvs-uikit-lib";
+import {
+  Button,
+  InputSmall,
+  Modal,
+  useToasts,
+} from "@kiyotakkkka/zvs-uikit-lib";
 import { entityGenerationStore } from "../../../stores";
 import type { EntityGenerationRun } from "../../../../ipc/contracts";
 
@@ -113,9 +118,7 @@ export function GenerationQuestionModal({ run, onClose }: Props) {
                 variant="primary"
                 loading={submitting}
                 disabled={
-                  question?.options.length
-                    ? !selected.length
-                    : !freeText.trim()
+                  question?.options.length ? !selected.length : !freeText.trim()
                 }
                 onClick={() =>
                   void submit(

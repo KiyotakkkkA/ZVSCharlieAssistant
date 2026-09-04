@@ -3,9 +3,10 @@ import { formatShellResult, runShellCommand } from "../../src/cli/tui/shell";
 
 describe("shell-команды TUI", () => {
   it("выполняет команду в выбранной рабочей папке", async () => {
-    const command = process.platform === "win32"
-      ? "[Console]::Write((Get-Location).Path)"
-      : "pwd";
+    const command =
+      process.platform === "win32"
+        ? "[Console]::Write((Get-Location).Path)"
+        : "pwd";
     const result = await runShellCommand(command, process.cwd());
 
     expect(result.exitCode).toBe(0);
@@ -14,9 +15,10 @@ describe("shell-команды TUI", () => {
   });
 
   it("возвращает Unicode без повреждения кодировки", async () => {
-    const command = process.platform === "win32"
-      ? "[Console]::Write('Привет, мир')"
-      : "printf 'Привет, мир'";
+    const command =
+      process.platform === "win32"
+        ? "[Console]::Write('Привет, мир')"
+        : "printf 'Привет, мир'";
     const result = await runShellCommand(command, process.cwd());
 
     expect(result.exitCode).toBe(0);
@@ -30,9 +32,10 @@ describe("shell-команды TUI", () => {
   });
 
   it("сохраняет Unicode в потоке ошибок", async () => {
-    const command = process.platform === "win32"
-      ? "[Console]::Error.Write('Ошибка кодировки'); exit 7"
-      : "printf 'Ошибка кодировки' >&2; exit 7";
+    const command =
+      process.platform === "win32"
+        ? "[Console]::Error.Write('Ошибка кодировки'); exit 7"
+        : "printf 'Ошибка кодировки' >&2; exit 7";
     const result = await runShellCommand(command, process.cwd());
 
     expect(result.exitCode).toBe(7);

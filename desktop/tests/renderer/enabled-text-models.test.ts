@@ -4,7 +4,11 @@ import type { TextProviderSnapshot } from "../../src/shared/models/text-provider
 
 describe("доступные текстовые модели", () => {
   it("исключает embedding-модели, отключённые модели и отключённых провайдеров", () => {
-    const provider = (id: string, providerType: "text" | "embedding", enabled = true) => ({
+    const provider = (
+      id: string,
+      providerType: "text" | "embedding",
+      enabled = true,
+    ) => ({
       id,
       providerType,
       enabled,

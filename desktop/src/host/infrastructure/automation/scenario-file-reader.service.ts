@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { extname, resolve, sep } from "node:path";
 import type { ScenarioFileReference } from "../../../shared/dto/scenario-trigger-event.dto";
-import type { TextExtractionClient } from "../vector-store/text-extraction.client";
+import type { NativeIndexerService } from "../vector-store/native-indexer.service";
 
 export interface ScenarioFileTextContent {
   fileId: string;
@@ -27,7 +27,7 @@ export class ScenarioFileReaderService {
 
   constructor(
     root: string,
-    private readonly extraction: TextExtractionClient,
+    private readonly extraction: NativeIndexerService,
   ) {
     this.rootPath = resolve(root);
   }
@@ -70,7 +70,7 @@ export class ScenarioFileReaderService {
     const extension = extname(file.fileName).toLocaleLowerCase();
     if (PLAIN_TEXT_EXTENSIONS.has(extension)) return readFile(path, "utf8");
     const buffer = await readFile(path);
-    return this.extraction.extract(
+    return this.extraction.extractBuffer(
       file.fileName,
       buffer.buffer.slice(
         buffer.byteOffset,

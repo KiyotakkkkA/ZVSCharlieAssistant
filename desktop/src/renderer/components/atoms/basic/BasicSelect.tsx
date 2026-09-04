@@ -29,10 +29,7 @@ export function BasicSelect({
 }: BasicSelectProps) {
   return (
     <Select options={options} {...props}>
-      <Select.Trigger
-        className={triggerClassName}
-        rounded={triggerRounded}
-      />
+      <Select.Trigger className={triggerClassName} rounded={triggerRounded} />
       <Select.Menu
         className={menuClassName}
         label={menuLabel}

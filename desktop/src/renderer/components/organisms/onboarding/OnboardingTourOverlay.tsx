@@ -2,16 +2,17 @@ import { Button, ProgressBar } from "@kiyotakkkka/zvs-uikit-lib";
 import { observer } from "mobx-react-lite";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { APP_PATHS } from "../../../app/routes";
 import { onboardingStore } from "../../../stores";
 import { ArrowExpandRightIcon, CheckIcon, ChevronLeftIcon } from "../../atoms";
 import { findGuide } from "./guides";
+import { useAppNavigation } from "@renderer/hooks";
 
 type Rect = { top: number; left: number; width: number; height: number };
 
 export const OnboardingTourOverlay = observer(function OnboardingTourOverlay() {
-  const navigate = useNavigate();
+  const { goTo } = useAppNavigation();
   const location = useLocation();
   const dialogRef = useRef<HTMLDivElement>(null);
   const [rect, setRect] = useState<Rect | null>(null);
@@ -21,7 +22,7 @@ export const OnboardingTourOverlay = observer(function OnboardingTourOverlay() {
   const highlightedRect = rect;
   const finishGuide = async () => {
     await onboardingStore.finishGuide();
-    navigate(APP_PATHS.guides, { replace: true });
+    goTo(APP_PATHS.guides, { replace: true });
   };
 
   useEffect(() => {
@@ -30,7 +31,7 @@ export const OnboardingTourOverlay = observer(function OnboardingTourOverlay() {
     setTargetMissing(false);
 
     if (location.pathname !== step.route) {
-      navigate(step.route, { replace: true });
+      goTo(step.route, { replace: true });
       return;
     }
 
@@ -111,7 +112,7 @@ export const OnboardingTourOverlay = observer(function OnboardingTourOverlay() {
       window.removeEventListener("resize", update);
       window.removeEventListener("scroll", update, true);
     };
-  }, [location.pathname, navigate, step]);
+  }, [location.pathname, goTo, step]);
 
   useEffect(() => {
     if (!onboardingStore.guideActive) return;

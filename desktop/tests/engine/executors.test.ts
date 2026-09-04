@@ -97,8 +97,7 @@ describe("узел http", () => {
     expect(result.status).toBe("completed");
     expect(capturedHeaders?.get("Authorization")).toBe("Bearer top-secret");
     const httpOutput = result.outputs["Запрос"] as
-      | { json: unknown }
-      | undefined;
+      { json: unknown } | undefined;
     expect(httpOutput).toBeTruthy();
   });
 

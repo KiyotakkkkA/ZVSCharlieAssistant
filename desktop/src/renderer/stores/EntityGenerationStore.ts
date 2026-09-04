@@ -41,9 +41,7 @@ class EntityGenerationStore {
         if (event.run.status !== "queued" && event.run.status !== "running")
           settled.add(event.run.id);
         runInAction(() => {
-          const index = this.runs.findIndex(
-            (item) => item.id === event.run.id,
-          );
+          const index = this.runs.findIndex((item) => item.id === event.run.id);
           if (index >= 0) this.runs[index] = event.run;
           else this.runs.unshift(event.run);
         });

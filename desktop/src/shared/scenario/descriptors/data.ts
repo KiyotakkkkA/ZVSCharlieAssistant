@@ -297,11 +297,7 @@ export const downloadFilesDescriptor: ScenarioNodeDescriptor<
     cleanupOnFinish: true,
   }),
   inputs: [mainInput(), filesInput()],
-  outputs: [
-    mainOutput({ label: "Файлы" }),
-    filesOutput(),
-    errorOutput(),
-  ],
+  outputs: [mainOutput({ label: "Файлы" }), filesOutput(), errorOutput()],
   itemMode: "collection",
   defaults: {
     retry: {

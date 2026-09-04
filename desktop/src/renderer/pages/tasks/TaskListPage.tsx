@@ -12,6 +12,8 @@ import {
 import { APP_PATHS } from "../../app/routes";
 import { TasksIcon } from "../../components/atoms";
 import type { EntityGenerationRun } from "../../../ipc/contracts";
+import { DownloadTaskList } from "@renderer/components/molecules";
+import { downloadStore } from "@renderer/stores";
 import { PageHeader } from "../../components/organisms";
 import { useAppNavigation } from "../../hooks";
 import {
@@ -26,7 +28,7 @@ import {
 } from "@renderer/components/organisms/tables";
 import { GenerationQuestionModal } from "../../components/organisms/modals";
 
-type TaskTab = "scenarios-runs" | "creation-runs";
+type TaskTab = "scenarios-runs" | "creation-runs" | "downloads";
 
 export const TaskListPage = observer(function TaskListPage() {
   const { goTo } = useAppNavigation();
@@ -36,6 +38,7 @@ export const TaskListPage = observer(function TaskListPage() {
   const [answering, setAnswering] = useState<EntityGenerationRun | null>(null);
 
   useEffect(() => {
+    void downloadStore.bootstrap();
     const refresh = () => {
       void tasksStore.bootstrap(true);
       void entityGenerationStore.bootstrap(true);
@@ -90,6 +93,10 @@ export const TaskListPage = observer(function TaskListPage() {
                   value: "creation-runs",
                   label: `Создание · ${entityGenerationStore.runs.length}`,
                 },
+                {
+                  value: "downloads",
+                  label: `Загрузки · ${downloadStore.busy.length}`,
+                },
               ]}
             />
           </div>
@@ -106,7 +113,9 @@ export const TaskListPage = observer(function TaskListPage() {
       </PageHeader>
 
       <ScrollArea data-tour="tasks-list" className="min-h-0 flex-1 p-1">
-        {empty ? (
+        {tab === "downloads" ? (
+          <DownloadTaskList />
+        ) : empty ? (
           <div className="grid min-h-80 place-items-center">
             <EmptyState
               icon={<TasksIcon className="size-6" />}

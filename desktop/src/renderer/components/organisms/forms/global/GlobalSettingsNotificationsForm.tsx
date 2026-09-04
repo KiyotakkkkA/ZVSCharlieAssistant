@@ -12,6 +12,7 @@ const DEFAULT_POLICY: NotificationPolicy = {
   scenarioStarted: true,
   scenarioCompleted: true,
   vectorizationCompleted: true,
+  downloadCompleted: true,
 };
 
 const EVENTS: Array<{
@@ -41,8 +42,15 @@ const EVENTS: Array<{
   },
   {
     key: "vectorizationCompleted",
-    title: "Векторизация завершена",
-    description: "Когда документ обработан или обработка завершилась ошибкой.",
+    title: "Индексация завершена",
+    description:
+      "Когда обработаны все файлы задачи — с итогом, сколько добавлено и сколько не удалось.",
+  },
+  {
+    key: "downloadCompleted",
+    title: "Загрузка завершена",
+    description:
+      "Когда модель или библиотека скачана, а также если загрузка не удалась.",
   },
 ];
 

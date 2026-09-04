@@ -1,8 +1,10 @@
 import { createHash } from "node:crypto";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import * as lancedb from "@lancedb/lancedb";
-import type { TextExtractionClient } from "./text-extraction.client";
+import type {
+  NativeIndexerService,
+  NativeVectorChunk,
+} from "./native-indexer.service";
 import type {
   UploadVectorDocumentInput,
   UpsertVectorStoreInput,
@@ -10,35 +12,77 @@ import type {
 } from "../../../shared/dto";
 import {
   MAX_VECTOR_DOCUMENT_BYTES,
+  isProcessing,
+  stageProgress,
+  type DocumentStageName,
   type VectorSearchResultItem,
 } from "../../../shared/models/vector-store";
-import type { VectorStoreRepository } from "../database/vector-store.repository";
+import type {
+  StoredDocumentRow,
+  VectorStoreRepository,
+} from "../database/vector-store.repository";
 import { EmbeddingService } from "./embedding.service";
+import { isBuiltinEmbeddingModelId } from "../../../shared/entity-ids";
 
 const INGEST_CONCURRENCY = 2;
-const RRF_K = 60;
+const DURATION_WINDOW = 24;
+const EMBED_BATCH = 16;
+
+interface QueuedIngest {
+  storeId: string;
+  documentId: string;
+  run: (generation: number) => Promise<IngestOutcome>;
+}
+
+type IngestOutcome = "succeeded" | "failed" | "paused";
+
+interface IngestBatch {
+  total: number;
+  completed: number;
+  failed: number;
+  startedAt: number;
+  durations: number[];
+  cancelling: boolean;
+}
+
+export interface IngestBatchResult {
+  storeId: string;
+  storeName: string;
+  total: number;
+  succeeded: number;
+  failed: number;
+  elapsedMs: number;
+  cancelled: boolean;
+}
+
+export interface IngestProgress {
+  storeId: string;
+  total: number;
+  completed: number;
+  failed: number;
+  remaining: number;
+  active: number;
+  averageMs: number | null;
+  etaMs: number | null;
+  startedAt: number;
+  cancelling: boolean;
+  paused: boolean;
+}
 
 export class VectorStoreService {
   private activeIngests = 0;
-  private readonly ingestQueue: Array<() => Promise<void>> = [];
-  private readonly writeQueues = new Map<string, Promise<void>>();
-  private readonly ftsIndexPromises = new Map<string, Promise<void>>();
-  private connectionPromise?: Promise<lancedb.Connection>;
-  private tableNamesPromise?: Promise<Set<string>>;
-  private rrfPromise?: ReturnType<typeof lancedb.rerankers.RRFReranker.create>;
+  private readonly ingestQueue: QueuedIngest[] = [];
+  private readonly activeByStore = new Map<string, number>();
+  private readonly batches = new Map<string, IngestBatch>();
+  private paused = false;
+  private stopGeneration = 0;
 
   constructor(
     private readonly data: VectorStoreRepository,
     private readonly embeddings: EmbeddingService,
     private readonly filesDir: string,
-    private readonly lanceDir: string,
-    private readonly extraction: TextExtractionClient,
-    private readonly onIngestCompleted?: (event: {
-      fileName: string;
-      storeName: string;
-      succeeded: boolean;
-      error?: string;
-    }) => void,
+    private readonly indexer: NativeIndexerService,
+    private readonly onBatchCompleted?: (event: IngestBatchResult) => void,
   ) {}
 
   snapshot() {
@@ -56,6 +100,7 @@ export class VectorStoreService {
     validateStore(input);
     if (
       input.embeddingModelId !== null &&
+      !isBuiltinEmbeddingModelId(input.embeddingModelId) &&
       !this.data.embeddingModel(input.embeddingModelId)
     )
       throw new Error("Выбрана недоступная embedding-модель");
@@ -68,44 +113,19 @@ export class VectorStoreService {
       throw new Error(
         "Перед сменой embedding-модели удалите документы из хранилища",
       );
-    if (embeddingChanged) {
-      const db = await this.connect();
-      const name = tableName(current.id);
-      const tables = await this.tableNames();
-      if (tables.has(name)) {
-        await db.dropTable(name);
-        tables.delete(name);
-      }
-    }
+    if (embeddingChanged) await this.indexer.dropVectorStore(current.id);
     const storeId = this.data.upsert({
       ...input,
       name: input.name.trim(),
       description: input.description.trim(),
     });
-    if (input.searchMode === "hybrid") {
-      const tables = await this.tableNames();
-      if (tables.has(tableName(storeId))) {
-        const table = await (
-          await this.connect()
-        ).openTable(tableName(storeId));
-        this.ftsIndexPromises.delete(storeId);
-        await this.ensureFtsIndex(storeId, table);
-      }
-    }
     return this.snapshot();
   }
 
   async deleteStore(id: string) {
     if (this.data.hasProcessingDocuments(id))
       throw new Error("Дождитесь завершения обработки документов");
-    const db = await this.connect();
-    const table = tableName(id);
-    const tables = await this.tableNames();
-    if (tables.has(table)) {
-      await db.dropTable(table);
-      tables.delete(table);
-    }
-    this.ftsIndexPromises.delete(id);
+    await this.indexer.dropVectorStore(id);
     await rm(join(this.filesDir, String(id)), { recursive: true, force: true });
     this.data.deleteStore(id);
     return this.snapshot();
@@ -115,14 +135,7 @@ export class VectorStoreService {
     if (!this.data.store(id)) throw new Error("Векторное хранилище не найдено");
     if (this.data.hasProcessingDocuments(id))
       throw new Error("Дождитесь завершения обработки документов");
-    const db = await this.connect();
-    const table = tableName(id);
-    const tables = await this.tableNames();
-    if (tables.has(table)) {
-      await db.dropTable(table);
-      tables.delete(table);
-    }
-    this.ftsIndexPromises.delete(id);
+    await this.indexer.dropVectorStore(id);
     await rm(join(this.filesDir, String(id)), { recursive: true, force: true });
     this.data.clearDocuments(id);
     return this.snapshot();
@@ -157,27 +170,215 @@ export class VectorStoreService {
         buffer.length,
       );
       this.data.setStoreState(input.vectorStoreId, "indexing");
-      this.enqueueIngest(() => this.ingest(input, id, path, buffer));
+      this.beginBatch(input.vectorStoreId, 1);
+      this.enqueueIngest({
+        storeId: input.vectorStoreId,
+        documentId: id,
+        run: (generation) => this.ingest(input, id, path, buffer, generation),
+      });
     }
     return this.snapshot();
   }
 
-  private enqueueIngest(task: () => Promise<void>): void {
-    this.ingestQueue.push(task);
+  async retryFailed(storeId: string) {
+    const store = this.data.store(storeId);
+    if (!store?.embeddingModelId)
+      throw new Error("Сначала выберите embedding-модель");
+    this.enqueueStored(this.data.failedDocuments(storeId));
+    return this.snapshot();
+  }
+
+  resumeInterrupted(): void {
+    const reset = this.indexer.initializeVectorIndex();
+    this.indexer.resumeIndexing();
+    this.paused = false;
+    const rows = reset
+      ? this.data.resetDocumentsForNativeIndex()
+      : this.data.recoverInterruptedDocuments();
+    if (reset) this.indexer.completeVectorIndexInitialization();
+    this.enqueueStored(rows);
+  }
+
+  private enqueueStored(rows: StoredDocumentRow[]): void {
+    if (!rows.length) return;
+    for (const row of rows) this.data.updateDocument(row.id, "queued", 0);
+    for (const [storeId, group] of groupByStore(rows)) {
+      this.data.setStoreState(storeId, "indexing");
+      this.beginBatch(storeId, group.length);
+      for (const row of group)
+        this.enqueueIngest({
+          storeId,
+          documentId: row.id,
+          run: (generation) => this.reingest(row, generation),
+        });
+    }
+  }
+
+  private async reingest(
+    row: StoredDocumentRow,
+    generation: number,
+  ): Promise<IngestOutcome> {
+    let buffer: Buffer<ArrayBuffer>;
+    try {
+      buffer = (await readFile(row.local_path)) as Buffer<ArrayBuffer>;
+    } catch {
+      this.data.updateDocument(
+        row.id,
+        "failed",
+        100,
+        0,
+        "Файл не найден на диске — возможно, его переместили или удалили.",
+      );
+      this.data.refreshStoreState(row.vector_store_id);
+      return "failed";
+    }
+    return this.ingest(
+      {
+        vectorStoreId: row.vector_store_id,
+        fileName: row.file_name,
+        mimeType: row.mime_type,
+        data: buffer.buffer.slice(
+          buffer.byteOffset,
+          buffer.byteOffset + buffer.byteLength,
+        ),
+      },
+      row.id,
+      row.local_path,
+      buffer,
+      generation,
+    );
+  }
+
+  private enqueueIngest(entry: QueuedIngest): void {
+    this.ingestQueue.push(entry);
     this.drainIngestQueue();
+  }
+
+  private beginBatch(storeId: string, added: number): void {
+    const existing = this.batches.get(storeId);
+    if (existing && !existing.cancelling) {
+      existing.total += added;
+      return;
+    }
+    this.batches.set(storeId, {
+      total: added,
+      completed: 0,
+      failed: 0,
+      startedAt: Date.now(),
+      durations: [],
+      cancelling: false,
+    });
+  }
+
+  private finishOne(storeId: string, elapsedMs: number, failed: boolean): void {
+    const batch = this.batches.get(storeId);
+    if (!batch) return;
+    batch.completed += 1;
+    if (failed) batch.failed += 1;
+    batch.durations.push(elapsedMs);
+    if (batch.durations.length > DURATION_WINDOW) batch.durations.shift();
+    if (batch.completed < batch.total) return;
+    this.batches.delete(storeId);
+    this.onBatchCompleted?.({
+      storeId,
+      storeName: this.data.store(storeId)?.name ?? "базу знаний",
+      total: batch.total,
+      succeeded: batch.completed - batch.failed,
+      failed: batch.failed,
+      elapsedMs: Date.now() - batch.startedAt,
+      cancelled: batch.cancelling,
+    });
+    void this.indexer
+      .finalizeVectorIndex(
+        storeId,
+        this.data.store(storeId)?.searchMode ?? "vector",
+      )
+      .catch((error: unknown) =>
+        console.error(
+          "Не удалось перестроить индекс хранилища",
+          storeId,
+          error,
+        ),
+      );
+  }
+
+  progress(storeId: string): IngestProgress | null {
+    const batch = this.batches.get(storeId);
+    if (!batch) return null;
+    const active = this.activeByStore.get(storeId) ?? 0;
+    const remaining = Math.max(0, batch.total - batch.completed);
+    const averageMs = batch.durations.length
+      ? batch.durations.reduce((sum, value) => sum + value, 0) /
+        batch.durations.length
+      : null;
+    return {
+      storeId,
+      total: batch.total,
+      completed: batch.completed,
+      failed: batch.failed,
+      remaining,
+      active,
+      averageMs: averageMs === null ? null : Math.round(averageMs),
+      etaMs:
+        averageMs === null || !remaining
+          ? null
+          : Math.round(
+              (averageMs * remaining) / Math.max(1, INGEST_CONCURRENCY),
+            ),
+      startedAt: batch.startedAt,
+      cancelling: batch.cancelling,
+      paused: this.paused,
+    };
+  }
+
+  stopIndexing() {
+    if (this.paused) return this.snapshot();
+    this.paused = true;
+    this.stopGeneration += 1;
+    this.indexer.stopIndexing();
+    return this.snapshot();
+  }
+
+  resumeIndexing() {
+    if (!this.paused) return this.snapshot();
+    this.paused = false;
+    this.indexer.resumeIndexing();
+    for (const batch of this.batches.values()) batch.cancelling = false;
+    this.drainIngestQueue();
+    return this.snapshot();
   }
 
   private drainIngestQueue(): void {
     while (
+      !this.paused &&
       this.activeIngests < INGEST_CONCURRENCY &&
       this.ingestQueue.length
     ) {
-      const task = this.ingestQueue.shift()!;
+      const entry = this.ingestQueue.shift()!;
       this.activeIngests += 1;
-      void task()
-        .catch(() => undefined)
-        .finally(() => {
+      this.activeByStore.set(
+        entry.storeId,
+        (this.activeByStore.get(entry.storeId) ?? 0) + 1,
+      );
+      const startedAt = Date.now();
+      const generation = this.stopGeneration;
+      void entry
+        .run(generation)
+        .catch((): IngestOutcome => "failed")
+        .then((outcome) => {
           this.activeIngests -= 1;
+          const active = (this.activeByStore.get(entry.storeId) ?? 1) - 1;
+          if (active > 0) this.activeByStore.set(entry.storeId, active);
+          else this.activeByStore.delete(entry.storeId);
+          if (outcome === "paused") {
+            this.ingestQueue.unshift(entry);
+          } else {
+            this.finishOne(
+              entry.storeId,
+              Date.now() - startedAt,
+              outcome === "failed",
+            );
+          }
           this.drainIngestQueue();
         });
     }
@@ -186,14 +387,10 @@ export class VectorStoreService {
   async deleteDocument(id: string) {
     const row = this.data.document(id);
     if (!row) return this.snapshot();
-    if (["queued", "extracting", "embedding"].includes(String(row.status)))
+    if (isProcessing(String(row.status)))
       throw new Error("Документ ещё обрабатывается");
     const storeId = String(row.vector_store_id);
-    const db = await this.connect();
-    if ((await this.tableNames()).has(tableName(storeId)))
-      await (
-        await db.openTable(tableName(storeId))
-      ).delete(`document_id = '${sqlLiteral(id)}'`);
+    await this.indexer.removeVectorDocument(storeId, id);
     await rm(String(row.local_path), { force: true });
     this.data.deleteDocument(id);
     this.data.refreshStoreState(storeId);
@@ -215,15 +412,12 @@ export class VectorStoreService {
       throw new Error("Количество результатов должно быть целым числом");
     const limit = Math.min(Math.max(requestedLimit, 1), 20);
     const results: VectorSearchResultItem[] = [];
-    const db = await this.connect();
-    const tableNames = await this.tableNames();
     const queryVectors = new Map<string, Promise<number[]>>();
     for (const storeId of [...new Set(input.vectorStoreIds)]) {
       const store = this.data.store(storeId);
       if (!store) throw new Error(`Векторное хранилище #${storeId} не найдено`);
       if (!store.embeddingModelId || store.status === "disabled")
         throw new Error(`Хранилище «${store.name}» не настроено`);
-      if (!tableNames.has(tableName(storeId))) continue;
       let vectorPromise = queryVectors.get(store.embeddingModelId);
       if (!vectorPromise) {
         vectorPromise = this.embeddings
@@ -232,39 +426,26 @@ export class VectorStoreService {
         queryVectors.set(store.embeddingModelId, vectorPromise);
       }
       const vector = await vectorPromise;
-      const table = await db.openTable(tableName(storeId));
-      if (store.searchMode === "hybrid")
-        await this.ensureFtsIndex(storeId, table);
-      const rows = (await (store.searchMode === "hybrid"
-        ? table
-            .query()
-            .nearestTo(vector!)
-            .fullTextSearch(query, { columns: ["text"] })
-            .rerank(await this.rrf())
-            .limit(limit)
-            .toArray()
-        : table.vectorSearch(vector!).limit(limit).toArray())) as Array<
-        Record<string, unknown>
-      >;
+      const rows = await this.indexer.searchVectorIndex(
+        storeId,
+        query,
+        vector,
+        store.searchMode,
+        limit,
+      );
       for (const row of rows) {
-        const score =
-          store.searchMode === "hybrid"
-            ? Math.min(
-                1,
-                Math.max(0, Number(row._relevance_score ?? 0) / (2 / RRF_K)),
-              )
-            : 1 / (1 + Number(row._distance ?? 0));
+        const score = row.score;
         if (score < (input.scoreThreshold ?? 0)) continue;
         results.push({
-          documentId: String(row.document_id),
-          fileName: String(row.file_name),
-          chunkIndex: Number(row.chunk_index),
-          content: String(row.text),
+          documentId: row.documentId,
+          fileName: row.fileName,
+          chunkIndex: row.chunkIndex,
+          content: row.text,
           score,
           pageNumber:
-            row.page_number === null || Number(row.page_number) < 1
+            row.pageNumber < 1
               ? null
-              : Number(row.page_number),
+              : row.pageNumber,
         });
       }
     }
@@ -276,55 +457,57 @@ export class VectorStoreService {
     id: string,
     path: string,
     buffer: Buffer<ArrayBuffer>,
-  ) {
+    generation: number,
+  ): Promise<IngestOutcome> {
     const store = this.data.store(input.vectorStoreId);
     if (!store?.embeddingModelId)
       throw new Error("Сначала выберите embedding-модель");
     let failure: string | undefined;
     try {
+      this.checkRunning(generation);
       await mkdir(join(this.filesDir, String(store.id)), { recursive: true });
       await writeFile(path, buffer);
       this.data.setStoreState(store.id, "indexing");
-      this.data.updateDocument(id, "extracting", 15);
-      const text = await this.extraction.extract(
-        input.fileName,
-        buffer.buffer.slice(
-          buffer.byteOffset,
-          buffer.byteOffset + buffer.byteLength,
-        ),
+      this.stage(id, "reading");
+      const segments = await this.extractSegments(path);
+      this.checkRunning(generation);
+      this.stage(id, "splitting");
+      const chunks = segments.flatMap((segment) =>
+        chunkText(
+          segment.text,
+          store.chunkSizeTokens,
+          store.chunkOverlapTokens,
+        ).map((text) => ({ text, pageNumber: segment.pageNumber })),
       );
-      const chunks = chunkText(
-        text,
-        store.chunkSizeTokens,
-        store.chunkOverlapTokens,
-      );
-      if (!chunks.length) throw new Error("В документе не найден текст");
-      this.data.updateDocument(id, "embedding", 40);
+      if (!chunks.length)
+        throw new Error(
+          "В документе не удалось найти текст. Если это скан, включите распознавание сканов в настройках базы знаний.",
+        );
+      this.stage(id, "embedding", 0);
       const vectors: number[][] = [];
-      for (let index = 0; index < chunks.length; index += 16) {
+      for (let index = 0; index < chunks.length; index += EMBED_BATCH) {
+        this.checkRunning(generation);
         vectors.push(
           ...(await this.embeddings.embed(
             store.embeddingModelId,
-            chunks.slice(index, index + 16),
+            chunks.slice(index, index + EMBED_BATCH).map((chunk) => chunk.text),
           )),
         );
-        this.data.updateDocument(
+        this.checkRunning(generation);
+        this.stage(
           id,
           "embedding",
-          40 +
-            Math.round(
-              (Math.min(index + 16, chunks.length) / chunks.length) * 50,
-            ),
+          Math.min(index + EMBED_BATCH, chunks.length) / chunks.length,
         );
       }
-      const rows = chunks.map((text, index) => ({
+      const rows: NativeVectorChunk[] = chunks.map((chunk, index) => ({
         id: `${id}:${index}`,
-        document_id: id,
-        chunk_index: index,
-        text,
+        documentId: id,
+        chunkIndex: index,
+        text: chunk.text,
         vector: vectors[index]!,
-        file_name: input.fileName,
-        page_number: -1,
+        fileName: input.fileName,
+        pageNumber: chunk.pageNumber ?? -1,
       }));
       if (
         store.vectorDimension !== null &&
@@ -333,33 +516,72 @@ export class VectorStoreService {
         throw new Error(
           `Размерность embedding изменилась: ожидалось ${store.vectorDimension}, получено ${vectors[0]!.length}`,
         );
-      await this.writeRows(store.id, id, rows);
+      this.stage(id, "writing");
+      this.checkRunning(generation);
+      await this.indexer.appendVectorChunks(store.id, rows);
+      this.checkRunning(generation);
       this.data.updateDocument(id, "ready", 100, chunks.length);
       this.data.refreshStoreState(store.id, vectors[0]!.length);
     } catch (error) {
+      if (this.isPausedError(error, generation)) {
+        this.data.updateDocument(id, "queued", 0);
+        this.data.refreshStoreState(store.id);
+        return "paused";
+      }
       failure = error instanceof Error ? error.message : String(error);
-      this.data.updateDocument(
-        id,
-        "failed",
-        100,
-        0,
-        failure,
-      );
+      this.data.updateDocument(id, "failed", 100, 0, failure);
       this.data.refreshStoreState(store.id);
     }
-    this.onIngestCompleted?.({
-      fileName: input.fileName,
-      storeName: store.name,
-      succeeded: failure === undefined,
-      ...(failure ? { error: failure } : {}),
-    });
+    return failure === undefined ? "succeeded" : "failed";
+  }
+
+  private checkRunning(generation: number): void {
+    if (this.paused || generation !== this.stopGeneration)
+      throw new IndexingPausedError();
+  }
+
+  private isPausedError(error: unknown, generation: number): boolean {
+    return (
+      error instanceof IndexingPausedError ||
+      (error instanceof Error && error.message.includes("INDEXING_PAUSED")) ||
+      this.paused ||
+      generation !== this.stopGeneration
+    );
+  }
+
+  private stage(
+    documentId: string,
+    name: DocumentStageName,
+    fraction = 1,
+  ): void {
+    const { status, progress } = stageProgress(name, fraction);
+    this.data.updateDocument(documentId, status, progress);
+  }
+
+  private async extractSegments(
+    path: string,
+  ): Promise<Array<{ text: string; pageNumber: number | null }>> {
+    if (!this.indexer.supportsNativeExtraction())
+      throw new Error(
+        "Часть программы, которая читает документы, не установлена. Переустановите приложение.",
+      );
+    const extracted = await this.indexer.extractDocument(path, true);
+    return extracted.pages
+      .filter((page) => page.text.trim().length > 0)
+      .map((page) => ({
+        text: page.text,
+        pageNumber: page.pageNumber > 0 ? page.pageNumber : null,
+      }));
   }
 
   private validateUpload(input: UploadVectorDocumentInput) {
     const store = this.data.store(input.vectorStoreId);
     if (!store?.embeddingModelId)
       throw new Error("Сначала выберите embedding-модель");
-    if (!this.data.embeddingModel(store.embeddingModelId))
+    if (
+      !isBuiltinEmbeddingModelId(store.embeddingModelId) &&
+      !this.data.embeddingModel(store.embeddingModelId)
+    )
       throw new Error("Embedding-провайдер или модель отключены");
     if (!/\.(pdf|docx|txt)$/i.test(input.fileName))
       throw new Error(`Формат ${input.fileName} не поддерживается`);
@@ -370,102 +592,22 @@ export class VectorStoreService {
         `Документ «${input.fileName}» больше ${Math.round(MAX_VECTOR_DOCUMENT_BYTES / 1_048_576)} МБ`,
       );
   }
-
-  private async writeRows(
-    storeId: string,
-    documentId: string,
-    rows: Array<Record<string, unknown>>,
-  ) {
-    const previous = this.writeQueues.get(storeId) ?? Promise.resolve();
-    const current = previous
-      .catch(() => undefined)
-      .then(async () => {
-        const db = await this.connect();
-        const name = tableName(storeId);
-        const tables = await this.tableNames();
-        if (tables.has(name)) {
-          const table = await db.openTable(name);
-          await table.delete(`document_id = '${sqlLiteral(documentId)}'`);
-          await table.add(rows);
-          if (this.data.store(storeId)?.searchMode === "hybrid") {
-            this.ftsIndexPromises.delete(storeId);
-            await this.ensureFtsIndex(storeId, table);
-          }
-        } else {
-          const table = await db.createTable(name, rows);
-          tables.add(name);
-          if (this.data.store(storeId)?.searchMode === "hybrid")
-            await this.ensureFtsIndex(storeId, table);
-        }
-      });
-    this.writeQueues.set(storeId, current);
-    try {
-      await current;
-    } finally {
-      if (this.writeQueues.get(storeId) === current)
-        this.writeQueues.delete(storeId);
-    }
-  }
-
-  private connect() {
-    if (!this.connectionPromise)
-      this.connectionPromise = lancedb.connect(this.lanceDir).catch((error) => {
-        this.connectionPromise = undefined;
-        throw error;
-      });
-    return this.connectionPromise;
-  }
-
-  private ensureFtsIndex(storeId: string, table: lancedb.Table) {
-    let pending = this.ftsIndexPromises.get(storeId);
-    if (!pending) {
-      pending = table
-        .createIndex("text", {
-          config: lancedb.Index.fts({
-            baseTokenizer: "simple",
-            lowercase: true,
-            stem: false,
-            removeStopWords: false,
-          }),
-          replace: true,
-          waitTimeoutSeconds: 60,
-        })
-        .catch((error) => {
-          this.ftsIndexPromises.delete(storeId);
-          throw error;
-        });
-      this.ftsIndexPromises.set(storeId, pending);
-    }
-    return pending;
-  }
-
-  private rrf() {
-    if (!this.rrfPromise)
-      this.rrfPromise = lancedb.rerankers.RRFReranker.create(RRF_K).catch(
-        (error) => {
-          this.rrfPromise = undefined;
-          throw error;
-        },
-      );
-    return this.rrfPromise;
-  }
-
-  private tableNames() {
-    if (!this.tableNamesPromise)
-      this.tableNamesPromise = this.connect()
-        .then(async (db) => new Set(await db.tableNames()))
-        .catch((error) => {
-          this.tableNamesPromise = undefined;
-          throw error;
-        });
-    return this.tableNamesPromise;
-  }
 }
 
-const tableName = (id: string) => `vector_store_${id}`;
+class IndexingPausedError extends Error {}
+
+function groupByStore(rows: StoredDocumentRow[]) {
+  const groups = new Map<string, StoredDocumentRow[]>();
+  for (const row of rows) {
+    const group = groups.get(row.vector_store_id);
+    if (group) group.push(row);
+    else groups.set(row.vector_store_id, [row]);
+  }
+  return groups;
+}
+
 const safeName = (name: string) =>
   name.replace(/[^a-zA-Zа-яА-Я0-9._-]+/g, "_").slice(-120);
-const sqlLiteral = (value: string) => value.replaceAll("'", "''");
 
 function chunkText(text: string, sizeTokens: number, overlapTokens: number) {
   const normalized = text

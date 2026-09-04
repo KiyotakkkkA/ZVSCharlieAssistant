@@ -4,10 +4,7 @@ import { BasicSelect, type BasicSelectProps } from "./basic";
 
 type ModelOrientedSelectVariant = "ghost" | "select";
 
-interface ModelOrientedSelectProps extends Omit<
-  BasicSelectProps,
-  "options"
-> {
+interface ModelOrientedSelectProps extends Omit<BasicSelectProps, "options"> {
   variant?: ModelOrientedSelectVariant;
 }
 

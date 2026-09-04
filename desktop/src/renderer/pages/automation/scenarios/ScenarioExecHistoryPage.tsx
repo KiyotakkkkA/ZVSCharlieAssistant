@@ -101,7 +101,9 @@ export const ScenarioExecHistoryPage = observer(
     const [error, setError] = useState<string | null>(null);
     const [expanded, setExpanded] = useState<Set<string>>(new Set());
     const [answering, setAnswering] = useState(false);
-    const [liveOutput, setLiveOutput] = useState<Map<string, string>>(new Map());
+    const [liveOutput, setLiveOutput] = useState<Map<string, string>>(
+      new Map(),
+    );
     const [now, setNow] = useState(() => Date.now());
     const [filter, setFilter] = useState<NodeFilter>("all");
     const feedRef = useRef<HTMLDivElement>(null);
@@ -117,7 +119,9 @@ export const ScenarioExecHistoryPage = observer(
         setError(null);
       } catch (cause) {
         setError(
-          cause instanceof Error ? cause.message : "Не удалось загрузить запуск",
+          cause instanceof Error
+            ? cause.message
+            : "Не удалось загрузить запуск",
         );
       }
     }, [runId]);
@@ -158,7 +162,9 @@ export const ScenarioExecHistoryPage = observer(
       };
     }, [runId, refresh]);
 
-    const active = execution ? ACTIVE_STATUSES.has(execution.run.status) : false;
+    const active = execution
+      ? ACTIVE_STATUSES.has(execution.run.status)
+      : false;
 
     useEffect(() => {
       if (!active) return;
@@ -192,7 +198,9 @@ export const ScenarioExecHistoryPage = observer(
           (sum, node) => sum + Math.max(0, node.attempt - 1),
           0,
         ),
-        successRate: attempted ? Math.round((completed / attempted) * 100) : null,
+        successRate: attempted
+          ? Math.round((completed / attempted) * 100)
+          : null,
         avgDuration: durations.length
           ? durations.reduce((sum, ms) => sum + ms, 0) / durations.length
           : null,
@@ -363,13 +371,17 @@ export const ScenarioExecHistoryPage = observer(
           <Metric
             label="Успешность"
             value={
-              stats && stats.successRate !== null ? `${stats.successRate}%` : "—"
+              stats && stats.successRate !== null
+                ? `${stats.successRate}%`
+                : "—"
             }
           />
           <Metric
             label="Ошибки"
             value={
-              <span className={stats?.failed ? "text-red-300" : "text-main-100"}>
+              <span
+                className={stats?.failed ? "text-red-300" : "text-main-100"}
+              >
                 {stats?.failed ?? 0}
               </span>
             }
@@ -426,10 +438,14 @@ export const ScenarioExecHistoryPage = observer(
             title={pendingQuestion.header || "Сценарий ждёт ответа"}
             className="mb-3 shrink-0"
           >
-            <p className="mb-2 whitespace-pre-wrap">{pendingQuestion.question}</p>
+            <p className="mb-2 whitespace-pre-wrap">
+              {pendingQuestion.question}
+            </p>
             <p className="mb-3 text-xs text-main-400">
               Канал: {CHANNEL_LABELS[pendingQuestion.channel]}
-              {pendingQuestion.recipient ? ` · ${pendingQuestion.recipient}` : ""}
+              {pendingQuestion.recipient
+                ? ` · ${pendingQuestion.recipient}`
+                : ""}
               {pendingQuestion.expiresAt
                 ? ` · до ${new Date(pendingQuestion.expiresAt).toLocaleTimeString()}`
                 : ""}
@@ -521,7 +537,9 @@ export const ScenarioExecHistoryPage = observer(
                           {customName ? visual.label : node.nodeId}
                         </span>
                       </span>
-                      <span className={`flex items-center gap-1.5 text-xs ${nodeStatus.tone}`}>
+                      <span
+                        className={`flex items-center gap-1.5 text-xs ${nodeStatus.tone}`}
+                      >
                         <span
                           className={`size-1.5 rounded-full ${nodeStatus.dot}`}
                         />

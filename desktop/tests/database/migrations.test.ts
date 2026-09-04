@@ -22,7 +22,7 @@ describe("UUID baseline schema", () => {
 
     expect(
       database.prepare("SELECT COUNT(*) count FROM schema_migrations").get(),
-    ).toEqual({ count: 9 });
+    ).toEqual({ count: 10 });
     expect(
       database
         .prepare(
@@ -229,7 +229,13 @@ describe("UUID baseline schema", () => {
           `INSERT INTO entity_generation_runs(id,kind,model_id,prompt,status)
            VALUES(?,?,?,?,?)`,
         )
-        .run("run-1", "scenario", "model-1", "изменить граф", "clarification_requested"),
+        .run(
+          "run-1",
+          "scenario",
+          "model-1",
+          "изменить граф",
+          "clarification_requested",
+        ),
     ).not.toThrow();
 
     expect(() =>

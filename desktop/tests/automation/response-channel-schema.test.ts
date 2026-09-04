@@ -19,10 +19,10 @@ const KNOWN_DESCRIPTOR_ONLY_FIELDS = new Set(["subject"]);
 
 describe("responseChannelSchema / scenarioResponseChannelDtoSchema parity", () => {
   it("keeps the same fields except the reviewed exceptions", () => {
-    const descriptorKeys = new Set(
-      Object.keys(responseChannelSchema.shape),
+    const descriptorKeys = new Set(Object.keys(responseChannelSchema.shape));
+    const dtoKeys = new Set(
+      Object.keys(scenarioResponseChannelDtoSchema.shape),
     );
-    const dtoKeys = new Set(Object.keys(scenarioResponseChannelDtoSchema.shape));
 
     const missingFromDto = [...descriptorKeys].filter(
       (key) => !dtoKeys.has(key) && !KNOWN_DESCRIPTOR_ONLY_FIELDS.has(key),

@@ -2,10 +2,7 @@ import { observer } from "mobx-react-lite";
 import { secretStorageStore } from "../../stores";
 import { BasicSelect, type BasicSelectProps } from "./basic";
 
-interface SecretOrientedSelectProps extends Omit<
-  BasicSelectProps,
-  "options"
-> {
+interface SecretOrientedSelectProps extends Omit<BasicSelectProps, "options"> {
   categoryId: string;
 }
 

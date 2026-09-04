@@ -1,8 +1,9 @@
-import { app, Menu, dialog, net, shell } from "electron";
+import { app, BrowserWindow, Menu, dialog, net, shell } from "electron";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { AppWindowController } from "./infrastructure/electron/app-window.controller";
 import { ApplicationSettingsRepository } from "./infrastructure/electron/application-settings.repository";
+import { NativeIndexerService } from "./infrastructure/vector-store/native-indexer.service";
 import { NotificationService } from "./infrastructure/electron/notification.service";
 import {
   BACKGROUND_LAUNCH_ARGUMENT,
@@ -62,9 +63,23 @@ import {
   registerVectorStoreHandlers,
   removeVectorStoreHandlers,
 } from "../ipc/main/register-vector-store-handlers";
+import {
+  DOWNLOADS_IPC_CHANNELS,
+  VECTOR_STORE_IPC_CHANNELS,
+} from "../ipc/contracts";
+import { DownloadManagerService } from "./infrastructure/downloads/download-manager.service";
+import { AddonDownloadBackend } from "./infrastructure/downloads/addon-download.backend";
+import {
+  registerDownloadsHandlers,
+  removeDownloadsHandlers,
+} from "../ipc/main/register-downloads-handlers";
+import { ResourceMonitorService } from "./infrastructure/system/resource-monitor.service";
 import { VectorStoreRepository } from "./infrastructure/database/vector-store.repository";
 import { EmbeddingService } from "./infrastructure/vector-store/embedding.service";
-import { VectorStoreService } from "./infrastructure/vector-store/vector-store.service";
+import {
+  VectorStoreService,
+  type IngestBatchResult,
+} from "./infrastructure/vector-store/vector-store.service";
 import { ReportDocxService } from "./infrastructure/tools/report-docx.service";
 import { BuiltinSkillProvisioner } from "./application/services/builtin-skill-provisioner";
 import { DEFAULT_SKILLS } from "../default/skills";
@@ -141,7 +156,6 @@ import { ScenarioDeliveryAdapterRegistry } from "./infrastructure/automation/del
 import { TelegramDeliveryAdapter } from "./infrastructure/automation/delivery/telegram-delivery.adapter";
 import { EmailDeliveryAdapter } from "./infrastructure/automation/delivery/email-delivery.adapter";
 import { ScenarioDeliveryWorker } from "./infrastructure/automation/background/scenario-delivery.worker";
-import { TextExtractionClient } from "./infrastructure/vector-store/text-extraction.client";
 import { installContentSecurityPolicy } from "./infrastructure/electron/install-content-security-policy";
 import { MemoryRepository } from "./infrastructure/database/memory.repository";
 import { MemoryService } from "./application/services/memory.service";
@@ -182,7 +196,6 @@ let telegramWatchListener: TelegramWatchListener | undefined;
 let mailWatchListener: MailWatchListener | undefined;
 let scenarioFileDownloads: ScenarioFileDownloadService | undefined;
 let scenarioDeliveryWorker: ScenarioDeliveryWorker | undefined;
-let textExtraction: TextExtractionClient | undefined;
 let questionSweeper: NodeJS.Timeout | undefined;
 let engineLogger: Logger | undefined;
 let localBridge: LocalBridgeServer | undefined;
@@ -206,6 +219,21 @@ app.on("second-instance", (_event, commandLine) => {
   app.once("ready", () => appWindow.show());
 });
 
+function describeIngestBatch(event: IngestBatchResult): string {
+  const parts = [
+    `«${event.storeName}»: обработано ${event.succeeded} из ${event.total}`,
+  ];
+  if (event.failed) parts.push(`не удалось ${event.failed}`);
+  parts.push(`за ${Math.max(1, Math.round(event.elapsedMs / 1000))} с`);
+  return parts.join(", ") + ".";
+}
+
+function broadcast(channel: string, payload: unknown): void {
+  for (const window of BrowserWindow.getAllWindows())
+    if (!window.webContents.isDestroyed())
+      window.webContents.send(channel, payload);
+}
+
 app.whenReady().then(() => {
   if (!isPrimaryInstance) return;
   installContentSecurityPolicy();
@@ -217,7 +245,6 @@ app.whenReady().then(() => {
       "Хранилище секретов не защищено шифрованием ОС",
       "Windows не предоставил доступ к безопасному хранилищу учётных данных (DPAPI). API-ключи, пароли почтовых ящиков и токены ботов будут сохранены в базе данных приложения в открытом виде. Проверьте профиль пользователя Windows и права доступа к нему.",
     );
-  textExtraction = new TextExtractionClient();
   const terminalPolicyRepository = new TerminalPolicyRepository(database);
   const directoryPolicyRepository = new DirectoryPolicyRepository(database);
   const userProfileRepository = new UserProfileRepository(database);
@@ -293,25 +320,53 @@ app.whenReady().then(() => {
   const chatRepository = new ChatRepository(database);
   registerTaskHandlers(new TaskHistoryRepository(database));
   const vectorRepository = new VectorStoreRepository(database);
-  vectorRepository.recoverInterruptedDocuments();
+  const nativeIndexer = new NativeIndexerService(
+    join(app.getAppPath(), "native"),
+    join(app.getPath("userData"), "native-assets"),
+    join(app.getPath("userData"), "lancedb-native-v1"),
+    applicationSettings,
+  );
   const vectorService = new VectorStoreService(
     vectorRepository,
-    new EmbeddingService(vectorRepository, secretRepository),
+    new EmbeddingService(vectorRepository, secretRepository, nativeIndexer),
     join(app.getPath("userData"), "vector-files"),
-    join(app.getPath("userData"), "lancedb"),
-    textExtraction,
+    nativeIndexer,
     (event) =>
       notifications.show({
         kind: "vectorizationCompleted",
-        title: event.succeeded
-          ? "Векторизация завершена"
-          : "Ошибка векторизации",
-        body: event.succeeded
-          ? `Документ «${event.fileName}» добавлен в «${event.storeName}».`
-          : `Не удалось обработать «${event.fileName}»: ${event.error ?? "неизвестная ошибка"}`,
+        title: event.cancelled
+          ? "Индексация отменена"
+          : event.failed
+            ? "Индексация завершена с ошибками"
+            : "Индексация завершена",
+        body: describeIngestBatch(event),
       }),
   );
-  registerVectorStoreHandlers(vectorService);
+  const resourceMonitor = new ResourceMonitorService(
+    () => nativeIndexer.sampleGpu(),
+    (sample) => broadcast(VECTOR_STORE_IPC_CHANNELS.resourceSample, sample),
+  );
+  const downloadManager = new DownloadManagerService(
+    new AddonDownloadBackend(nativeIndexer),
+    (snapshot) => broadcast(DOWNLOADS_IPC_CHANNELS.changed, snapshot),
+    (event) =>
+      notifications.show({
+        kind: "downloadCompleted",
+        title: event.cancelled
+          ? "Загрузка отменена"
+          : event.succeeded
+            ? "Загрузка завершена"
+            : "Загрузка не удалась",
+        body: event.succeeded
+          ? `«${event.label}» готова к работе.`
+          : event.cancelled
+            ? `«${event.label}» не была загружена.`
+            : `«${event.label}»: ${event.error ?? "неизвестная ошибка"}`,
+      }),
+  );
+  registerDownloadsHandlers(downloadManager);
+  registerVectorStoreHandlers(vectorService, nativeIndexer, resourceMonitor);
+  vectorService.resumeInterrupted();
   const providerRegistry = new ProviderRegistry(
     chatRepository,
     secretRepository,
@@ -436,7 +491,7 @@ app.whenReady().then(() => {
   let scenarioRuntimeEngine: ScenarioRuntimeEngine;
   const scenarioFileReader = new ScenarioFileReaderService(
     scenarioDownloadsRoot,
-    textExtraction,
+    nativeIndexer,
   );
   const engineServices = new HostScenarioEngineServices(
     scenarioExecutions,
@@ -516,7 +571,7 @@ app.whenReady().then(() => {
     projectContext,
     scenarioRuntimeEngine,
     vectorService,
-    textExtraction,
+    nativeIndexer,
     (event) => {
       if (event.type === "run.completed") {
         notifications.show({
@@ -723,8 +778,6 @@ function shutdownRuntime(): void {
   trayController = undefined;
   if (questionSweeper) clearInterval(questionSweeper);
   questionSweeper = undefined;
-  textExtraction?.dispose();
-  textExtraction = undefined;
   scenarioDeliveryWorker?.stop();
   scenarioDeliveryWorker = undefined;
   intervalScheduleWorker?.stop();
@@ -748,6 +801,7 @@ function shutdownRuntime(): void {
   removeProjectHandlers();
   removeExtensionHandlers();
   removeVectorStoreHandlers();
+  removeDownloadsHandlers();
   removeTaskHandlers();
   removeCoreInteractorHandlers();
   removeTerminalPolicyHandlers();

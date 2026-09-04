@@ -1,14 +1,24 @@
 import { SecretStorageRepository } from "../database/secret-storage.repository";
 import type { VectorStoreRepository } from "../database/vector-store.repository";
+import type { NativeIndexerService } from "./native-indexer.service";
 import { describeProviderHttpError } from "../text-generation/provider-error";
+import { isBuiltinEmbeddingModelId } from "../../../shared/entity-ids";
 
 export class EmbeddingService {
   constructor(
     private readonly data: VectorStoreRepository,
     private readonly secrets: SecretStorageRepository,
+    private readonly indexer?: NativeIndexerService,
   ) {}
 
   async embed(modelId: string, input: string[]) {
+    if (isBuiltinEmbeddingModelId(modelId)) {
+      if (!this.indexer)
+        throw new Error(
+          "Часть программы, которая строит векторы, не установлена. Переустановите приложение.",
+        );
+      return this.indexer.embed(input);
+    }
     const model = this.data.embeddingModel(modelId);
     if (!model) throw new Error("Embedding-модель недоступна или отключена");
     const key = model.api_key_secret_id

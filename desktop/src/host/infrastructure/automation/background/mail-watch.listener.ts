@@ -422,9 +422,7 @@ function extractImapMessage(value: string) {
     ? Math.floor(declaredBytes / 3)
     : 0;
   const rest = value.slice(literalStart);
-  const closing = rest
-    .slice(minimumChars)
-    .match(/\r?\n\)\r?\nZVS\d+ /i);
+  const closing = rest.slice(minimumChars).match(/\r?\n\)\r?\nZVS\d+ /i);
   return closing?.index === undefined
     ? rest
     : rest.slice(0, minimumChars + closing.index);

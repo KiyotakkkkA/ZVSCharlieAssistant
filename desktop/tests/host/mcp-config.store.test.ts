@@ -11,7 +11,11 @@ afterEach(() => {
   const target = resolve(directory);
   const temporaryRoot = resolve(tmpdir());
   const relativePath = relative(temporaryRoot, target);
-  if (!relativePath || relativePath.startsWith("..") || isAbsolute(relativePath)) {
+  if (
+    !relativePath ||
+    relativePath.startsWith("..") ||
+    isAbsolute(relativePath)
+  ) {
     throw new Error(`Refusing to remove a non-temporary path: ${target}`);
   }
   rmSync(target, { recursive: true, force: true });

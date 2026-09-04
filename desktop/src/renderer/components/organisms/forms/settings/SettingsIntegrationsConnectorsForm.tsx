@@ -1,7 +1,4 @@
-import {
-  InputCheckSlided,
-  InputSmall,
-} from "@kiyotakkkka/zvs-uikit-lib";
+import { InputCheckSlided, InputSmall } from "@kiyotakkkka/zvs-uikit-lib";
 import { BasicSelect } from "../../../atoms/basic";
 import type { UpsertIntegrationProfileInput } from "../../../../../shared/dto";
 import { SYSTEM_SECRET_CATEGORY_IDS } from "../../../../../shared/entity-ids";

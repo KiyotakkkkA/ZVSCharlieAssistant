@@ -36,7 +36,10 @@ import {
 } from "../../../shared/scenario/descriptors";
 import { resolvePorts } from "../../../shared/scenario/node-descriptor";
 import { resolveContextBudget } from "../context/context-budget";
-import { InMemoryCompactor, type EnabledModelInfo } from "../context/generation-context";
+import {
+  InMemoryCompactor,
+  type EnabledModelInfo,
+} from "../context/generation-context";
 import { runStepWithRetry } from "../context/agentic-step-loop";
 
 const MAX_STEPS = 16;
@@ -150,9 +153,7 @@ export class EntityGenerationService {
     };
     const compactor = new InMemoryCompactor(run.id);
     this.trackTranscript(run.id, compactor);
-    compactor.appendUser([
-      { type: "text", text: this.initialPrompt(run) },
-    ]);
+    compactor.appendUser([{ type: "text", text: this.initialPrompt(run) }]);
     const system = this.systemPrompt(run);
 
     const captureOutcome = (action: () => SaveOutcome): SaveOutcome => {
@@ -281,7 +282,9 @@ export class EntityGenerationService {
   private initialPrompt(run: EntityGenerationRun): string {
     if (run.kind !== "scenario")
       return `Описание от пользователя:\n\n${run.prompt}`;
-    const existing = run.entityId ? this.scenarioGraphs.find(run.entityId) : undefined;
+    const existing = run.entityId
+      ? this.scenarioGraphs.find(run.entityId)
+      : undefined;
     const currentGraph = existing
       ? JSON.stringify(existing.graph)
       : "(сценарий пуст)";
@@ -321,7 +324,8 @@ export class EntityGenerationService {
     if (run.kind === "agent")
       return {
         agent_create: tool({
-          description: "Сохраняет черновик нового агента. Вызывается ровно один раз.",
+          description:
+            "Сохраняет черновик нового агента. Вызывается ровно один раз.",
           inputSchema: generatedAgentDraftDtoSchema,
           execute: (draft: GeneratedAgentDraft) => {
             const saved = hooks.capture(() => this.saveAgent(run, draft));
@@ -335,7 +339,8 @@ export class EntityGenerationService {
     if (run.kind === "skill")
       return {
         skill_create: tool({
-          description: "Сохраняет черновик нового навыка. Вызывается ровно один раз.",
+          description:
+            "Сохраняет черновик нового навыка. Вызывается ровно один раз.",
           inputSchema: generatedSkillDraftDtoSchema,
           execute: (draft: GeneratedSkillDraft) => {
             const saved = hooks.capture(() => this.saveSkill(draft));
@@ -357,9 +362,7 @@ export class EntityGenerationService {
             .filter((issue) => issue.severity === "error")
             .map((issue) => issue.message);
           if (errors.length) return { ok: false, errors };
-          const saved = hooks.capture(() =>
-            this.saveScenario(run, input),
-          );
+          const saved = hooks.capture(() => this.saveScenario(run, input));
           hooks.onSave(saved);
           return { ok: true, summary: input.summary };
         },
@@ -467,21 +470,17 @@ export class EntityGenerationService {
     currentScenarioId: string | null,
   ): unknown {
     if (kind === "agents")
-      return this.automation
-        .listAgents()
-        .map((item) => ({
-          id: item.id,
-          name: item.name,
-          description: item.description,
-        }));
+      return this.automation.listAgents().map((item) => ({
+        id: item.id,
+        name: item.name,
+        description: item.description,
+      }));
     if (kind === "vectorStores")
-      return this.vectorStores
-        .snapshot()
-        .stores.map((item) => ({
-          id: item.id,
-          name: item.name,
-          description: item.description,
-        }));
+      return this.vectorStores.snapshot().stores.map((item) => ({
+        id: item.id,
+        name: item.name,
+        description: item.description,
+      }));
     if (kind === "integrations")
       return this.integrations
         .listProfiles()
@@ -531,7 +530,9 @@ export class EntityGenerationService {
       status: "draft",
       allowedToolIds: draft.allowedToolIds.filter((id) => known.has(id)),
       allowedVectorStoreIds: [],
-      allowedSkillIds: draft.allowedSkillIds.filter((id) => knownSkills.has(id)),
+      allowedSkillIds: draft.allowedSkillIds.filter((id) =>
+        knownSkills.has(id),
+      ),
       memoryRead: draft.memoryRead,
       memoryWrite: draft.memoryWrite,
       retrievalLimit: draft.retrievalLimit,
@@ -607,10 +608,13 @@ function cleanJsonSchema(value: unknown): unknown {
     ([key, val]) =>
       key !== "$schema" &&
       key !== "additionalProperties" &&
-      !(key === "pattern" && typeof val === "string" && val.includes("0-9a-fA-F")),
+      !(
+        key === "pattern" &&
+        typeof val === "string" &&
+        val.includes("0-9a-fA-F")
+      ),
   );
   return Object.fromEntries(
     entries.map(([key, val]) => [key, cleanJsonSchema(val)]),
   );
 }
-

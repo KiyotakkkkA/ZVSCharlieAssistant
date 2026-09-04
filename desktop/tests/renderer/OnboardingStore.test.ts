@@ -39,6 +39,7 @@ describe("OnboardingStore", () => {
   it("tracks each completed guide independently", async () => {
     const store = new OnboardingStore();
     store.settings = {
+      indexing: { provider: "auto" },
       runInBackground: true,
       launchAtLogin: false,
       notifications,

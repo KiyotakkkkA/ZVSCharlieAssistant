@@ -1,7 +1,7 @@
 import { Button, Dropdown, Modal } from "@kiyotakkkka/zvs-uikit-lib";
 import { observer } from "mobx-react-lite";
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import type { AppInfo, AppLocation } from "../../../ipc/contracts";
 import {
   APP_PATHS,
@@ -20,6 +20,7 @@ import {
   type GlobalSettingsFormDescriptor,
 } from "../atoms";
 import { GlobalSettingsPanel } from "../organisms";
+import { DownloadsIndicator } from "../molecules";
 import {
   APPEARANCE_ANCHORS,
   APPEARANCE_SECTION,
@@ -37,6 +38,7 @@ import {
   DATA_SECTION,
   GlobalSettingsDataForm,
 } from "../organisms/forms";
+import { useAppNavigation } from "@renderer/hooks";
 
 const SETTINGS_FORMS: GlobalSettingsFormDescriptor[] = [
   {
@@ -90,7 +92,7 @@ const SettingsAnchorBridge = observer(function SettingsAnchorBridge() {
 });
 
 export const Header = observer(function Header() {
-  const navigate = useNavigate();
+  const { goTo } = useAppNavigation();
   const { pathname } = useLocation();
   const [aboutOpen, setAboutOpen] = useState(false);
   const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
@@ -110,20 +112,20 @@ export const Header = observer(function Header() {
         switch (command) {
           case "new-chat":
             chatStore.newConversation();
-            navigate(APP_PATHS.chat);
+            goTo(APP_PATHS.chat);
             break;
           case "open-tasks":
-            navigate(APP_PATHS.tasks);
+            goTo(APP_PATHS.tasks);
             break;
           case "open-scenarios":
-            navigate(APP_PATHS.automation.scenarios.index);
+            goTo(APP_PATHS.automation.scenarios.index);
             break;
           case "open-settings":
             uiStore.openSettings();
             break;
         }
       }),
-    [navigate],
+    [goTo],
   );
   return (
     <>
@@ -132,6 +134,7 @@ export const Header = observer(function Header() {
           {findTitle(pathname, NAVIGATION_ROUTES)}
         </h1>
         <div className="flex items-center gap-1">
+          <DownloadsIndicator />
           <Dropdown menuWidth={220} menuPlacement="bottom-right">
             <Dropdown.Trigger
               data-tour="header-help"
@@ -146,7 +149,7 @@ export const Header = observer(function Header() {
               <Dropdown.Item
                 icon={<QuestionIcon className="size-4" />}
                 rounded="rounded-xl"
-                onClick={() => navigate(APP_PATHS.guides)}
+                onClick={() => goTo(APP_PATHS.guides)}
               >
                 Руководства
               </Dropdown.Item>

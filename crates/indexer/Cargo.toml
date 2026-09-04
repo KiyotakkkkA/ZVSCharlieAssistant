@@ -1,0 +1,41 @@
+[package]
+name = "zvs-indexer"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+napi = { version = "3", features = ["napi8"] }
+napi-derive = "3"
+nvml-wrapper = "0.10"
+pdfium-render = { version = "0.8", default-features = false, features = ["image", "thread_safe", "pdfium_latest"] }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+ureq = "3"
+sha2 = "0.10"
+flate2 = "1"
+tar = "0.4"
+rayon = "1"
+ort = { version = "2.0.0-rc.13", features = ["ndarray", "cuda", "directml"] }
+ndarray = "0.17"
+imageproc = "0.27"
+yaml-rust2 = "0.12"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+quick-xml = "0.37"
+tokenizers = { version = "0.21", default-features = false, features = ["onig"] }
+encoding_rs = "0.8"
+lancedb = { version = "=0.33.0", default-features = false }
+lance-index = "=9.0.0"
+arrow-array = "58"
+arrow-schema = "58"
+futures = "0.3"
+tokio = { version = "1", features = ["rt-multi-thread"] }
+
+[build-dependencies]
+napi-build = "2"
+protoc-bin-vendored = "=3.2.0"
+
+[profile.release]
+lto = true
+strip = "symbols"

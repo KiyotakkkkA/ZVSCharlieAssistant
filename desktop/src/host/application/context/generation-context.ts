@@ -3,7 +3,11 @@ import type { ChatMessageContentPart } from "../../../shared/dto";
 import type { ChatMessage, ContextSegment } from "../../../shared/models/chat";
 import type { ProviderRegistry } from "../../infrastructure/text-generation/provider.registry";
 import { resolveContextBudget, type ContextBudget } from "./context-budget";
-import { buildContext, measureContext, type BuiltContext } from "./context-builder";
+import {
+  buildContext,
+  measureContext,
+  type BuiltContext,
+} from "./context-builder";
 import { estimatePartsTokens } from "./token-estimator";
 
 const LOCAL_MODEL_KIND = "ollama";
@@ -159,7 +163,10 @@ export class InMemoryCompactor {
     return true;
   }
 
-  private push(role: ChatMessage["role"], parts: ChatMessageContentPart[]): void {
+  private push(
+    role: ChatMessage["role"],
+    parts: ChatMessageContentPart[],
+  ): void {
     const id = `${this.runId}:${String(this.nextIndex).padStart(6, "0")}`;
     this.nextIndex += 1;
     this.messages.push({
@@ -189,10 +196,16 @@ function selectRange(messages: ChatMessage[]): ChatMessage[] {
   const candidates = messages.filter(
     (message) => !message.compactedInto && message.role !== "system",
   );
-  return candidates.slice(0, Math.max(0, candidates.length - KEEP_TAIL_MESSAGES));
+  return candidates.slice(
+    0,
+    Math.max(0, candidates.length - KEEP_TAIL_MESSAGES),
+  );
 }
 
-function budgetFor(providers: ProviderRegistry, modelId: string): ContextBudget {
+function budgetFor(
+  providers: ProviderRegistry,
+  modelId: string,
+): ContextBudget {
   const info = providers.modelInfo(modelId);
   const settings = providers.generationSettings(modelId);
   return resolveContextBudget({
@@ -209,7 +222,8 @@ function pickSummarizerModel(
 ): string {
   const local = enabled
     .filter(
-      (model) => model.kind === LOCAL_MODEL_KIND && model.id !== requestedModelId,
+      (model) =>
+        model.kind === LOCAL_MODEL_KIND && model.id !== requestedModelId,
     )
     .sort((left, right) => right.contextLength - left.contextLength);
   for (const candidate of local) {

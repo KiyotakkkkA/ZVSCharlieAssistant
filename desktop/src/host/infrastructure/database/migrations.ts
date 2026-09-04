@@ -165,6 +165,32 @@ const MIGRATIONS: Migration[] = [
       CREATE INDEX idx_report_builder_sessions_touched ON report_builder_sessions(touched_at);
     `,
   },
+  {
+    version: 10,
+    name: "allow-builtin-embedding-model",
+    sql: `
+      CREATE TABLE vector_stores_rebuilt (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        embedding_model_id TEXT,
+        status TEXT NOT NULL DEFAULT 'disabled' CHECK(status IN ('ready','indexing','degraded','disabled')),
+        search_mode TEXT NOT NULL DEFAULT 'vector' CHECK(search_mode IN ('vector','hybrid')),
+        chunk_size_tokens INTEGER NOT NULL DEFAULT 700 CHECK(chunk_size_tokens BETWEEN 100 AND 4096),
+        chunk_overlap_tokens INTEGER NOT NULL DEFAULT 100 CHECK(chunk_overlap_tokens >= 0 AND chunk_overlap_tokens <= chunk_size_tokens / 2),
+        vector_dimension INTEGER,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+      INSERT INTO vector_stores_rebuilt
+        SELECT id, name, description, embedding_model_id, status, search_mode,
+               chunk_size_tokens, chunk_overlap_tokens, vector_dimension,
+               created_at, updated_at
+        FROM vector_stores;
+      DROP TABLE vector_stores;
+      ALTER TABLE vector_stores_rebuilt RENAME TO vector_stores;
+    `,
+  },
 ];
 
 export function runMigrations(database: Database.Database): void {

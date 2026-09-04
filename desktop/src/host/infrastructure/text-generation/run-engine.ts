@@ -39,7 +39,7 @@ import {
   limitFailureMessage,
 } from "./generation-finish";
 import type { VectorStoreService } from "../vector-store/vector-store.service";
-import type { TextExtractionClient } from "../vector-store/text-extraction.client";
+import type { NativeIndexerService } from "../vector-store/native-indexer.service";
 type Emit = (event: RunEvent) => void;
 
 const CONTENT_FLUSH_MS = 400;
@@ -66,7 +66,7 @@ export class RunEngine {
     private readonly projects: ProjectContextService,
     private readonly scenarios?: ScenarioRuntimeEngine,
     private readonly vectorStores?: VectorStoreService,
-    private readonly textExtraction?: TextExtractionClient,
+    private readonly textExtraction?: NativeIndexerService,
     private readonly eventObserver?: Emit,
   ) {}
 
@@ -811,7 +811,7 @@ export class RunEngine {
       const text = (
         isPlainTextAttachment(attachment.fileName, attachment.mimeType)
           ? new TextDecoder().decode(new Uint8Array(attachment.data))
-          : await this.textExtraction.extract(
+          : await this.textExtraction.extractBuffer(
               attachment.fileName,
               attachment.data.slice(0),
             )

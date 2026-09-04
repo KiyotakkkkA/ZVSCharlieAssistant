@@ -1,0 +1,13 @@
+{
+  "name": "@zvs/native-indexer",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "node scripts/build-native.mjs release",
+    "build:debug": "node scripts/build-native.mjs debug"
+  },
+  "napi": {
+    "name": "zvs_indexer",
+    "triples": { "defaults": true }
+  }
+}

@@ -21,8 +21,7 @@ export class ScenarioAgentConversationRepository {
        WHERE execution_id=? AND node_id=?`,
       )
       .get(executionId, nodeId) as
-      | { id: string; active_model_id: string; next_index: number }
-      | undefined;
+      { id: string; active_model_id: string; next_index: number } | undefined;
     if (!row) return undefined;
 
     const segmentRows = this.db

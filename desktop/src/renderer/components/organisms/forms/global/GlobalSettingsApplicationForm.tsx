@@ -14,12 +14,16 @@ const DEFAULT_SETTINGS: ApplicationSettings = {
     scenarioStarted: true,
     scenarioCompleted: true,
     vectorizationCompleted: true,
+    downloadCompleted: true,
   },
   onboarding: {
     version: 2,
     tourCompleted: false,
     completedGuides: [],
     firstLaunchAt: null,
+  },
+  indexing: {
+    provider: "auto",
   },
 };
 

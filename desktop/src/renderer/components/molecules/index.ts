@@ -17,3 +17,7 @@ export {
 export { ProvidedEntitySidebarCard } from "./ProvidedEntitySidebarCard";
 export { ProvidedEntityManageHeader } from "./ProvidedEntityManageHeader";
 export { ContextMeter } from "./ContextMeter";
+export { IndexingMonitorPanel } from "./IndexingMonitorPanel";
+export { DownloadRow } from "./DownloadRow";
+export { DownloadsIndicator } from "./DownloadsIndicator";
+export { DownloadTaskList } from "./DownloadTaskList";

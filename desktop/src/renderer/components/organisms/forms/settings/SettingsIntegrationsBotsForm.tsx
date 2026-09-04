@@ -1,16 +1,9 @@
-import {
-  InputCheckSlided,
-  InputSmall,
-} from "@kiyotakkkka/zvs-uikit-lib";
+import { InputCheckSlided, InputSmall } from "@kiyotakkkka/zvs-uikit-lib";
 import { BasicSelect } from "../../../atoms/basic";
 import type { UpsertIntegrationProfileInput } from "../../../../../shared/dto";
 import { SYSTEM_SECRET_CATEGORY_IDS } from "../../../../../shared/entity-ids";
 import type { IntegrationConnectionMetadata } from "../../../../../shared/models/integration";
-import {
-  Field,
-  Lead,
-  SecretOrientedSelect,
-} from "../../../atoms";
+import { Field, Lead, SecretOrientedSelect } from "../../../atoms";
 
 interface SettingsIntegrationsBotsFormProps {
   value: UpsertIntegrationProfileInput;

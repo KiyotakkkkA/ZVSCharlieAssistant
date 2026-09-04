@@ -6,6 +6,7 @@ import { IntegrationRepository } from "../../src/host/infrastructure/database/in
 import { runMigrations } from "../../src/host/infrastructure/database/migrations";
 import { ScenarioGraphRepository } from "../../src/host/infrastructure/database/scenario-graph.repository";
 import { resolveDataTransferEntities } from "../../src/shared/dto/data-transfer.dto";
+import { BUILTIN_EMBEDDING_MODEL_IDS } from "../../src/shared/entity-ids";
 
 const ids = {
   category: "019cba09-8f30-7000-8000-000000000501",
@@ -163,6 +164,31 @@ describe("configuration transfer", () => {
     expect(() => transfer.import(payload, "overwrite")).toThrow(
       /Не найдена зависимость/,
     );
+  });
+
+  it("does not treat the built-in embedding model as a provider dependency", () => {
+    const target = createDatabase();
+    const transfer = createTransfer(target);
+    const payload = dataTransferPayloadSchema.parse({
+      sections: {
+        vectorStores: {
+          version: 1,
+          items: [
+            {
+              id: ids.store,
+              name: "Knowledge",
+              description: "",
+              embeddingModelId: BUILTIN_EMBEDDING_MODEL_IDS.bgeM3,
+              searchMode: "vector",
+              chunkSizeTokens: 700,
+              chunkOverlapTokens: 100,
+            },
+          ],
+        },
+      },
+    });
+
+    expect(transfer.preview(payload).missingDependencies).toEqual([]);
   });
 });
 

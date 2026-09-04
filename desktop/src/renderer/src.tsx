@@ -29,6 +29,11 @@ const ChatPage = lazy(() =>
 const GuidesPage = lazy(() =>
   import("./pages/guides").then(({ GuidesPage }) => ({ default: GuidesPage })),
 );
+const DownloadsPage = lazy(() =>
+  import("./pages/downloads").then(({ DownloadsPage }) => ({
+    default: DownloadsPage,
+  })),
+);
 const TaskListPage = lazy(() =>
   import("./pages/tasks").then(({ TaskListPage }) => ({
     default: TaskListPage,
@@ -177,6 +182,7 @@ createRoot(root).render(
             <Route path={APP_PATHS.guides} element={<GuidesPage />} />
             <Route path={APP_PATHS.chat} element={<ChatPage />} />
             <Route path={APP_PATHS.tasks} element={<TaskListPage />} />
+            <Route path={APP_PATHS.downloads} element={<DownloadsPage />} />
             <Route
               path={APP_PATHS.taskCreationDetail}
               element={<GenerationRunDetailPage />}

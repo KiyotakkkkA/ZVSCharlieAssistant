@@ -1,9 +1,5 @@
 import { readFileSync, writeFileSync } from "node:fs";
-import type {
-  ZvsIdBaseConfig,
-  ZvsIdConfig,
-  ZvsIdFetch,
-} from "./zvs-id.config";
+import type { ZvsIdBaseConfig, ZvsIdConfig, ZvsIdFetch } from "./zvs-id.config";
 
 export type ClientIdSource = "env" | "server" | "cache" | "none";
 

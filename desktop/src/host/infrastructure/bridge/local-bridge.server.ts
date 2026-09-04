@@ -127,7 +127,10 @@ export class LocalBridgeServer {
     try {
       if (request.method === "hello") {
         const params = request.params as { token?: string } | undefined;
-        if (typeof params?.token !== "string" || !this.tokenMatches(params.token))
+        if (
+          typeof params?.token !== "string" ||
+          !this.tokenMatches(params.token)
+        )
           throw new Error("Неверный токен доступа к локальному мосту");
         session.authorized = true;
         this.send(session, {

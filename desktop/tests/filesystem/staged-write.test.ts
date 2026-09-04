@@ -103,9 +103,9 @@ describe("FileSystemService staged writes", () => {
     );
 
     service.forgetRun("run-1");
-    expect(
-      readdirSync(root).some((name) => name.endsWith(".zvs-staged")),
-    ).toBe(true);
+    expect(readdirSync(root).some((name) => name.endsWith(".zvs-staged"))).toBe(
+      true,
+    );
 
     const nextRunContext = contextFor("run-2", "conversation-1");
     expect(
@@ -147,9 +147,9 @@ describe("FileSystemService staged writes", () => {
 
     service.forgetConversation("conversation-1");
     expect(existsSync(target)).toBe(false);
-    expect(
-      readdirSync(root).some((name) => name.endsWith(".zvs-staged")),
-    ).toBe(false);
+    expect(readdirSync(root).some((name) => name.endsWith(".zvs-staged"))).toBe(
+      false,
+    );
     expect(() =>
       service.commitWrite({ sessionId: started.sessionId }, context),
     ).toThrow("Сессия поэтапной записи не найдена или истекла");

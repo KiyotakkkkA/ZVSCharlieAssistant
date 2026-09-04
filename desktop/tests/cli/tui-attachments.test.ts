@@ -40,9 +40,9 @@ describe("вложения CLI", () => {
     roots.push(root);
     writeFileSync(join(root, "archive.zip"), "data");
 
-    await expect(addCliAttachment([], root, "@file archive.zip")).rejects.toThrow(
-      "не поддерживается",
-    );
+    await expect(
+      addCliAttachment([], root, "@file archive.zip"),
+    ).rejects.toThrow("не поддерживается");
     await expect(
       addCliAttachment([], root, "@file ../missing.txt"),
     ).rejects.toThrow();

@@ -53,8 +53,7 @@ describe("TUI syntax highlighting", () => {
   });
 
   it("separates Markdown and keeps the fenced-block language", () => {
-    const content =
-      "Before\n```typescript\nconst value = 1;\n```\nAfter";
+    const content = "Before\n```typescript\nconst value = 1;\n```\nAfter";
     expect(segmentRichContent(content)).toEqual([
       { kind: "line", text: "Before" },
       {

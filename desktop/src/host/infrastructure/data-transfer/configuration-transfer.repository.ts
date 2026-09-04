@@ -1,5 +1,6 @@
 import type Database from "better-sqlite3";
 import type { DataTransferEntity } from "../../../shared/dto";
+import { isBuiltinEmbeddingModelId } from "../../../shared/entity-ids";
 import type {
   DataTransferConflict,
   DataTransferCounts,
@@ -590,8 +591,13 @@ export class ConfigurationTransferRepository {
     for (const profile of payload.sections.integrations?.items ?? [])
       for (const secretId of Object.values(profile.secretBindings))
         require("integration", profile.id, "secret", secretId);
-    for (const store of payload.sections.vectorStores?.items ?? [])
-      require("vectorStore", store.id, "model", store.embeddingModelId);
+    for (const store of payload.sections.vectorStores?.items ?? []) {
+      if (
+        store.embeddingModelId &&
+        !isBuiltinEmbeddingModelId(store.embeddingModelId)
+      )
+        require("vectorStore", store.id, "model", store.embeddingModelId);
+    }
     for (const agent of payload.sections.agents?.items ?? []) {
       require("agent", agent.id, "model", agent.textModelId);
       for (const id of agent.allowedVectorStoreIds)

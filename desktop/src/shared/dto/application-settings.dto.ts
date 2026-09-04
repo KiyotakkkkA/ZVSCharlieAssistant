@@ -14,6 +14,18 @@ export const notificationPolicyDtoSchema = z.object({
   scenarioStarted: z.boolean(),
   scenarioCompleted: z.boolean(),
   vectorizationCompleted: z.boolean(),
+  downloadCompleted: z.boolean(),
+});
+
+export const ocrProviderPreferenceSchema = z.enum([
+  "auto",
+  "cuda",
+  "directml",
+  "cpu",
+]);
+
+export const indexingPolicyDtoSchema = z.object({
+  provider: ocrProviderPreferenceSchema,
 });
 
 export const applicationSettingsDtoSchema = z.object({
@@ -21,6 +33,7 @@ export const applicationSettingsDtoSchema = z.object({
   launchAtLogin: z.boolean(),
   notifications: notificationPolicyDtoSchema,
   onboarding: onboardingStateDtoSchema,
+  indexing: indexingPolicyDtoSchema,
 });
 
 export const updateApplicationSettingsDtoSchema = z.object({
@@ -28,10 +41,13 @@ export const updateApplicationSettingsDtoSchema = z.object({
   launchAtLogin: z.boolean().optional(),
   notifications: notificationPolicyDtoSchema.partial().optional(),
   onboarding: onboardingStateDtoSchema.partial().optional(),
+  indexing: indexingPolicyDtoSchema.partial().optional(),
 });
 
 export type OnboardingState = z.infer<typeof onboardingStateDtoSchema>;
 export type NotificationPolicy = z.infer<typeof notificationPolicyDtoSchema>;
+export type IndexingPolicy = z.infer<typeof indexingPolicyDtoSchema>;
+export type OcrProviderPreference = z.infer<typeof ocrProviderPreferenceSchema>;
 export type ApplicationSettings = z.infer<typeof applicationSettingsDtoSchema>;
 export type UpdateApplicationSettingsInput = z.infer<
   typeof updateApplicationSettingsDtoSchema

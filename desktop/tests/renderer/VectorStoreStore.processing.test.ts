@@ -51,11 +51,19 @@ describe("VectorStoreStore processing recovery", () => {
       .fn<() => Promise<VectorStoreSnapshot>>()
       .mockResolvedValueOnce(initial)
       .mockResolvedValue(ready);
-    const getDocuments = vi
-      .fn()
-      .mockResolvedValue(ready.documents);
+    const getDocuments = vi.fn().mockResolvedValue(ready.documents);
+    const getIndexingCapabilities = vi.fn().mockResolvedValue({
+      cudaAvailable: false,
+      deviceName: null,
+      vramMb: null,
+      driverVersion: null,
+      unavailableReason: "NVIDIA GPU не обнаружены",
+      preference: "auto" as const,
+    });
     vi.stubGlobal("window", {
-      desktop: { vectorStores: { getSnapshot, getDocuments } },
+      desktop: {
+        vectorStores: { getSnapshot, getDocuments, getIndexingCapabilities },
+      },
     });
     const store = new VectorStoreStore();
 

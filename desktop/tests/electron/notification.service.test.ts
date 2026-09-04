@@ -89,6 +89,7 @@ describe("NotificationService", () => {
 
 function createSettings(): ApplicationSettings {
   return {
+    indexing: { provider: "auto" },
     runInBackground: true,
     launchAtLogin: false,
     notifications: {
@@ -98,6 +99,7 @@ function createSettings(): ApplicationSettings {
       scenarioStarted: true,
       scenarioCompleted: true,
       vectorizationCompleted: true,
+      downloadCompleted: true,
     },
     onboarding: {
       version: 2,

@@ -15,6 +15,7 @@ import {
   PolicyIcon,
   TransitConnectionIcon,
   PuzzleIcon,
+  DownloadIcon,
 } from "../components/atoms";
 
 export const APP_PATHS = {
@@ -22,6 +23,7 @@ export const APP_PATHS = {
   chat: "/chat",
   tasks: "/tasks",
   taskCreationDetail: "/tasks/creation/:runId",
+  downloads: "/downloads",
   automation: {
     index: "/automation",
     agents: {
@@ -78,6 +80,12 @@ export interface NavigationRoute {
 export const NAVIGATION_ROUTES: readonly NavigationRoute[] = [
   { id: "chat", label: "Чат", path: APP_PATHS.chat, icon: ChatIcon },
   { id: "tasks", label: "Задачи", path: APP_PATHS.tasks, icon: TasksIcon },
+  {
+    id: "downloads",
+    label: "Загрузки",
+    path: APP_PATHS.downloads,
+    icon: DownloadIcon,
+  },
   {
     id: "extensions",
     label: "Расширения",

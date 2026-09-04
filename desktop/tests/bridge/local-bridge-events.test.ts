@@ -19,9 +19,9 @@ describe("события локального CLI-моста", () => {
     }) as { attachments: Array<{ data: ArrayBuffer }> };
 
     expect(decoded.attachments[0]?.data).toBeInstanceOf(ArrayBuffer);
-    expect(
-      Buffer.from(decoded.attachments[0]!.data).toString("utf8"),
-    ).toBe("данные");
+    expect(Buffer.from(decoded.attachments[0]!.data).toString("utf8")).toBe(
+      "данные",
+    );
   });
 
   it("одновременно отправляет run event в CLI и desktop chat", () => {

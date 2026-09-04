@@ -1,3 +1,9 @@
+import { DOWNLOADS_IPC_CHANNELS } from "../contracts";
+import type {
+  DownloadId,
+  DownloadsSnapshot,
+} from "../../shared/models/downloads";
+import type { OcrProviderPreference } from "../contracts";
 import { ipcRenderer } from "electron";
 import {
   ASSISTANT_IPC_CHANNELS,
@@ -40,6 +46,9 @@ import {
   type AutomationTool,
   type AutomationSkill,
   VECTOR_STORE_IPC_CHANNELS,
+  type IngestProgress,
+  type ResourceSample,
+  type IndexingCapabilities,
   type VectorStoreSnapshot,
   type VectorSearchResultItem,
   type VectorDirectoryPreview,
@@ -507,11 +516,90 @@ export const desktopApi: DesktopApi = {
         id,
       ) as Promise<TextProviderSnapshot>,
   },
+  downloads: {
+    getSnapshot: (): Promise<DownloadsSnapshot> =>
+      ipcRenderer.invoke(
+        DOWNLOADS_IPC_CHANNELS.getSnapshot,
+      ) as Promise<DownloadsSnapshot>,
+    start: (id: DownloadId): Promise<DownloadsSnapshot> =>
+      ipcRenderer.invoke(
+        DOWNLOADS_IPC_CHANNELS.start,
+        id,
+      ) as Promise<DownloadsSnapshot>,
+    cancel: (id: DownloadId): Promise<DownloadsSnapshot> =>
+      ipcRenderer.invoke(
+        DOWNLOADS_IPC_CHANNELS.cancel,
+        id,
+      ) as Promise<DownloadsSnapshot>,
+    remove: (id: DownloadId): Promise<DownloadsSnapshot> =>
+      ipcRenderer.invoke(
+        DOWNLOADS_IPC_CHANNELS.remove,
+        id,
+      ) as Promise<DownloadsSnapshot>,
+    reveal: (id: DownloadId): Promise<void> =>
+      ipcRenderer.invoke(DOWNLOADS_IPC_CHANNELS.reveal, id) as Promise<void>,
+    subscribe: (listener: (snapshot: DownloadsSnapshot) => void) => {
+      const handler = (_event: unknown, snapshot: DownloadsSnapshot) =>
+        listener(snapshot);
+      ipcRenderer.on(DOWNLOADS_IPC_CHANNELS.changed, handler);
+      return () => {
+        ipcRenderer.removeListener(DOWNLOADS_IPC_CHANNELS.changed, handler);
+      };
+    },
+  },
   vectorStores: {
     getSnapshot: (): Promise<VectorStoreSnapshot> =>
       ipcRenderer.invoke(
         VECTOR_STORE_IPC_CHANNELS.getSnapshot,
       ) as Promise<VectorStoreSnapshot>,
+    getIndexingCapabilities: (): Promise<IndexingCapabilities> =>
+      ipcRenderer.invoke(
+        VECTOR_STORE_IPC_CHANNELS.getIndexingCapabilities,
+      ) as Promise<IndexingCapabilities>,
+    setOcrProvider: (
+      preference: OcrProviderPreference,
+    ): Promise<IndexingCapabilities> =>
+      ipcRenderer.invoke(
+        VECTOR_STORE_IPC_CHANNELS.setOcrProvider,
+        preference,
+      ) as Promise<IndexingCapabilities>,
+    retryFailedDocuments: (id: string): Promise<VectorStoreSnapshot> =>
+      ipcRenderer.invoke(
+        VECTOR_STORE_IPC_CHANNELS.retryFailedDocuments,
+        id,
+      ) as Promise<VectorStoreSnapshot>,
+    stopIndexing: (): Promise<VectorStoreSnapshot> =>
+      ipcRenderer.invoke(
+        VECTOR_STORE_IPC_CHANNELS.stopIndexing,
+      ) as Promise<VectorStoreSnapshot>,
+    resumeIndexing: (): Promise<VectorStoreSnapshot> =>
+      ipcRenderer.invoke(
+        VECTOR_STORE_IPC_CHANNELS.resumeIndexing,
+      ) as Promise<VectorStoreSnapshot>,
+    getIngestProgress: (id: string): Promise<IngestProgress | null> =>
+      ipcRenderer.invoke(
+        VECTOR_STORE_IPC_CHANNELS.getIngestProgress,
+        id,
+      ) as Promise<IngestProgress | null>,
+    startResourceMonitor: (): Promise<void> =>
+      ipcRenderer.invoke(
+        VECTOR_STORE_IPC_CHANNELS.startResourceMonitor,
+      ) as Promise<void>,
+    stopResourceMonitor: (): Promise<void> =>
+      ipcRenderer.invoke(
+        VECTOR_STORE_IPC_CHANNELS.stopResourceMonitor,
+      ) as Promise<void>,
+    subscribeResourceSample: (listener: (sample: ResourceSample) => void) => {
+      const handler = (_event: unknown, sample: ResourceSample) =>
+        listener(sample);
+      ipcRenderer.on(VECTOR_STORE_IPC_CHANNELS.resourceSample, handler);
+      return () => {
+        ipcRenderer.removeListener(
+          VECTOR_STORE_IPC_CHANNELS.resourceSample,
+          handler,
+        );
+      };
+    },
     getDocuments: (ids) =>
       ipcRenderer.invoke(VECTOR_STORE_IPC_CHANNELS.getDocuments, ids),
     upsertStore: (

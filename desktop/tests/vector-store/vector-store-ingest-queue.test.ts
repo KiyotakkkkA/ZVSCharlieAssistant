@@ -19,8 +19,7 @@ describe("VectorStoreService ingest queue", () => {
       data as never,
       {} as never,
       "files",
-      "lance",
-      {} as never,
+      { finalizeVectorIndex: vi.fn(async () => undefined) } as never,
     );
     const releases: Array<() => void> = [];
     let active = 0;

@@ -159,15 +159,12 @@ export class McpService {
         status: "connected",
         error: null,
         connectedAt: new Date().toISOString(),
-        tools: listed.tools.map(
-          (tool): McpServerToolSummary => ({
-            name: tool.name,
-            description: tool.description ?? null,
-            inputSchema: tool.inputSchema as Record<string, unknown>,
-            outputSchema:
-              (tool.outputSchema as Record<string, unknown>) ?? null,
-          }),
-        ),
+        tools: listed.tools.map((tool): McpServerToolSummary => ({
+          name: tool.name,
+          description: tool.description ?? null,
+          inputSchema: tool.inputSchema as Record<string, unknown>,
+          outputSchema: (tool.outputSchema as Record<string, unknown>) ?? null,
+        })),
       };
     } catch (error) {
       entry.state = {

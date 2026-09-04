@@ -4,6 +4,7 @@ export type {
   AppLocation,
   ApplicationSettings,
   ApplicationSettingsApi,
+  OcrProviderPreference,
   OnboardingState,
   DesktopApi,
   GeneratedArtifactInput,
@@ -73,6 +74,11 @@ export type { CliIntegrationStatus, ExtensionApi } from "./extension.contract";
 export { EXTENSION_IPC_CHANNELS } from "./extension.contract";
 
 export type {
+  GpuSample,
+  IngestProgress,
+  ResourceSample,
+  IndexingAsset,
+  IndexingCapabilities,
   VectorStoreConfig,
   VectorStoreDocument,
   VectorStoreSnapshot,
@@ -137,3 +143,14 @@ export { MCP_IPC_CHANNELS } from "./mcp.contract";
 export type * from "../../shared/models/memory";
 export type * from "../../shared/models/task-plan";
 export type * from "../../shared/models/user-question";
+
+export type {
+  DownloadCategory,
+  DownloadComponent,
+  DownloadId,
+  DownloadItem,
+  DownloadState,
+  DownloadsApi,
+  DownloadsSnapshot,
+} from "./downloads.contract";
+export { DOWNLOADS_IPC_CHANNELS } from "./downloads.contract";

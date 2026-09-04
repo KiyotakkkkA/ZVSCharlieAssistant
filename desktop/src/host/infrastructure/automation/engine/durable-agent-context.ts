@@ -1,6 +1,9 @@
 import type { ChatMessageContentPart } from "../../../../shared/dto";
 import type { ContextSegment } from "../../../../shared/models/chat";
-import { InMemoryCompactor, type EnabledModelInfo } from "../../../application/context/generation-context";
+import {
+  InMemoryCompactor,
+  type EnabledModelInfo,
+} from "../../../application/context/generation-context";
 import type { ContextBudget } from "../../../application/context/context-budget";
 import type { ProviderRegistry } from "../../text-generation/provider.registry";
 import type { ScenarioAgentConversationRepository } from "../../database/scenario-agent-conversation.repository";
