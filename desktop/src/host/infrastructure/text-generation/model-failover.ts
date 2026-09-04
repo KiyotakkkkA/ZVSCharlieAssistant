@@ -28,13 +28,54 @@ export type FailoverDecision =
       modelId: string;
       reason: ModelSwitchReason;
       detail: string;
+      required?: string[];
     }
-  | { kind: "fail" };
+  | { kind: "fail"; message?: string };
+
+export interface ModelRequirements {
+  tools?: boolean;
+  structuredOutput?: boolean;
+  vision?: boolean;
+}
 
 export interface FailoverState {
   activeModelId: string;
   attempt: number;
   compacted: boolean;
+  requires?: ModelRequirements;
+}
+
+const REQUIREMENT_LABELS: Record<keyof ModelRequirements, string> = {
+  tools: "вызов инструментов",
+  structuredOutput: "ответ строго по схеме",
+  vision: "работу с изображениями",
+};
+
+const REQUIREMENT_CAPABILITIES = {
+  tools: "supportsTools",
+  structuredOutput: "supportsStructuredOutput",
+  vision: "supportsVision",
+} as const;
+
+export function requiredList(
+  requires: ModelRequirements | undefined,
+): string[] {
+  if (!requires) return [];
+  return (Object.keys(REQUIREMENT_LABELS) as Array<keyof ModelRequirements>)
+    .filter((key) => requires[key] === true)
+    .map((key) => key);
+}
+
+export function describeRequirements(
+  requires: ModelRequirements | undefined,
+): string {
+  const names = (
+    Object.keys(REQUIREMENT_LABELS) as Array<keyof ModelRequirements>
+  )
+    .filter((key) => requires?.[key] === true)
+    .map((key) => REQUIREMENT_LABELS[key]);
+  if (!names.length) return "";
+  return `Ни одна из доступных моделей не поддерживает ${names.join(" и ")}. Включите подходящую модель в настройках провайдеров или отметьте её возможности вручную на карточке модели.`;
 }
 
 const RETRIES_PER_MODEL = 2;
@@ -49,15 +90,62 @@ export class ModelFailover {
     private readonly providers: ProviderRegistry,
   ) {}
 
-  chain(primaryModelId: string): string[] {
+  chain(primaryModelId: string, requires?: ModelRequirements): string[] {
     const now = Date.now();
     const others = this.data
       .listEnabledTextModels()
       .filter((model) => model.id !== primaryModelId)
       .filter((model) => (this.degradedUntil.get(model.id) ?? 0) <= now)
-      .sort((left, right) => right.contextLength - left.contextLength)
+      .filter((model) => this.satisfies(model.id, requires))
+      .sort(
+        (left, right) => this.rank(right, requires) - this.rank(left, requires),
+      )
       .map((model) => model.id);
     return [primaryModelId, ...others];
+  }
+
+  private capabilitiesOf(modelId: string) {
+    try {
+      return this.providers.modelInfo(modelId);
+    } catch {
+      return undefined;
+    }
+  }
+
+  private satisfies(
+    modelId: string,
+    requires: ModelRequirements | undefined,
+  ): boolean {
+    if (!requires) return true;
+    const info = this.capabilitiesOf(modelId);
+    if (!info) return true;
+    for (const [key, capability] of Object.entries(REQUIREMENT_CAPABILITIES)) {
+      if (requires[key as keyof ModelRequirements] !== true) continue;
+      if (info[capability] === false) return false;
+    }
+    return true;
+  }
+
+  private certainty(
+    modelId: string,
+    requires: ModelRequirements | undefined,
+  ): number {
+    if (!requires) return 0;
+    const info = this.capabilitiesOf(modelId);
+    if (!info) return 0;
+    let known = 0;
+    for (const [key, capability] of Object.entries(REQUIREMENT_CAPABILITIES)) {
+      if (requires[key as keyof ModelRequirements] !== true) continue;
+      if (info[capability] === true) known += 1;
+    }
+    return known;
+  }
+
+  private rank(
+    model: { id: string; contextLength: number },
+    requires: ModelRequirements | undefined,
+  ): number {
+    return this.certainty(model.id, requires) * 1e12 + model.contextLength;
   }
 
   classify(error: unknown): FailureKind {
@@ -105,32 +193,35 @@ export class ModelFailover {
   decide(error: unknown, state: FailoverState): FailoverDecision {
     const kind = this.classify(error);
     const detail = messageOf(error).slice(0, 300);
+    const required = requiredList(state.requires);
 
     if (kind === "moderation" || kind === "fatal") return { kind: "fail" };
 
     if (kind === "context_overflow") {
       if (!state.compacted) return { kind: "compact" };
-      const wider = this.widerModel(state.activeModelId);
+      const wider = this.widerModel(state.activeModelId, state.requires);
       return wider
         ? {
             kind: "switch",
             modelId: wider,
             reason: "context_overflow",
             detail,
+            required,
           }
-        : { kind: "fail" };
+        : this.exhausted(state.requires);
     }
 
     if (kind === "output_limit") {
-      const wider = this.widerOutputModel(state.activeModelId);
+      const wider = this.widerOutputModel(state.activeModelId, state.requires);
       return wider
         ? {
             kind: "switch",
             modelId: wider,
             reason: "output_limit",
             detail,
+            required,
           }
-        : { kind: "fail" };
+        : this.exhausted(state.requires);
     }
 
     if (kind === "transient" && state.attempt < RETRIES_PER_MODEL)
@@ -140,8 +231,8 @@ export class ModelFailover {
       };
 
     this.markDegraded(state.activeModelId);
-    const next = this.nextHealthy(state.activeModelId);
-    if (!next) return { kind: "fail" };
+    const next = this.nextHealthy(state.activeModelId, state.requires);
+    if (!next) return this.exhausted(state.requires);
     return {
       kind: "switch",
       modelId: next,
@@ -152,10 +243,19 @@ export class ModelFailover {
             ? "auth"
             : "provider_error",
       detail,
+      required,
     };
   }
 
-  widerOutputModel(modelId: string): string | undefined {
+  private exhausted(requires: ModelRequirements | undefined): FailoverDecision {
+    const message = describeRequirements(requires);
+    return message ? { kind: "fail", message } : { kind: "fail" };
+  }
+
+  widerOutputModel(
+    modelId: string,
+    requires?: ModelRequirements,
+  ): string | undefined {
     const current = this.safeInfo(modelId);
     if (!current) return undefined;
     const now = Date.now();
@@ -164,14 +264,18 @@ export class ModelFailover {
       .filter((model) => model.id !== modelId)
       .filter((model) => (this.degradedUntil.get(model.id) ?? 0) <= now)
       .filter((model) => model.maxCompletionTokens > current.maxOutput)
+      .filter((model) => this.satisfies(model.id, requires))
       .sort(
-        (left, right) => right.maxCompletionTokens - left.maxCompletionTokens,
+        (left, right) =>
+          this.certainty(right.id, requires) -
+            this.certainty(left.id, requires) ||
+          right.maxCompletionTokens - left.maxCompletionTokens,
       )
       .map((model) => model.id)[0];
   }
 
-  widerContextModel(modelId: string): string | undefined {
-    return this.widerModel(modelId);
+  widerContextModel(modelId: string, requires?: ModelRequirements) {
+    return this.widerModel(modelId, requires);
   }
 
   markDegraded(modelId: string, cooldownMs = DEGRADE_COOLDOWN_MS) {
@@ -188,7 +292,10 @@ export class ModelFailover {
     return entry;
   }
 
-  private widerModel(modelId: string): string | undefined {
+  private widerModel(
+    modelId: string,
+    requires?: ModelRequirements,
+  ): string | undefined {
     const current = this.safeInfo(modelId);
     const now = Date.now();
     const threshold = current?.contextLength ?? 0;
@@ -197,12 +304,18 @@ export class ModelFailover {
       .filter((model) => model.id !== modelId)
       .filter((model) => (this.degradedUntil.get(model.id) ?? 0) <= now)
       .filter((model) => model.contextLength > threshold)
-      .sort((left, right) => right.contextLength - left.contextLength)
+      .filter((model) => this.satisfies(model.id, requires))
+      .sort(
+        (left, right) => this.rank(right, requires) - this.rank(left, requires),
+      )
       .map((model) => model.id)[0];
   }
 
-  private nextHealthy(modelId: string): string | undefined {
-    return this.chain(modelId).find(
+  private nextHealthy(
+    modelId: string,
+    requires?: ModelRequirements,
+  ): string | undefined {
+    return this.chain(modelId, requires).find(
       (candidate) => candidate !== modelId && !this.isDegraded(candidate),
     );
   }

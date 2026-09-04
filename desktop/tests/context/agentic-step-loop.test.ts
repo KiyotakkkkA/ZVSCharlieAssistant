@@ -132,6 +132,7 @@ describe("runStepWithRetry", () => {
       "model-2",
       "provider_error",
       "500",
+      undefined,
     );
   });
 

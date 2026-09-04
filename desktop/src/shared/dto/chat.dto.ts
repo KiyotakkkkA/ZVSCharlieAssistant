@@ -117,6 +117,7 @@ export const modelSwitchDtoSchema = z.object({
   reason: modelSwitchReasonSchema,
   detail: z.string(),
   at: z.string(),
+  required: z.array(z.string()).optional(),
 });
 
 export const startRunDtoSchema = z.object({

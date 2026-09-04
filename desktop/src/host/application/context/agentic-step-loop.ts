@@ -2,7 +2,10 @@ import { streamText, stepCountIs, type ModelMessage, type ToolSet } from "ai";
 import type { ChatMessageContentPart, JsonValue } from "../../../shared/dto";
 import type { ContextBudget } from "./context-budget";
 import type { ProviderRegistry } from "../../infrastructure/text-generation/provider.registry";
-import type { ModelFailover } from "../../infrastructure/text-generation/model-failover";
+import type {
+  ModelFailover,
+  ModelRequirements,
+} from "../../infrastructure/text-generation/model-failover";
 
 interface GenerationStreamPart {
   type: string;
@@ -178,6 +181,7 @@ export interface StepRetryInput {
   activeModelId: string;
   system: string;
   tools?: ToolSet;
+  requiresStructuredOutput?: boolean;
   /** Не задан — берётся `maxOutputTokens` из настроек генерации модели. */
   maxOutputTokens?: number;
   temperature?: number | null;
@@ -205,7 +209,12 @@ export interface StepRetryInput {
     output: unknown;
     isError?: boolean;
   }): void;
-  onModelSwitch?(modelId: string, reason: string, detail: string): void;
+  onModelSwitch?(
+    modelId: string,
+    reason: string,
+    detail: string,
+    required?: string[],
+  ): void;
   onFail?(error: unknown): void;
 }
 
@@ -225,6 +234,11 @@ export async function runStepWithRetry(
     const budget = input.budgetFor(activeModelId);
     await input.compact(compacted, budget, activeModelId);
     const messages = input.buildMessages(budget, activeModelId);
+    const requires: ModelRequirements = {
+      tools: Boolean(input.tools && Object.keys(input.tools).length),
+      structuredOutput: input.requiresStructuredOutput === true,
+      vision: hasImageInput(messages),
+    };
 
     try {
       const result = streamText({
@@ -259,9 +273,12 @@ export async function runStepWithRetry(
         activeModelId,
         attempt,
         compacted,
+        requires,
       });
       if (decision.kind === "fail") {
         input.onFail?.(error);
+        if (decision.message)
+          throw new Error(decision.message, { cause: error });
         throw error;
       }
       if (decision.kind === "retry") {
@@ -274,7 +291,12 @@ export async function runStepWithRetry(
         continue;
       }
       activeModelId = decision.modelId;
-      input.onModelSwitch?.(decision.modelId, decision.reason, decision.detail);
+      input.onModelSwitch?.(
+        decision.modelId,
+        decision.reason,
+        decision.detail,
+        decision.required,
+      );
       attempt = 0;
     }
   }
@@ -299,4 +321,14 @@ function normalizeStreamError(error: unknown): Error {
       return Object.assign(new Error(message, { cause: error }), error);
   }
   return new Error("Ошибка при обращении к модели");
+}
+
+function hasImageInput(messages: ModelMessage[]): boolean {
+  return messages.some((message) => {
+    const content = (message as { content?: unknown }).content;
+    if (!Array.isArray(content)) return false;
+    return content.some(
+      (part) => (part as { type?: unknown } | null)?.type === "image",
+    );
+  });
 }

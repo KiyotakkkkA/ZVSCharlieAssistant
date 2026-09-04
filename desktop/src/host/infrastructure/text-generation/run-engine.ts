@@ -657,12 +657,13 @@ export class RunEngine {
             });
             scheduleFlush();
           },
-          onModelSwitch: (modelId, reason, detail) => {
+          onModelSwitch: (modelId, reason, detail, required) => {
             const change = this.failover.record(runId, {
               from: switchFrom,
               to: modelId,
               reason: reason as ModelSwitchReason,
               detail,
+              ...(required?.length ? { required } : {}),
             });
             switchFrom = modelId;
             emit({
