@@ -5,7 +5,10 @@ import {
   runGraph,
   spyExecutor,
 } from "../support/runtime-harness";
-import { ScenarioSuspended } from "../../src/shared/scenario/errors";
+import {
+  CancelledError,
+  ScenarioSuspended,
+} from "../../src/shared/scenario/errors";
 import type { NodeExecutor } from "../../src/shared/scenario/node-descriptor";
 
 beforeEach(() => resetIds());
@@ -550,6 +553,83 @@ describe("приостановка и продолжение", () => {
     expect(second.status).toBe("completed");
     expect(persistence.countFor(after.id)).toBe(1);
     expect(persistence.countFor(output.id)).toBe(1);
+  });
+});
+
+describe("восстановление после обрыва", () => {
+  it("продолжает ран со следующего узла, а не с начала", async () => {
+    const trigger = node("trigger.manual", { name: "Старт" });
+    const first = node("set", {
+      name: "Первый",
+      config: {
+        keepOnlySet: false,
+        remove: [],
+        fields: [{ name: "first", value: "true", type: "boolean" }],
+      },
+    });
+    const breaker = node("noop", { name: "Обрыв" });
+    const third = node("set", {
+      name: "Третий",
+      config: {
+        keepOnlySet: false,
+        remove: [],
+        fields: [{ name: "third", value: "true", type: "boolean" }],
+      },
+    });
+    const output = node("output", { name: "Итог" });
+    const built = graph(
+      [trigger, first, breaker, third, output],
+      [
+        edge(trigger, first),
+        edge(first, breaker),
+        edge(breaker, third),
+        edge(third, output),
+      ],
+    );
+
+    const controller = new AbortController();
+    let interrupt = true;
+    const breaking: NodeExecutor<never, never> = {
+      kind: "noop",
+      async execute(context: { items: unknown }) {
+        if (interrupt) controller.abort();
+        return { items: context.items };
+      },
+    } as unknown as NodeExecutor<never, never>;
+
+    const before = new MemoryPersistence();
+    await expect(
+      runGraph(built, {
+        extraExecutors: [breaking, spyExecutor("output", ({ items }) => items)],
+        persistence: before,
+        signal: controller.signal,
+      }),
+    ).rejects.toBeInstanceOf(CancelledError);
+
+    expect(before.countFor(first.id)).toBe(1);
+    expect(before.countFor(breaker.id)).toBe(1);
+    expect(before.countFor(third.id)).toBe(0);
+
+    const checkpoint = before.checkpoints.at(-1);
+    expect(checkpoint).toBeDefined();
+    expect(checkpoint!.queue).toEqual([third.id]);
+    expect(before.clearedExecutionIds).toEqual([]);
+
+    interrupt = false;
+    const after = new MemoryPersistence();
+    const resumed = await runGraph(built, {
+      extraExecutors: [breaking, spyExecutor("output", ({ items }) => items)],
+      persistence: after,
+      checkpoint,
+    });
+
+    expect(resumed.status).toBe("completed");
+    expect(after.countFor(first.id)).toBe(0);
+    expect(after.countFor(breaker.id)).toBe(0);
+    expect(after.countFor(third.id)).toBe(1);
+    expect(after.countFor(output.id)).toBe(1);
+    expect(after.clearedExecutionIds).toHaveLength(1);
+    expect(after.checkpoint).toBeUndefined();
   });
 });
 

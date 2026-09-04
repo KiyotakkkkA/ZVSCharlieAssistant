@@ -27,7 +27,9 @@ export interface NodeRunRecord {
 export class MemoryPersistence implements RuntimePersistence {
   readonly runs: NodeRunRecord[] = [];
   checkpoint?: SerializedSchedulerState;
+  readonly checkpoints: SerializedSchedulerState[] = [];
   readonly suspendedExecutionIds: string[] = [];
+  readonly clearedExecutionIds: string[] = [];
   private nextId = 1;
 
   startNode(input: {
@@ -63,11 +65,20 @@ export class MemoryPersistence implements RuntimePersistence {
   }
 
   saveCheckpoint(_executionId: string, state: SerializedSchedulerState): void {
-    this.checkpoint = state;
+    const snapshot = JSON.parse(
+      JSON.stringify(state),
+    ) as SerializedSchedulerState;
+    this.checkpoint = snapshot;
+    this.checkpoints.push(snapshot);
   }
 
   markSuspended(executionId: string): void {
     this.suspendedExecutionIds.push(executionId);
+  }
+
+  clearCheckpoint(executionId: string): void {
+    this.checkpoint = undefined;
+    this.clearedExecutionIds.push(executionId);
   }
 
   countFor(nodeId: string): number {

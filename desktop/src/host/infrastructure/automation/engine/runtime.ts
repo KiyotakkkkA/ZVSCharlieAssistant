@@ -85,6 +85,7 @@ export interface RuntimePersistence {
     state: SerializedSchedulerState,
   ): Promise<void> | void;
   markSuspended(executionId: string): Promise<void> | void;
+  clearCheckpoint(executionId: string): Promise<void> | void;
 }
 
 export interface RunRuntimeOptions {
@@ -183,8 +184,13 @@ export class ScenarioRuntime {
       }
 
       this.propagate(compiledNode, result.outputs);
+      await this.options.persistence.saveCheckpoint(
+        this.options.executionId,
+        this.state.serialize(),
+      );
     }
 
+    await this.options.persistence.clearCheckpoint(this.options.executionId);
     return {
       status: "completed",
       outputs: this.collectOutputs(),
