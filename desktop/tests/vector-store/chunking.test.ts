@@ -35,7 +35,7 @@ describe("разбиение документа на чанки", () => {
     );
 
     expect(chunks).toHaveLength(1);
-    expect(chunks[0]!.text.replace(/\s+/g, " ")).toBe(
+    expect(bodyOf(chunks[0]!.text).replace(/\s+/g, " ")).toBe(
       "Обязательство считается исполненным с момента поступления средств на счёт кредитора.",
     );
     expect(chunks[0]!.pageNumber).toBe(1);
@@ -65,7 +65,7 @@ describe("разбиение документа на чанки", () => {
     expect(chunks.length).toBeGreaterThan(3);
     const words = new Set(text.split(/\s+/));
     for (const chunk of chunks) {
-      const parts = chunk.text.split(/\s+/);
+      const parts = bodyOf(chunk.text).split(/\s+/);
       expect(words.has(parts[0]!)).toBe(true);
       expect(words.has(parts[parts.length - 1]!)).toBe(true);
     }
@@ -84,8 +84,8 @@ describe("разбиение документа на чанки", () => {
 
     expect(chunks.length).toBeGreaterThan(2);
     for (let index = 1; index < chunks.length; index += 1) {
-      const previous = sentencesOf(chunks[index - 1]!.text);
-      const current = sentencesOf(chunks[index]!.text);
+      const previous = sentencesOf(bodyOf(chunks[index - 1]!.text));
+      const current = sentencesOf(bodyOf(chunks[index]!.text));
       expect(sharedSentences(previous, current)).toBeGreaterThan(0);
     }
   });
@@ -103,6 +103,11 @@ describe("разбиение документа на чанки", () => {
       expect(estimateTextTokens(chunk.text)).toBeLessThanOrEqual(100);
   });
 });
+
+function bodyOf(text: string): string {
+  const separator = text.indexOf("\n\n");
+  return separator === -1 ? text : text.slice(separator + 2);
+}
 
 function sharedSentences(previous: string[], current: string[]): number {
   const max = Math.min(previous.length, current.length);

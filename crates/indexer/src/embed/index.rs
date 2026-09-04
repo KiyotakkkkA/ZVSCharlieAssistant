@@ -16,12 +16,13 @@ use lancedb::{
     Table, connect,
     index::{Index, scalar::FtsIndexBuilder, vector::IvfPqIndexBuilder},
     query::{ExecutableQuery, QueryBase, QueryExecutionOptions, Select},
-    table::OptimizeAction,
+    table::{NewColumnTransform, OptimizeAction},
 };
 
 const FORMAT_MARKER: &str = ".zvs-native-index-v1";
 const TABLE_PREFIX: &str = "vector_store_";
 const VECTOR_INDEX_MIN_ROWS: usize = 20_000;
+const HEADING_PATH_FIELD: &str = "heading_path";
 const MAX_PARTITIONS: usize = 4096;
 
 static RUNTIME: OnceLock<tokio::runtime::Runtime> = OnceLock::new();
@@ -37,6 +38,7 @@ pub struct ChunkRow {
     pub vector: Vec<f32>,
     pub file_name: String,
     pub page_number: f64,
+    pub heading_path: String,
 }
 
 #[derive(Clone, Debug)]
@@ -46,6 +48,7 @@ pub struct SearchRow {
     pub chunk_index: f64,
     pub text: String,
     pub page_number: f64,
+    pub heading_path: String,
     pub score: f64,
 }
 
@@ -93,8 +96,8 @@ pub fn append(directory: &str, store_id: &str, rows: Vec<ChunkRow>) -> Result<()
             let database = connect(directory).execute().await.map_err(display)?;
             let name = table_name(store_id);
             let names = database.table_names().execute().await.map_err(display)?;
-            let batch = batch(&rows, dimension)?;
             if !names.contains(&name) {
+                let batch = batch(&rows, dimension, true)?;
                 database
                     .create_table(&name, batch)
                     .execute()
@@ -112,6 +115,8 @@ pub fn append(directory: &str, store_id: &str, rows: Vec<ChunkRow>) -> Result<()
                 .await
                 .map_err(display)?;
             prepare_for_write(directory, store_id, &table).await?;
+            let with_heading_path = ensure_heading_path_column(&table).await?;
+            let batch = batch(&rows, dimension, with_heading_path)?;
             let ids = rows
                 .iter()
                 .map(|row| format!("'{}'", sql_literal(&row.document_id)))
@@ -219,13 +224,23 @@ pub fn search(
             if hybrid {
                 ensure_fts(&table).await?;
             }
-            let columns = Select::Columns(vec![
+            let mut column_names = vec![
                 "document_id".to_string(),
                 "file_name".to_string(),
                 "chunk_index".to_string(),
                 "text".to_string(),
                 "page_number".to_string(),
-            ]);
+            ];
+            if table
+                .schema()
+                .await
+                .map_err(display)?
+                .field_with_name(HEADING_PATH_FIELD)
+                .is_ok()
+            {
+                column_names.push(HEADING_PATH_FIELD.to_string());
+            }
+            let columns = Select::Columns(column_names);
             let batches = if hybrid {
                 table
                     .query()
@@ -314,8 +329,29 @@ async fn open(directory: &str, store_id: &str) -> Result<Option<Table>, String> 
         .map_err(display)
 }
 
-fn batch(rows: &[ChunkRow], dimension: usize) -> Result<RecordBatch, String> {
-    let schema = Arc::new(Schema::new(vec![
+async fn ensure_heading_path_column(table: &Table) -> Result<bool, String> {
+    let schema = table.schema().await.map_err(display)?;
+    if schema.field_with_name(HEADING_PATH_FIELD).is_ok() {
+        return Ok(true);
+    }
+    let added = table
+        .add_columns(
+            NewColumnTransform::SqlExpressions(vec![(
+                HEADING_PATH_FIELD.to_string(),
+                "''".to_string(),
+            )]),
+            None,
+        )
+        .await;
+    Ok(added.is_ok())
+}
+
+fn batch(
+    rows: &[ChunkRow],
+    dimension: usize,
+    with_heading_path: bool,
+) -> Result<RecordBatch, String> {
+    let mut fields = vec![
         Field::new("id", DataType::Utf8, false),
         Field::new("document_id", DataType::Utf8, false),
         Field::new("chunk_index", DataType::Float64, false),
@@ -330,37 +366,43 @@ fn batch(rows: &[ChunkRow], dimension: usize) -> Result<RecordBatch, String> {
         ),
         Field::new("file_name", DataType::Utf8, false),
         Field::new("page_number", DataType::Float64, false),
-    ]));
+    ];
+    if with_heading_path {
+        fields.push(Field::new(HEADING_PATH_FIELD, DataType::Utf8, true));
+    }
+    let schema = Arc::new(Schema::new(fields));
     let vectors = FixedSizeListArray::from_iter_primitive::<Float32Type, _, _>(
         rows.iter()
             .map(|row| Some(row.vector.iter().copied().map(Some).collect::<Vec<_>>())),
         dimension as i32,
     );
-    RecordBatch::try_new(
-        schema,
-        vec![
-            Arc::new(StringArray::from_iter_values(
-                rows.iter().map(|row| row.id.as_str()),
-            )) as ArrayRef,
-            Arc::new(StringArray::from_iter_values(
-                rows.iter().map(|row| row.document_id.as_str()),
-            )),
-            Arc::new(Float64Array::from_iter_values(
-                rows.iter().map(|row| row.chunk_index),
-            )),
-            Arc::new(StringArray::from_iter_values(
-                rows.iter().map(|row| row.text.as_str()),
-            )),
-            Arc::new(vectors),
-            Arc::new(StringArray::from_iter_values(
-                rows.iter().map(|row| row.file_name.as_str()),
-            )),
-            Arc::new(Float64Array::from_iter_values(
-                rows.iter().map(|row| row.page_number),
-            )),
-        ],
-    )
-    .map_err(display)
+    let mut columns: Vec<ArrayRef> = vec![
+        Arc::new(StringArray::from_iter_values(
+            rows.iter().map(|row| row.id.as_str()),
+        )),
+        Arc::new(StringArray::from_iter_values(
+            rows.iter().map(|row| row.document_id.as_str()),
+        )),
+        Arc::new(Float64Array::from_iter_values(
+            rows.iter().map(|row| row.chunk_index),
+        )),
+        Arc::new(StringArray::from_iter_values(
+            rows.iter().map(|row| row.text.as_str()),
+        )),
+        Arc::new(vectors),
+        Arc::new(StringArray::from_iter_values(
+            rows.iter().map(|row| row.file_name.as_str()),
+        )),
+        Arc::new(Float64Array::from_iter_values(
+            rows.iter().map(|row| row.page_number),
+        )),
+    ];
+    if with_heading_path {
+        columns.push(Arc::new(StringArray::from_iter_values(
+            rows.iter().map(|row| row.heading_path.as_str()),
+        )));
+    }
+    RecordBatch::try_new(schema, columns).map_err(display)
 }
 
 fn decode(batches: Vec<RecordBatch>, hybrid: bool) -> Result<Vec<SearchRow>, String> {
@@ -383,6 +425,7 @@ fn decode(batches: Vec<RecordBatch>, hybrid: bool) -> Result<Vec<SearchRow>, Str
         let chunk_indices = numbers("chunk_index")?;
         let texts = strings("text")?;
         let page_numbers = numbers("page_number")?;
+        let heading_paths = strings(HEADING_PATH_FIELD).ok();
         for row in 0..batch.num_rows() {
             let raw_score = numeric(
                 &batch,
@@ -399,6 +442,10 @@ fn decode(batches: Vec<RecordBatch>, hybrid: bool) -> Result<Vec<SearchRow>, Str
                 chunk_index: chunk_indices.value(row),
                 text: texts.value(row).to_string(),
                 page_number: page_numbers.value(row),
+                heading_path: heading_paths
+                    .filter(|values| values.is_valid(row))
+                    .map(|values| values.value(row).to_string())
+                    .unwrap_or_default(),
                 score: if hybrid {
                     (raw_score / (2.0 / 60.0)).clamp(0.0, 1.0)
                 } else {

@@ -125,6 +125,7 @@ pub struct VectorChunkInput {
     pub vector: Vec<f64>,
     pub file_name: String,
     pub page_number: f64,
+    pub heading_path: String,
 }
 
 #[napi(object)]
@@ -134,6 +135,7 @@ pub struct VectorSearchResult {
     pub chunk_index: f64,
     pub text: String,
     pub page_number: f64,
+    pub heading_path: String,
     pub score: f64,
 }
 
@@ -199,6 +201,7 @@ impl Task for AppendVectorChunksTask {
                 vector: row.vector.into_iter().map(|value| value as f32).collect(),
                 file_name: row.file_name,
                 page_number: row.page_number,
+                heading_path: row.heading_path,
             })
             .collect();
         vector_index::append(&self.directory, &self.store_id, rows).map_err(Error::from_reason)?;
@@ -347,6 +350,7 @@ impl Task for SearchVectorIndexTask {
                 chunk_index: row.chunk_index,
                 text: row.text,
                 page_number: row.page_number,
+                heading_path: row.heading_path,
                 score: row.score,
             })
             .collect())

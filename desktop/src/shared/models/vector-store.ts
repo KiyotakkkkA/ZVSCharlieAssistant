@@ -41,6 +41,7 @@ export interface VectorSearchResultItem {
   content: string;
   score: number;
   pageNumber: number | null;
+  headingPath: string;
 }
 
 export const PROCESSING_STATUSES = [

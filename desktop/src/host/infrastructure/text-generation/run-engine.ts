@@ -1014,7 +1014,7 @@ function vectorContextBlock(
   return `\n\nРелевантные фрагменты из выбранных пользователем хранилищ. Опирайся на них в ответе и не выдумывай отсутствующие факты:\n${results
     .map(
       (item, index) =>
-        `[${index + 1}] ${item.fileName}${item.pageNumber ? `, стр. ${item.pageNumber}` : ""}\n${item.content}`,
+        `[${index + 1}] ${item.fileName}${item.headingPath ? ` › ${item.headingPath}` : ""}${item.pageNumber ? `, стр. ${item.pageNumber}` : ""}\n${item.content}`,
     )
     .join("\n\n")}`;
 }

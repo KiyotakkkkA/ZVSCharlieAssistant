@@ -460,6 +460,7 @@ export class VectorStoreService {
           content: row.text,
           score,
           pageNumber: row.pageNumber < 1 ? null : row.pageNumber,
+          headingPath: row.headingPath ?? "",
         });
       }
     }
@@ -490,6 +491,7 @@ export class VectorStoreService {
         segments,
         store.chunkSizeTokens,
         store.chunkOverlapTokens,
+        input.fileName,
       );
       if (!chunks.length)
         throw new Error(
@@ -520,6 +522,7 @@ export class VectorStoreService {
         vector: vectors[index]!,
         fileName: input.fileName,
         pageNumber: chunk.pageNumber ?? -1,
+        headingPath: chunk.headingPath,
       }));
       if (
         store.vectorDimension !== null &&

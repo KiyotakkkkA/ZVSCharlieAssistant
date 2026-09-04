@@ -81,6 +81,7 @@ export interface NativeVectorChunk {
   vector: number[];
   fileName: string;
   pageNumber: number;
+  headingPath: string;
 }
 
 export interface NativeVectorSearchResult {
@@ -89,6 +90,7 @@ export interface NativeVectorSearchResult {
   chunkIndex: number;
   text: string;
   pageNumber: number;
+  headingPath: string;
   score: number;
 }
 
