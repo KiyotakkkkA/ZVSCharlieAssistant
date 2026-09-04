@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { extname, join } from "node:path";
 import type {
   NativeIndexerService,
   NativeVectorChunk,
@@ -143,11 +143,16 @@ export class VectorStoreService {
 
   async upload(inputs: UploadVectorDocumentInput[]) {
     const batchHashes = new Set<string>();
+    const prepared: Array<{
+      input: UploadVectorDocumentInput;
+      buffer: Buffer<ArrayBuffer>;
+      hash: string;
+      path: string;
+    }> = [];
     for (const input of inputs) {
       this.validateUpload(input);
-      const hash = createHash("sha256")
-        .update(Buffer.from(input.data))
-        .digest("hex");
+      const buffer = Buffer.from(input.data);
+      const hash = createHash("sha256").update(buffer).digest("hex");
       const batchKey = `${input.vectorStoreId}:${hash}`;
       if (batchHashes.has(batchKey))
         throw new Error(`Документ «${input.fileName}» выбран повторно`);
@@ -155,12 +160,23 @@ export class VectorStoreService {
       const existing = this.data.documentByHash(input.vectorStoreId, hash);
       if (existing && existing.status !== "failed")
         throw new Error(`Документ «${input.fileName}» уже добавлен`);
-    }
-    for (const input of inputs) {
-      const buffer = Buffer.from(input.data);
-      const hash = createHash("sha256").update(buffer).digest("hex");
       const dir = join(this.filesDir, String(input.vectorStoreId));
-      const path = join(dir, `${hash}-${safeName(input.fileName)}`);
+      prepared.push({
+        input,
+        buffer,
+        hash,
+        path: join(dir, `${hash}${extname(input.fileName).toLowerCase()}`),
+      });
+    }
+    await Promise.all(
+      prepared.map(async ({ input, buffer, path }) => {
+        await mkdir(join(this.filesDir, String(input.vectorStoreId)), {
+          recursive: true,
+        });
+        await writeFile(path, buffer);
+      }),
+    );
+    for (const { input, buffer, hash, path } of prepared) {
       const id = this.data.createDocument(
         input.vectorStoreId,
         input.fileName,
@@ -481,7 +497,7 @@ export class VectorStoreService {
       );
       if (!chunks.length)
         throw new Error(
-          "В документе не удалось найти текст. Если это скан, включите распознавание сканов в настройках базы знаний.",
+          "В документе не удалось найти текст. Страницы распознавались, но ничего читаемого не нашлось — возможно, скан слишком низкого качества или документ пустой.",
         );
       this.stage(id, "embedding", 0);
       const vectors: number[][] = [];
@@ -605,9 +621,6 @@ function groupByStore(rows: StoredDocumentRow[]) {
   }
   return groups;
 }
-
-const safeName = (name: string) =>
-  name.replace(/[^a-zA-Zа-яА-Я0-9._-]+/g, "_").slice(-120);
 
 function chunkText(text: string, sizeTokens: number, overlapTokens: number) {
   const normalized = text

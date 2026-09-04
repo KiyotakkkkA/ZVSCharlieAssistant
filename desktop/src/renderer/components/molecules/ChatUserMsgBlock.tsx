@@ -3,6 +3,7 @@ import { memo, useState } from "react";
 import { ControlButton } from "../atoms/basic";
 import { FileIcon } from "../atoms";
 import type { ChatAttachmentPart } from "../../../shared/dto";
+import { formatBytes } from "@renderer/lib/format";
 
 export const ChatUserMsgBlock = memo(function ChatUserMsgBlock({
   text,
@@ -128,10 +129,4 @@ function attachmentLabel(attachment: ChatAttachmentPart): string {
   const extension = attachment.fileName.split(".").at(-1)?.toUpperCase();
   const type = extension || attachment.mimeType || "Файл";
   return `${type} · ${formatBytes(attachment.size)}`;
-}
-
-function formatBytes(value: number): string {
-  if (value < 1024) return `${value} Б`;
-  if (value < 1_048_576) return `${Math.round(value / 1024)} КБ`;
-  return `${(value / 1_048_576).toFixed(1)} МБ`;
 }

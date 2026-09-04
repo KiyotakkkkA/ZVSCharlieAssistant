@@ -6,6 +6,7 @@ import type {
 } from "../../../ipc/contracts";
 import { InformationIcon } from "../atoms/icons";
 import { ModelOrientedSelect } from "../atoms/ModelOrientedSelect";
+import { formatTokens } from "@renderer/lib/format";
 
 const SWITCH_REASONS: Record<ModelSwitch["reason"], string> = {
   provider_error: "провайдер недоступен",
@@ -199,9 +200,4 @@ export function ContextMeter({
 
 function compactedCount(segments: ContextSegment[]): number {
   return segments.reduce((sum, segment) => sum + segment.messageCount, 0);
-}
-
-function formatTokens(value: number): string {
-  if (value < 1_000) return String(value);
-  return `${(value / 1_000).toFixed(1)}k`;
 }

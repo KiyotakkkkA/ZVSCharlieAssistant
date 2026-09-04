@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, Button, Modal } from "@kiyotakkkka/zvs-uikit-lib";
 import { CodeView } from "@kiyotakkkka/zvs-uikit-lib/code-view";
 import type { TerminalApprovalRequest } from "../../../../ipc/contracts";
+import { formatRemaining } from "@renderer/lib/format";
 
 const RISK_LABELS: Record<TerminalApprovalRequest["risk"], string> = {
   low: "низкий",
@@ -19,15 +20,6 @@ const RISK_VARIANTS: Record<
   high: "danger",
   critical: "danger",
 };
-
-function formatRemaining(expiresAt: string, now: number): string | null {
-  const left = new Date(expiresAt).getTime() - now;
-  if (!Number.isFinite(left)) return null;
-  if (left <= 0) return "срок истёк";
-  const minutes = Math.floor(left / 60_000);
-  const seconds = Math.floor((left % 60_000) / 1_000);
-  return `${minutes}:${String(seconds).padStart(2, "0")}`;
-}
 
 export function TerminalApprovalModal() {
   const [items, setItems] = useState<TerminalApprovalRequest[]>([]);

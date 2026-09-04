@@ -45,7 +45,7 @@ const statusMeta: Record<
   disabled: { label: "Не настроено", className: "text-main-500" },
   error: { label: "Ошибка", className: "text-danger-light" },
   indexing: { label: "Индексация", className: "text-accent-light" },
-  degraded: { label: "Деградировала", className: "text-danger-light" },
+  degraded: { label: "Есть файлы с ошибками", className: "text-danger-light" },
 };
 
 const IconResolver = (icon: keyof typeof MAPPING) => {

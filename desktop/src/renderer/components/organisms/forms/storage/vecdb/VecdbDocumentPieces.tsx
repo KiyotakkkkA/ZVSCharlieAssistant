@@ -2,6 +2,7 @@ import { ProgressBar } from "@kiyotakkkka/zvs-uikit-lib";
 import { FileIcon } from "@renderer/components/atoms";
 import { ControlButton } from "@renderer/components/atoms/basic";
 import type { VectorDocument, VectorStoreModel } from "@renderer/stores";
+import { formatBytes } from "@renderer/lib/format";
 
 export const DOCUMENT_ROW_HEIGHT = 80;
 export const DOCUMENT_ROW_GAP = 8;
@@ -201,12 +202,6 @@ export function collectFolderPaths(documents: VectorDocument[]) {
       folders.add(parts.slice(0, index).join("/"));
   }
   return folders;
-}
-
-export function formatBytes(value: number) {
-  return value < 1024 * 1024
-    ? `${Math.round(value / 1024)} КБ`
-    : `${(value / 1024 / 1024).toFixed(1)} МБ`;
 }
 
 export function documentStatusLabel(status: VectorDocument["status"]) {

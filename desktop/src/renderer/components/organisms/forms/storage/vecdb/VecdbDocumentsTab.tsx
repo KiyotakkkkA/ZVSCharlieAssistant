@@ -5,6 +5,7 @@ import {
   InputDropZone,
   InputSmall,
   ScrollArea,
+  Switcher,
   useToasts,
 } from "@kiyotakkkka/zvs-uikit-lib";
 import {
@@ -27,6 +28,14 @@ import {
 } from "./VecdbDocumentPieces";
 import { useVirtualRows } from "@renderer/hooks";
 
+type DocumentFilter = "all" | "ready" | "failed";
+
+const DOCUMENT_FILTERS: { value: DocumentFilter; label: string }[] = [
+  { value: "all", label: "Все" },
+  { value: "ready", label: "Успешные" },
+  { value: "failed", label: "С ошибками" },
+];
+
 interface VecdbDocumentsTabProps {
   model: VectorStoreModel;
   backgroundIndexing: boolean;
@@ -37,11 +46,11 @@ interface VecdbDocumentsTabProps {
 export const VecdbDocumentsTab = observer(function VecdbDocumentsTab({
   model,
   backgroundIndexing,
-  directoryIndexing,
   onOpenMultipleIndex,
 }: VecdbDocumentsTabProps) {
   const toasts = useToasts();
   const [documentQuery, setDocumentQuery] = useState("");
+  const [documentFilter, setDocumentFilter] = useState<DocumentFilter>("all");
   const [retrying, setRetrying] = useState(false);
   const [documentToDelete, setDocumentToDelete] =
     useState<VectorDocument | null>(null);
@@ -49,14 +58,25 @@ export const VecdbDocumentsTab = observer(function VecdbDocumentsTab({
   const failedDocuments = documents.filter(
     (document) => document.status === "failed",
   );
+  const readyDocuments = documents.filter(
+    (document) => document.status === "ready",
+  );
   const normalizedDocumentQuery = documentQuery.trim().toLocaleLowerCase();
+  const filteredDocuments =
+    documentFilter === "ready"
+      ? readyDocuments
+      : documentFilter === "failed"
+        ? failedDocuments
+        : documents;
   const visibleDocuments = normalizedDocumentQuery
-    ? documents.filter((document) =>
+    ? filteredDocuments.filter((document) =>
         document.fileName.toLocaleLowerCase().includes(normalizedDocumentQuery),
       )
-    : documents;
+    : filteredDocuments;
   const rows = useVirtualRows(visibleDocuments.length, DOCUMENT_ROW_HEIGHT);
-  const sample = vectorStoreStore.resourceSample;
+  const monitorVisible = Boolean(
+    backgroundIndexing || vectorStoreStore.ingestProgress,
+  );
 
   return (
     <>
@@ -107,43 +127,51 @@ export const VecdbDocumentsTab = observer(function VecdbDocumentsTab({
               Множественная загрузка
             </Button>
           </div>
-          {backgroundIndexing || vectorStoreStore.ingestProgress ? (
-            <IndexingMonitorPanel
-              sample={vectorStoreStore.resourceSample}
-              progress={vectorStoreStore.ingestProgress}
-              cancelling={vectorStoreStore.cancelling}
-              onCancel={() => {
-                void vectorStoreStore
-                  .stopIndexing()
-                  .then(() =>
-                    toasts.success({
-                      title: "Индексация остановлена",
-                      description:
-                        "Все очереди остановлены. Нажмите «Продолжить», чтобы возобновить обработку.",
-                    }),
-                  )
-                  .catch((error) =>
-                    toasts.danger({
-                      title: "Не удалось отменить обработку",
-                      description: humanizeError(error),
-                    }),
-                  );
-              }}
-              onResume={() => {
-                void vectorStoreStore
-                  .resumeIndexing()
-                  .then(() =>
-                    toasts.success({ title: "Индексация продолжена" }),
-                  )
-                  .catch((error) =>
-                    toasts.danger({
-                      title: "Не удалось продолжить индексацию",
-                      description: humanizeError(error),
-                    }),
-                  );
-              }}
-            />
-          ) : null}
+          <div
+            className={`mt-0! grid transition-[grid-template-rows,opacity] duration-300 ease-out ${
+              monitorVisible
+                ? "grid-rows-[1fr] opacity-100"
+                : "grid-rows-[0fr] opacity-0"
+            }`}
+          >
+            <div className="min-h-0 overflow-hidden pt-4">
+              <IndexingMonitorPanel
+                sample={vectorStoreStore.resourceSample}
+                progress={vectorStoreStore.ingestProgress}
+                cancelling={vectorStoreStore.cancelling}
+                onCancel={() => {
+                  void vectorStoreStore
+                    .stopIndexing()
+                    .then(() =>
+                      toasts.success({
+                        title: "Индексация остановлена",
+                        description:
+                          "Все очереди остановлены. Нажмите «Продолжить», чтобы возобновить обработку.",
+                      }),
+                    )
+                    .catch((error) =>
+                      toasts.danger({
+                        title: "Не удалось отменить обработку",
+                        description: humanizeError(error),
+                      }),
+                    );
+                }}
+                onResume={() => {
+                  void vectorStoreStore
+                    .resumeIndexing()
+                    .then(() =>
+                      toasts.success({ title: "Индексация продолжена" }),
+                    )
+                    .catch((error) =>
+                      toasts.danger({
+                        title: "Не удалось продолжить индексацию",
+                        description: humanizeError(error),
+                      }),
+                    );
+                }}
+              />
+            </div>
+          </div>
           <StorageSummary
             model={model}
             documents={documents}
@@ -177,15 +205,22 @@ export const VecdbDocumentsTab = observer(function VecdbDocumentsTab({
             }}
           />
           {documents.length ? (
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <Switcher
+                value={documentFilter}
+                onChange={(value) => setDocumentFilter(value as DocumentFilter)}
+                options={DOCUMENT_FILTERS}
+                label="Фильтр документов"
+              />
               <InputSmall
                 preset="search"
                 value={documentQuery}
                 placeholder="Найти документ по названию..."
                 className="w-full max-w-xl"
                 onChange={(event) => setDocumentQuery(event.target.value)}
+                onClear={() => setDocumentQuery("")}
               />
-              {documentQuery.trim() ? (
+              {documentQuery.trim() || documentFilter !== "all" ? (
                 <span className="shrink-0 text-xs tabular-nums text-main-500">
                   Найдено: {visibleDocuments.length}
                 </span>
@@ -225,7 +260,11 @@ export const VecdbDocumentsTab = observer(function VecdbDocumentsTab({
                     Документы не найдены
                   </p>
                   <p className="mt-1 text-xs text-main-500">
-                    Измените поисковый запрос.
+                    {documentFilter === "ready"
+                      ? "Ни один документ ещё не обработан успешно."
+                      : documentFilter === "failed"
+                        ? "Документов с ошибками нет."
+                        : "Измените поисковый запрос."}
                   </p>
                 </div>
               )}

@@ -74,8 +74,14 @@ export const StorageVecdbManageForm = observer(function StorageVecdbManageForm({
             onChange={(value) => setTab(value as DetailTab)}
             options={[
               { value: "documents", label: `Документы · ${documents.length}` },
-              { value: "settings", label: "Настройки" },
-              { value: "provider", label: "Провайдер" },
+              {
+                value: "settings",
+                label: "Настройки",
+              },
+              {
+                value: "provider",
+                label: "Провайдер",
+              },
               { value: "search", label: "Тест поиска" },
             ]}
           />

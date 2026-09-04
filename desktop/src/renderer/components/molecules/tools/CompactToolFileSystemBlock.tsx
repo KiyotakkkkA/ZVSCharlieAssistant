@@ -11,6 +11,7 @@ import {
   type SvgIcon,
 } from "../../atoms";
 import { CompactToolStatus } from "./CompactToolStatus";
+import { formatBytes } from "@renderer/lib/format";
 
 const FILE_SYSTEM_TOOL_IDS = [
   "fs_read",
@@ -397,12 +398,6 @@ function lineCount(value: string) {
 
 function utf8Size(value: string) {
   return new TextEncoder().encode(value).byteLength;
-}
-
-function formatBytes(value: number) {
-  if (value < 1_024) return `${value} Б`;
-  if (value < 1_048_576) return `${(value / 1_024).toFixed(1)} КБ`;
-  return `${(value / 1_048_576).toFixed(1)} МБ`;
 }
 
 function signed(value: number) {

@@ -28,6 +28,7 @@ import {
   ModelOrientedSelect,
 } from "../../atoms";
 import { BasicSelect } from "../../atoms/basic";
+import { formatBytes } from "@renderer/lib/format";
 
 export type ChatMode = "chat" | "planner" | "agent" | "scenario";
 export type ChatModel = string;
@@ -446,10 +447,4 @@ function AttachmentChip({
       </button>
     </div>
   );
-}
-
-function formatBytes(value: number) {
-  return value < 1_048_576
-    ? `${Math.max(1, Math.round(value / 1024))} КБ`
-    : `${(value / 1_048_576).toFixed(1)} МБ`;
 }

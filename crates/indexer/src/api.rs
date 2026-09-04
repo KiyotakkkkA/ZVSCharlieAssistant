@@ -729,7 +729,10 @@ fn extract(request: &ExtractDocumentRequest) -> Result<ExtractDocumentResult> {
             PageRoute::Ocr => ocr_pages += 1,
             PageRoute::Empty => empty_pages += 1,
         }
-        let mut text = page.text;
+        let mut text = match page.route {
+            PageRoute::TextLayer => page.text,
+            PageRoute::Ocr | PageRoute::Empty => String::new(),
+        };
         let mut recognised_lines = 0;
         if let (Some(engine), Some(image)) = (ocr.as_ref(), page.image.as_ref()) {
             let read = engine.read_page(image).map_err(Error::from_reason)?;

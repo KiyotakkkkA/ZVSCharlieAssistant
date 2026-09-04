@@ -1,22 +1,13 @@
 import { InputCheckSlided } from "@kiyotakkkka/zvs-uikit-lib";
 import type { TextProviderModelInfo } from "../../../shared/models/text-provider";
 import { OllamaIcon, OpenInNewIcon } from "../atoms";
+import { formatSize } from "@renderer/lib/format";
 
 interface Props {
   model: TextProviderModelInfo;
   enabled: boolean;
   onEnabledChange: (enabled: boolean) => void;
 }
-
-const formatSize = (bytes: number): string => {
-  if (bytes <= 0) return "Размер не указан";
-  const units = ["Б", "КБ", "МБ", "ГБ", "ТБ"];
-  const index = Math.min(
-    Math.floor(Math.log(bytes) / Math.log(1024)),
-    units.length - 1,
-  );
-  return `${(bytes / 1024 ** index).toLocaleString("ru-RU", { maximumFractionDigits: 1 })} ${units[index]}`;
-};
 
 export function SettingsProviderOllamaModelCard({
   model,

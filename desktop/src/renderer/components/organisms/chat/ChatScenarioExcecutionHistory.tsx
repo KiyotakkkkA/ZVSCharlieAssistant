@@ -5,16 +5,7 @@ import { useMemo, useState } from "react";
 import { observer } from "mobx-react-lite";
 import { automationStore } from "../../../stores";
 import { scenarioDescriptors } from "../../../../shared/scenario/descriptors";
-
-function formatNodeValue(value: unknown) {
-  if (value === null || value === undefined) return "";
-  if (
-    typeof value === "object" &&
-    typeof (value as Record<string, unknown>).text === "string"
-  )
-    return String((value as Record<string, unknown>).text);
-  return typeof value === "string" ? value : JSON.stringify(value, null, 2);
-}
+import { formatNodeValue } from "@renderer/lib/format";
 
 function resolveNodeLabel(
   node: ScenarioNodeRun,

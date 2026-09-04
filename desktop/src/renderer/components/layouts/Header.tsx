@@ -39,6 +39,7 @@ import {
   GlobalSettingsDataForm,
 } from "../organisms/forms";
 import { useAppNavigation } from "@renderer/hooks";
+import { formatPlatform, formatUpdatedAt } from "@renderer/lib/format";
 
 const SETTINGS_FORMS: GlobalSettingsFormDescriptor[] = [
   {
@@ -285,18 +286,4 @@ function LocationRow({
       </Button>
     </div>
   );
-}
-
-function formatUpdatedAt(value: string): string {
-  return new Intl.DateTimeFormat("ru-RU", {
-    dateStyle: "long",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
-
-function formatPlatform(platform: string): string {
-  if (platform === "win32") return "Windows";
-  if (platform === "darwin") return "macOS";
-  if (platform === "linux") return "Linux";
-  return platform;
 }

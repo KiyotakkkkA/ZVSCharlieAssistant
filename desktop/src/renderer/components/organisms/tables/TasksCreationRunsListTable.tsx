@@ -1,6 +1,7 @@
 import { Button, Table, type TableColumn } from "@kiyotakkkka/zvs-uikit-lib";
 import type { EntityGenerationRun } from "../../../../ipc/contracts";
 import { EyeIcon, OpenInNewIcon, QuestionIcon } from "../../atoms";
+import { formatDate } from "@renderer/lib/format";
 
 interface Row extends EntityGenerationRun {
   [key: string]: unknown;
@@ -167,17 +168,4 @@ export function TasksCreationRunsListTable({
       }}
     />
   );
-}
-
-function formatDate(value: string) {
-  const normalized = value.includes("T")
-    ? value
-    : `${value.replace(" ", "T")}Z`;
-  const date = new Date(normalized);
-  return Number.isNaN(date.getTime())
-    ? value
-    : new Intl.DateTimeFormat("ru-RU", {
-        dateStyle: "short",
-        timeStyle: "medium",
-      }).format(date);
 }

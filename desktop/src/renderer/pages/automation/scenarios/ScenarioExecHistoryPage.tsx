@@ -24,6 +24,7 @@ import { automationStore } from "@renderer/stores";
 import { observer } from "mobx-react-lite";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
+import { formatMs } from "@renderer/lib/format";
 
 type Execution = { run: ScenarioRun; nodes: ScenarioNodeRun[] };
 
@@ -66,14 +67,6 @@ const ORIGIN_LABELS: Record<ScenarioRun["origin"], string> = {
 };
 
 const ACTIVE_STATUSES = new Set(["queued", "running", "waiting_for_approval"]);
-
-const formatMs = (ms: number): string => {
-  if (ms < 1_000) return `${Math.max(0, Math.round(ms))} мс`;
-  if (ms < 60_000) return `${(ms / 1_000).toFixed(1)} с`;
-  const minutes = Math.floor(ms / 60_000);
-  const seconds = Math.round((ms % 60_000) / 1_000);
-  return `${minutes} мин ${seconds} с`;
-};
 
 const spanMs = (
   from: string | null,

@@ -1,6 +1,7 @@
 import { Button, Table, type TableColumn } from "@kiyotakkkka/zvs-uikit-lib";
 import type { AgentTaskRun } from "../../../../ipc/contracts";
 import { EyeIcon, GraphIcon } from "../../atoms";
+import { formatDate } from "@renderer/lib/format";
 
 interface Row extends AgentTaskRun {
   [key: string]: unknown;
@@ -137,16 +138,4 @@ export function TasksScenarioRunsListTable({
       }}
     />
   );
-}
-function formatDate(value: string) {
-  const normalized = value.includes("T")
-    ? value
-    : `${value.replace(" ", "T")}Z`;
-  const date = new Date(normalized);
-  return Number.isNaN(date.getTime())
-    ? value
-    : new Intl.DateTimeFormat("ru-RU", {
-        dateStyle: "short",
-        timeStyle: "medium",
-      }).format(date);
 }

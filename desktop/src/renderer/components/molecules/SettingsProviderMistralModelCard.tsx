@@ -1,6 +1,7 @@
 import { InputCheckSlided } from "@kiyotakkkka/zvs-uikit-lib";
 import type { TextProviderModelInfo } from "../../../shared/models/text-provider";
 import { MistralIcon, OpenInNewIcon } from "../atoms";
+import { formatContext } from "@renderer/lib/format";
 
 interface Props {
   model: TextProviderModelInfo;
@@ -15,11 +16,6 @@ const CAPABILITY_LABELS: Record<string, string> = {
   classification: "Классификация",
   "fine-tuning": "Дообучение",
 };
-
-const formatContext = (tokens: number): string =>
-  tokens >= 1000
-    ? `${Math.round(tokens / 1000)}K контекст`
-    : `${tokens} токенов`;
 
 export function SettingsProviderMistralModelCard({
   model,

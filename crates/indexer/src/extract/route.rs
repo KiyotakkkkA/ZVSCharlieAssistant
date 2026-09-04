@@ -1,5 +1,9 @@
+use std::collections::HashMap;
+
 const MIN_TEXT_LAYER_CHARS: usize = 96;
 const MIN_ALPHANUMERIC_RATIO: f32 = 0.35;
+const MAX_DOMINANT_CHAR_RATIO: f32 = 0.25;
+const MIN_DISTINCT_CHARS: usize = 12;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum PageRoute {
@@ -20,16 +24,38 @@ impl PageRoute {
 
 pub fn route_page(text: &str, image_count: usize) -> PageRoute {
     let meaningful = meaningful_chars(text);
-    if meaningful >= MIN_TEXT_LAYER_CHARS && alphanumeric_ratio(text) >= MIN_ALPHANUMERIC_RATIO {
+    if meaningful >= MIN_TEXT_LAYER_CHARS
+        && alphanumeric_ratio(text) >= MIN_ALPHANUMERIC_RATIO
+        && !is_degenerate(text)
+    {
         return PageRoute::TextLayer;
     }
     if image_count > 0 {
         return PageRoute::Ocr;
     }
-    if meaningful > 0 {
+    if meaningful > 0 && !is_degenerate(text) {
         return PageRoute::TextLayer;
     }
+    if meaningful > 0 {
+        return PageRoute::Empty;
+    }
     PageRoute::Empty
+}
+
+pub fn is_degenerate(text: &str) -> bool {
+    let mut counts: HashMap<char, usize> = HashMap::new();
+    for value in text.chars().filter(|value| value.is_alphanumeric()) {
+        *counts.entry(value.to_lowercase().next().unwrap_or(value)).or_insert(0) += 1;
+    }
+    let total: usize = counts.values().sum();
+    if total < MIN_TEXT_LAYER_CHARS {
+        return false;
+    }
+    if counts.len() < MIN_DISTINCT_CHARS {
+        return true;
+    }
+    let dominant = counts.values().copied().max().unwrap_or(0);
+    dominant as f32 / total as f32 > MAX_DOMINANT_CHAR_RATIO
 }
 
 fn meaningful_chars(text: &str) -> usize {
@@ -76,6 +102,21 @@ mod tests {
     #[test]
     fn keeps_short_text_when_no_image_can_be_recognised() {
         assert_eq!(route_page("Приложение №1", 0), PageRoute::TextLayer);
+    }
+
+    #[test]
+    fn routes_a_broken_tounicode_layer_to_ocr() {
+        let broken: String = "ю".repeat(400);
+        assert!(is_degenerate(&broken));
+        assert_eq!(route_page(&broken, 1), PageRoute::Ocr);
+        assert_eq!(route_page(&broken, 0), PageRoute::Empty);
+    }
+
+    #[test]
+    fn keeps_dense_cyrillic_prose_as_a_text_layer() {
+        let prose = "Администрация муниципального образования город Краснодар                      управление муниципального контроля составила настоящий акт                      по результатам проведённой выездной проверки объекта.";
+        assert!(!is_degenerate(prose));
+        assert_eq!(route_page(prose, 1), PageRoute::TextLayer);
     }
 
     #[test]
