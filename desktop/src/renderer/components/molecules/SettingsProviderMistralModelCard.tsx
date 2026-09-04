@@ -2,11 +2,17 @@ import { InputCheckSlided } from "@kiyotakkkka/zvs-uikit-lib";
 import type { TextProviderModelInfo } from "../../../shared/models/text-provider";
 import { MistralIcon, OpenInNewIcon } from "../atoms";
 import { formatContext } from "@renderer/lib/format";
+import { ModelCapabilityChips } from "./ModelCapabilityChips";
+import type { ModelCapabilityKey } from "../../../shared/models/model-capabilities";
 
 interface Props {
   model: TextProviderModelInfo;
   enabled: boolean;
   onEnabledChange: (enabled: boolean) => void;
+  onCapabilityOverride?: (
+    key: ModelCapabilityKey,
+    value: boolean | undefined,
+  ) => void;
 }
 
 const CAPABILITY_LABELS: Record<string, string> = {
@@ -21,6 +27,7 @@ export function SettingsProviderMistralModelCard({
   model,
   enabled,
   onEnabledChange,
+  onCapabilityOverride,
 }: Props) {
   const details = model.details;
   const capabilities = (details.supportedParameters ?? [])
@@ -85,6 +92,10 @@ export function SettingsProviderMistralModelCard({
             </span>
           ) : null}
         </div>
+        <ModelCapabilityChips
+          details={model.details}
+          onOverride={onCapabilityOverride}
+        />
       </div>
       <InputCheckSlided checked={enabled} onChange={onEnabledChange} />
     </article>

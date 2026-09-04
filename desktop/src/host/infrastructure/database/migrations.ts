@@ -234,6 +234,15 @@ const MIGRATIONS: Migration[] = [
       CREATE INDEX idx_vector_store_documents_store ON vector_store_documents(vector_store_id,status);
     `,
   },
+  {
+    version: 13,
+    name: "text-provider-model-availability",
+    sql: `
+      ALTER TABLE text_provider_models
+        ADD COLUMN available INTEGER NOT NULL DEFAULT 1 CHECK(available IN (0,1));
+      CREATE INDEX idx_text_provider_models_available ON text_provider_models(provider_id,available);
+    `,
+  },
 ];
 
 export function runMigrations(database: Database.Database): void {

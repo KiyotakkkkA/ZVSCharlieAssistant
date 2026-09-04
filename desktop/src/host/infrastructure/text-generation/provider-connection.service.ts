@@ -89,6 +89,22 @@ class OllamaConnectionChecker implements ProviderConnectionChecker {
         },
       };
     });
+    await Promise.all(
+      models.map(async (model) => {
+        const capabilities = await ollamaCapabilities(
+          baseUrl,
+          apiKey,
+          model.id,
+        );
+        if (capabilities.length)
+          Object.assign(model.details, {
+            supportedParameters: ollamaParameters(capabilities),
+            inputModalities: capabilities.includes("vision")
+              ? ["text", "image"]
+              : ["text"],
+          });
+      }),
+    );
     return { models, limits: null };
   }
 }
@@ -243,6 +259,38 @@ class MistralConnectionChecker implements ProviderConnectionChecker {
     });
 
     return { models, limits: null };
+  }
+}
+
+export function ollamaParameters(capabilities: string[]): string[] {
+  const known = new Set(capabilities.map((value) => value.toLowerCase()));
+  const parameters = ["completion"];
+  if (known.has("tools")) parameters.push("tools");
+  if (known.has("vision")) parameters.push("vision");
+  if (known.has("thinking")) parameters.push("reasoning");
+  return parameters;
+}
+
+async function ollamaCapabilities(
+  baseUrl: string,
+  apiKey: string | undefined,
+  model: string,
+): Promise<string[]> {
+  try {
+    const response = await fetch(`${normalizeBaseUrl(baseUrl)}/api/show`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+      },
+      body: JSON.stringify({ model }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!response.ok) return [];
+    const payload = (await response.json()) as { capabilities?: string[] };
+    return Array.isArray(payload.capabilities) ? payload.capabilities : [];
+  } catch {
+    return [];
   }
 }
 
@@ -421,6 +469,15 @@ export class ProviderConnectionService {
     const enabledModelIds = input.enabledModelIds.filter((id) =>
       availableIds.has(id),
     );
+    const stored = input.id ? this.providers.capabilityOverrides(input.id) : {};
+    const models = result.models.map((model) => ({
+      ...model,
+      details: {
+        ...model.details,
+        ...(stored[model.id] ?? {}),
+        ...(input.capabilityOverrides?.[model.id] ?? {}),
+      },
+    }));
     return this.providers.upsert(
       {
         ...input,
@@ -430,7 +487,7 @@ export class ProviderConnectionService {
       },
       input.id,
       result.checkedAt,
-      result.models,
+      models,
       result.limits,
     );
   }

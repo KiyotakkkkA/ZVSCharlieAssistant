@@ -11,7 +11,9 @@ import {
   textProviderLimitsDtoSchema,
   textProviderModelDetailsDtoSchema,
   type TextProviderLimits,
+  type TextProviderModelDetails,
 } from "../../../shared/dto";
+import { pickCapabilityOverrides } from "../../../shared/models/model-capabilities";
 import { newEntityId } from "./entity-id";
 import type {
   TextProviderGenerationSettings,
@@ -50,7 +52,7 @@ export class TextProviderRepository {
       .all() as ProviderRow[];
     const models = this.database
       .prepare(
-        "SELECT * FROM text_provider_models ORDER BY name COLLATE NOCASE",
+        "SELECT * FROM text_provider_models WHERE available=1 ORDER BY name COLLATE NOCASE",
       )
       .all() as ModelRow[];
     return {
@@ -106,21 +108,22 @@ export class TextProviderRepository {
       }
       this.database
         .prepare(
-          "UPDATE text_provider_models SET enabled=0 WHERE provider_id=?",
+          "UPDATE text_provider_models SET enabled=0, available=0 WHERE provider_id=?",
         )
         .run(providerId);
       const insert = this.database.prepare(
         `INSERT INTO text_provider_models (
            id, provider_id, remote_id, name, modified_at, size, digest,
-           details_json, enabled
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+           details_json, enabled, available
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
          ON CONFLICT(provider_id, remote_id) DO UPDATE SET
            name = excluded.name,
            modified_at = excluded.modified_at,
            size = excluded.size,
            digest = excluded.digest,
            details_json = excluded.details_json,
-           enabled = excluded.enabled`,
+           enabled = excluded.enabled,
+           available = 1`,
       );
       for (const model of models)
         insert.run(
@@ -137,6 +140,33 @@ export class TextProviderRepository {
     })();
     return this.getSnapshot();
   }
+  capabilityOverrides(
+    providerId: string,
+  ): Record<string, Partial<TextProviderModelDetails>> {
+    const rows = this.database
+      .prepare(
+        "SELECT remote_id, details_json FROM text_provider_models WHERE provider_id=?",
+      )
+      .all(providerId) as Array<{
+      remote_id: string;
+      details_json: string | null;
+    }>;
+    const overrides: Record<string, Partial<TextProviderModelDetails>> = {};
+    for (const row of rows) {
+      let details: Partial<TextProviderModelDetails>;
+      try {
+        details = JSON.parse(
+          row.details_json || "{}",
+        ) as Partial<TextProviderModelDetails>;
+      } catch {
+        continue;
+      }
+      const picked = pickCapabilityOverrides(details);
+      if (Object.keys(picked).length) overrides[row.remote_id] = picked;
+    }
+    return overrides;
+  }
+
   delete(id: string): TextProviderSnapshot {
     const result = this.database
       .prepare("DELETE FROM text_provider_configs WHERE id=?")

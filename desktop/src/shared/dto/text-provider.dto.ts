@@ -34,6 +34,16 @@ export const textProviderModelDetailsDtoSchema = z.object({
   supportedParameters: z.array(z.string()).optional(),
   aliases: z.array(z.string()).optional(),
   description: z.string().optional(),
+  supportsTools: z.boolean().optional(),
+  supportsStructuredOutput: z.boolean().optional(),
+  supportsVision: z.boolean().optional(),
+  supportsReasoning: z.boolean().optional(),
+});
+export const modelCapabilityOverrideDtoSchema = z.object({
+  supportsTools: z.boolean().optional(),
+  supportsStructuredOutput: z.boolean().optional(),
+  supportsVision: z.boolean().optional(),
+  supportsReasoning: z.boolean().optional(),
 });
 export const textProviderLimitsDtoSchema = z.object({
   limit: z.number().nullable(),
@@ -59,6 +69,9 @@ export const upsertTextProviderDtoSchema =
     enabled: z.boolean(),
     enabledModelIds: z.array(z.string()),
     generationSettings: textProviderGenerationSettingsDtoSchema,
+    capabilityOverrides: z
+      .record(z.string(), modelCapabilityOverrideDtoSchema)
+      .optional(),
   });
 
 export type TextProviderKind = z.infer<typeof textProviderKindSchema>;
@@ -68,6 +81,9 @@ export type TextProviderGenerationSettings = z.infer<
 >;
 export type TextProviderModelDetails = z.infer<
   typeof textProviderModelDetailsDtoSchema
+>;
+export type ModelCapabilityOverride = z.infer<
+  typeof modelCapabilityOverrideDtoSchema
 >;
 export type TextProviderLimits = z.infer<typeof textProviderLimitsDtoSchema>;
 export type TestTextProviderConnectionInput = z.infer<

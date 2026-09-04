@@ -1,3 +1,4 @@
+import type { ModelCapabilityKey } from "../../../../shared/models/model-capabilities";
 import { useEffect, useState } from "react";
 import { observer } from "mobx-react-lite";
 import { toJS } from "mobx";
@@ -103,6 +104,19 @@ export const SettingsProvidersPage = observer(function SettingsProvidersPage() {
     updateSelected({
       models: selected.models.map((item) =>
         item.id === id ? { ...item, enabled } : item,
+      ),
+    });
+  const updateCapability = (
+    id: string,
+    key: ModelCapabilityKey,
+    value: boolean | undefined,
+  ) =>
+    selected &&
+    updateSelected({
+      models: selected.models.map((item) =>
+        item.id === id
+          ? { ...item, details: { ...item.details, [key]: value } }
+          : item,
       ),
     });
   const createProvider = () => {
@@ -240,6 +254,7 @@ export const SettingsProvidersPage = observer(function SettingsProvidersPage() {
             onChange={updateSelected}
             onConnectionChange={invalidate}
             onModelChange={updateModel}
+            onCapabilityOverride={updateCapability}
             onTestConnection={testConnection}
           />
         ) : (

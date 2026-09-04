@@ -1,11 +1,17 @@
 import { InputCheckSlided } from "@kiyotakkkka/zvs-uikit-lib";
 import type { TextProviderModelInfo } from "../../../shared/models/text-provider";
 import { OpenInNewIcon, OpenrouterIcon } from "../atoms";
+import { ModelCapabilityChips } from "./ModelCapabilityChips";
+import type { ModelCapabilityKey } from "../../../shared/models/model-capabilities";
 
 interface Props {
   model: TextProviderModelInfo;
   enabled: boolean;
   onEnabledChange: (enabled: boolean) => void;
+  onCapabilityOverride?: (
+    key: ModelCapabilityKey,
+    value: boolean | undefined,
+  ) => void;
 }
 
 const usdPerMillion = (value?: string) => {
@@ -19,6 +25,7 @@ export function SettingsProviderOpenrouterModelCard({
   model,
   enabled,
   onEnabledChange,
+  onCapabilityOverride,
 }: Props) {
   const details = model.details;
   return (
@@ -62,6 +69,10 @@ export function SettingsProviderOpenrouterModelCard({
             <span>{details.outputModalities.join(", ")}</span>
           ) : null}
         </div>
+        <ModelCapabilityChips
+          details={model.details}
+          onOverride={onCapabilityOverride}
+        />
       </div>
       <InputCheckSlided checked={enabled} onChange={onEnabledChange} />
     </article>

@@ -7,6 +7,7 @@ import {
   type TextProviderGenerationSettings,
 } from "../../../shared/dto";
 
+import { resolveModelCapabilities } from "../../../shared/models/model-capabilities";
 import { ChatRepository } from "../database/chat.repository";
 import { SecretStorageRepository } from "../database/secret-storage.repository";
 export interface ModelRuntimeInfo {
@@ -17,6 +18,10 @@ export interface ModelRuntimeInfo {
   maxCompletionTokens: number | null;
   promptPricePerToken: number;
   completionPricePerToken: number;
+  supportsTools: boolean | undefined;
+  supportsStructuredOutput: boolean | undefined;
+  supportsVision: boolean | undefined;
+  supportsReasoning: boolean | undefined;
 }
 
 export class ProviderRegistry {
@@ -60,6 +65,7 @@ export class ProviderRegistry {
       maxCompletionTokens: details.maxCompletionTokens ?? null,
       promptPricePerToken: parsePrice(details.promptPrice),
       completionPricePerToken: parsePrice(details.completionPrice),
+      ...resolveModelCapabilities(details),
     };
   }
 

@@ -1,3 +1,8 @@
+import {
+  pickCapabilityOverrides,
+  type ModelCapabilities,
+  type ModelCapabilityKey,
+} from "../../../../../shared/models/model-capabilities";
 import { useState } from "react";
 import {
   Button,
@@ -59,6 +64,11 @@ interface SettingsProviderManageFormProps {
   onChange: (patch: Partial<SettingsProviderDraft>) => void;
   onConnectionChange: (patch: Partial<SettingsProviderDraft>) => void;
   onModelChange: (modelId: string, enabled: boolean) => void;
+  onCapabilityOverride: (
+    modelId: string,
+    key: ModelCapabilityKey,
+    value: boolean | undefined,
+  ) => void;
   onTestConnection: () => void | Promise<void>;
 }
 
@@ -72,6 +82,10 @@ interface ModelCardProps {
   model: ProviderModelDraft;
   enabled: boolean;
   onEnabledChange: (enabled: boolean) => void;
+  onCapabilityOverride?: (
+    key: ModelCapabilityKey,
+    value: boolean | undefined,
+  ) => void;
 }
 
 const PROVIDER_CARDS: Record<
@@ -90,6 +104,7 @@ export function SettingsProviderManageForm({
   onChange,
   onConnectionChange,
   onModelChange,
+  onCapabilityOverride,
   onTestConnection,
 }: SettingsProviderManageFormProps) {
   const toasts = useToasts();
@@ -132,6 +147,7 @@ export function SettingsProviderManageForm({
           .filter((item) => item.enabled)
           .map((item) => item.id),
         generationSettings: model.generationSettings,
+        capabilityOverrides: capabilityOverridesOf(model.models),
       });
       toasts.success({
         title: "Настройки сохранены",
@@ -419,6 +435,9 @@ export function SettingsProviderManageForm({
                       onEnabledChange={(enabled) =>
                         onModelChange(item.id, enabled)
                       }
+                      onCapabilityOverride={(key, value) =>
+                        onCapabilityOverride(item.id, key, value)
+                      }
                     />
                   );
                 })}
@@ -477,4 +496,15 @@ function OpenRouterLimits({ limits }: { limits: TextProviderLimits }) {
       </p>
     </div>
   );
+}
+
+function capabilityOverridesOf(
+  models: ProviderModelDraft[],
+): Record<string, Partial<ModelCapabilities>> {
+  const overrides: Record<string, Partial<ModelCapabilities>> = {};
+  for (const item of models) {
+    const picked = pickCapabilityOverrides(item.details);
+    if (Object.keys(picked).length) overrides[item.id] = picked;
+  }
+  return overrides;
 }

@@ -2,17 +2,24 @@ import { InputCheckSlided } from "@kiyotakkkka/zvs-uikit-lib";
 import type { TextProviderModelInfo } from "../../../shared/models/text-provider";
 import { OllamaIcon, OpenInNewIcon } from "../atoms";
 import { formatSize } from "@renderer/lib/format";
+import { ModelCapabilityChips } from "./ModelCapabilityChips";
+import type { ModelCapabilityKey } from "../../../shared/models/model-capabilities";
 
 interface Props {
   model: TextProviderModelInfo;
   enabled: boolean;
   onEnabledChange: (enabled: boolean) => void;
+  onCapabilityOverride?: (
+    key: ModelCapabilityKey,
+    value: boolean | undefined,
+  ) => void;
 }
 
 export function SettingsProviderOllamaModelCard({
   model,
   enabled,
   onEnabledChange,
+  onCapabilityOverride,
 }: Props) {
   const detail = [
     model.details.parameterSize,
@@ -62,6 +69,10 @@ export function SettingsProviderOllamaModelCard({
             </span>
           ) : null}
         </div>
+        <ModelCapabilityChips
+          details={model.details}
+          onOverride={onCapabilityOverride}
+        />
       </div>
       <InputCheckSlided checked={enabled} onChange={onEnabledChange} />
     </article>
