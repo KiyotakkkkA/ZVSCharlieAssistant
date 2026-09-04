@@ -53,6 +53,8 @@ export interface ExtractedPage {
   text: string;
   route: "text-layer" | "ocr" | "empty";
   recognisedLines: number;
+  rejectedLines: number;
+  meanConfidence: number;
 }
 
 export interface ExtractedDocument {

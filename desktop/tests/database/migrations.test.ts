@@ -22,7 +22,7 @@ describe("UUID baseline schema", () => {
 
     expect(
       database.prepare("SELECT COUNT(*) count FROM schema_migrations").get(),
-    ).toEqual({ count: 11 });
+    ).toEqual({ count: 12 });
     expect(
       database
         .prepare(

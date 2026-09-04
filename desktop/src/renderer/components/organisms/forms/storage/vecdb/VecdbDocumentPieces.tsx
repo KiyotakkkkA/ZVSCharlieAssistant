@@ -33,6 +33,17 @@ export function DocumentRow({
         </div>
         {document.status === "ready" ? (
           <p className="mt-1 text-xs text-success-light">Готов к поиску</p>
+        ) : document.status === "needs_review" ? (
+          <div className="mt-1">
+            <p className="text-xs font-medium text-warning-light">
+              Требует проверки
+            </p>
+            {document.errorMessage ? (
+              <p className="mt-1 line-clamp-1 text-xs leading-5 text-main-500">
+                {document.errorMessage}
+              </p>
+            ) : null}
+          </div>
         ) : document.status === "failed" ? (
           <div className="mt-1">
             <p className="text-xs font-medium text-danger-light">
@@ -207,5 +218,6 @@ export function collectFolderPaths(documents: VectorDocument[]) {
 export function documentStatusLabel(status: VectorDocument["status"]) {
   if (status === "extracting") return "Извлечение текста";
   if (status === "embedding") return "Векторизация";
+  if (status === "needs_review") return "Требует проверки";
   return "Ожидает обработки";
 }

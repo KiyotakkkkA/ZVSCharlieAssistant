@@ -28,11 +28,12 @@ import {
 } from "./VecdbDocumentPieces";
 import { useVirtualRows } from "@renderer/hooks";
 
-type DocumentFilter = "all" | "ready" | "failed";
+type DocumentFilter = "all" | "ready" | "needs_review" | "failed";
 
 const DOCUMENT_FILTERS: { value: DocumentFilter; label: string }[] = [
   { value: "all", label: "Все" },
   { value: "ready", label: "Успешные" },
+  { value: "needs_review", label: "Требуют проверки" },
   { value: "failed", label: "С ошибками" },
 ];
 
@@ -61,13 +62,18 @@ export const VecdbDocumentsTab = observer(function VecdbDocumentsTab({
   const readyDocuments = documents.filter(
     (document) => document.status === "ready",
   );
+  const reviewDocuments = documents.filter(
+    (document) => document.status === "needs_review",
+  );
   const normalizedDocumentQuery = documentQuery.trim().toLocaleLowerCase();
   const filteredDocuments =
     documentFilter === "ready"
       ? readyDocuments
-      : documentFilter === "failed"
-        ? failedDocuments
-        : documents;
+      : documentFilter === "needs_review"
+        ? reviewDocuments
+        : documentFilter === "failed"
+          ? failedDocuments
+          : documents;
   const visibleDocuments = normalizedDocumentQuery
     ? filteredDocuments.filter((document) =>
         document.fileName.toLocaleLowerCase().includes(normalizedDocumentQuery),

@@ -206,6 +206,34 @@ const MIGRATIONS: Migration[] = [
       CREATE INDEX idx_scenario_effects_execution ON scenario_effects(execution_id);
     `,
   },
+  {
+    version: 12,
+    name: "vector-document-needs-review",
+    sql: `
+      CREATE TABLE vector_store_documents_rebuilt (
+        id TEXT PRIMARY KEY,
+        vector_store_id TEXT NOT NULL REFERENCES vector_stores(id) ON DELETE CASCADE,
+        file_name TEXT NOT NULL,
+        mime_type TEXT NOT NULL,
+        local_path TEXT NOT NULL,
+        content_hash TEXT NOT NULL,
+        size INTEGER NOT NULL,
+        status TEXT NOT NULL DEFAULT 'queued' CHECK(status IN ('queued','extracting','embedding','ready','needs_review','failed')),
+        progress INTEGER NOT NULL DEFAULT 0 CHECK(progress BETWEEN 0 AND 100),
+        chunk_count INTEGER NOT NULL DEFAULT 0,
+        error_message TEXT,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(vector_store_id,content_hash)
+      );
+      INSERT INTO vector_store_documents_rebuilt
+        SELECT id, vector_store_id, file_name, mime_type, local_path, content_hash,
+               size, status, progress, chunk_count, error_message, created_at
+        FROM vector_store_documents;
+      DROP TABLE vector_store_documents;
+      ALTER TABLE vector_store_documents_rebuilt RENAME TO vector_store_documents;
+      CREATE INDEX idx_vector_store_documents_store ON vector_store_documents(vector_store_id,status);
+    `,
+  },
 ];
 
 export function runMigrations(database: Database.Database): void {

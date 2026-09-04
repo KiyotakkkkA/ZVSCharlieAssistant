@@ -31,6 +31,8 @@ const EMBED_BATCH = 16;
 const MAX_SEARCH_RESULTS = 20;
 const OVERFETCH_FACTOR = 3;
 const RRF_K = 60;
+const REVIEW_MIN_CONFIDENCE = 0.55;
+const REVIEW_MAX_REJECTED_SHARE = 0.15;
 
 interface QueuedIngest {
   storeId: string;
@@ -527,7 +529,7 @@ export class VectorStoreService {
       await writeFile(path, buffer);
       this.data.setStoreState(store.id, "indexing");
       this.stage(id, "reading");
-      const segments = await this.extractSegments(path);
+      const { segments, recognition } = await this.extractSegments(path);
       this.checkRunning(generation);
       this.stage(id, "splitting");
       const chunks = chunkDocument(
@@ -578,7 +580,14 @@ export class VectorStoreService {
       this.checkRunning(generation);
       await this.indexer.appendVectorChunks(store.id, rows);
       this.checkRunning(generation);
-      this.data.updateDocument(id, "ready", 100, chunks.length);
+      const review = reviewReason(recognition);
+      this.data.updateDocument(
+        id,
+        review ? "needs_review" : "ready",
+        100,
+        chunks.length,
+        review,
+      );
       this.data.refreshStoreState(store.id, vectors[0]!.length);
     } catch (error) {
       if (this.isPausedError(error, generation)) {
@@ -616,20 +625,21 @@ export class VectorStoreService {
     this.data.updateDocument(documentId, status, progress);
   }
 
-  private async extractSegments(
-    path: string,
-  ): Promise<Array<{ text: string; pageNumber: number | null }>> {
+  private async extractSegments(path: string): Promise<ExtractedSegments> {
     if (!this.indexer.supportsNativeExtraction())
       throw new Error(
         "Часть программы, которая читает документы, не установлена. Переустановите приложение.",
       );
     const extracted = await this.indexer.extractDocument(path, true);
-    return extracted.pages
-      .filter((page) => page.text.trim().length > 0)
-      .map((page) => ({
-        text: page.text,
-        pageNumber: page.pageNumber > 0 ? page.pageNumber : null,
-      }));
+    return {
+      segments: extracted.pages
+        .filter((page) => page.text.trim().length > 0)
+        .map((page) => ({
+          text: page.text,
+          pageNumber: page.pageNumber > 0 ? page.pageNumber : null,
+        })),
+      recognition: summariseRecognition(extracted.pages),
+    };
   }
 
   private validateUpload(input: UploadVectorDocumentInput) {
@@ -653,6 +663,60 @@ export class VectorStoreService {
 }
 
 class IndexingPausedError extends Error {}
+
+interface RecognitionSummary {
+  ocrPages: number;
+  acceptedLines: number;
+  rejectedLines: number;
+  meanConfidence: number;
+}
+
+interface ExtractedSegments {
+  segments: Array<{ text: string; pageNumber: number | null }>;
+  recognition: RecognitionSummary;
+}
+
+export function summariseRecognition(
+  pages: Array<{
+    route: string;
+    recognisedLines: number;
+    rejectedLines: number;
+    meanConfidence: number;
+  }>,
+): RecognitionSummary {
+  let ocrPages = 0;
+  let acceptedLines = 0;
+  let rejectedLines = 0;
+  let confidenceTotal = 0;
+  for (const page of pages) {
+    if (page.route !== "ocr") continue;
+    ocrPages += 1;
+    acceptedLines += page.recognisedLines;
+    rejectedLines += page.rejectedLines;
+    confidenceTotal += page.meanConfidence * page.recognisedLines;
+  }
+  return {
+    ocrPages,
+    acceptedLines,
+    rejectedLines,
+    meanConfidence: acceptedLines ? confidenceTotal / acceptedLines : 0,
+  };
+}
+
+export function reviewReason(
+  recognition: RecognitionSummary,
+): string | undefined {
+  if (!recognition.ocrPages) return undefined;
+  const total = recognition.acceptedLines + recognition.rejectedLines;
+  if (!total) return undefined;
+  const rejectedShare = recognition.rejectedLines / total;
+  const lowConfidence = recognition.meanConfidence < REVIEW_MIN_CONFIDENCE;
+  const manyRejected = rejectedShare > REVIEW_MAX_REJECTED_SHARE;
+  if (!lowConfidence && !manyRejected) return undefined;
+  const percent = Math.round(recognition.meanConfidence * 100);
+  const dropped = recognition.rejectedLines;
+  return `Качество распознавания низкое: уверенность ${percent}%, отброшено строк — ${dropped} из ${total}. Часть текста могла не попасть в поиск.`;
+}
 
 export function fuseByRank(
   ranked: VectorSearchResultItem[][],

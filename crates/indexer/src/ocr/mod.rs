@@ -28,6 +28,8 @@ pub struct OcrEngine {
 pub struct PageText {
     pub text: String,
     pub lines: usize,
+    pub rejected_lines: usize,
+    pub mean_confidence: f32,
     pub timing: PageTiming,
 }
 
@@ -39,6 +41,13 @@ pub struct PageTiming {
     pub recognise_prepare_ms: u128,
     pub recognise_infer_ms: u128,
     pub recognise_decode_ms: u128,
+}
+
+fn mean_confidence(total: f32, accepted: usize) -> f32 {
+    if accepted == 0 {
+        return 0.0;
+    }
+    total / accepted as f32
 }
 
 impl OcrEngine {
@@ -80,6 +89,8 @@ impl OcrEngine {
             return Ok(PageText {
                 text: String::new(),
                 lines: 0,
+                rejected_lines: 0,
+                mean_confidence: 0.0,
                 timing,
             });
         }
@@ -89,18 +100,27 @@ impl OcrEngine {
             .collect();
 
         let mut lines = Vec::new();
+        let mut rejected_lines = 0_usize;
+        let mut confidence_total = 0.0_f32;
         for chunk in crops.chunks(RECOGNITION_BATCH) {
             for decoded in self.recognize(chunk, &mut timing)? {
                 let trimmed = decoded.text.trim().to_string();
-                if trimmed.is_empty() || decoded.confidence < MIN_CONFIDENCE {
+                if trimmed.is_empty() {
                     continue;
                 }
+                if decoded.confidence < MIN_CONFIDENCE {
+                    rejected_lines += 1;
+                    continue;
+                }
+                confidence_total += decoded.confidence;
                 lines.push(trimmed);
             }
         }
         Ok(PageText {
             text: lines.join("\n"),
+            mean_confidence: mean_confidence(confidence_total, lines.len()),
             lines: lines.len(),
+            rejected_lines,
             timing,
         })
     }
@@ -363,6 +383,17 @@ fn commit(path: &Path, accelerator: Accelerator) -> Result<Session, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn averages_confidence_over_accepted_lines_only() {
+        assert!((mean_confidence(2.4, 3) - 0.8).abs() < 1e-6);
+    }
+
+    #[test]
+    fn reports_zero_confidence_when_nothing_was_accepted() {
+        assert_eq!(mean_confidence(0.0, 0), 0.0);
+    }
+
     use crate::{
         assets::PDFIUM,
         extract::{

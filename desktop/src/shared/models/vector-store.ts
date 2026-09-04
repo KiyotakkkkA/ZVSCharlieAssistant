@@ -4,7 +4,7 @@ export const MAX_VECTOR_DOCUMENT_BYTES = 64 * 1_048_576;
 
 export type VectorStoreStatus = "ready" | "indexing" | "degraded" | "disabled";
 export type VectorDocumentStatus =
-  "queued" | "extracting" | "embedding" | "ready" | "failed";
+  "queued" | "extracting" | "embedding" | "ready" | "needs_review" | "failed";
 export interface VectorStoreConfig {
   id: string;
   name: string;

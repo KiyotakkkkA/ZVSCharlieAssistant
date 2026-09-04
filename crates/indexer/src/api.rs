@@ -55,6 +55,8 @@ pub struct ExtractedPageResult {
     pub text: String,
     pub route: String,
     pub recognised_lines: u32,
+    pub rejected_lines: u32,
+    pub mean_confidence: f64,
 }
 
 #[napi(object)]
@@ -737,6 +739,8 @@ fn flat_document(extension: &str, bytes: &[u8]) -> Result<ExtractDocumentResult>
             text,
             route: if empty { "empty" } else { "text-layer" }.to_string(),
             recognised_lines: 0,
+            rejected_lines: 0,
+            mean_confidence: 0.0,
         }],
         text_layer_pages: u32::from(!empty),
         ocr_pages: 0,
@@ -817,9 +821,13 @@ fn extract(request: &ExtractDocumentRequest) -> Result<ExtractDocumentResult> {
             PageRoute::Ocr | PageRoute::Empty => String::new(),
         };
         let mut recognised_lines = 0;
+        let mut rejected_lines = 0;
+        let mut mean_confidence = 0.0_f64;
         if let (Some(engine), Some(image)) = (ocr.as_ref(), page.image.as_ref()) {
             let read = engine.read_page(image).map_err(Error::from_reason)?;
             recognised_lines = u32::try_from(read.lines).unwrap_or(u32::MAX);
+            rejected_lines = u32::try_from(read.rejected_lines).unwrap_or(u32::MAX);
+            mean_confidence = f64::from(read.mean_confidence);
             if !read.text.is_empty() {
                 text = read.text;
             }
@@ -830,6 +838,8 @@ fn extract(request: &ExtractDocumentRequest) -> Result<ExtractDocumentResult> {
             text,
             route: page.route.as_str().to_string(),
             recognised_lines,
+            rejected_lines,
+            mean_confidence,
         });
     }
     Ok(ExtractDocumentResult {

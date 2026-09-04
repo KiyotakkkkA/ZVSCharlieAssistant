@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { ChevronDownIcon, type SvgIcon } from "../../atoms";
+import { Loader } from "@kiyotakkkka/zvs-uikit-lib";
 
 type ToolStatus = "requested" | "running" | "completed" | "failed";
 
@@ -92,6 +93,7 @@ function Trigger({
         : running;
   const content = (
     <>
+      {status === "running" && <Loader className="size-4" />}
       <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-main-800/60 text-main-400">
         <Icon className="size-4" />
       </span>
