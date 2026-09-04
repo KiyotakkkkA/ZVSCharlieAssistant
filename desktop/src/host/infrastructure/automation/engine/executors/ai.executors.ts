@@ -213,6 +213,7 @@ export function createOrchestratorExecutor(
         .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
 
       let plan: z.infer<typeof delegationPlanSchema>;
+      let planFailure: string | undefined;
       if (config.mode === "graph") {
         plan = {
           originalRequest:
@@ -250,6 +251,7 @@ export function createOrchestratorExecutor(
               `Узел «${context.node.name}»: модель не смогла составить корректный план делегирования (${(error as Error).message})`,
               { context: { nodeId: context.node.id }, cause: error },
             );
+          planFailure = error instanceof Error ? error.message : String(error);
           plan = {
             originalRequest:
               typeof objective === "string"
@@ -330,7 +332,7 @@ export function createOrchestratorExecutor(
       if (!config.synthesize)
         return {
           outputs: { workers: workersPortOutput, main: workerItems },
-          diagnostics: { workers: results },
+          diagnostics: { workers: results, ...planDiagnostics(planFailure) },
         };
 
       const finalText = await services.generateText({
@@ -353,9 +355,19 @@ export function createOrchestratorExecutor(
           workers: workersPortOutput,
           main: [{ json: { text: finalText } }],
         },
-        diagnostics: { workers: results },
+        diagnostics: { workers: results, ...planDiagnostics(planFailure) },
       };
     },
+  };
+}
+
+function planDiagnostics(planFailure: string | undefined) {
+  if (!planFailure) return { planSource: "model" as const };
+  return {
+    planSource: "fallback" as const,
+    planWarning:
+      "План делегирования не получен от модели — каждому исполнителю выдана исходная задача целиком",
+    planError: planFailure.slice(0, 300),
   };
 }
 

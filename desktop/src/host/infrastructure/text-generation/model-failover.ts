@@ -1,8 +1,11 @@
 import {
   APICallError,
   InvalidArgumentError,
+  JSONParseError,
   LoadAPIKeyError,
+  NoObjectGeneratedError,
   RetryError,
+  TypeValidationError,
   UnsupportedFunctionalityError,
 } from "ai";
 import type { ModelSwitch, ModelSwitchReason } from "../../../shared/dto";
@@ -388,6 +391,12 @@ function isKnownError(error: unknown): boolean {
 
 function fromTypedError(error: unknown): FailureKind | undefined {
   if (LoadAPIKeyError.isInstance(error)) return "auth";
+  if (
+    NoObjectGeneratedError.isInstance(error) ||
+    TypeValidationError.isInstance(error) ||
+    JSONParseError.isInstance(error)
+  )
+    return "transient";
   if (UnsupportedFunctionalityError.isInstance(error)) return "fatal";
   if (InvalidArgumentError.isInstance(error)) return "fatal";
   return undefined;

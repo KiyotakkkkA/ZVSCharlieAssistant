@@ -22,6 +22,7 @@ import {
 import {
   ModelFailover,
   type ModelDirectory,
+  type ModelRequirements,
 } from "../../text-generation/model-failover";
 import { resolveContextBudget } from "../../../application/context/context-budget";
 import type { EnabledModelInfo } from "../../../application/context/generation-context";
@@ -235,24 +236,58 @@ export class HostScenarioEngineServices implements ScenarioEngineServices {
   }
 
   async generateObject<T>(request: GenerateObjectRequest<T>): Promise<T> {
-    const settings = this.providers.generationSettings(request.modelId);
-    const result = await aiGenerateObject({
-      model: this.providers.resolve(request.modelId),
-      system: request.system,
-      prompt:
-        typeof request.prompt === "string"
-          ? request.prompt
-          : JSON.stringify(request.prompt),
-      abortSignal: request.signal,
-      schema: request.schema,
-      maxOutputTokens: Math.min(
-        request.maxOutputTokens ?? settings.maxOutputTokens,
-        settings.maxOutputTokens,
-      ),
-      temperature: settings.temperature,
-      topP: settings.topP,
-    });
-    return result.object;
+    const requires: ModelRequirements = { structuredOutput: true };
+    let activeModelId = request.modelId;
+
+    for (let attempt = 0; ;) {
+      request.signal.throwIfAborted();
+      const settings = this.providers.generationSettings(activeModelId);
+      const budget = resolveContextBudget({
+        contextLength: this.providers.modelInfo(activeModelId).contextLength,
+        maxOutputTokens: Math.min(
+          request.maxOutputTokens ?? settings.maxOutputTokens,
+          settings.maxOutputTokens,
+        ),
+      });
+
+      try {
+        const result = await aiGenerateObject({
+          model: this.providers.resolve(activeModelId),
+          system: request.system,
+          prompt:
+            typeof request.prompt === "string"
+              ? request.prompt
+              : JSON.stringify(request.prompt),
+          abortSignal: request.signal,
+          schema: request.schema,
+          maxOutputTokens: budget.maxOutput,
+          temperature: settings.temperature,
+          topP: settings.topP,
+        });
+        return result.object;
+      } catch (error) {
+        if (request.signal.aborted) throw error;
+        const decision = this.failover.decide(error, {
+          activeModelId,
+          attempt,
+          compacted: true,
+          requires,
+        });
+        if (decision.kind === "fail") {
+          if (decision.message)
+            throw new Error(decision.message, { cause: error });
+          throw error;
+        }
+        if (decision.kind === "retry") {
+          attempt += 1;
+          await sleep(decision.delayMs);
+          continue;
+        }
+        if (decision.kind === "compact") throw error;
+        activeModelId = decision.modelId;
+        attempt = 0;
+      }
+    }
   }
 
   createTools(request: CreateToolsRequest): ToolSet | undefined {
@@ -405,4 +440,8 @@ export class HostScenarioEngineServices implements ScenarioEngineServices {
       throw error;
     }
   }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
