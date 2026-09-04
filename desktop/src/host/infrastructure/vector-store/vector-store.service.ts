@@ -22,6 +22,7 @@ import type {
   VectorStoreRepository,
 } from "../database/vector-store.repository";
 import { EmbeddingService } from "./embedding.service";
+import { chunkDocument } from "./chunking";
 import { isBuiltinEmbeddingModelId } from "../../../shared/entity-ids";
 
 const INGEST_CONCURRENCY = 2;
@@ -458,10 +459,7 @@ export class VectorStoreService {
           chunkIndex: row.chunkIndex,
           content: row.text,
           score,
-          pageNumber:
-            row.pageNumber < 1
-              ? null
-              : row.pageNumber,
+          pageNumber: row.pageNumber < 1 ? null : row.pageNumber,
         });
       }
     }
@@ -488,12 +486,10 @@ export class VectorStoreService {
       const segments = await this.extractSegments(path);
       this.checkRunning(generation);
       this.stage(id, "splitting");
-      const chunks = segments.flatMap((segment) =>
-        chunkText(
-          segment.text,
-          store.chunkSizeTokens,
-          store.chunkOverlapTokens,
-        ).map((text) => ({ text, pageNumber: segment.pageNumber })),
+      const chunks = chunkDocument(
+        segments,
+        store.chunkSizeTokens,
+        store.chunkOverlapTokens,
       );
       if (!chunks.length)
         throw new Error(
@@ -620,22 +616,6 @@ function groupByStore(rows: StoredDocumentRow[]) {
     else groups.set(row.vector_store_id, [row]);
   }
   return groups;
-}
-
-function chunkText(text: string, sizeTokens: number, overlapTokens: number) {
-  const normalized = text
-    .replace(/\r/g, "")
-    .replace(/[ \t]+/g, " ")
-    .trim();
-  const size = sizeTokens * 4;
-  const overlap = Math.min(overlapTokens * 4, Math.floor(size / 2));
-  const chunks: string[] = [];
-  for (let start = 0; start < normalized.length; start += size - overlap) {
-    const chunk = normalized.slice(start, start + size).trim();
-    if (chunk.length >= 40) chunks.push(chunk);
-    if (start + size >= normalized.length) break;
-  }
-  return chunks;
 }
 
 function validateStore(input: UpsertVectorStoreInput) {
