@@ -106,9 +106,17 @@ export class SqliteRuntimePersistence implements RuntimePersistence {
   saveCheckpoint(executionId: string, state: SerializedSchedulerState): void {
     this.db
       .prepare(
-        `UPDATE execution_runs SET checkpoint_json=?, engine_version=2, status='waiting_for_approval' WHERE id=?`,
+        `UPDATE execution_runs SET checkpoint_json=?, engine_version=2 WHERE id=?`,
       )
       .run(JSON.stringify(state), executionId);
+  }
+
+  markSuspended(executionId: string): void {
+    this.db
+      .prepare(
+        `UPDATE execution_runs SET status='waiting_for_approval' WHERE id=?`,
+      )
+      .run(executionId);
   }
 
   loadCheckpoint(executionId: string): SerializedSchedulerState | undefined {

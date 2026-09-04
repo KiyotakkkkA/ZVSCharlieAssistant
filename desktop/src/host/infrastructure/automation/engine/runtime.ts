@@ -84,6 +84,7 @@ export interface RuntimePersistence {
     executionId: string,
     state: SerializedSchedulerState,
   ): Promise<void> | void;
+  markSuspended(executionId: string): Promise<void> | void;
 }
 
 export interface RunRuntimeOptions {
@@ -167,6 +168,7 @@ export class ScenarioRuntime {
           this.options.executionId,
           checkpoint,
         );
+        await this.options.persistence.markSuspended(this.options.executionId);
         logger.info("scenario.run.suspended", {
           nodeId,
           questionId: result.questionId,
