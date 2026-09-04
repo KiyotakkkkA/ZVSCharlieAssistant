@@ -150,6 +150,7 @@ import { ScenarioFileRepository } from "./infrastructure/database/scenario-file.
 import { ScenarioFileDownloadService } from "./infrastructure/automation/scenario-file-download.service";
 import { ScenarioFileReaderService } from "./infrastructure/automation/scenario-file-reader.service";
 import { ScenarioAgentConversationRepository } from "./infrastructure/database/scenario-agent-conversation.repository";
+import { ScenarioEffectRepository } from "./infrastructure/database/scenario-effect.repository";
 import { ScenarioDeliveryRepository } from "./infrastructure/database/scenario-delivery.repository";
 import { ScenarioResponseService } from "./infrastructure/automation/scenario-response.service";
 import { ScenarioDeliveryAdapterRegistry } from "./infrastructure/automation/delivery/scenario-delivery.adapter";
@@ -493,6 +494,7 @@ app.whenReady().then(() => {
     scenarioDownloadsRoot,
     nativeIndexer,
   );
+  const scenarioEffects = new ScenarioEffectRepository(database);
   const engineServices = new HostScenarioEngineServices(
     scenarioExecutions,
     providerRegistry,
@@ -504,6 +506,7 @@ app.whenReady().then(() => {
     new ScenarioResponseService(scenarioDeliveries),
     questionService,
     new ScenarioAgentConversationRepository(database),
+    scenarioEffects,
     () => chatRepository.listEnabledTextModels(),
     () => scenarioRuntimeEngine,
   );
@@ -726,11 +729,13 @@ app.whenReady().then(() => {
         integrationRepository,
         secretRepository,
         scenarioFileReader,
+        scenarioEffects,
       ),
       new EmailDeliveryAdapter(
         integrationRepository,
         secretRepository,
         scenarioFileReader,
+        scenarioEffects,
       ),
     ]),
   );

@@ -31,6 +31,7 @@ function fakeServices(
     secret: () => undefined,
     downloadFiles: async () => [],
     readFiles: async () => ({ documents: [], unsupportedFiles: [] }),
+    effectOnce: async (_request, perform) => perform(),
     deliverResponse: () => undefined,
     runSubScenario: async () => null,
     askApproval: () => ({ answer: [] }),

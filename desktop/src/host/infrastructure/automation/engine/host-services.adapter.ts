@@ -6,6 +6,8 @@ import type { ScenarioBinaryRef } from "../../../../shared/scenario/items";
 import type { ChatMessageContentPart } from "../../../../shared/dto";
 import type { ScenarioExecutionRepository } from "../../database/scenario-execution.repository";
 import type { ScenarioAgentConversationRepository } from "../../database/scenario-agent-conversation.repository";
+import type { ScenarioEffectRepository } from "../../database/scenario-effect.repository";
+import { effectKey } from "../effect-key";
 import type { ProviderRegistry } from "../../text-generation/provider.registry";
 import type { ToolRegistry } from "../../tools/tool.registry";
 import type { VectorStoreService } from "../../vector-store/vector-store.service";
@@ -32,6 +34,7 @@ import type {
   DeliverResponseRequest,
   DownloadFilesRequest,
   DownloadedFile,
+  EffectRequest,
   GenerateObjectRequest,
   GenerateTextRequest,
   KnowledgeChunk,
@@ -59,6 +62,7 @@ export class HostScenarioEngineServices implements ScenarioEngineServices {
     private readonly responses: ScenarioResponseService,
     private readonly questions: UserQuestionService,
     private readonly agentConversations: ScenarioAgentConversationRepository,
+    private readonly effects: ScenarioEffectRepository,
     listEnabledModels: () => EnabledModelInfo[],
     private readonly runSubScenarioEngine?: () => ScenarioRuntimeEngine,
   ) {
@@ -320,10 +324,28 @@ export class HostScenarioEngineServices implements ScenarioEngineServices {
     return this.fileReader.read(input.files, input.maxCharactersPerFile);
   }
 
+  async effectOnce<T>(
+    request: EffectRequest,
+    perform: () => Promise<T> | T,
+  ): Promise<T> {
+    const key = effectKey(request);
+    const recorded = this.effects.find(key);
+    if (recorded) return recorded.result as T;
+    const result = await perform();
+    this.effects.record({
+      idempotencyKey: key,
+      executionId: request.executionId,
+      nodeId: request.nodeId,
+      kind: request.kind,
+      result,
+    });
+    return result;
+  }
+
   deliverResponse(request: DeliverResponseRequest): void {
     this.responses.enqueue({
       executionId: request.executionId,
-      nodeId: "",
+      nodeId: request.nodeId,
       nodeRunId: request.nodeRunId,
       config: request.config,
       triggerInput: request.triggerInput,

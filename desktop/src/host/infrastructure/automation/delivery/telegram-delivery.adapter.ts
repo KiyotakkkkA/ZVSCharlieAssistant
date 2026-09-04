@@ -4,6 +4,8 @@ import type { ScenarioDeliveryJob } from "../../database/scenario-delivery.repos
 import type { ScenarioFileReaderService } from "../scenario-file-reader.service";
 import type { ScenarioBinaryRef } from "../../../../shared/scenario/items";
 import type { ScenarioDeliveryAdapter } from "./scenario-delivery.adapter";
+import type { ScenarioEffectRepository } from "../../database/scenario-effect.repository";
+import { effectKey } from "../effect-key";
 
 const MAX_ATTACHMENT_BYTES = 45 * 1024 * 1024;
 
@@ -13,7 +15,33 @@ export class TelegramDeliveryAdapter implements ScenarioDeliveryAdapter {
     private integrations: IntegrationRepository,
     private secrets: SecretStorageRepository,
     private fileReader: ScenarioFileReaderService,
+    private effects: ScenarioEffectRepository,
   ) {}
+
+  private async once(
+    job: ScenarioDeliveryJob,
+    kind: string,
+    iteration: number,
+    payload: unknown,
+    send: () => Promise<void>,
+  ): Promise<void> {
+    const key = effectKey({
+      executionId: job.executionId,
+      nodeId: job.id,
+      iteration,
+      kind,
+      payload,
+    });
+    if (this.effects.find(key)) return;
+    await send();
+    this.effects.record({
+      idempotencyKey: key,
+      executionId: job.executionId,
+      nodeId: job.id,
+      kind,
+      result: null,
+    });
+  }
 
   async deliver(job: ScenarioDeliveryJob) {
     const profile = this.integrations.findProfile(job.integrationProfileId);
@@ -34,75 +62,91 @@ export class TelegramDeliveryAdapter implements ScenarioDeliveryAdapter {
     const chunks = rawText ? splitTelegram(telegramHtml) : [];
     if (chunks.length) await this.sendTypingStatus(token, job.recipient);
     for (let index = 0; index < chunks.length; index++) {
-      if (index > 0) {
-        await this.sendTypingStatus(token, job.recipient);
-      }
-      const response = await fetch(
-        `https://api.telegram.org/bot${token}/sendMessage`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          signal: AbortSignal.timeout(20_000),
-          body: JSON.stringify({
-            chat_id: job.recipient,
-            text: chunks[index],
-            parse_mode: "HTML",
-            ...(index === 0 && Number(job.payload.replyToMessageId)
-              ? {
-                  reply_parameters: {
-                    message_id: Number(job.payload.replyToMessageId),
-                  },
-                }
-              : {}),
-          }),
+      await this.once(
+        job,
+        "delivery.telegram.message",
+        index,
+        { recipient: job.recipient, text: chunks[index] },
+        async () => {
+          if (index > 0) {
+            await this.sendTypingStatus(token, job.recipient);
+          }
+          const response = await fetch(
+            `https://api.telegram.org/bot${token}/sendMessage`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              signal: AbortSignal.timeout(20_000),
+              body: JSON.stringify({
+                chat_id: job.recipient,
+                text: chunks[index],
+                parse_mode: "HTML",
+                ...(index === 0 && Number(job.payload.replyToMessageId)
+                  ? {
+                      reply_parameters: {
+                        message_id: Number(job.payload.replyToMessageId),
+                      },
+                    }
+                  : {}),
+              }),
+            },
+          );
+          const result = (await response.json()) as {
+            ok?: boolean;
+            description?: string;
+          };
+          if (!response.ok || !result.ok)
+            throw new Error(
+              redactToken(
+                result.description ?? `Telegram HTTP ${response.status}`,
+                token,
+              ),
+            );
         },
       );
-      const result = (await response.json()) as {
-        ok?: boolean;
-        description?: string;
-      };
-      if (!response.ok || !result.ok)
-        throw new Error(
-          redactToken(
-            result.description ?? `Telegram HTTP ${response.status}`,
-            token,
-          ),
-        );
     }
 
     const attachments = Array.isArray(job.payload.attachments)
       ? (job.payload.attachments as ScenarioBinaryRef[])
       : [];
-    for (const attachment of attachments) {
+    for (const [index, attachment] of attachments.entries()) {
       if (attachment.size > MAX_ATTACHMENT_BYTES)
         throw new Error(
           `Файл «${attachment.fileName}» превышает ${MAX_ATTACHMENT_BYTES / (1024 * 1024)} МБ — Telegram не примет вложение`,
         );
-      const bytes = await this.fileReader.readBinary(attachment);
-      const form = new FormData();
-      form.set("chat_id", job.recipient);
-      form.set(
-        "document",
-        new Blob([new Uint8Array(bytes)], {
-          type: attachment.mimeType ?? "application/octet-stream",
-        }),
-        attachment.fileName,
+      await this.once(
+        job,
+        "delivery.telegram.document",
+        index,
+        { recipient: job.recipient, attachmentId: attachment.id },
+        async () => {
+          const bytes = await this.fileReader.readBinary(attachment);
+          const form = new FormData();
+          form.set("chat_id", job.recipient);
+          form.set(
+            "document",
+            new Blob([new Uint8Array(bytes)], {
+              type: attachment.mimeType ?? "application/octet-stream",
+            }),
+            attachment.fileName,
+          );
+          const response = await fetch(
+            `https://api.telegram.org/bot${token}/sendDocument`,
+            { method: "POST", signal: AbortSignal.timeout(60_000), body: form },
+          );
+          const result = (await response.json()) as {
+            ok?: boolean;
+            description?: string;
+          };
+          if (!response.ok || !result.ok)
+            throw new Error(
+              redactToken(
+                result.description ?? `Telegram HTTP ${response.status}`,
+                token,
+              ),
+            );
+        },
       );
-      const response = await fetch(
-        `https://api.telegram.org/bot${token}/sendDocument`,
-        { method: "POST", signal: AbortSignal.timeout(60_000), body: form },
-      );
-      const result = (await response.json()) as {
-        ok?: boolean;
-        description?: string;
-      };
-      if (!response.ok || !result.ok)
-        throw new Error(
-          redactToken(
-            result.description ?? `Telegram HTTP ${response.status}`,
-            token,
-          ),
-        );
     }
   }
 

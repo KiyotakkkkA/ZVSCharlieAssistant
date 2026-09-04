@@ -191,6 +191,21 @@ const MIGRATIONS: Migration[] = [
       ALTER TABLE vector_stores_rebuilt RENAME TO vector_stores;
     `,
   },
+  {
+    version: 11,
+    name: "scenario-effect-log",
+    sql: `
+      CREATE TABLE scenario_effects (
+        idempotency_key TEXT PRIMARY KEY,
+        execution_id TEXT NOT NULL,
+        node_id TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        result_json TEXT,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX idx_scenario_effects_execution ON scenario_effects(execution_id);
+    `,
+  },
 ];
 
 export function runMigrations(database: Database.Database): void {

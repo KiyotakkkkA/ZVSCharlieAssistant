@@ -104,6 +104,7 @@ export interface ReadFilesResult {
 
 export interface DeliverResponseRequest {
   executionId: string;
+  nodeId: string;
   nodeRunId: string;
   config: unknown;
   triggerInput: unknown;
@@ -135,6 +136,14 @@ export interface AskApprovalRequest {
   recipient: string;
 }
 
+export interface EffectRequest {
+  executionId: string;
+  nodeId: string;
+  iteration: number;
+  kind: string;
+  payload: unknown;
+}
+
 export interface ScenarioEngineServices {
   defaultModelId(): string | null;
   agent(agentId: string): ScenarioAgentRecord | undefined;
@@ -159,6 +168,11 @@ export interface ScenarioEngineServices {
     files: ScenarioFileReference[];
     maxCharactersPerFile: number;
   }): Promise<ReadFilesResult>;
+
+  effectOnce<T>(
+    request: EffectRequest,
+    perform: () => Promise<T> | T,
+  ): Promise<T>;
 
   deliverResponse(request: DeliverResponseRequest): void;
   runSubScenario(request: RunSubScenarioRequest): Promise<unknown>;

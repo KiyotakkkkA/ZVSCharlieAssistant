@@ -6,6 +6,8 @@ import type { ScenarioDeliveryJob } from "../../database/scenario-delivery.repos
 import type { ScenarioFileReaderService } from "../scenario-file-reader.service";
 import type { ScenarioBinaryRef } from "../../../../shared/scenario/items";
 import type { ScenarioDeliveryAdapter } from "./scenario-delivery.adapter";
+import type { ScenarioEffectRepository } from "../../database/scenario-effect.repository";
+import { effectKey } from "../effect-key";
 
 type MailSocket = Socket | TLSSocket;
 
@@ -21,6 +23,7 @@ export class EmailDeliveryAdapter implements ScenarioDeliveryAdapter {
     private integrations: IntegrationRepository,
     private secrets: SecretStorageRepository,
     private fileReader: ScenarioFileReaderService,
+    private effects: ScenarioEffectRepository,
   ) {}
 
   async deliver(job: ScenarioDeliveryJob) {
@@ -44,6 +47,17 @@ export class EmailDeliveryAdapter implements ScenarioDeliveryAdapter {
       throw new Error(
         "Заполните SMTP host, порт, отправителя и пароль интеграции",
       );
+    const subject = String(job.payload.subject ?? "Ответ ZVS Assistant");
+    const text = String(job.payload.text ?? "");
+    const key = effectKey({
+      executionId: job.executionId,
+      nodeId: job.id,
+      iteration: 0,
+      kind: "delivery.email.message",
+      payload: { recipient: job.recipient, subject, text },
+    });
+    if (this.effects.find(key)) return;
+
     const refs = Array.isArray(job.payload.attachments)
       ? (job.payload.attachments as ScenarioBinaryRef[])
       : [];
@@ -62,13 +76,20 @@ export class EmailDeliveryAdapter implements ScenarioDeliveryAdapter {
       password,
       from,
       to: job.recipient,
-      subject: String(job.payload.subject ?? "Ответ ZVS Assistant"),
-      text: String(job.payload.text ?? ""),
+      subject,
+      text,
       inReplyTo:
         typeof job.payload.inReplyTo === "string"
           ? job.payload.inReplyTo
           : undefined,
       attachments,
+    });
+    this.effects.record({
+      idempotencyKey: key,
+      executionId: job.executionId,
+      nodeId: job.id,
+      kind: "delivery.email.message",
+      result: null,
     });
   }
 }

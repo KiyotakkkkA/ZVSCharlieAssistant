@@ -35,14 +35,31 @@ export function createOutputExecutor(
       for (const item of context.inputs.files ?? [])
         if (item.binary) attachments.push(...Object.values(item.binary));
 
-      services.deliverResponse({
-        executionId: context.executionId,
-        nodeRunId: context.nodeRunId,
-        config: { channels: config.channels },
-        triggerInput: context.scope().$trigger,
-        output: text,
-        attachments,
-      });
+      await services.effectOnce(
+        {
+          executionId: context.executionId,
+          nodeId: context.node.id,
+          iteration: context.iteration,
+          kind: "output.deliver",
+          payload: {
+            channels: config.channels,
+            text,
+            attachments: attachments.map((attachment) => attachment.id),
+          },
+        },
+        () => {
+          services.deliverResponse({
+            executionId: context.executionId,
+            nodeId: context.node.id,
+            nodeRunId: context.nodeRunId,
+            config: { channels: config.channels },
+            triggerInput: context.scope().$trigger,
+            output: text,
+            attachments,
+          });
+          return null;
+        },
+      );
 
       if (config.saveArtifact) {
         const fileName =

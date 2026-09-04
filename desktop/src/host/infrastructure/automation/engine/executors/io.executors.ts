@@ -7,7 +7,7 @@ import {
   type ScenarioBinaryRef,
 } from "../../../../../shared/scenario/items";
 import type { NodeExecutor } from "../../../../../shared/scenario/node-descriptor";
-import type { ScenarioEngineServices } from "../services";
+import type { DownloadedFile, ScenarioEngineServices } from "../services";
 import type { ScenarioFileReference } from "../../../../../shared/dto/scenario-trigger-event.dto";
 
 interface HttpConfig {
@@ -25,6 +25,13 @@ interface HttpConfig {
   failOnErrorStatus: boolean;
   maxResponseMb: number;
   followRedirects: boolean;
+}
+
+interface HttpOutput {
+  status: number;
+  ok: boolean;
+  headers: Record<string, string>;
+  data: unknown;
 }
 
 export function createHttpExecutor(
@@ -101,60 +108,77 @@ export function createHttpExecutor(
       const timeoutSignal = AbortSignal.timeout(config.timeoutSeconds * 1_000);
       const signal = AbortSignal.any([context.signal, timeoutSignal]);
 
-      let response: Response;
-      try {
-        response = await services.httpFetch(url, {
-          method: config.method,
-          headers,
-          body:
-            config.method === "GET" || config.method === "HEAD"
-              ? undefined
-              : body,
-          redirect: config.followRedirects ? "follow" : "manual",
-          signal,
-        });
-      } catch (error) {
-        if (timeoutSignal.aborted && !context.signal.aborted)
-          throw new RetryableError(
-            `Узел «${context.node.name}»: запрос не уложился в ${config.timeoutSeconds} с`,
-            { context: { nodeId: context.node.id }, cause: error },
+      const output = await services.effectOnce<HttpOutput>(
+        {
+          executionId: context.executionId,
+          nodeId: context.node.id,
+          iteration: context.iteration,
+          kind: "http",
+          payload: {
+            method: config.method,
+            url: url.toString(),
+            body: typeof body === "string" ? body : null,
+          },
+        },
+        async () => {
+          let response: Response;
+          try {
+            response = await services.httpFetch(url, {
+              method: config.method,
+              headers,
+              body:
+                config.method === "GET" || config.method === "HEAD"
+                  ? undefined
+                  : body,
+              redirect: config.followRedirects ? "follow" : "manual",
+              signal,
+            });
+          } catch (error) {
+            if (timeoutSignal.aborted && !context.signal.aborted)
+              throw new RetryableError(
+                `Узел «${context.node.name}»: запрос не уложился в ${config.timeoutSeconds} с`,
+                { context: { nodeId: context.node.id }, cause: error },
+              );
+            throw error;
+          }
+
+          const contentLength = Number(
+            response.headers.get("content-length") ?? 0,
           );
-        throw error;
-      }
+          if (contentLength > config.maxResponseMb * 1024 * 1024)
+            throw new PermanentError(
+              `Узел «${context.node.name}»: ответ превышает ${config.maxResponseMb} МБ`,
+              { context: { nodeId: context.node.id } },
+            );
 
-      const contentLength = Number(response.headers.get("content-length") ?? 0);
-      if (contentLength > config.maxResponseMb * 1024 * 1024)
-        throw new PermanentError(
-          `Узел «${context.node.name}»: ответ превышает ${config.maxResponseMb} МБ`,
-          { context: { nodeId: context.node.id } },
-        );
+          const text = await response.text();
+          let data: unknown = text;
+          if (config.parseJson) {
+            try {
+              data = text ? JSON.parse(text) : null;
+            } catch {
+              data = text;
+            }
+          }
 
-      const text = await response.text();
-      let data: unknown = text;
-      if (config.parseJson) {
-        try {
-          data = text ? JSON.parse(text) : null;
-        } catch {
-          data = text;
-        }
-      }
+          return {
+            status: response.status,
+            ok: response.ok,
+            headers: Object.fromEntries(response.headers.entries()),
+            data,
+          };
+        },
+      );
 
-      const output = {
-        status: response.status,
-        ok: response.ok,
-        headers: Object.fromEntries(response.headers.entries()),
-        data,
-      };
-
-      if (config.failOnErrorStatus && !response.ok) {
-        const retryable = response.status === 429 || response.status >= 500;
+      if (config.failOnErrorStatus && !output.ok) {
+        const retryable = output.status === 429 || output.status >= 500;
         const ErrorClass = retryable ? RetryableError : PermanentError;
         throw new ErrorClass(
-          `Узел «${context.node.name}»: HTTP ${response.status}`,
+          `Узел «${context.node.name}»: HTTP ${output.status}`,
           {
             context: {
               nodeId: context.node.id,
-              status: response.status,
+              status: output.status,
             } as never,
           },
         );
@@ -186,16 +210,26 @@ export function createDownloadFilesExecutor(
           ? config.urls
           : [...context.items, ...filesPortItems].map((item) => item.json);
 
-      const files = await services.downloadFiles({
-        executionId: context.executionId,
-        nodeRunId: context.nodeRunId,
-        nodeId: context.node.id,
-        value,
-        maxFileSizeBytes: config.maxFileSizeMb * 1024 * 1024,
-        maxFiles: config.maxFiles,
-        cleanupOnFinish: config.cleanupOnFinish,
-        signal: context.signal,
-      });
+      const files = await services.effectOnce<DownloadedFile[]>(
+        {
+          executionId: context.executionId,
+          nodeId: context.node.id,
+          iteration: context.iteration,
+          kind: "downloadFiles",
+          payload: { source: config.source, value, maxFiles: config.maxFiles },
+        },
+        () =>
+          services.downloadFiles({
+            executionId: context.executionId,
+            nodeRunId: context.nodeRunId,
+            nodeId: context.node.id,
+            value,
+            maxFileSizeBytes: config.maxFileSizeMb * 1024 * 1024,
+            maxFiles: config.maxFiles,
+            cleanupOnFinish: config.cleanupOnFinish,
+            signal: context.signal,
+          }),
+      );
 
       for (const file of files) context.trackBinary(file as ScenarioBinaryRef);
 
