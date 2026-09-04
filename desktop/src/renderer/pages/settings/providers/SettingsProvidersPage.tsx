@@ -256,6 +256,12 @@ export const SettingsProvidersPage = observer(function SettingsProvidersPage() {
             onModelChange={updateModel}
             onCapabilityOverride={updateCapability}
             onTestConnection={testConnection}
+            onSaved={(providerId) => {
+              setProviders((items) =>
+                items.filter((item) => item.id !== null),
+              );
+              setSelectedId(providerId);
+            }}
           />
         ) : (
           <div className="grid min-h-0 flex-1 place-items-center rounded-xl bg-main-800/40">

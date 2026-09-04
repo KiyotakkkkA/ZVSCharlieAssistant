@@ -1,10 +1,14 @@
 import {
+  MODEL_CAPABILITY_KEYS,
+  MODEL_CAPABILITY_LABELS,
   pickCapabilityOverrides,
+  resolveModelCapabilities,
   type ModelCapabilities,
   type ModelCapabilityKey,
 } from "../../../../../shared/models/model-capabilities";
 import { useState } from "react";
 import {
+  AutoFillSelector,
   Button,
   InputCheckSlided,
   InputCheckBox,
@@ -70,6 +74,7 @@ interface SettingsProviderManageFormProps {
     value: boolean | undefined,
   ) => void;
   onTestConnection: () => void | Promise<void>;
+  onSaved: (providerId: string) => void;
 }
 
 const BASE_URLS: Record<TextProviderKind, string> = {
@@ -97,6 +102,11 @@ const PROVIDER_CARDS: Record<
   mistral: SettingsProviderMistralModelCard,
 };
 
+const CAPABILITY_OPTIONS = MODEL_CAPABILITY_KEYS.map((key) => ({
+  value: key,
+  label: MODEL_CAPABILITY_LABELS[key],
+}));
+
 export function SettingsProviderManageForm({
   model,
   checking,
@@ -106,10 +116,12 @@ export function SettingsProviderManageForm({
   onModelChange,
   onCapabilityOverride,
   onTestConnection,
+  onSaved,
 }: SettingsProviderManageFormProps) {
   const toasts = useToasts();
   const [saving, setSaving] = useState(false);
   const [modelQuery, setModelQuery] = useState("");
+  const [capabilityFilter, setCapabilityFilter] = useState<string[]>([]);
   const [freeOnly, setFreeOnly] = useState(false);
   const [noTrainingOnly, setNoTrainingOnly] = useState(false);
   const visibleModels = model.models.filter((item) => {
@@ -123,8 +135,12 @@ export function SettingsProviderManageForm({
       item.details.completionPrice,
       item.details.requestPrice,
     ].every((price) => Number(price ?? 0) === 0);
+    const capabilities = resolveModelCapabilities(item.details);
     return (
       matchesQuery &&
+      capabilityFilter.every(
+        (key) => capabilities[key as ModelCapabilityKey] === true,
+      ) &&
       (model.kind !== "openrouter" || !freeOnly || isFree) &&
       (model.kind !== "openrouter" ||
         !noTrainingOnly ||
@@ -135,7 +151,10 @@ export function SettingsProviderManageForm({
   const save = async () => {
     setSaving(true);
     try {
-      await textProviderStore.upsert({
+      const existingProviderIds = new Set(
+        textProviderStore.providers.map((provider) => provider.id),
+      );
+      const snapshot = await textProviderStore.upsert({
         id: model.id ?? undefined,
         kind: model.kind,
         providerType: model.providerType,
@@ -149,6 +168,12 @@ export function SettingsProviderManageForm({
         generationSettings: model.generationSettings,
         capabilityOverrides: capabilityOverridesOf(model.models),
       });
+      const savedProviderId =
+        model.id ??
+        snapshot.providers.find(
+          (provider) => !existingProviderIds.has(provider.id),
+        )?.id;
+      if (savedProviderId) onSaved(savedProviderId);
       toasts.success({
         title: "Настройки сохранены",
         description:
@@ -382,13 +407,32 @@ export function SettingsProviderManageForm({
               </span>
               <div className="flex items-center gap-2">
                 {model.models.length ? (
-                  <InputSmall
-                    preset="search"
-                    value={modelQuery}
-                    onChange={(event) => setModelQuery(event.target.value)}
-                    placeholder="Найти модель"
-                    className="w-56"
-                  />
+                  <>
+                    <AutoFillSelector
+                      options={CAPABILITY_OPTIONS}
+                      value={capabilityFilter}
+                      onChange={setCapabilityFilter}
+                      className="w-xl"
+                    >
+                      <AutoFillSelector.Trigger rounded="rounded-3xl">
+                        <AutoFillSelector.Tags />
+                        <AutoFillSelector.Input placeholder="Возможности" />
+                      </AutoFillSelector.Trigger>
+                      <AutoFillSelector.Menu rounded="rounded-3xl">
+                        <AutoFillSelector.Options rounded="rounded-full" />
+                        <AutoFillSelector.Empty>
+                          Возможности не найдены
+                        </AutoFillSelector.Empty>
+                      </AutoFillSelector.Menu>
+                    </AutoFillSelector>
+                    <InputSmall
+                      preset="search"
+                      value={modelQuery}
+                      onChange={(event) => setModelQuery(event.target.value)}
+                      placeholder="Найти модель"
+                      className="w-56"
+                    />
+                  </>
                 ) : null}
                 <Button
                   variant="ghost"
@@ -445,7 +489,10 @@ export function SettingsProviderManageForm({
             ) : (
               <div className="grid min-h-36 place-items-center rounded-lg border border-dashed border-main-700 px-6 text-center text-sm text-main-500">
                 {model.models.length &&
-                (modelQuery.trim() || freeOnly || noTrainingOnly)
+                (modelQuery.trim() ||
+                  capabilityFilter.length ||
+                  freeOnly ||
+                  noTrainingOnly)
                   ? "Модели не соответствуют выбранным фильтрам. Синхронизируйте список, если провайдер был проверен до добавления фильтров."
                   : model.status === "error"
                     ? "Исправьте параметры и повторите проверку подключения."
