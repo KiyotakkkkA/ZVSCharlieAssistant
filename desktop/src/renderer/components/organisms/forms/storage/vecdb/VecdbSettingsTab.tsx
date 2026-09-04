@@ -1,6 +1,5 @@
 import { observer } from "mobx-react-lite";
 import {
-  Alert,
   Button,
   InputBig,
   InputSmall,
@@ -8,6 +7,7 @@ import {
   ScrollArea,
   useToasts,
 } from "@kiyotakkkka/zvs-uikit-lib";
+import { BasicAlert } from "@renderer/components/atoms/basic";
 import { Field, Lead, ParameterLabel } from "@renderer/components/atoms";
 import { BasicSelect } from "@renderer/components/atoms/basic";
 import { textProviderStore, vectorStoreStore } from "@renderer/stores";
@@ -164,7 +164,7 @@ export const VecdbSettingsTab = observer(function VecdbSettingsTab({
               ]}
             />
           </Field>
-          <Alert
+          <BasicAlert
             variant="info"
             title={
               searchMode === "vector" ? "Векторный поиск" : "Гибридный поиск"
@@ -174,7 +174,7 @@ export const VecdbSettingsTab = observer(function VecdbSettingsTab({
             {searchMode === "vector"
               ? "Программа ищет по смыслу: находит фрагменты, близкие к запросу, даже если слова в них другие."
               : "Программа ищет и по смыслу, и по точным словам одновременно, а затем объединяет результаты. Так лучше находятся названия, термины, артикулы и точные формулировки."}
-          </Alert>
+          </BasicAlert>
         </div>
       </div>
     </ScrollArea>

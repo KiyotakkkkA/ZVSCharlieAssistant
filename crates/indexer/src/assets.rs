@@ -85,6 +85,24 @@ pub const EMBED_TOKENIZER: AssetSpec = AssetSpec {
 
 pub const EMBED_ASSETS: [AssetSpec; 2] = [EMBED_MODEL, EMBED_TOKENIZER];
 
+pub const RERANK_MODEL: AssetSpec = AssetSpec {
+    key: "rerank-model",
+    url: "https://huggingface.co/onnx-community/bge-reranker-v2-m3-ONNX/resolve/main/onnx/model_fp16.onnx",
+    sha256: "9b26f9185d2d26051f724c9fc3565e5d9614a9dd459b784c806c246232a70fe3",
+    target: "bge-reranker-v2-m3.onnx",
+    packaging: Packaging::Raw,
+};
+
+pub const RERANK_TOKENIZER: AssetSpec = AssetSpec {
+    key: "rerank-tokenizer",
+    url: "https://huggingface.co/onnx-community/bge-reranker-v2-m3-ONNX/resolve/main/tokenizer.json",
+    sha256: "8bf8afbfd11306bd872018c53bfdf2e160a56f8edbcf49933324404791c148d3",
+    target: "tokenizer.json",
+    packaging: Packaging::Raw,
+};
+
+pub const RERANK_ASSETS: [AssetSpec; 2] = [RERANK_MODEL, RERANK_TOKENIZER];
+
 pub const CUDA_ASSETS: [AssetSpec; 3] = [CUDA_RUNTIME, CUDA_CUBLAS, CUDA_CUDNN];
 
 pub const OCR_DET: AssetSpec = AssetSpec {

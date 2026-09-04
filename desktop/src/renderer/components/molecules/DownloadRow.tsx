@@ -1,5 +1,6 @@
 import { observer } from "mobx-react-lite";
-import { Alert, Button, ProgressBar } from "@kiyotakkkka/zvs-uikit-lib";
+import { Button, ProgressBar } from "@kiyotakkkka/zvs-uikit-lib";
+import { BasicAlert } from "@renderer/components/atoms/basic";
 import {
   CheckIcon,
   DownloadIcon,
@@ -150,15 +151,15 @@ export const DownloadRow = observer(function DownloadRow({
       ) : null}
 
       {warning && !installed && !busy ? (
-        <Alert variant="info" title="Эти файлы вам не понадобятся" className="mt-3">
+        <BasicAlert variant="info" title="Эти файлы вам не понадобятся" className="mt-3">
           {warning}
-        </Alert>
+        </BasicAlert>
       ) : null}
 
       {error && !busy ? (
-        <Alert variant="warning" title="Не удалось загрузить" className="mt-3">
+        <BasicAlert variant="warning" title="Не удалось загрузить" className="mt-3">
           {humanizeError(error)}
-        </Alert>
+        </BasicAlert>
       ) : null}
     </li>
   );

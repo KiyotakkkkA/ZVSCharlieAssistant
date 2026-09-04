@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { observer } from "mobx-react-lite";
-import { Alert, Button, EmptyState } from "@kiyotakkkka/zvs-uikit-lib";
+import { Button, EmptyState } from "@kiyotakkkka/zvs-uikit-lib";
+import { BasicAlert } from "@renderer/components/atoms/basic";
 import {
   ChevronDownIcon,
   CogIcon,
@@ -39,9 +40,9 @@ export const McpServersView = observer(function McpServersView({
   if (configError)
     return (
       <div className="space-y-4">
-        <Alert variant="danger" title="Не удалось прочитать конфигурацию MCP">
+        <BasicAlert variant="danger" title="Не удалось прочитать конфигурацию MCP">
           {configError}
-        </Alert>
+        </BasicAlert>
         <p className="font-mono text-xs text-main-500">{configPath}</p>
       </div>
     );

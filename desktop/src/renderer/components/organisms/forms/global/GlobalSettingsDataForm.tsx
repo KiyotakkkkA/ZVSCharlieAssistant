@@ -1,11 +1,11 @@
 import { useState } from "react";
 import {
-  Alert,
   Button,
   InputSmall,
   Switcher,
   useToasts,
 } from "@kiyotakkkka/zvs-uikit-lib";
+import { BasicAlert } from "@renderer/components/atoms/basic";
 import type {
   DataTransferConflictPolicy,
   ImportPreview,
@@ -270,22 +270,22 @@ export function GlobalSettingsDataForm() {
               <PoliciesImportCard policies={preview.policies} />
             </div>
             {preview.missingDependencies.length ? (
-              <Alert
+              <BasicAlert
                 variant="warning"
                 title={`Не найдены зависимости: ${preview.missingDependencies.length}`}
               >
                 Сначала импортируйте недостающие связанные сущности или выберите
                 полную копию. Импорт этой копии будет заблокирован.
-              </Alert>
+              </BasicAlert>
             ) : null}
             {totalConflicts(preview) ? (
-              <Alert
+              <BasicAlert
                 variant="warning"
                 title={`Конфликты: ${totalConflicts(preview)}`}
               >
                 Одинаковое естественное имя связано с разными UUID. Импорт
                 заблокирован, чтобы не нарушить связи между сущностями.
-              </Alert>
+              </BasicAlert>
             ) : null}
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <Switcher

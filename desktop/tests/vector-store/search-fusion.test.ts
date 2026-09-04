@@ -39,6 +39,7 @@ function createService(stores: Record<string, StoreShape>) {
   };
   const embeddings = { embed: vi.fn(async () => [[0.1, 0.2]]) };
   const indexer = {
+    rerankAvailable: () => false,
     searchVectorIndex: vi.fn(
       async (
         storeId: string,

@@ -24,6 +24,7 @@ use crate::{
         route::PageRoute,
     },
     ocr::{OcrEngine, Preference},
+    rerank::Reranker,
 };
 
 const DEFAULT_RENDER_WIDTH: i32 = 1654;
@@ -114,6 +115,7 @@ pub struct AssetStatus {
 }
 
 static EMBEDDERS: OnceLock<Mutex<HashMap<Preference, Arc<Mutex<Embedder>>>>> = OnceLock::new();
+static RERANKERS: OnceLock<Mutex<HashMap<Preference, Arc<Mutex<Reranker>>>>> = OnceLock::new();
 static INDEXING_STOPPED: AtomicBool = AtomicBool::new(false);
 
 #[napi(object)]
@@ -395,6 +397,83 @@ impl Task for EmbedTextsTask {
     fn resolve(&mut self, _: Env, output: Self::Output) -> Result<Self::JsValue> {
         Ok(output)
     }
+}
+
+#[napi(object)]
+pub struct RerankResult {
+    pub scores: Vec<f64>,
+    pub provider: String,
+    pub acceleration_error: Option<String>,
+}
+
+pub struct RerankTask {
+    cache_dir: String,
+    provider: String,
+    query: String,
+    passages: Vec<String>,
+}
+
+#[napi]
+pub fn rerank_passages(
+    cache_dir: String,
+    provider: String,
+    query: String,
+    passages: Vec<String>,
+) -> AsyncTask<RerankTask> {
+    AsyncTask::new(RerankTask {
+        cache_dir,
+        provider,
+        query,
+        passages,
+    })
+}
+
+#[napi]
+pub fn rerank_available(cache_dir: String) -> bool {
+    let store = AssetStore::new(PathBuf::from(&cache_dir));
+    crate::assets::RERANK_ASSETS
+        .iter()
+        .all(|spec| store.resolved_path(spec).is_file())
+}
+
+impl Task for RerankTask {
+    type Output = RerankResult;
+    type JsValue = RerankResult;
+    fn compute(&mut self) -> Result<Self::Output> {
+        let store = AssetStore::new(PathBuf::from(&self.cache_dir));
+        let preference = Preference::parse(&self.provider);
+        let reranker = reranker(&store, preference).map_err(Error::from_reason)?;
+        let mut guard = reranker
+            .lock()
+            .map_err(|_| Error::from_reason("Модель переоценки занята"))?;
+        let scores = guard
+            .score(&self.query, &self.passages)
+            .map_err(Error::from_reason)?;
+        Ok(RerankResult {
+            scores: scores.into_iter().map(f64::from).collect(),
+            provider: guard.provider.to_string(),
+            acceleration_error: guard.acceleration_error.clone(),
+        })
+    }
+    fn resolve(&mut self, _: Env, output: Self::Output) -> Result<Self::JsValue> {
+        Ok(output)
+    }
+}
+
+fn reranker(
+    store: &AssetStore,
+    preference: Preference,
+) -> std::result::Result<Arc<Mutex<Reranker>>, String> {
+    let cache = RERANKERS.get_or_init(|| Mutex::new(HashMap::new()));
+    let mut guard = cache
+        .lock()
+        .map_err(|_| "Кэш моделей переоценки повреждён".to_string())?;
+    if let Some(existing) = guard.get(&preference) {
+        return Ok(existing.clone());
+    }
+    let loaded = Arc::new(Mutex::new(Reranker::load(store, preference)?));
+    guard.insert(preference, loaded.clone());
+    Ok(loaded)
 }
 
 fn embedder(

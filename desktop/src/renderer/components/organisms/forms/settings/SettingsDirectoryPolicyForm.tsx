@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { observer } from "mobx-react-lite";
-import { Alert, InputCheckBox, useToasts } from "@kiyotakkkka/zvs-uikit-lib";
+import { InputCheckBox, useToasts } from "@kiyotakkkka/zvs-uikit-lib";
+import { BasicAlert } from "@renderer/components/atoms/basic";
 import type {
   DirectoryGrant,
   DirectoryPermission,
@@ -148,13 +149,13 @@ export const SettingsDirectoryPolicyForm = observer(
                 </div>
               </div>
             ))}
-            <Alert
+            <BasicAlert
               variant="warning"
               title="Политика действует как верхняя граница"
             >
               Настройки конкретного агента смогут только исключать директории и
               права из этого списка.
-            </Alert>
+            </BasicAlert>
           </div>
         </section>
       </form>

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { observer } from "mobx-react-lite";
 import {
-  Alert,
   Button,
   EmptyState,
   InputSmall,
@@ -9,6 +8,7 @@ import {
   ScrollArea,
   Tabs,
 } from "@kiyotakkkka/zvs-uikit-lib";
+import { BasicAlert } from "@renderer/components/atoms/basic";
 import { APP_PATHS } from "../../app/routes";
 import { TasksIcon } from "../../components/atoms";
 import type { EntityGenerationRun } from "../../../ipc/contracts";
@@ -202,11 +202,11 @@ export const TaskListPage = observer(function TaskListPage() {
         </Modal.Header>
         <Modal.Content>
           <div className="space-y-4">
-            <Alert variant="danger" title="Текст ошибки">
+            <BasicAlert variant="danger" title="Текст ошибки">
               <p className="whitespace-pre-wrap wrap-break-word text-xs leading-5">
                 {failed?.error ?? "Причина не сохранилась."}
               </p>
-            </Alert>
+            </BasicAlert>
             <div>
               <p className="mb-1 text-xs font-medium text-main-400">Запрос</p>
               <p className="whitespace-pre-wrap wrap-break-word rounded-lg bg-main-800/40 p-3 text-xs leading-5 text-main-300">

@@ -1,4 +1,5 @@
-import { Accordion, Alert, Skeleton } from "@kiyotakkkka/zvs-uikit-lib";
+import { Accordion, Skeleton } from "@kiyotakkkka/zvs-uikit-lib";
+import { BasicAlert } from "@renderer/components/atoms/basic";
 import { CodeView } from "@kiyotakkkka/zvs-uikit-lib/code-view";
 import {
   isValidElement,
@@ -72,13 +73,13 @@ export const ChatAssistantMsgBlock = memo(function ChatAssistantMsgBlock({
           streaming={status === "streaming"}
         />
         {status === "failed" && error ? (
-          <Alert
+          <BasicAlert
             variant="danger"
             title="Не удалось получить ответ"
             className="my-4"
           >
             {error}
-          </Alert>
+          </BasicAlert>
         ) : null}
         {actions}
         {showControls ? (

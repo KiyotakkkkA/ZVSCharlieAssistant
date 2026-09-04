@@ -80,6 +80,7 @@ export class VectorStoreService {
   private readonly batches = new Map<string, IngestBatch>();
   private paused = false;
   private stopGeneration = 0;
+  private rerankError: string | null = null;
 
   constructor(
     private readonly data: VectorStoreRepository,
@@ -472,7 +473,41 @@ export class VectorStoreService {
       }
       ranked.push(items);
     }
-    return fuseByRank(ranked, limit);
+    const fused = fuseByRank(ranked, MAX_SEARCH_RESULTS);
+    const reranked = await this.rerank(query, fused);
+    return reranked.slice(0, limit);
+  }
+
+  private async rerank(
+    query: string,
+    candidates: VectorSearchResultItem[],
+  ): Promise<VectorSearchResultItem[]> {
+    if (candidates.length < 2 || !this.indexer.rerankAvailable())
+      return candidates;
+    try {
+      const result = await this.indexer.rerank(
+        query,
+        candidates.map((item) => item.content),
+      );
+      if (result.scores.length !== candidates.length) {
+        this.rerankError = "Модель переоценки вернула неожиданный результат";
+        return candidates;
+      }
+      this.rerankError = result.accelerationError ?? null;
+      return candidates
+        .map((item, index) => ({ ...item, score: result.scores[index]! }))
+        .sort((left, right) => right.score - left.score);
+    } catch (error) {
+      this.rerankError = error instanceof Error ? error.message : String(error);
+      return candidates;
+    }
+  }
+
+  rerankDiagnostics(): { available: boolean; error: string | null } {
+    return {
+      available: this.indexer.rerankAvailable(),
+      error: this.rerankError,
+    };
   }
 
   private async ingest(

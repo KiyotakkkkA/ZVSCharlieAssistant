@@ -1,4 +1,5 @@
-import { Alert, Button, Loader } from "@kiyotakkkka/zvs-uikit-lib";
+import { Button, Loader } from "@kiyotakkkka/zvs-uikit-lib";
+import { BasicAlert } from "@renderer/components/atoms/basic";
 import type { ZvsIdConnection } from "../../../ipc/contracts";
 import { ZVSLogoIcon } from "../atoms";
 
@@ -41,22 +42,22 @@ export function ZvsIdAuthScreen({
         </p>
 
         {error ? (
-          <Alert
+          <BasicAlert
             variant="danger"
             rounded="rounded-xl"
             className="mt-5 text-left"
           >
             {error}
-          </Alert>
+          </BasicAlert>
         ) : null}
         {connection && !connection.clientConfigured ? (
-          <Alert
+          <BasicAlert
             variant="warning"
             rounded="rounded-xl"
             className="mt-5 text-left"
           >
             Приложение не зарегистрировано в ZVS ID.
-          </Alert>
+          </BasicAlert>
         ) : null}
 
         <Button

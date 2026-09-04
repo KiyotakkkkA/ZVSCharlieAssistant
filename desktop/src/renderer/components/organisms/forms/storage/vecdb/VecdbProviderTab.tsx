@@ -1,12 +1,9 @@
 import { useState } from "react";
 import { observer } from "mobx-react-lite";
-import {
-  Alert,
-  Button,
-  ScrollArea,
-  useToasts,
-} from "@kiyotakkkka/zvs-uikit-lib";
+import { Button, ScrollArea, useToasts } from "@kiyotakkkka/zvs-uikit-lib";
+import { BasicAlert } from "@renderer/components/atoms/basic";
 import { CheckIcon, DownloadIcon, Lead } from "@renderer/components/atoms";
+import { DownloadRow } from "@renderer/components/molecules";
 import { vectorStoreStore } from "@renderer/stores";
 import { useAppNavigation, useDownloads } from "@renderer/hooks";
 import { APP_PATHS } from "@renderer/app/routes";
@@ -29,7 +26,9 @@ export const VecdbProviderTab = observer(function VecdbProviderTab() {
   const status = explainProvider(capabilities);
   const cudaSupport = explainCudaSupport(capabilities);
   const downloads = useDownloads();
-  const missing = downloads.filter(
+  const reranker = downloads.find((item) => item.id === "rerank");
+  const required = downloads.filter((item) => item.id !== "rerank");
+  const missing = required.filter(
     (item) =>
       !item.installed && isDownloadNeededOnThisComputer(item.id, capabilities),
   );
@@ -99,12 +98,12 @@ export const VecdbProviderTab = observer(function VecdbProviderTab() {
             </p>
           ) : null}
           {cudaSupport ? (
-            <Alert variant="info" title={cudaSupport.title}>
+            <BasicAlert variant="info" title={cudaSupport.title}>
               {cudaSupport.text}
-            </Alert>
+            </BasicAlert>
           ) : null}
           {status ? (
-            <Alert
+            <BasicAlert
               variant={capabilities?.ocrAccelerated ? "info" : "warning"}
               title={status.title}
             >
@@ -127,8 +126,44 @@ export const VecdbProviderTab = observer(function VecdbProviderTab() {
                   ) : null}
                 </>
               ) : null}
-            </Alert>
+            </BasicAlert>
           ) : null}
+        </div>
+
+        <Lead
+          title="Уточнение выдачи"
+          description="Дополнительная модель, которая пересматривает найденные фрагменты."
+        />
+        <div className="grid gap-3 rounded-xl bg-main-800/35 p-4">
+          <p className="text-xs leading-5 text-main-400">
+            Обычный поиск находит фрагменты, похожие на запрос по смыслу. Эта
+            модель дополнительно сравнивает каждый найденный фрагмент с самим
+            вопросом и поднимает наверх те, которые действительно на него
+            отвечают.
+          </p>
+          <ul className="grid gap-2">
+            <DownloadRow
+              id="rerank"
+              onError={(message) =>
+                toasts.danger({
+                  title: "Не удалось выполнить действие",
+                  description: message,
+                })
+              }
+            />
+          </ul>
+          <BasicAlert
+            variant={reranker?.installed ? "success" : "info"}
+            title={
+              reranker?.installed
+                ? "Уточнение включено"
+                : "Поиск работает и без неё"
+            }
+          >
+            {reranker?.installed
+              ? "Результаты поиска по базам знаний упорядочиваются этой моделью."
+              : "Пока модель не загружена, результаты упорядочиваются обычным способом. Загрузите её, чтобы наверху оказывались более точные фрагменты."}
+          </BasicAlert>
         </div>
 
         <Lead
@@ -137,7 +172,7 @@ export const VecdbProviderTab = observer(function VecdbProviderTab() {
         />
         <div className="grid gap-3 rounded-xl bg-main-800/35 p-4">
           <ul className="grid gap-2">
-            {downloads.map((item) => {
+            {required.map((item) => {
               const needed = isDownloadNeededOnThisComputer(
                 item.id,
                 capabilities,
@@ -170,13 +205,13 @@ export const VecdbProviderTab = observer(function VecdbProviderTab() {
             })}
           </ul>
           {missing.length ? (
-            <Alert variant="warning" title="Не всё загружено">
+            <BasicAlert variant="warning" title="Не всё загружено">
               Осталось скачать{" "}
               {formatBytes(
                 missing.reduce((sum, item) => sum + item.downloadBytes, 0),
               )}
               . Скачайте необходиые файлы со страницы «Загрузки».
-            </Alert>
+            </BasicAlert>
           ) : null}
           <div>
             <Button

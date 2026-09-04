@@ -1,13 +1,13 @@
 import { useEffect } from "react";
 import { observer } from "mobx-react-lite";
 import {
-  Alert,
   Badge,
   Button,
   Code,
   ScrollArea,
   useToasts,
 } from "@kiyotakkkka/zvs-uikit-lib";
+import { BasicAlert } from "@renderer/components/atoms/basic";
 import { PageHeader } from "@renderer/components/organisms";
 import { PrimaryButton } from "@renderer/components/atoms/basic";
 import {
@@ -142,27 +142,27 @@ export const ExtensionsPage = observer(function ExtensionsPage() {
             ) : null}
 
             {status && !status.entryExists ? (
-              <Alert
+              <BasicAlert
                 variant="warning"
                 title="Сборка CLI не найдена"
                 className="mt-4"
               >
                 Ожидается файл {status.entryPath}. Выполните «npm run build» в
                 каталоге desktop и обновите страницу.
-              </Alert>
+              </BasicAlert>
             ) : null}
             {status?.error ? (
-              <Alert
+              <BasicAlert
                 variant="warning"
                 title="PATH не удалось обновить автоматически"
                 className="mt-4"
               >
                 {status.error} Добавьте каталог {status.binDir} в переменную
                 PATH вручную.
-              </Alert>
+              </BasicAlert>
             ) : null}
             {status?.installed && !status.onPath && !status.error ? (
-              <Alert
+              <BasicAlert
                 variant="info"
                 title="Перезапустите терминал"
                 className="mt-4"
@@ -172,9 +172,9 @@ export const ExtensionsPage = observer(function ExtensionsPage() {
                 {status.shellProfile
                   ? ` Настройка записана в ${status.shellProfile}.`
                   : ""}
-              </Alert>
+              </BasicAlert>
             ) : null}
-            <Alert
+            <BasicAlert
               variant="warning"
               title="Для работы расширения - основное приложение должно быть запущено"
               className="mt-5"

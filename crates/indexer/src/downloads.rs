@@ -4,11 +4,14 @@ use std::{
     sync::{Mutex, OnceLock},
 };
 
-use crate::assets::{AssetSpec, CUDA_ASSETS, EMBED_ASSETS, OCR_DET, OCR_REC, OCR_REC_CONFIG, PDFIUM};
+use crate::assets::{
+    AssetSpec, CUDA_ASSETS, EMBED_ASSETS, OCR_DET, OCR_REC, OCR_REC_CONFIG, PDFIUM, RERANK_ASSETS,
+};
 
 pub const OCR_GROUP: &str = "ocr";
 pub const EMBEDDING_GROUP: &str = "embedding";
 pub const CUDA_GROUP: &str = "cuda";
+pub const RERANK_GROUP: &str = "rerank";
 
 const OCR_ASSETS: [AssetSpec; 4] = [PDFIUM, OCR_DET, OCR_REC, OCR_REC_CONFIG];
 
@@ -18,7 +21,7 @@ pub struct DownloadGroup {
     pub download_bytes: i64,
 }
 
-pub const GROUPS: [DownloadGroup; 3] = [
+pub const GROUPS: [DownloadGroup; 4] = [
     DownloadGroup {
         id: OCR_GROUP,
         specs: &OCR_ASSETS,
@@ -33,6 +36,11 @@ pub const GROUPS: [DownloadGroup; 3] = [
         id: CUDA_GROUP,
         specs: &CUDA_ASSETS,
         download_bytes: 813_000_000,
+    },
+    DownloadGroup {
+        id: RERANK_GROUP,
+        specs: &RERANK_ASSETS,
+        download_bytes: 1_153_300_000,
     },
 ];
 

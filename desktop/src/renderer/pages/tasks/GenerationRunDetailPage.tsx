@@ -2,13 +2,13 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { observer } from "mobx-react-lite";
 import {
-  Alert,
   Button,
   EmptyState,
   InputSmall,
   ScrollArea,
   useToasts,
 } from "@kiyotakkkka/zvs-uikit-lib";
+import { BasicAlert } from "@renderer/components/atoms/basic";
 import { APP_PATHS } from "../../app/routes";
 import {
   ChevronLeftIcon,
@@ -300,9 +300,9 @@ export const GenerationRunDetailPage = observer(
             )}
 
             {run.status === "failed" && run.error ? (
-              <Alert variant="danger" title="Генерация завершилась ошибкой">
+              <BasicAlert variant="danger" title="Генерация завершилась ошибкой">
                 {run.error}
-              </Alert>
+              </BasicAlert>
             ) : null}
 
             {question ? (

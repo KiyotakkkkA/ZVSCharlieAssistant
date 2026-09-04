@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { observer } from "mobx-react-lite";
 import {
-  Alert,
   Button,
   InputSmall,
   Modal,
   useToasts,
 } from "@kiyotakkkka/zvs-uikit-lib";
+import { BasicAlert } from "@renderer/components/atoms/basic";
 import { APP_PATHS } from "../../app/routes";
 import {
   ChatComposer,
@@ -450,7 +450,7 @@ export const ChatPage = observer(function ChatPage() {
                 onOpenEdits={() => setEditsOpen(true)}
               />
               {textProviderStore.enabledModels.length === 0 ? (
-                <Alert
+                <BasicAlert
                   variant="warning"
                   rounded="rounded-none"
                   className="text-left border-0 border-b-0"
@@ -471,7 +471,7 @@ export const ChatPage = observer(function ChatPage() {
                   >
                     Настроить
                   </Button>
-                </Alert>
+                </BasicAlert>
               ) : null}
               <ChatQuestionCard />
             </>

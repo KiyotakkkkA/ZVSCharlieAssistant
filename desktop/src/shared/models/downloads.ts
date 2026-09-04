@@ -1,4 +1,4 @@
-export const DOWNLOAD_IDS = ["ocr", "embedding", "cuda"] as const;
+export const DOWNLOAD_IDS = ["ocr", "embedding", "rerank", "cuda"] as const;
 export type DownloadId = (typeof DOWNLOAD_IDS)[number];
 
 export const DOWNLOAD_CATEGORIES = ["models", "gpu", "other"] as const;
@@ -42,6 +42,14 @@ export const DOWNLOAD_CATALOG: readonly DownloadCatalogEntry[] = [
     label: "Модель поиска по смыслу (bge-m3)",
     purpose:
       "Ищет документы по смыслу прямо на этом компьютере, без обращения к внешним сервисам.",
+    required: false,
+  },
+  {
+    id: "rerank",
+    category: "models",
+    label: "Оценка результатов поиска (bge-reranker-v2-m3)",
+    purpose:
+      "Пересматривает найденные фрагменты и поднимает наверх те, которые действительно отвечают на вопрос. Без неё поиск работает, но точность результатов ниже.",
     required: false,
   },
   {

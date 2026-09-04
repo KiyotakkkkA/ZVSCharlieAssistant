@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { observer } from "mobx-react-lite";
 import {
-  Alert,
   InputCheckBox,
   InputSmall,
   useToasts,
 } from "@kiyotakkkka/zvs-uikit-lib";
+import { BasicAlert } from "@renderer/components/atoms/basic";
 import { memoryStore } from "../../../../stores";
 import { Field, ParameterLabel } from "../../../atoms";
 import {
@@ -55,11 +55,11 @@ export const SettingsMemoryPolicyForm = observer(
         onSubmit={submit}
         className="space-y-6"
       >
-        <Alert variant="info" title="Как работает память">
+        <BasicAlert variant="info" title="Как работает память">
           Ассистент сохраняет факты, предпочтения и указания, которые должны
           пережить отдельный диалог, и подмешивает их в системное сообщение.
           Доступ выдаётся каждому агенту отдельно — в его карточке.
-        </Alert>
+        </BasicAlert>
 
         <div className="space-y-3 flex flex-col">
           <InputCheckBox

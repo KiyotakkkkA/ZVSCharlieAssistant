@@ -4,11 +4,11 @@ import type {
   UserQuestion,
 } from "@ipc/contracts";
 import {
-  Alert,
   Button,
   EmptyState,
   ScrollArea,
 } from "@kiyotakkkka/zvs-uikit-lib";
+import { BasicAlert } from "@renderer/components/atoms/basic";
 import { CodeView } from "@kiyotakkkka/zvs-uikit-lib/code-view";
 import { APP_PATHS } from "@renderer/app/routes";
 import {
@@ -416,17 +416,17 @@ export const ScenarioExecHistoryPage = observer(
         </div>
 
         {run.error ? (
-          <Alert
+          <BasicAlert
             variant="danger"
             title="Запуск завершился ошибкой"
             className="mb-3 shrink-0"
           >
             {run.error}
-          </Alert>
+          </BasicAlert>
         ) : null}
 
         {pendingQuestion ? (
-          <Alert
+          <BasicAlert
             variant="warning"
             title={pendingQuestion.header || "Сценарий ждёт ответа"}
             className="mb-3 shrink-0"
@@ -458,7 +458,7 @@ export const ScenarioExecHistoryPage = observer(
                 <FreeTextAnswer disabled={answering} onSubmit={answer} />
               )}
             </div>
-          </Alert>
+          </BasicAlert>
         ) : null}
 
         <div className="mb-3 flex shrink-0 flex-wrap items-center gap-1.5">

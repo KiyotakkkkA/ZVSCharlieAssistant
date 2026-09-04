@@ -79,6 +79,7 @@ describe("DownloadManagerService", () => {
     expect(snapshot.items.map((entry) => entry.category)).toEqual([
       "models",
       "models",
+      "models",
       "gpu",
     ]);
   });
@@ -197,7 +198,7 @@ describe("DownloadManagerService", () => {
 
     const snapshot = manager.snapshot();
 
-    expect(snapshot.items).toHaveLength(3);
+    expect(snapshot.items).toHaveLength(4);
     expect(item(snapshot, "ocr").state).toBe("absent");
   });
 });

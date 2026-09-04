@@ -1,6 +1,5 @@
 import { useState } from "react";
 import {
-  Alert,
   Button,
   InputCheckSlided,
   InputCheckBox,
@@ -8,6 +7,7 @@ import {
   ScrollArea,
   useToasts,
 } from "@kiyotakkkka/zvs-uikit-lib";
+import { BasicAlert } from "@renderer/components/atoms/basic";
 import { BasicSelect } from "../../../atoms/basic";
 import type { TextProviderLimits } from "../../../../../shared/dto";
 import type { TextProviderModelInfo } from "../../../../../shared/models/text-provider";
@@ -337,7 +337,7 @@ export function SettingsProviderManageForm({
                   />
                 </Field>
                 {model.kind === "openrouter" && (
-                  <Alert
+                  <BasicAlert
                     variant="info"
                     title="Лимит OpenRouter"
                     className="md:col-span-3"
@@ -345,7 +345,7 @@ export function SettingsProviderManageForm({
                     Лимит ответа применяется к каждому запросу и дополнительно
                     ограничивается возможностями выбранной модели. Уменьшите его
                     при ошибке нехватки кредитов.
-                  </Alert>
+                  </BasicAlert>
                 )}
               </div>
             </>

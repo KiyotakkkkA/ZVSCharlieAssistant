@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Alert, Button, Modal } from "@kiyotakkkka/zvs-uikit-lib";
+import { Button, Modal } from "@kiyotakkkka/zvs-uikit-lib";
+import { BasicAlert } from "@renderer/components/atoms/basic";
 import { CodeView } from "@kiyotakkkka/zvs-uikit-lib/code-view";
 import type { TerminalApprovalRequest } from "../../../../ipc/contracts";
 import { formatRemaining } from "@renderer/lib/format";
@@ -113,13 +114,13 @@ export function TerminalApprovalModal() {
       <Modal.Content>
         {current ? (
           <div className="space-y-4">
-            <Alert
+            <BasicAlert
               variant={RISK_VARIANTS[current.risk]}
               title={current.purpose}
             >
               Команда приостановлена до вашего решения. Проверьте точный текст и
               рабочую директорию.
-            </Alert>
+            </BasicAlert>
             <CodeView
               code={current.script}
               language="powershell"

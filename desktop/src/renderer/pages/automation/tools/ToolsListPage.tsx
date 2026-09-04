@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { observer } from "mobx-react-lite";
 import {
-  Alert,
   Button,
   EmptyState,
   InputSmall,
@@ -10,6 +9,7 @@ import {
   Switcher,
   useToasts,
 } from "@kiyotakkkka/zvs-uikit-lib";
+import { BasicAlert } from "@renderer/components/atoms/basic";
 import {
   SecretOrientedSelect,
   CogIcon,
@@ -168,10 +168,10 @@ export const ToolsListPage = observer(function ToolsListPage() {
                 {selectedTool.description}
               </p>
               {!selectedTool.enabled ? (
-                <Alert variant="danger" title="Инструмент отключён">
+                <BasicAlert variant="danger" title="Инструмент отключён">
                   {selectedTool.disabledReason ??
                     "Инструмент недоступен из-за текущей конфигурации приложения."}
-                </Alert>
+                </BasicAlert>
               ) : null}
               <div className="grid gap-3 sm:grid-cols-3">
                 <MetaItem label="Категория" value={selectedTool.category} />

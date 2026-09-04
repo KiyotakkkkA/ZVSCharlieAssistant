@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { observer } from "mobx-react-lite";
-import { Alert, ScrollArea, useToasts } from "@kiyotakkkka/zvs-uikit-lib";
+import { ScrollArea, useToasts } from "@kiyotakkkka/zvs-uikit-lib";
+import { BasicAlert } from "@renderer/components/atoms/basic";
 import { PageHeader } from "@renderer/components/organisms";
 import { DownloadRow } from "@renderer/components/molecules";
 import { downloadStore, vectorStoreStore } from "@renderer/stores";
@@ -42,13 +43,13 @@ export const DownloadsPage = observer(function DownloadsPage() {
       <ScrollArea className="min-h-0 flex-1">
         <div className="space-y-5 p-1 pb-5">
           {pending.length ? (
-            <Alert variant="info" title="Не всё загружено">
+            <BasicAlert variant="info" title="Не всё загружено">
               Осталось скачать {formatBytes(pendingBytes)}.
-            </Alert>
+            </BasicAlert>
           ) : (
-            <Alert variant="info" title="Всё загружено">
+            <BasicAlert variant="success" title="Всё загружено">
               Все нужные файлы уже на вашем компьютере.
-            </Alert>
+            </BasicAlert>
           )}
 
           {DOWNLOAD_CATEGORIES.map((category) => {

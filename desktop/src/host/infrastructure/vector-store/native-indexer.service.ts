@@ -94,6 +94,12 @@ export interface NativeVectorSearchResult {
   score: number;
 }
 
+export interface NativeRerankResult {
+  scores: number[];
+  provider: string;
+  accelerationError: string | null;
+}
+
 export type OcrProvider = "cuda" | "directml" | "cpu" | "none";
 
 export interface OcrDiagnostics {
@@ -121,6 +127,13 @@ interface NativeIndexerAddon {
     provider: string,
     texts: string[],
   ): Promise<number[][]>;
+  rerankAvailable(cacheDir: string): boolean;
+  rerankPassages(
+    cacheDir: string,
+    provider: string,
+    query: string,
+    passages: string[],
+  ): Promise<NativeRerankResult>;
   initializeVectorIndex(directory: string): boolean;
   completeVectorIndexInitialization(directory: string): void;
   appendVectorChunks(
@@ -347,6 +360,25 @@ export class NativeIndexerService {
       this.cacheDir,
       this.settings.get().indexing.provider,
       texts,
+    );
+  }
+
+  rerankAvailable(): boolean {
+    const addon = this.load();
+    if (!addon) return false;
+    try {
+      return addon.rerankAvailable(this.cacheDir);
+    } catch {
+      return false;
+    }
+  }
+
+  rerank(query: string, passages: string[]): Promise<NativeRerankResult> {
+    return this.requireAddon().rerankPassages(
+      this.cacheDir,
+      this.settings.get().indexing.provider,
+      query,
+      passages,
     );
   }
 

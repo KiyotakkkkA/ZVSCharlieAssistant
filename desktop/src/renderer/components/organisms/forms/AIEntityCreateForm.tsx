@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { observer } from "mobx-react-lite";
 import {
-  Alert,
   Button,
   InputBig,
   Modal,
   useToasts,
 } from "@kiyotakkkka/zvs-uikit-lib";
+import { BasicAlert } from "@renderer/components/atoms/basic";
 import { Field, ModelOrientedSelect } from "../../atoms";
 import { PrimaryButton } from "../../atoms/basic";
 import { entityGenerationStore, textProviderStore } from "../../../stores";
@@ -99,10 +99,10 @@ export const AIEntityCreateForm = observer(function AIEntityCreateForm({
       </Modal.Header>
       <Modal.Content>
         <form onSubmit={submit} className="space-y-5">
-          <Alert variant="info" title="Как это работает">
+          <BasicAlert variant="info" title="Как это работает">
             {copy.hint} Результат появится в списке со статусом «Черновик» —
             проверьте и доработайте его перед включением.
-          </Alert>
+          </BasicAlert>
 
           <Field label="Модель">
             <ModelOrientedSelect

@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { observer } from "mobx-react-lite";
 import {
-  Alert,
   Button,
   InputCheckBox,
   InputSmall,
   Modal,
   useToasts,
 } from "@kiyotakkkka/zvs-uikit-lib";
+import { BasicAlert } from "@renderer/components/atoms/basic";
 import { BasicSelect } from "../../../atoms/basic";
 import type { UpsertTerminalPolicyInput } from "../../../../../shared/dto";
 import { automationStore, terminalPolicyStore } from "../../../../stores";
@@ -301,11 +301,11 @@ export const SettingsTerminalPolicyForm = observer(
             ) : null}
             {capabilityModel["powershell.custom"] ? (
               <div className="space-y-3 rounded-xl bg-danger-dark/10 p-4 ring-1 ring-danger-light/25">
-                <Alert variant="warning" title="Экспертный режим">
+                <BasicAlert variant="warning" title="Экспертный режим">
                   Произвольное выполнение не обходит защиту: укажите каждую
                   команду отдельно. Запрещённые конструкции, пути и права
                   продолжат проверяться перед запуском.
-                </Alert>
+                </BasicAlert>
                 <Field
                   label={
                     <ParameterLabel description="Укажите полное каноническое имя PowerShell cmdlet в формате Verb-Noun. Алиасы и исполняемые файлы не принимаются.">

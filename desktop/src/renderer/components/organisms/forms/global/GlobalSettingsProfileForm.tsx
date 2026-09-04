@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { observer } from "mobx-react-lite";
 import {
-  Alert,
   InputBig,
   InputSmall,
   useToasts,
 } from "@kiyotakkkka/zvs-uikit-lib";
+import { BasicAlert } from "@renderer/components/atoms/basic";
 import { Field, GlobalSettingsLabel } from "../../../atoms";
 import { PROFILE_ANCHORS } from "./settings-sections";
 import { PrimaryButton } from "../../../atoms/basic";
@@ -63,11 +63,11 @@ export const GlobalSettingsProfileForm = observer(
     return (
       <form onSubmit={submit} className="space-y-8">
         <section className="space-y-6">
-          <Alert variant="info" title="Где это работает">
+          <BasicAlert variant="info" title="Где это работает">
             Эти настройки работают только в режимах «Чат» и «Планировщик» при
             первом сообщении диалога. У агентов и сценариев свои собственные
             инструкции — на них персонализация не влияет.
-          </Alert>
+          </BasicAlert>
 
           <GlobalSettingsLabel {...PROFILE_ANCHORS.identity} />
 

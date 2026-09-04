@@ -1,10 +1,10 @@
 import {
-  Alert,
   Button,
   StyleProvider,
   ToastProvider,
   type StyleThemePalette,
 } from "@kiyotakkkka/zvs-uikit-lib";
+import { BasicAlert } from "@renderer/components/atoms/basic";
 import { useCallback, useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
 import {
@@ -102,7 +102,7 @@ export function App({ initialPalette }: AppProps) {
         ) : (
           <>
             {failed.length ? (
-              <Alert
+              <BasicAlert
                 variant="danger"
                 title="Не удалось загрузить данные"
                 className="m-3 mb-0"
@@ -117,7 +117,7 @@ export function App({ initialPalette }: AppProps) {
                     Повторить
                   </Button>
                 </div>
-              </Alert>
+              </BasicAlert>
             ) : null}
             <Outlet />
             <TerminalApprovalModal />
