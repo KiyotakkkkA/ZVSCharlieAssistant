@@ -19,6 +19,7 @@ export interface PortSpec {
   multiple: boolean;
   optional?: boolean;
   description?: string;
+  targetErrorMode?: NodeErrorMode;
 }
 
 export type NodeItemMode = "collection" | "each";

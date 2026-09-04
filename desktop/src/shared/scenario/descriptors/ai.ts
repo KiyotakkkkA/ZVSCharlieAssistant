@@ -22,6 +22,7 @@ const agentConfigSchema = z.object({
   maxToolCalls: z.int().min(1).max(100).nullable().default(null),
   temperature: z.number().min(0).max(2).nullable().default(null),
   targetField: z.string().default("text"),
+  maxOutputTokens: z.int().min(256).max(32_000).default(2_400),
 });
 
 export const agentDescriptor: ScenarioNodeDescriptor<
@@ -45,6 +46,7 @@ export const agentDescriptor: ScenarioNodeDescriptor<
     maxToolCalls: null,
     temperature: null,
     targetField: "text",
+    maxOutputTokens: 2_400,
   }),
   inputs: [mainInput(), knowledgeInput(), filesInput()],
   outputs: [mainOutput({ label: "Результат" }), filesOutput(), errorOutput()],
@@ -129,6 +131,7 @@ export const orchestratorDescriptor: ScenarioNodeDescriptor<
       dataKind: "main",
       side: "bottom",
       multiple: true,
+      targetErrorMode: "continue",
     },
     mainOutput({ label: "Результат" }),
     errorOutput(),

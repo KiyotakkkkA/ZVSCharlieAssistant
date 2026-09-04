@@ -226,6 +226,13 @@ export const NODE_FIELDS: Record<string, NodeFieldSpec[]> = {
       step: 0.1,
       half: true,
     },
+    {
+      type: "number",
+      key: "maxOutputTokens",
+      label: "Лимит токенов ответа",
+      min: 256,
+      max: 32_000,
+    },
   ],
   orchestrator: [
     { type: "model", key: "modelId", label: "Модель" },

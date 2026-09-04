@@ -452,12 +452,19 @@ describe("узел orchestrator", () => {
           edge(orchestrator, worker, { from: "workers" }),
         ],
       ),
-      { extraExecutors: [createOrchestratorExecutor(services)] },
+      {
+        extraExecutors: [
+          createOrchestratorExecutor(services),
+          createAgentExecutor(services),
+        ],
+      },
     );
     expect(result.status).toBe("completed");
-    expect(calls.length > 0).toBe(true);
-    expect(result.persistence.countFor(worker.id)).toBe(0);
-    const output = result.outputs["Оркестратор"] as { json: { text: string } };
+    expect(calls).toEqual([worker.id]);
+    expect(result.persistence.countFor(worker.id)).toBe(1);
+    const output = result.outputs["Исполнитель"] as {
+      json: { text: string; agentId: string };
+    };
     expect(output.json.text.includes("результат")).toBe(true);
   });
 });

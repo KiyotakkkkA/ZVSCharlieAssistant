@@ -12,7 +12,10 @@ vi.mock("ai", async (importOriginal) => {
 
 import { APICallError, NoObjectGeneratedError } from "ai";
 import { HostScenarioEngineServices } from "../../src/host/infrastructure/automation/engine/host-services.adapter";
-import { createOrchestratorExecutor } from "../../src/host/infrastructure/automation/engine/executors";
+import {
+  createAgentExecutor,
+  createOrchestratorExecutor,
+} from "../../src/host/infrastructure/automation/engine/executors";
 import type {
   GenerateObjectRequest,
   ScenarioEngineServices,
@@ -274,7 +277,12 @@ function runOrchestrator(options: {
           edge(orchestrator, worker, { from: "workers" }),
         ],
       ),
-      { extraExecutors: [createOrchestratorExecutor(services)] },
+      {
+        extraExecutors: [
+          createOrchestratorExecutor(services),
+          createAgentExecutor(services),
+        ],
+      },
     ),
   };
 }

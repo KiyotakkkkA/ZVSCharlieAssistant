@@ -489,6 +489,16 @@ export class ScenarioCompiler {
       appendEdge(incoming, edge.target, edge.targetPort, edge);
     }
 
+    for (const edge of graph.edges) {
+      const target = nodes.get(edge.target);
+      if (!target || target.node.runtime?.onError !== undefined) continue;
+      const port = nodes
+        .get(edge.source)
+        ?.outputs.find((candidate) => candidate.id === edge.sourcePort);
+      if (port?.targetErrorMode)
+        target.runtime = { ...target.runtime, onError: port.targetErrorMode };
+    }
+
     const triggers = graph.nodes
       .filter((node) => nodes.get(node.id)!.descriptor.isTrigger)
       .map((node) => node.id);
